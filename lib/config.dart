@@ -1,0 +1,1 @@
+const String geminiApiKey = 'AIzaSyAill27e72g7DRjoH4hBxFASUUa8b9YqkY';

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import 'package:english_learning_app/config.dart'; // Ensure this path is correct for your config.dart
 
 void main() {
   runApp(const MyApp());
@@ -45,9 +46,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  // IMPORTANT: Replace with your actual Google AI API key
-  final String _geminiApiKey = 'AIzaSyAill27e72g7DRjoH4hBxFASUUa8b9YqkY';
-
+  // Using API key from config.dart
   late final GenerativeModel _model;
   late final FlutterTts flutterTts;
   late final SpeechToText _speechToText;
@@ -68,14 +67,13 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    _model = GenerativeModel(model: 'gemini-2.0-flash', apiKey: _geminiApiKey);
+    _model = GenerativeModel(model: 'gemini-2.0-flash', apiKey: geminiApiKey); // Using geminiApiKey from config.dart
 
     flutterTts = FlutterTts();
     _configureTts();
-    _initSpeech(); // Initialize speech-to-text
+    _initSpeech();
   }
 
-  // Configures Text-to-Speech (TTS) settings
   Future<void> _configureTts() async {
     await flutterTts.setLanguage("en-US");
     await flutterTts.setSpeechRate(0.5);
@@ -83,22 +81,22 @@ class _MyHomePageState extends State<MyHomePage> {
     await flutterTts.setPitch(1.0);
   }
 
-  // Initializes speech recognition
   Future<void> _initSpeech() async {
     _speechToText = SpeechToText();
     _speechEnabled = await _speechToText.initialize();
+    print('Speech enabled: $_speechEnabled');
     setState(() {});
   }
 
-  // Starts the speech recognition
   Future<void> _startListening() async {
-    _geminiResponse = 'Listening...';
-    setState(() {});
+    setState(() {
+      _geminiResponse = 'Listening...';
+      _lastWords = '';
+    });
     await _speechToText.listen(
       onResult: _onSpeechResult,
-      listenFor: const Duration(seconds: 5),
+      listenFor: const Duration(seconds: 10),
       localeId: 'en_US',
-      // שינויים כאן:
       listenOptions: SpeechListenOptions(
         cancelOnError: true,
         partialResults: false,
@@ -106,7 +104,6 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  // Stops the speech recognition
   Future<void> _stopListening() async {
     await _speechToText.stop();
     setState(() {});
@@ -119,14 +116,22 @@ class _MyHomePageState extends State<MyHomePage> {
     await _getGeminiFeedback(_lastWords, _words[_currentIndex].word);
   }
 
-  // Gets feedback from Gemini based on user's speech
   Future<void> _getGeminiFeedback(String userSpeech, String expectedWord) async {
     setState(() {
       _geminiResponse = 'Thinking...';
     });
 
     try {
-      final prompt = "You are an English tutor for kids (age 3-6). The child said \"$userSpeech\". The correct word is \"$expectedWord\". Give friendly, simple, and encouraging feedback. Keep the response very short (1-2 sentences). Focus on pronunciation and accuracy, but be positive. If the word is correct, praise them. If it's incorrect, gently encourage them to try again, perhaps suggesting how to improve.";
+      // REFINED PROMPT: More specific and focused on pronunciation feedback
+      final prompt = """You are a very friendly and encouraging English teacher for young kids (age 3-6) who are native Hebrew speakers learning English.
+      The child just tried to say the English word "$expectedWord".
+      They actually said "$userSpeech".
+      Your task is to give a very short (1-2 sentences maximum), simple, and positive English feedback.
+      Focus ONLY on whether their pronunciation was correct or if they need to try again.
+      - If "$userSpeech" is very close or exactly "$expectedWord" (ignore minor variations or accents, focus on the core word), give enthusiastic praise (e.g., "Fantastic!", "Great job!", "Perfect!").
+      - If "$userSpeech" is completely different or clearly wrong, gently encourage them to try again (e.g., "Almost!", "Let's try again!", "You can do it!").
+      - DO NOT provide examples, explanations, or spelling tips. Just simple, direct feedback on their attempt.""";
+
       final content = [Content.text(prompt)];
       final response = await _model.generateContent(content);
 
@@ -142,21 +147,19 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  // Moves to the next word in the list
   void _nextWord() {
     setState(() {
       _currentIndex = (_currentIndex + 1) % _words.length;
-      _lastWords = ''; // Clear recognized words when changing word
-      _geminiResponse = ''; // Clear Gemini response
+      _lastWords = '';
+      _geminiResponse = '';
     });
   }
 
-  // Moves to the previous word in the list
   void _previousWord() {
     setState(() {
       _currentIndex = (_currentIndex - 1 + _words.length) % _words.length;
-      _lastWords = ''; // Clear recognized words when changing word
-      _geminiResponse = ''; // Clear Gemini response
+      _lastWords = '';
+      _geminiResponse = '';
     });
   }
 
