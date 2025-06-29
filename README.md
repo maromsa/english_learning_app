@@ -1,6 +1,6 @@
-# english_learning_app
+# english_app_final
 
-Kids English learning app with conversational AI features.
+A new Flutter project.
 
 ## Getting Started
 

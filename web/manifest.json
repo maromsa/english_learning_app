@@ -1,11 +1,11 @@
 {
-    "name": "english_learning_app",
-    "short_name": "english_learning_app",
+    "name": "english_app_final",
+    "short_name": "english_app_final",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Kids English learning app with conversational AI features.",
+    "description": "A new Flutter project.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

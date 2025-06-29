@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.sabag.englishapp" "\0"
-            VALUE "FileDescription", "english_learning_app" "\0"
+            VALUE "CompanyName", "com.example" "\0"
+            VALUE "FileDescription", "english_app_final" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "english_learning_app" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.sabag.englishapp. All rights reserved." "\0"
-            VALUE "OriginalFilename", "english_learning_app.exe" "\0"
-            VALUE "ProductName", "english_learning_app" "\0"
+            VALUE "InternalName", "english_app_final" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
+            VALUE "OriginalFilename", "english_app_final.exe" "\0"
+            VALUE "ProductName", "english_app_final" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
