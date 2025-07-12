@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyBVNzyPAdH-ewHg_4ZfHo-Oc3D_jVtg128</string>
+	<string>AIzaSyCF9cUAujEsyWDTlshrh2ejuXMcDpW61rk</string>
 	<key>GCM_SENDER_ID</key>
-	<string>869502851227</string>
+	<string>923322418087</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.example.englishAppFinal</string>
 	<key>PROJECT_ID</key>
-	<string>englishkidsapp-fe0af</string>
+	<string>englishkidsapp-916be</string>
 	<key>STORAGE_BUCKET</key>
-	<string>englishkidsapp-fe0af.firebasestorage.app</string>
+	<string>englishkidsapp-916be.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:869502851227:ios:00510e07f815c873ec8e3e</string>
+	<string>1:923322418087:ios:bfe054434113b41a43ac82</string>
 </dict>
 </plist>

@@ -41,48 +41,49 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyA2SkzGa4_IscUyCxOLW0EPD-q2KEbJDt8',
-    appId: '1:869502851227:web:438df7c0049a5d6cec8e3e',
-    messagingSenderId: '869502851227',
-    projectId: 'englishkidsapp-fe0af',
-    authDomain: 'englishkidsapp-fe0af.firebaseapp.com',
-    storageBucket: 'englishkidsapp-fe0af.firebasestorage.app',
-    measurementId: 'G-CDBN0H0YXT',
+    apiKey: 'AIzaSyCFYCfvoq1ipaxFqCVVzg6ljOKRpwgFsZ8',
+    appId: '1:923322418087:web:3b18f93ae5f80cdc43ac82',
+    messagingSenderId: '923322418087',
+    projectId: 'englishkidsapp-916be',
+    authDomain: 'englishkidsapp-916be.firebaseapp.com',
+    storageBucket: 'englishkidsapp-916be.firebasestorage.app',
+    measurementId: 'G-6RGSPPCX66',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAm9glf6JeaaTffQX2uhirqGO4V8ez8Vew',
-    appId: '1:869502851227:android:b17f43ae4d2aeba9ec8e3e',
-    messagingSenderId: '869502851227',
-    projectId: 'englishkidsapp-fe0af',
-    storageBucket: 'englishkidsapp-fe0af.firebasestorage.app',
+    apiKey: 'AIzaSyBSpwmDuTjDYgEQjgRqF0Zjb-aXh9AZcdk',
+    appId: '1:923322418087:android:a616efff0e5b8f4d43ac82',
+    messagingSenderId: '923322418087',
+    projectId: 'englishkidsapp-916be',
+    storageBucket: 'englishkidsapp-916be.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBVNzyPAdH-ewHg_4ZfHo-Oc3D_jVtg128',
-    appId: '1:869502851227:ios:00510e07f815c873ec8e3e',
-    messagingSenderId: '869502851227',
-    projectId: 'englishkidsapp-fe0af',
-    storageBucket: 'englishkidsapp-fe0af.firebasestorage.app',
+    apiKey: 'AIzaSyCF9cUAujEsyWDTlshrh2ejuXMcDpW61rk',
+    appId: '1:923322418087:ios:bfe054434113b41a43ac82',
+    messagingSenderId: '923322418087',
+    projectId: 'englishkidsapp-916be',
+    storageBucket: 'englishkidsapp-916be.firebasestorage.app',
     iosBundleId: 'com.example.englishAppFinal',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBVNzyPAdH-ewHg_4ZfHo-Oc3D_jVtg128',
-    appId: '1:869502851227:ios:00510e07f815c873ec8e3e',
-    messagingSenderId: '869502851227',
-    projectId: 'englishkidsapp-fe0af',
-    storageBucket: 'englishkidsapp-fe0af.firebasestorage.app',
+    apiKey: 'AIzaSyCF9cUAujEsyWDTlshrh2ejuXMcDpW61rk',
+    appId: '1:923322418087:ios:bfe054434113b41a43ac82',
+    messagingSenderId: '923322418087',
+    projectId: 'englishkidsapp-916be',
+    storageBucket: 'englishkidsapp-916be.firebasestorage.app',
     iosBundleId: 'com.example.englishAppFinal',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyA2SkzGa4_IscUyCxOLW0EPD-q2KEbJDt8',
-    appId: '1:869502851227:web:ce467d39fe676844ec8e3e',
-    messagingSenderId: '869502851227',
-    projectId: 'englishkidsapp-fe0af',
-    authDomain: 'englishkidsapp-fe0af.firebaseapp.com',
-    storageBucket: 'englishkidsapp-fe0af.firebasestorage.app',
-    measurementId: 'G-0B3JLFJ11J',
+    apiKey: 'AIzaSyCFYCfvoq1ipaxFqCVVzg6ljOKRpwgFsZ8',
+    appId: '1:923322418087:web:2d23240705ef246f43ac82',
+    messagingSenderId: '923322418087',
+    projectId: 'englishkidsapp-916be',
+    authDomain: 'englishkidsapp-916be.firebaseapp.com',
+    storageBucket: 'englishkidsapp-916be.firebasestorage.app',
+    measurementId: 'G-GFV3QLCJ5K',
   );
+
 }

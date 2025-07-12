@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "869502851227",
-    "project_id": "englishkidsapp-fe0af",
-    "storage_bucket": "englishkidsapp-fe0af.firebasestorage.app"
+    "project_number": "923322418087",
+    "project_id": "englishkidsapp-916be",
+    "storage_bucket": "englishkidsapp-916be.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:869502851227:android:b17f43ae4d2aeba9ec8e3e",
+        "mobilesdk_app_id": "1:923322418087:android:a616efff0e5b8f4d43ac82",
         "android_client_info": {
           "package_name": "com.example.english_app_final"
         }
@@ -15,26 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAm9glf6JeaaTffQX2uhirqGO4V8ez8Vew"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:869502851227:android:0b8e6dc971f0049aec8e3e",
-        "android_client_info": {
-          "package_name": "com.sabag.englishapp.english_learning_app"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyAm9glf6JeaaTffQX2uhirqGO4V8ez8Vew"
+          "current_key": "AIzaSyBSpwmDuTjDYgEQjgRqF0Zjb-aXh9AZcdk"
         }
       ],
       "services": {
