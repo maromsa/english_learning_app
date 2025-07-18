@@ -45,5 +45,14 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to allow users to take pictures of objects to learn their names.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs photo library access to allow users to select pictures of objects.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>This app needs microphone access for speech recognition.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>This app uses speech recognition to evaluate your pronunciation.</string>
 </dict>
 </plist>
