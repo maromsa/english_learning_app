@@ -35,7 +35,7 @@ class _MyHomePageState extends State<MyHomePage> {
   List<WordData> _words = [];
   int _currentIndex = 0;
   bool _isListening = false;
-  String _feedbackText = '';
+  String _feedbackText = 'לחץ על המיקרופון כדי לדבר';
   String _recognizedWords = '';
   bool _speechEnabled = false;
 
@@ -186,18 +186,18 @@ class _MyHomePageState extends State<MyHomePage> {
       int pointsToAdd = 10 + (10 * (_streak / 5).floor());
       _score += pointsToAdd;
 
-      feedback = "Great job! +$pointsToAdd points";
+      feedback = "כל הכבוד! +$pointsToAdd נקודות";
       setState(() => currentWord.isCompleted = true);
     } else {
       _streak = 0;
-      feedback = "That sounded like '$_recognizedWords'. Let's try again.";
+      feedback = "זה נשמע כמו '$_recognizedWords'. בוא ננסה שוב.";
     }
     setState(() => _feedbackText = feedback);
     flutterTts.speak(feedback);
   }
 
   void _startListening() {
-    setState(() { _isListening = true; _feedbackText = 'Listening...'; _recognizedWords = ''; });
+    setState(() { _isListening = true; _feedbackText = 'מקשיב...'; _recognizedWords = ''; });
     _speechToText.listen(onResult: (result) {
       if (result.finalResult) {
         setState(() { _recognizedWords = result.recognizedWords; });
@@ -266,16 +266,22 @@ class _MyHomePageState extends State<MyHomePage> {
               if (currentWordData != null)
                 WordDisplayCard(wordData: currentWordData, cloudinary: cloudinary)
               else
-                const SizedBox(height: 346, child: Center(child: Text("No words found", style: TextStyle(fontSize: 22)))),
+                const SizedBox(height: 346, child: Center(child: Text("לא נמצאו מילים. ודא שהרצת את הסקריפט.", style: TextStyle(fontSize: 22)))),
               const SizedBox(height: 40),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   ElevatedButton.icon(
-                    onPressed: (currentWordData == null) ? null : () => flutterTts.speak(currentWordData.word),
+                    onPressed: (currentWordData == null)
+                        ? null
+                        : () async { // <-- Add async
+                      // Switch TTS to English for the word
+                      await flutterTts.setLanguage("en-US");
+                      flutterTts.speak(currentWordData.word);
+                    },
                     icon: const Icon(Icons.volume_up, size: 28),
-                    label: const Text('Listen', style: TextStyle(fontSize: 22)),
+                    label: const Text('הקשב', style: TextStyle(fontSize: 22)),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     ),
@@ -292,7 +298,7 @@ class _MyHomePageState extends State<MyHomePage> {
               SizedBox(
                 height: 100,
                 child: Text(
-                  _feedbackText.isEmpty ? "Press the microphone to speak" : _feedbackText,
+                  _feedbackText.isEmpty ? "לחץ על המקרופון בשביל לדבר" : _feedbackText,
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.purple),
                   textAlign: TextAlign.center,
                 ),
