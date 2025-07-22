@@ -15,6 +15,7 @@ import 'package:english_learning_app/widgets/word_display_card.dart';
 import 'package:image_picker/image_picker.dart';
 import '../widgets/score_display.dart';
 import '../widgets/action_button.dart';
+import 'package:confetti/confetti.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -29,6 +30,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final SpeechToText _speechToText = SpeechToText();
   late final Cloudinary cloudinary;
   late final GenerativeModel _model;
+  late final ConfettiController _confettiController;
 
   int _score = 0;
   int _streak = 0;
@@ -43,6 +45,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    _confettiController = ConfettiController(duration: const Duration(seconds: 1));
     _initializeServices();
   }
 
@@ -50,6 +53,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() {
     flutterTts.stop();
     _speechToText.stop();
+    _confettiController.dispose();
     super.dispose();
   }
 
@@ -189,6 +193,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
       feedback = "כל הכבוד! +$pointsToAdd נקודות";
       setState(() => currentWord.isCompleted = true);
+      _confettiController.play();
     } else {
       _streak = 0;
       feedback = "זה נשמע כמו '$_recognizedWords'. בוא ננסה שוב.";
@@ -242,78 +247,104 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(appBar: AppBar(title: Text(widget.title)), body: const Center(child: CircularProgressIndicator()));
+      return Scaffold(appBar: AppBar(title: Text(widget.title)),
+          body: const Center(child: CircularProgressIndicator()));
     }
     final currentWordData = _words.isNotEmpty ? _words[_currentIndex] : null;
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.lightBlue.shade300,
-        title: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _takePictureAndIdentify,
-        label: const Text('Add Word'),
-        icon: const Icon(Icons.camera_alt),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              ScoreDisplay(score: _score, streak: _streak),
-
-              if (currentWordData != null)
-                WordDisplayCard(wordData: currentWordData, cloudinary: cloudinary)
-              else
-                const SizedBox(height: 346, child: Center(child: Text("לא נמצאו מילים. ודא שהרצת את הסקריפט.", style: TextStyle(fontSize: 22)))),
-              const SizedBox(height: 40),
-              Row(
+    return Stack(
+      alignment: Alignment.topCenter,
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.lightBlue.shade300,
+            title: Text(widget.title,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            centerTitle: true,
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: _takePictureAndIdentify,
+            label: const Text('Add Word'),
+            icon: const Icon(Icons.camera_alt),
+          ),
+          body: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // כפתור "הקשב" החדש
-                  ActionButton(
-                    text: 'הקשב',
-                    icon: Icons.volume_up,
-                    color: Colors.lightBlue.shade400,
-                    onPressed: (currentWordData == null)
-                        ? null
-                        : () async {
-                      await flutterTts.setLanguage("en-US");
-                      flutterTts.speak(currentWordData.word);
-                    },
-                  ),
-                  const SizedBox(width: 20),
-                  // כפתור "דבר" החדש
-                  ActionButton(
-                    text: 'דבר',
-                    icon: _isListening ? Icons.stop : Icons.mic,
-                    color: _isListening ? Colors.grey.shade600 : Colors.redAccent,
-                    onPressed: _handleSpeech,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                height: 100,
-                child: Text(
-                  _feedbackText.isEmpty ? "לחץ על המקרופון בשביל לדבר" : _feedbackText,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.purple),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: <Widget>[
-                  ElevatedButton(onPressed: _previousWord, child: const Icon(Icons.arrow_back)),
-                  ElevatedButton(onPressed: _nextWord, child: const Icon(Icons.arrow_forward)),
+                  ScoreDisplay(score: _score, streak: _streak),
+
+                  if (currentWordData != null)
+                    WordDisplayCard(
+                        wordData: currentWordData, cloudinary: cloudinary)
+                  else
+                    const SizedBox(height: 346,
+                        child: Center(child: Text(
+                            "לא נמצאו מילים. ודא שהרצת את הסקריפט.",
+                            style: TextStyle(fontSize: 22)))),
+                  const SizedBox(height: 40),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // כפתור "הקשב" החדש
+                      ActionButton(
+                        text: 'הקשב',
+                        icon: Icons.volume_up,
+                        color: Colors.lightBlue.shade400,
+                        onPressed: (currentWordData == null)
+                            ? null
+                            : () async {
+                          await flutterTts.setLanguage("en-US");
+                          flutterTts.speak(currentWordData.word);
+                        },
+                      ),
+                      const SizedBox(width: 20),
+                      // כפתור "דבר" החדש
+                      ActionButton(
+                        text: 'דבר',
+                        icon: _isListening ? Icons.stop : Icons.mic,
+                        color: _isListening ? Colors.grey.shade600 : Colors
+                            .redAccent,
+                        onPressed: _handleSpeech,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    height: 100,
+                    child: Text(
+                      _feedbackText.isEmpty
+                          ? "לחץ על המקרופון בשביל לדבר"
+                          : _feedbackText,
+                      style: const TextStyle(fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: <Widget>[
+                      ElevatedButton(onPressed: _previousWord,
+                          child: const Icon(Icons.arrow_back)),
+                      ElevatedButton(onPressed: _nextWord,
+                          child: const Icon(Icons.arrow_forward)),
+                    ],
+                  ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+        ConfettiWidget(
+          confettiController: _confettiController,
+          blastDirectionality: BlastDirectionality.explosive,
+          shouldLoop: false,
+          colors: const [
+            Colors.green, Colors.blue, Colors.pink, Colors.orange, Colors.purple
+          ],
+        ),
+      ],
     );
   }
-}
+  }
