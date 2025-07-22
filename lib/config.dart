@@ -4,3 +4,5 @@ const String firebaseUserIdForUpload = 'eHouBn4iy4YKwsz65pR9JaVhx4D2';
 const String cloudinaryCloudName = 'dpf9ydh1i';
 const String cloudinaryApiKey = '198438741764126';
 const String cloudinaryApiSecret = 'Xsff5pVclTrEFWkc5yOCP2c7fxI';
+
+const String cloudinaryUrl = 'cloudinary://$cloudinaryApiKey:$cloudinaryApiSecret@$cloudinaryCloudName';
