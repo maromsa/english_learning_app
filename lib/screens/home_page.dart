@@ -13,7 +13,7 @@ import 'package:english_learning_app/config.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/widgets/word_display_card.dart';
 import 'package:image_picker/image_picker.dart';
-
+import '../widgets/score_display.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -29,6 +29,8 @@ class _MyHomePageState extends State<MyHomePage> {
   late final Cloudinary cloudinary;
   late final GenerativeModel _model;
 
+  int _score = 0;
+  int _streak = 0;
   bool _isLoading = true;
   List<WordData> _words = [];
   int _currentIndex = 0;
@@ -180,9 +182,14 @@ class _MyHomePageState extends State<MyHomePage> {
     final currentWord = _words[_currentIndex];
     String feedback;
     if (_recognizedWords.trim().toLowerCase() == currentWord.word.toLowerCase()) {
-      feedback = "Great job!";
+      _streak++;
+      int pointsToAdd = 10 + (10 * (_streak / 5).floor());
+      _score += pointsToAdd;
+
+      feedback = "Great job! +$pointsToAdd points";
       setState(() => currentWord.isCompleted = true);
     } else {
+      _streak = 0;
       feedback = "That sounded like '$_recognizedWords'. Let's try again.";
     }
     setState(() => _feedbackText = feedback);
@@ -254,6 +261,8 @@ class _MyHomePageState extends State<MyHomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
+              ScoreDisplay(score: _score, streak: _streak),
+
               if (currentWordData != null)
                 WordDisplayCard(wordData: currentWordData, cloudinary: cloudinary)
               else
