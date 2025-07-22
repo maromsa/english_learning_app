@@ -14,6 +14,7 @@ import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/widgets/word_display_card.dart';
 import 'package:image_picker/image_picker.dart';
 import '../widgets/score_display.dart';
+import '../widgets/action_button.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -270,27 +271,26 @@ class _MyHomePageState extends State<MyHomePage> {
               const SizedBox(height: 40),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  ElevatedButton.icon(
+                  // כפתור "הקשב" החדש
+                  ActionButton(
+                    text: 'הקשב',
+                    icon: Icons.volume_up,
+                    color: Colors.lightBlue.shade400,
                     onPressed: (currentWordData == null)
                         ? null
-                        : () async { // <-- Add async
-                      // Switch TTS to English for the word
+                        : () async {
                       await flutterTts.setLanguage("en-US");
                       flutterTts.speak(currentWordData.word);
                     },
-                    icon: const Icon(Icons.volume_up, size: 28),
-                    label: const Text('הקשב', style: TextStyle(fontSize: 22)),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    ),
                   ),
                   const SizedBox(width: 20),
-                  FloatingActionButton(
+                  // כפתור "דבר" החדש
+                  ActionButton(
+                    text: 'דבר',
+                    icon: _isListening ? Icons.stop : Icons.mic,
+                    color: _isListening ? Colors.grey.shade600 : Colors.redAccent,
                     onPressed: _handleSpeech,
-                    backgroundColor: _isListening ? Colors.grey : Colors.redAccent,
-                    child: Icon(_isListening ? Icons.stop : Icons.mic, size: 35),
                   ),
                 ],
               ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/home_page.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +17,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue.shade100),
         useMaterial3: true,
+        textTheme: GoogleFonts.nunitoTextTheme(Theme.of(context).textTheme),
       ),
       debugShowCheckedModeBanner: false,
       home: const MyHomePage(title: 'English Learning for Kids'),
