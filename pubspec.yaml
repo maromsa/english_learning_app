@@ -39,6 +39,7 @@ dependencies:
   image_picker: ^1.1.2
   google_fonts: ^6.2.1
   confetti: ^0.7.0
+  just_audio: ^0.9.36
 
 dev_dependencies:
   flutter_test:

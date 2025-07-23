@@ -21,7 +21,7 @@ class WordsProgressBar extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            '$completedWords / $totalWords words completed',
+            '$completedWords מתוך $totalWords מילים',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),

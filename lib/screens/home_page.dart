@@ -17,6 +17,7 @@ import '../widgets/score_display.dart';
 import '../widgets/words_progress_bar.dart';
 import '../widgets/action_button.dart';
 import 'package:confetti/confetti.dart';
+import 'package:just_audio/just_audio.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title, required this.wordsForLevel});
@@ -33,6 +34,8 @@ class _MyHomePageState extends State<MyHomePage> {
   late final Cloudinary cloudinary;
   late final GenerativeModel _model;
   late final ConfettiController _confettiController;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  final ImagePicker _picker = ImagePicker();
 
   int _score = 0;
   int _streak = 0;
@@ -57,21 +60,51 @@ class _MyHomePageState extends State<MyHomePage> {
     flutterTts.stop();
     _speechToText.stop();
     _confettiController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
-  final ImagePicker _picker = ImagePicker();
 
   Future<void> _initializeServices() async {
     _model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: geminiApiKey);
     flutterTts = FlutterTts();
     await _configureTts();
     _speechEnabled = await _speechToText.initialize();
-    await _loadWordsFromCloudinary();
     cloudinary = Cloudinary.fromStringUrl(cloudinaryUrl);
+    await _loadWordsFromCloudinary();
+
 
     if (mounted) {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _speak(String text, {String languageCode = "he-IL"}) async {
+    if (text.isEmpty) return;
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://texttospeech.googleapis.com/v1/text:synthesize?key=$googleTtsApiKey'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'input': {'text': text},
+          'voice': {'languageCode': languageCode, 'name': languageCode == 'en-US' ? 'en-US-Wavenet-D' : 'he-IL-Wavenet-A'},
+          'audioConfig': {'audioEncoding': 'MP3'}
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        final audioBytes = base64Decode(body['audioContent']);
+
+        // Use just_audio to play the audio from memory
+        await _audioPlayer.setAudioSource(BytesAudioSource(audioBytes));
+        _audioPlayer.play();
+      } else {
+        print("Google TTS Error: ${response.body}");
+      }
+    } catch (e) {
+      print("Error in _speak function: $e");
     }
   }
 
@@ -202,8 +235,7 @@ class _MyHomePageState extends State<MyHomePage> {
       feedback = "זה נשמע כמו '$_recognizedWords'. בוא ננסה שוב.";
     }
     setState(() => _feedbackText = feedback);
-    await flutterTts.setLanguage("he-IL");
-    flutterTts.speak(feedback);
+    _speak(feedback, languageCode: "he-IL");
   }
 
   void _startListening() {
@@ -267,7 +299,7 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: _takePictureAndIdentify,
-            label: const Text('Add Word'),
+            label: const Text('הוסף מילה'),
             icon: const Icon(Icons.camera_alt),
           ),
           body: Center(
@@ -354,4 +386,22 @@ class _MyHomePageState extends State<MyHomePage> {
       ],
     );
   }
+}
+
+// Add this helper class at the end of the file
+class BytesAudioSource extends StreamAudioSource {
+  final List<int> _bytes;
+
+  BytesAudioSource(this._bytes) : super(tag: 'BytesAudioSource');
+
+  @override
+  Future<StreamAudioResponse> request([int? start, int? end]) async {
+    return StreamAudioResponse(
+      sourceLength: _bytes.length,
+      contentLength: (end ?? _bytes.length) - (start ?? 0),
+      offset: start ?? 0,
+      stream: Stream.value(_bytes.sublist(start ?? 0, end)),
+      contentType: 'audio/mpeg',
+    );
   }
+}
