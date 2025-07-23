@@ -19,8 +19,9 @@ import '../widgets/action_button.dart';
 import 'package:confetti/confetti.dart';
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  const MyHomePage({super.key, required this.title, required this.wordsForLevel});
   final String title;
+  final List<WordData> wordsForLevel;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -47,6 +48,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _confettiController = ConfettiController(duration: const Duration(seconds: 1));
+    _words = widget.wordsForLevel;
     _initializeServices();
   }
 
@@ -65,9 +67,8 @@ class _MyHomePageState extends State<MyHomePage> {
     flutterTts = FlutterTts();
     await _configureTts();
     _speechEnabled = await _speechToText.initialize();
-    cloudinary = Cloudinary.fromStringUrl(cloudinaryUrl);
-
     await _loadWordsFromCloudinary();
+    cloudinary = Cloudinary.fromStringUrl(cloudinaryUrl);
 
     if (mounted) {
       setState(() => _isLoading = false);
@@ -183,10 +184,11 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  void _evaluateSpeech() {
+  void _evaluateSpeech() async {
     if (_words.isEmpty) return;
     final currentWord = _words[_currentIndex];
     String feedback;
+
     if (_recognizedWords.trim().toLowerCase() == currentWord.word.toLowerCase()) {
       _streak++;
       int pointsToAdd = 10 + (10 * (_streak / 5).floor());
@@ -200,6 +202,7 @@ class _MyHomePageState extends State<MyHomePage> {
       feedback = "זה נשמע כמו '$_recognizedWords'. בוא ננסה שוב.";
     }
     setState(() => _feedbackText = feedback);
+    await flutterTts.setLanguage("he-IL");
     flutterTts.speak(feedback);
   }
 
