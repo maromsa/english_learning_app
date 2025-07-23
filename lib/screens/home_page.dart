@@ -14,6 +14,7 @@ import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/widgets/word_display_card.dart';
 import 'package:image_picker/image_picker.dart';
 import '../widgets/score_display.dart';
+import '../widgets/words_progress_bar.dart';
 import '../widgets/action_button.dart';
 import 'package:confetti/confetti.dart';
 
@@ -273,7 +274,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
                   ScoreDisplay(score: _score, streak: _streak),
-
+                  WordsProgressBar(
+                    totalWords: _words.length,
+                    completedWords: _words.where((w) => w.isCompleted).length,
+                  ),
                   if (currentWordData != null)
                     WordDisplayCard(
                         wordData: currentWordData, cloudinary: cloudinary)
