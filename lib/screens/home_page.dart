@@ -18,7 +18,6 @@ import '../widgets/words_progress_bar.dart';
 import '../widgets/action_button.dart';
 import 'package:confetti/confetti.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:string_similarity/string_similarity.dart';
 
 
 class MyHomePage extends StatefulWidget {
@@ -219,28 +218,57 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  // lib/screens/home_page.dart
+
+  Future<bool> _evaluateSpeechWithGemini(String correctWord, String recognizedWord) async {
+    try {
+      print("--- Asking Gemini for phonetic evaluation ---");
+      print("Correct: '$correctWord', Recognized: '$recognizedWord'");
+
+      final prompt =
+          "You are an English teacher for a 3-6 year old child. "
+          "The child was asked to say the word '$correctWord' and they said '$recognizedWord'. "
+          "Considering their age and common pronunciation mistakes (like confusing 'th' and 't' sounds), "
+          "should this attempt be considered a good and acceptable try? "
+          "Answer with only 'yes' or 'no'.";
+      
+      final response = await _model.generateContent([Content.text(prompt)]);
+      final answer = response.text?.trim().toLowerCase() ?? 'no';
+
+      print("Gemini's answer: '$answer'");
+      return answer == 'yes';
+
+    } catch (e) {
+      print("Error during Gemini evaluation: $e");
+      // In case of an error, we fall back to a simple, strict check
+      return correctWord.toLowerCase() == recognizedWord.toLowerCase();
+    }
+  }
+
   void _evaluateSpeech() async {
     if (_words.isEmpty) return;
-    final currentWord = _words[_currentIndex];
+
+    final currentWordObject = _words[_currentIndex];
+    final recognizedWord = _recognizedWords.trim();
     String feedback;
 
-    final similarity = _recognizedWords.similarityTo(currentWord.word);
-    const double threshold = 0.8;
+    // --- קריאה ל-Gemini כדי לבדוק את התשובה ---
+    final bool isCorrect = await _evaluateSpeechWithGemini(currentWordObject.word, recognizedWord);
 
-    if (similarity >= threshold) {
+    if (isCorrect) {
       _streak++;
       int pointsToAdd = 10 + (10 * (_streak / 5).floor());
       _score += pointsToAdd;
-
       feedback = "כל הכבוד! +$pointsToAdd נקודות";
-      setState(() => currentWord.isCompleted = true);
+      setState(() => currentWordObject.isCompleted = true);
       _confettiController.play();
     } else {
       _streak = 0;
-      feedback = "זה נשמע כמו '$_recognizedWords'. בוא ננסה שוב.";
+      feedback = "זה נשמע כמו '$recognizedWord'. בוא ננסה שוב.";
     }
+
     setState(() => _feedbackText = feedback);
-    _speak(feedback, languageCode: "he-IL");
+    await _speak(feedback, languageCode: "he-IL");
   }
 
   void _startListening() {
