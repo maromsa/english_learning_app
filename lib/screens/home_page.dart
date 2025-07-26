@@ -18,6 +18,8 @@ import '../widgets/words_progress_bar.dart';
 import '../widgets/action_button.dart';
 import 'package:confetti/confetti.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:string_similarity/string_similarity.dart';
+
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title, required this.wordsForLevel});
@@ -222,7 +224,10 @@ class _MyHomePageState extends State<MyHomePage> {
     final currentWord = _words[_currentIndex];
     String feedback;
 
-    if (_recognizedWords.trim().toLowerCase() == currentWord.word.toLowerCase()) {
+    final similarity = _recognizedWords.similarityTo(currentWord.word);
+    const double threshold = 0.8;
+
+    if (similarity >= threshold) {
       _streak++;
       int pointsToAdd = 10 + (10 * (_streak / 5).floor());
       _score += pointsToAdd;
@@ -242,7 +247,9 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() { _isListening = true; _feedbackText = 'מקשיב...'; _recognizedWords = ''; });
     _speechToText.listen(onResult: (result) {
       if (result.finalResult) {
-        setState(() { _recognizedWords = result.recognizedWords; });
+        setState(() {
+          _recognizedWords = result.recognizedWords;
+        });
       }
     }, localeId: "en_US",
     listenFor: const Duration(seconds: 10), // Max listening duration
@@ -335,7 +342,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   else
                     const SizedBox(height: 346,
                         child: Center(child: Text(
-                            "לא נמצאו מילים. ודא שהרצת את הסקריפט.",
+                            "אין עדיין מילים לתרגול. לחץ על המצלמה כדי להוסיף אחת חדשה!",
                             style: TextStyle(fontSize: 22)))),
                   const SizedBox(height: 40),
                   Row(
