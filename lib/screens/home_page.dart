@@ -244,7 +244,10 @@ class _MyHomePageState extends State<MyHomePage> {
       if (result.finalResult) {
         setState(() { _recognizedWords = result.recognizedWords; });
       }
-    }, localeId: "en_US");
+    }, localeId: "en_US",
+    listenFor: const Duration(seconds: 10), // Max listening duration
+    pauseFor: const Duration(seconds: 3));// Stop after 3 seconds of silence);
+
   }
 
   void _stopListening() {
@@ -283,8 +286,21 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(appBar: AppBar(title: Text(widget.title)),
-          body: const Center(child: CircularProgressIndicator()));
+      return Scaffold(backgroundColor: Colors.transparent, appBar: AppBar(title: Text(widget.title)),
+          body: Stack(
+              children: [
+                Image.asset(
+                  'assets/images/background.png',
+                  fit: BoxFit.cover,
+                  height: double.infinity,
+                  width: double.infinity,
+                ),
+                Center(
+                  child: SingleChildScrollView(child: const CircularProgressIndicator()),
+                ),
+              ],
+          ),
+      );
     }
     final currentWordData = _words.isNotEmpty ? _words[_currentIndex] : null;
     return Stack(
@@ -364,10 +380,26 @@ class _MyHomePageState extends State<MyHomePage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: <Widget>[
-                      ElevatedButton(onPressed: _previousWord,
-                          child: const Icon(Icons.arrow_back)),
-                      ElevatedButton(onPressed: _nextWord,
-                          child: const Icon(Icons.arrow_forward)),
+                      IconButton(
+                        onPressed: _previousWord,
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                        iconSize: 40,
+                        color: Colors.white,
+                        style: IconButton.styleFrom(
+                            backgroundColor: Colors.lightBlue.withOpacity(0.8),
+                            padding: const EdgeInsets.all(15)
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _nextWord,
+                        icon: const Icon(Icons.arrow_forward_ios_rounded),
+                        iconSize: 40,
+                        color: Colors.white,
+                        style: IconButton.styleFrom(
+                            backgroundColor: Colors.lightBlue.withOpacity(0.8),
+                            padding: const EdgeInsets.all(15)
+                        ),
+                      ),
                     ],
                   ),
                 ],
