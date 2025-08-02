@@ -18,12 +18,8 @@ import '../widgets/words_progress_bar.dart';
 import '../widgets/action_button.dart';
 import 'package:confetti/confetti.dart';
 import 'package:just_audio/just_audio.dart';
-import '../models/level_data.dart';
 import 'package:provider/provider.dart';
 import '../providers/coin_provider.dart';
-import 'package:provider/provider.dart';
-import '../providers/coin_provider.dart';
-import 'package:english_learning_app/providers/shop_provider.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 
 class MyHomePage extends StatefulWidget {
@@ -359,7 +355,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ShopScreen()),
+                    MaterialPageRoute(builder: (_) => ShopScreen()),
                   );
                 },
               ),
