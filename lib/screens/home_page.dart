@@ -18,7 +18,13 @@ import '../widgets/words_progress_bar.dart';
 import '../widgets/action_button.dart';
 import 'package:confetti/confetti.dart';
 import 'package:just_audio/just_audio.dart';
-
+import '../models/level_data.dart';
+import 'package:provider/provider.dart';
+import '../providers/coin_provider.dart';
+import 'package:provider/provider.dart';
+import '../providers/coin_provider.dart';
+import 'package:english_learning_app/providers/shop_provider.dart';
+import 'package:english_learning_app/screens/shop_screen.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title, required this.wordsForLevel});
@@ -38,8 +44,6 @@ class _MyHomePageState extends State<MyHomePage> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   final ImagePicker _picker = ImagePicker();
 
-  int _score = 0;
-  int _streak = 0;
   bool _isLoading = true;
   List<WordData> _words = [];
   int _currentIndex = 0;
@@ -231,7 +235,7 @@ class _MyHomePageState extends State<MyHomePage> {
           "Considering their age and common pronunciation mistakes (like confusing 'th' and 't' sounds), "
           "should this attempt be considered a good and acceptable try? "
           "Answer with only 'yes' or 'no'.";
-      
+
       final response = await _model.generateContent([Content.text(prompt)]);
       final answer = response.text?.trim().toLowerCase() ?? 'no';
 
@@ -256,14 +260,13 @@ class _MyHomePageState extends State<MyHomePage> {
     final bool isCorrect = await _evaluateSpeechWithGemini(currentWordObject.word, recognizedWord);
 
     if (isCorrect) {
-      _streak++;
-      int pointsToAdd = 10 + (10 * (_streak / 5).floor());
-      _score += pointsToAdd;
-      feedback = "כל הכבוד! +$pointsToAdd נקודות";
+      int pointsToAdd = 10;
+      Provider.of<CoinProvider>(context, listen: false).addCoins(pointsToAdd);
+
+      feedback = "כל הכבוד! +10 מטבעות";
       setState(() => currentWordObject.isCompleted = true);
       _confettiController.play();
     } else {
-      _streak = 0;
       feedback = "זה נשמע כמו '$recognizedWord'. בוא ננסה שוב.";
     }
 
@@ -344,9 +347,23 @@ class _MyHomePageState extends State<MyHomePage> {
         Scaffold(
           appBar: AppBar(
             backgroundColor: Colors.lightBlue.shade300,
-            title: Text(widget.title,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(
+              widget.title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             centerTitle: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.store),
+                tooltip: 'חנות',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ShopScreen()),
+                  );
+                },
+              ),
+            ],
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: _takePictureAndIdentify,
@@ -359,7 +376,7 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  ScoreDisplay(score: _score, streak: _streak),
+                  ScoreDisplay(coins: Provider.of<CoinProvider>(context).coins),
                   WordsProgressBar(
                     totalWords: _words.length,
                     completedWords: _words.where((w) => w.isCompleted).length,
@@ -415,6 +432,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: <Widget>[
+                      // כפתור "אחורה" - תמיד מוצג
                       IconButton(
                         onPressed: _previousWord,
                         icon: const Icon(Icons.arrow_back_ios_new_rounded),
@@ -425,18 +443,36 @@ class _MyHomePageState extends State<MyHomePage> {
                             padding: const EdgeInsets.all(15)
                         ),
                       ),
-                      IconButton(
-                        onPressed: _nextWord,
-                        icon: const Icon(Icons.arrow_forward_ios_rounded),
-                        iconSize: 40,
-                        color: Colors.white,
-                        style: IconButton.styleFrom(
-                            backgroundColor: Colors.lightBlue.withOpacity(0.8),
-                            padding: const EdgeInsets.all(15)
+
+                      // כאן מגיע התנאי הלוגי
+                      if (_isLevelComplete)
+                      // אם השלב הושלם, הצג את כפתור "סיימתי"
+                        ElevatedButton(
+                          onPressed: () {
+                            // החזר את הניקוד והרצף למסך הקודם
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)
+                          ),
+                          child: const Text('סיימתי!', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                        )
+                      else
+                      // אם השלב עוד לא הושלם, הצג את כפתור "הבא"
+                        IconButton(
+                          onPressed: _nextWord,
+                          icon: const Icon(Icons.arrow_forward_ios_rounded),
+                          iconSize: 40,
+                          color: Colors.white,
+                          style: IconButton.styleFrom(
+                              backgroundColor: Colors.lightBlue.withOpacity(0.8),
+                              padding: const EdgeInsets.all(15)
+                          ),
                         ),
-                      ),
                     ],
-                  ),
+                  )
                 ],
               ),
             ),
@@ -453,7 +489,12 @@ class _MyHomePageState extends State<MyHomePage> {
       ],
     );
   }
+
+  bool get _isLevelComplete => !_words.any((word) => !word.isCompleted);
+
 }
+
+
 
 // Add this helper class at the end of the file
 class BytesAudioSource extends StreamAudioSource {

@@ -2,10 +2,9 @@
 import 'package:flutter/material.dart';
 
 class ScoreDisplay extends StatelessWidget {
-  final int score;
-  final int streak;
+  final int coins;
 
-  const ScoreDisplay({super.key, required this.score, required this.streak});
+  const ScoreDisplay({super.key, required this.coins});
 
   @override
   Widget build(BuildContext context) {
@@ -18,14 +17,7 @@ class ScoreDisplay extends StatelessWidget {
             children: [
               Icon(Icons.star, color: Colors.amber, size: 30),
               const SizedBox(width: 8),
-              Text('$score', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          Row(
-            children: [
-              Icon(Icons.whatshot, color: Colors.deepOrange, size: 30),
-              const SizedBox(width: 8),
-              Text('$streak', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              Text('$coins', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             ],
           ),
         ],

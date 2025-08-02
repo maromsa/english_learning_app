@@ -2,10 +2,25 @@ import 'package:flutter/material.dart';
 import 'screens/home_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/map_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'providers/coin_provider.dart';
+import 'providers/coin_provider.dart';
+import 'screens/map_screen.dart';
+import 'providers/shop_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CoinProvider()),
+        ChangeNotifierProvider(create: (_) => ShopProvider()..loadPurchasedItems()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
