@@ -1,26 +1,30 @@
-// lib/screens/home_page.dart
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
+import 'dart:convert';
+import 'package:cloudinary_url_gen/cloudinary.dart';
+import 'package:english_learning_app/config.dart';
+import 'package:english_learning_app/models/level_data.dart';
+import 'package:english_learning_app/models/word_data.dart';
+import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/screens/camera_screen.dart';
+import 'package:english_learning_app/screens/image_quiz_game.dart';
+import 'package:english_learning_app/screens/shop_screen.dart';
+import 'package:english_learning_app/services/achievement_service.dart';
+import 'package:english_learning_app/widgets/action_button.dart';
+import 'package:english_learning_app/widgets/score_display.dart';
+import 'package:english_learning_app/widgets/word_display_card.dart';
+import 'package:english_learning_app/widgets/words_progress_bar.dart';
+import 'package:camera/camera.dart';
+import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:speech_to_text/speech_to_text.dart';
-import 'package:http/http.dart' as http;
-import 'package:cloudinary_url_gen/cloudinary.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:english_learning_app/config.dart';
-import 'package:english_learning_app/models/word_data.dart';
-import 'package:english_learning_app/widgets/word_display_card.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
-import '../widgets/score_display.dart';
-import '../widgets/words_progress_bar.dart';
-import '../widgets/action_button.dart';
-import 'package:confetti/confetti.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import '../providers/coin_provider.dart';
-import 'package:english_learning_app/screens/shop_screen.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title, required this.wordsForLevel});
@@ -32,12 +36,13 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  late final FlutterTts flutterTts;
-  final SpeechToText _speechToText = SpeechToText();
-  late final Cloudinary cloudinary;
   late final GenerativeModel _model;
   late final ConfettiController _confettiController;
   final AudioPlayer _audioPlayer = AudioPlayer();
+
+  late final FlutterTts flutterTts;
+  final SpeechToText _speechToText = SpeechToText();
+  late final Cloudinary cloudinary;
   final ImagePicker _picker = ImagePicker();
 
   bool _isLoading = true;
@@ -47,6 +52,7 @@ class _MyHomePageState extends State<MyHomePage> {
   String _feedbackText = 'לחץ על המיקרופון כדי לדבר';
   String _recognizedWords = '';
   bool _speechEnabled = false;
+  int _streak = 0;
 
   @override
   void initState() {
@@ -72,8 +78,8 @@ class _MyHomePageState extends State<MyHomePage> {
     await _configureTts();
     _speechEnabled = await _speechToText.initialize();
     cloudinary = Cloudinary.fromStringUrl(cloudinaryUrl);
-    await _loadWordsFromCloudinary();
 
+    await _loadWordsFromCloudinary();
 
     if (mounted) {
       setState(() => _isLoading = false);
@@ -110,18 +116,27 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _loadWordsFromCloudinary() async {
+    print("--- Starting to load words from Cloudinary... ---");
+
     final auth = 'Basic ${base64Encode(utf8.encode('$cloudinaryApiKey:$cloudinaryApiSecret'))}';
+
+    final requestBody = jsonEncode({
+      'expression': 'tags=english_kids_app',
+      'with_field': 'tags',
+      'max_results': 50,
+    });
     try {
       final url = Uri.parse('https://api.cloudinary.com/v1_1/$cloudinaryCloudName/resources/search');
-      final response = await http.post(
-        url,
-        headers: {'Authorization': auth, 'Content-Type': 'application/json'},
-        body: jsonEncode({'expression': 'tags=english_kids_app', 'with_field': 'tags', 'max_results': 50}),
-      );
+      final response = await http.post(url, headers: {'Authorization': auth, 'Content-Type': 'application/json',}, body: requestBody);
+      print("Cloudinary API response status: ${response.statusCode}");
+      print("--- Full Cloudinary Response Body ---");
+      print(response.body);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final resources = data['resources'] as List<dynamic>? ?? [];
+        print("Successfully parsed response. Found ${resources.length} resources.");
+
         final loadedWords = <WordData>[];
         for (final resource in resources) {
           final tags = List<String>.from(resource['tags'] ?? []);
@@ -256,13 +271,18 @@ class _MyHomePageState extends State<MyHomePage> {
     final bool isCorrect = await _evaluateSpeechWithGemini(currentWordObject.word, recognizedWord);
 
     if (isCorrect) {
+      _streak++;
       int pointsToAdd = 10;
       Provider.of<CoinProvider>(context, listen: false).addCoins(pointsToAdd);
+
+      Provider.of<AchievementService>(context, listen: false)
+          .checkForAchievements(streak: _streak);
 
       feedback = "כל הכבוד! +10 מטבעות";
       setState(() => currentWordObject.isCompleted = true);
       _confettiController.play();
     } else {
+      _streak = 0;
       feedback = "זה נשמע כמו '$recognizedWord'. בוא ננסה שוב.";
     }
 
@@ -350,6 +370,21 @@ class _MyHomePageState extends State<MyHomePage> {
             centerTitle: true,
             actions: [
               IconButton(
+                icon: const Icon(Icons.image_search),
+                tooltip: 'משחק תמונות',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => ImageQuizGame()),
+                  );
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.camera_alt),
+                tooltip: 'הוסף מילה',
+                onPressed: _takePictureAndIdentify,
+              ),
+              IconButton(
                 icon: const Icon(Icons.store),
                 tooltip: 'חנות',
                 onPressed: () {
@@ -386,32 +421,33 @@ class _MyHomePageState extends State<MyHomePage> {
                             "אין עדיין מילים לתרגול. לחץ על המצלמה כדי להוסיף אחת חדשה!",
                             style: TextStyle(fontSize: 22)))),
                   const SizedBox(height: 40),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // כפתור "הקשב" החדש
-                      ActionButton(
-                        text: 'הקשב',
-                        icon: Icons.volume_up,
-                        color: Colors.lightBlue.shade400,
-                        onPressed: (currentWordData == null)
-                            ? null
-                            : () async {
-                          await flutterTts.setLanguage("en-US");
-                          flutterTts.speak(currentWordData.word);
-                        },
-                      ),
-                      const SizedBox(width: 20),
-                      // כפתור "דבר" החדש
-                      ActionButton(
-                        text: 'דבר',
-                        icon: _isListening ? Icons.stop : Icons.mic,
-                        color: _isListening ? Colors.grey.shade600 : Colors
-                            .redAccent,
-                        onPressed: _handleSpeech,
-                      ),
-                    ],
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ActionButton(
+                          text: 'הקשב',
+                          icon: Icons.volume_up,
+                          color: Colors.lightBlue.shade400,
+                          onPressed: (currentWordData == null)
+                              ? null
+                              : () async {
+                            await flutterTts.setLanguage("en-US");
+                            flutterTts.speak(currentWordData.word);
+                          },
+                        ),
+                        const SizedBox(width: 20),
+                        ActionButton(
+                          text: 'דבר',
+                          icon: _isListening ? Icons.stop : Icons.mic,
+                          color: _isListening ? Colors.grey.shade600 : Colors.redAccent,
+                          onPressed: _handleSpeech,
+                        ),
+                      ],
+                    ),
                   ),
+
                   const SizedBox(height: 20),
                   SizedBox(
                     height: 100,

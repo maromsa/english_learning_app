@@ -45,13 +45,12 @@ class ShopProvider with ChangeNotifier {
     return coins >= price;
   }
 
-  bool purchase(String productId, int coins) {
-    final product = _products.firstWhere((p) => p.id == productId);
-    if (coins >= product.price && !_purchasedItemIds.contains(productId)) {
+  void purchase(String productId) {
+    if (!_purchasedItemIds.contains(productId)) {
       _purchasedItemIds.add(productId);
       notifyListeners();
-      return true;
     }
-    return false;
   }
+
+
 }

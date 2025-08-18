@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/coin_provider.dart';
 import '../providers/shop_provider.dart';
 import '../models/product.dart';
 
@@ -9,7 +10,7 @@ class ShopScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shop = Provider.of<ShopProvider>(context);
-    final coins = 120; // לדוגמה בלבד, נחליף בעתיד ב־Provider אחר
+    final coinProvider = Provider.of<CoinProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -17,7 +18,7 @@ class ShopScreen extends StatelessWidget {
         actions: [
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Center(child: Text('Coins: $coins')),
+            child: Center(child: Text('מטבעות: ${coinProvider.coins}')),
           ),
         ],
       ),
@@ -26,7 +27,7 @@ class ShopScreen extends StatelessWidget {
         itemBuilder: (context, index) {
           final product = shop.products[index];
           final isPurchased = shop.isPurchased(product.id);
-          final canBuy = shop.canBuy(coins, product.price);
+          final canBuy = coinProvider.coins >= product.price;
 
           return Card(
             margin: const EdgeInsets.all(8),
@@ -36,18 +37,22 @@ class ShopScreen extends StatelessWidget {
               subtitle: Text('${product.price} coins'),
               trailing: isPurchased
                   ? const Icon(Icons.check, color: Colors.green)
-                  : ElevatedButton(
-                onPressed: canBuy
-                    ? () {
-                  final success = shop.purchase(product.id, coins);
-                  if (success) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Purchased ${product.name}')),
-                    );
-                  }
-                }
+                     : ElevatedButton(
+                      onPressed: canBuy && !isPurchased
+                          ? () {
+                        // Attempt to spend the coins first
+                        final success = coinProvider.spendCoins(product.price);
+
+                        if (success) {
+                          // If spending was successful, mark the item as purchased
+                          shop.purchase(product.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('קנית את ${product.name}')),
+                          );
+                        }
+                      }
                     : null,
-                child: const Text('Buy'),
+                child: const Text('קנה'),
               ),
             ),
           );

@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-
 class CoinProvider with ChangeNotifier {
   int _coins = 0;
   int _coinsAtLevelStart = 0;
@@ -18,10 +17,15 @@ class CoinProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void resetCoins() {
-    _coins = 0;
-    _coinsAtLevelStart = 0;
-    notifyListeners();
+  bool spendCoins(int amount) {
+    if (_coins >= amount) {
+      _coins -= amount;
+      notifyListeners();
+      return true;
+    } else {
+      return false;
+    }
+
   }
 
   void startLevel() {
