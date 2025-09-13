@@ -22,7 +22,7 @@ final List<QuizItem> quizItems = [
 ];
 
 class ImageQuizGame extends StatefulWidget {
-  const ImageQuizGame({Key? key}) : super(key: key);
+  const ImageQuizGame({super.key});
 
   @override
   State<ImageQuizGame> createState() => _ImageQuizGameState();

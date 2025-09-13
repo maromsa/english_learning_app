@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/coin_provider.dart';
 import '../providers/shop_provider.dart';
-import '../models/product.dart';
 
 class ShopScreen extends StatelessWidget {
   const ShopScreen({super.key});
