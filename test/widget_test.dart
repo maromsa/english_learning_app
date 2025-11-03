@@ -6,7 +6,6 @@ import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/providers/shop_provider.dart';
-import 'package:english_learning_app/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

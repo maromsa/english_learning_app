@@ -52,7 +52,6 @@ class _MyHomePageState extends State<MyHomePage> {
   String _recognizedWords = '';
   bool _speechEnabled = false;
   int _streak = 0;
-  Achievement? _currentAchievement;
   OverlayEntry? _achievementOverlay;
 
   @override
@@ -70,9 +69,6 @@ class _MyHomePageState extends State<MyHomePage> {
       final achievementService = Provider.of<AchievementService>(context, listen: false);
       achievementService.setAchievementUnlockedCallback((achievement) {
         if (mounted) {
-          setState(() {
-            _currentAchievement = achievement;
-          });
           _showAchievementNotification(achievement);
         }
       });
@@ -92,9 +88,6 @@ class _MyHomePageState extends State<MyHomePage> {
             onDismiss: () {
               _achievementOverlay?.remove();
               _achievementOverlay = null;
-              setState(() {
-                _currentAchievement = null;
-              });
             },
           ),
         ),
