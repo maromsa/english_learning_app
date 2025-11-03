@@ -38,16 +38,30 @@ class ShopScreen extends StatelessWidget {
                   ? const Icon(Icons.check, color: Colors.green)
                      : ElevatedButton(
                       onPressed: canBuy && !isPurchased
-                          ? () {
+                          ? () async {
                         // Attempt to spend the coins first
-                        final success = coinProvider.spendCoins(product.price);
+                        final success = await coinProvider.spendCoins(product.price);
 
                         if (success) {
                           // If spending was successful, mark the item as purchased
-                          shop.purchase(product.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('קנית את ${product.name}')),
-                          );
+                          await shop.purchase(product.id);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('קנית את ${product.name}'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        } else {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('אין לך מספיק מטבעות'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
                         }
                       }
                     : null,

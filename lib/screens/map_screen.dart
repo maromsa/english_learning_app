@@ -56,7 +56,8 @@ class _MapScreenState extends State<MapScreen> {
     final prefs = await SharedPreferences.getInstance();
     final coinProvider = Provider.of<CoinProvider>(context, listen: false);
 
-    coinProvider.setCoins(prefs.getInt('totalCoins') ?? 0);
+    // Coins are already loaded in main.dart, but ensure we have the latest
+    await coinProvider.loadCoins();
     _loadLevels();
 
     setState(() {
@@ -71,8 +72,7 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _saveProgress() async {
     final prefs = await SharedPreferences.getInstance();
-    final coinProvider = Provider.of<CoinProvider>(context, listen: false);
-    await prefs.setInt('totalCoins', coinProvider.coins);
+    // Coins are auto-saved by CoinProvider, so we don't need to save them here
     for (int i = 0; i < levels.length; i++) {
       await prefs.setInt('level_${i}_stars', levels[i].stars);
     }
@@ -102,7 +102,7 @@ class _MapScreenState extends State<MapScreen> {
           levels[levelIndex + 1].isUnlocked = true;
         }
       });
-      _saveProgress();
+      await _saveProgress();
     }
   }
 

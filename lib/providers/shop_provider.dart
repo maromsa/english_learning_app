@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
 
 class ShopProvider with ChangeNotifier {
@@ -21,9 +22,7 @@ class ShopProvider with ChangeNotifier {
       price: 200,
       assetImagePath: 'assets/images/power_sword.jpg',
     ),
-
   ];
-
 
   List<Product> get products => [..._products];
 
@@ -31,10 +30,25 @@ class ShopProvider with ChangeNotifier {
 
   List<String> get purchasedItemIds => [..._purchasedItemIds];
 
-  void loadPurchasedItems() {
-    // לדוגמה טוען מהאחסון המקומי
-    _purchasedItemIds.addAll([]);
-    notifyListeners();
+  Future<void> loadPurchasedItems() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final purchasedIds = prefs.getStringList('purchased_items') ?? [];
+      _purchasedItemIds.clear();
+      _purchasedItemIds.addAll(purchasedIds);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading purchased items: $e');
+    }
+  }
+
+  Future<void> _savePurchasedItems() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('purchased_items', _purchasedItemIds);
+    } catch (e) {
+      debugPrint('Error saving purchased items: $e');
+    }
   }
 
   bool isPurchased(String productId) {
@@ -45,12 +59,11 @@ class ShopProvider with ChangeNotifier {
     return coins >= price;
   }
 
-  void purchase(String productId) {
+  Future<void> purchase(String productId) async {
     if (!_purchasedItemIds.contains(productId)) {
       _purchasedItemIds.add(productId);
       notifyListeners();
+      await _savePurchasedItems();
     }
   }
-
-
 }
