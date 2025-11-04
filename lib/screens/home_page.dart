@@ -8,6 +8,7 @@ import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/screens/image_quiz_game.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
+import 'package:english_learning_app/services/cloudinary_service.dart';
 import 'package:english_learning_app/widgets/action_button.dart';
 import 'package:english_learning_app/widgets/achievement_notification.dart';
 import 'package:english_learning_app/widgets/score_display.dart';
@@ -43,6 +44,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final SpeechToText _speechToText = SpeechToText();
   late final Cloudinary cloudinary;
   final ImagePicker _picker = ImagePicker();
+  late final CloudinaryService _cloudinaryService;
 
   bool _isLoading = true;
   List<WordData> _words = [];
@@ -113,6 +115,7 @@ class _MyHomePageState extends State<MyHomePage> {
     await _configureTts();
     _speechEnabled = await _speechToText.initialize();
     cloudinary = Cloudinary.fromStringUrl(cloudinaryUrl);
+    _cloudinaryService = CloudinaryService();
 
     await _loadWordsFromCloudinary();
 
@@ -162,59 +165,22 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _loadWordsFromCloudinary() async {
     debugPrint("--- Starting to load words from Cloudinary... ---");
-
-    final auth = 'Basic ${base64Encode(utf8.encode('$cloudinaryApiKey:$cloudinaryApiSecret'))}';
-
-    final requestBody = jsonEncode({
-      'expression': 'tags=english_kids_app',
-      'with_field': 'tags',
-      'max_results': 50,
-    });
     try {
-      final url = Uri.parse('https://api.cloudinary.com/v1_1/$cloudinaryCloudName/resources/search');
-      final response = await http.post(
-        url,
-        headers: {'Authorization': auth, 'Content-Type': 'application/json'},
-        body: requestBody,
-      ).timeout(const Duration(seconds: 10));
+      final words = await _cloudinaryService.fetchWords(
+        cloudName: cloudinaryCloudName,
+        tagName: 'english_kids_app',
+        maxResults: 50,
+      );
 
-      debugPrint("Cloudinary API response status: ${response.statusCode}");
+      debugPrint('Fetched ${words.length} words from Cloudinary.');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final resources = data['resources'] as List<dynamic>? ?? [];
-        debugPrint("Successfully parsed response. Found ${resources.length} resources.");
-
-        final loadedWords = <WordData>[];
-        for (final resource in resources) {
-          final tags = List<String>.from(resource['tags'] ?? []);
-          final secureUrl = resource['secure_url'];
-          final wordTag = tags.firstWhere((tag) => tag != 'english_kids_app', orElse: () => '');
-
-          if (wordTag.isNotEmpty && secureUrl != null) {
-            loadedWords.add(WordData(
-              word: wordTag[0].toUpperCase() + wordTag.substring(1),
-              imageUrl: secureUrl,
-            ));
-          }
-        }
-        if (mounted) {
-          setState(() {
-            _words = loadedWords.isEmpty ? widget.wordsForLevel : loadedWords;
-          });
-        }
-      } else {
-        debugPrint("Error response from Cloudinary: ${response.body}");
-        // Fallback to default words if Cloudinary fails
-        if (mounted) {
-          setState(() {
-            _words = widget.wordsForLevel;
-          });
-        }
+      if (mounted) {
+        setState(() {
+          _words = words.isEmpty ? widget.wordsForLevel : words;
+        });
       }
     } catch (e) {
       debugPrint("An exception occurred loading words: $e");
-      // Fallback to default words on error
       if (mounted) {
         setState(() {
           _words = widget.wordsForLevel;
