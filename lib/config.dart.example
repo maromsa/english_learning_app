@@ -1,13 +1,12 @@
-// lib/config.dart.example
-// Copy this file to config.dart and fill in your actual API keys
-// Never commit config.dart to version control!
-
-const String geminiApiKey = 'YOUR_GEMINI_API_KEY_HERE';
-const String pixabayApiKey = 'YOUR_PIXABAY_API_KEY_HERE';
-const String firebaseUserIdForUpload = 'YOUR_FIREBASE_USER_ID_HERE';
-const String cloudinaryCloudName = 'YOUR_CLOUDINARY_CLOUD_NAME';
-const String cloudinaryApiKey = 'YOUR_CLOUDINARY_API_KEY';
-const String cloudinaryApiSecret = 'YOUR_CLOUDINARY_API_SECRET';
-const String cloudinaryUrl = 'cloudinary://$cloudinaryApiKey:$cloudinaryApiSecret@$cloudinaryCloudName';
-const String googleTtsApiKey = 'YOUR_GOOGLE_TTS_API_KEY_HERE';
-
+// This file is kept for reference only.
+//
+// Runtime secrets are no longer read from `lib/config.dart`. Instead, they are
+// supplied at build/run time using `--dart-define` and consumed via the
+// `AppConfig` helper. For example:
+//
+// flutter run \
+//   --dart-define=GEMINI_API_KEY=xxx \
+//   --dart-define=PIXABAY_API_KEY=yyy \
+//   --dart-define=CLOUDINARY_CLOUD_NAME=zzz
+//
+// See the README for the full list of supported keys.

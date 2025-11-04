@@ -5,7 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:english_learning_app/firebase_options.dart';
-import 'package:english_learning_app/config.dart';
+import 'package:english_learning_app/app_config.dart';
 
 
 // --- רשימת המילים שברצונך להוסיף ---
@@ -25,7 +25,20 @@ void main() async {
   final firestore = FirebaseFirestore.instance;
   final storage = FirebaseStorage.instance;
   final batch = firestore.batch();
-  final wordsCollection = firestore.collection('users').doc(firebaseUserIdForUpload).collection('words');
+
+  if (!AppConfig.hasFirebaseUserId) {
+    print('❌ Missing FIREBASE_USER_ID_FOR_UPLOAD. Provide it via --dart-define.');
+    return;
+  }
+  if (!AppConfig.hasPixabay) {
+    print('❌ Missing PIXABAY_API_KEY. Provide it via --dart-define.');
+    return;
+  }
+
+  final wordsCollection = firestore
+      .collection('users')
+      .doc(AppConfig.firebaseUserIdForUpload)
+      .collection('words');
 
   print("Starting to process ${wordsToUpload.length} words...");
 
@@ -34,7 +47,7 @@ void main() async {
       print("\nProcessing word: '$word'");
 
       // 1. חפש תמונה ב-Pixabay
-      final imageUrl = await searchImageOnPixabay(word);
+      final imageUrl = await searchImageOnPixabay(word, AppConfig.pixabayApiKey);
       if (imageUrl == null) {
         print("  - Could not find image for '$word'. Skipping.");
         continue;
@@ -74,8 +87,8 @@ void main() async {
 // ---- פונקציות עזר ----
 
 // פונקציה לחיפוש תמונה ב-Pixabay
-Future<String?> searchImageOnPixabay(String query) async {
-  final url = Uri.parse('https://pixabay.com/api/?key=$pixabayApiKey&q=${Uri.encodeComponent(query)}&image_type=illustration&orientation=horizontal&per_page=3');
+Future<String?> searchImageOnPixabay(String query, String apiKey) async {
+    final url = Uri.parse('https://pixabay.com/api/?key=$apiKey&q=${Uri.encodeComponent(query)}&image_type=illustration&orientation=horizontal&per_page=3');
   final response = await http.get(url);
 
   if (response.statusCode == 200) {

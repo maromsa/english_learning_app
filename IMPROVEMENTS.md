@@ -55,6 +55,26 @@ This document summarizes all the improvements made to the English Learning App.
 - **Created config.dart.example**: Template for API keys
 - **Impact**: Better security practices for future development
 
+### 9. Runtime Configuration Hardening
+- **Before**: Secrets were hardcoded in `lib/config.dart`
+- **After**: Added `AppConfig` helper that reads all keys from `--dart-define`
+- **Impact**: No secrets in the repository, safer development and CI setup
+
+### 10. Asset-Driven Map Progression
+- **Before**: שלבי המפה הוגדרו בקוד ונדרשו שינויים ידניים בכל עדכון
+- **After**: המפה נטענת מקובץ `assets/data/levels.json` עם עמדות, תיאורים ותגמולים
+- **Impact**: הוספת שלבים חדשים מהירה ובטוחה ללא שינוי קוד
+
+### 11. Word Repository Cache
+- **Before**: טעינת המילים הסתמכה בכל פעם על Cloudinary וגרמה לעיכובים בזמן אמת
+- **After**: הוספנו `WordRepository` עם מטמון חכם ב-`SharedPreferences`
+- **Impact**: פתיחה מהירה גם ללא רשת ושימוש נמוך יותר ב-API
+
+### 12. מרכז הגדרות חדש
+- **Before**: לא הייתה דרך לאפס התקדמות או לנקות מטמון מתוך האפליקציה
+- **After**: נוספה מסך/תפריט הגדרות עם מצב כהה, איפוס התקדמות ומחיקת מטמון מילים
+- **Impact**: שליטה טובה יותר למשתמש ולמדריכים על חוויית הלמידה
+
 ## 📋 Recommendations for Future Improvements
 
 ### High Priority

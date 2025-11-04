@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/daily_reward_service.dart';
+import '../services/level_repository.dart';
+import 'settings_screen.dart';
 import 'shop_screen.dart';
 
 class MapScreen extends StatefulWidget {
@@ -20,39 +22,71 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   List<LevelData> levels = [];
   late final DailyRewardService _dailyRewardService;
-
-  final List<Offset> levelPositions = [
-    const Offset(0.6, 0.85), // שלב 1 (60% מהרוחב, 85% מהגובה)
-    const Offset(0.2, 0.65), // שלב 2
-    const Offset(0.7, 0.45), // שלב 3
-    const Offset(0.3, 0.25), // שלב 4
-  ];
+  late final LevelRepository _levelRepository;
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     _dailyRewardService = DailyRewardService();
-    _loadProgress();
+    _levelRepository = LevelRepository();
+    _initialize();
   }
 
-  void _loadLevels() {
-    // This is your level data
-    levels = [
-        LevelData(
-          name: "שלב 1: פירות",
-          isUnlocked: true,
-          words: [
-            WordData(word: 'Apple', imageUrl: 'assets/images/words/apple.png'),
-            WordData(word: 'Banana', imageUrl: 'assets/images/words/banana.png'),
-          ],
-        ),
-        LevelData(
-          name: "שלב 2: חיות",
-          words: [
-            WordData(word: 'Dog', imageUrl: 'assets/images/words/dog.png'),
-            WordData(word: 'Cat', imageUrl: 'assets/images/words/cat.png'),
-          ],
-        ),
+  Future<void> _initialize() async {
+    try {
+      final loadedLevels = await _levelRepository.loadLevels();
+      levels = loadedLevels.isEmpty ? _fallbackLevels() : loadedLevels;
+      await _loadProgress();
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = loadedLevels.isEmpty
+              ? 'נשתמש במסלול ברירת המחדל עד לחיבור לשרת.'
+              : null;
+        });
+      }
+    } catch (e) {
+      levels = _fallbackLevels();
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'לא ניתן לטעון את המפה מהקובץ. מוצג מסלול ברירת מחדל.';
+        });
+      }
+    }
+  }
+
+  List<LevelData> _fallbackLevels() {
+    return [
+      LevelData(
+        id: 'fallback_fruits',
+        name: 'שלב 1: פירות',
+        description: 'למדו מילים מתוקות של פירות צבעוניים',
+        unlockStars: 0,
+        reward: 30,
+        positionX: 0.6,
+        positionY: 0.85,
+        isUnlocked: true,
+        words: [
+          WordData(word: 'Apple', imageUrl: 'assets/images/words/apple.png'),
+          WordData(word: 'Banana', imageUrl: 'assets/images/words/banana.png'),
+        ],
+      ),
+      LevelData(
+        id: 'fallback_animals',
+        name: 'שלב 2: חיות',
+        description: 'מי נובח ומי מגרגר?',
+        unlockStars: 2,
+        reward: 40,
+        positionX: 0.2,
+        positionY: 0.65,
+        words: [
+          WordData(word: 'Dog', imageUrl: 'assets/images/words/dog.png'),
+          WordData(word: 'Cat', imageUrl: 'assets/images/words/cat.png'),
+        ],
+      ),
     ];
   }
 
@@ -60,26 +94,71 @@ class _MapScreenState extends State<MapScreen> {
     final prefs = await SharedPreferences.getInstance();
     final coinProvider = Provider.of<CoinProvider>(context, listen: false);
 
-    // Coins are already loaded in main.dart, but ensure we have the latest
     await coinProvider.loadCoins();
-    _loadLevels();
 
-    setState(() {
-      for (int i = 0; i < levels.length; i++) {
-        levels[i].stars = prefs.getInt('level_${i}_stars') ?? 0;
-        if (i > 0 && levels[i - 1].stars > 0) {
-          levels[i].isUnlocked = true;
-        }
+    for (int i = 0; i < levels.length; i++) {
+      final level = levels[i];
+      final persistedStars = prefs.getInt(_starsKey(level.id)) ??
+          prefs.getInt(_legacyStarsKey(i));
+      if (persistedStars != null) {
+        level.stars = persistedStars;
       }
-    });
+    }
+
+    _updateUnlockStatuses();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _saveProgress() async {
     final prefs = await SharedPreferences.getInstance();
-    // Coins are auto-saved by CoinProvider, so we don't need to save them here
     for (int i = 0; i < levels.length; i++) {
-      await prefs.setInt('level_${i}_stars', levels[i].stars);
+      final level = levels[i];
+      await prefs.setInt(_starsKey(level.id), level.stars);
+      await prefs.remove(_legacyStarsKey(i));
     }
+  }
+
+  String _starsKey(String levelId) => 'level_${levelId}_stars';
+  String _legacyStarsKey(int index) => 'level_${index}_stars';
+
+  void _updateUnlockStatuses() {
+    int accumulatedStars = 0;
+    for (final level in levels) {
+      level.isUnlocked = accumulatedStars >= level.unlockStars;
+      accumulatedStars += level.stars;
+    }
+    if (levels.isNotEmpty) {
+      levels.first.isUnlocked = true;
+    }
+  }
+
+  int get _totalStars => levels.fold<int>(0, (sum, level) => sum + level.stars);
+
+  Future<void> _openSettings() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    );
+    if (!mounted) return;
+    await _loadProgress();
+  }
+
+  void _showLockedMessage(LevelData level) {
+    int missingStars = level.unlockStars - _totalStars;
+    if (missingStars < 0) {
+      missingStars = 0;
+    }
+    final message = missingStars > 0
+        ? 'אספו עוד $missingStars כוכבים כדי לפתוח את ${level.name}.'
+        : 'סיימו את השלבים הקודמים כדי לפתוח את ${level.name}.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.black87,
+      ),
+    );
   }
 
   Future<void> _claimDailyReward() async {
@@ -107,7 +186,8 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _navigateToLevel(LevelData level, int levelIndex) async {
-    Provider.of<CoinProvider>(context, listen: false).startLevel();
+    final coinProvider = Provider.of<CoinProvider>(context, listen: false);
+    coinProvider.startLevel();
 
     await Navigator.push(
       context,
@@ -120,17 +200,33 @@ class _MapScreenState extends State<MapScreen> {
     );
 
     if (mounted) {
-      int coinsEarnedInLevel = Provider.of<CoinProvider>(context, listen: false).levelCoins;
-      setState(() {
-        int starsEarned = (coinsEarnedInLevel / 10).floor();
-        if (starsEarned > levels[levelIndex].stars) {
-          levels[levelIndex].stars = starsEarned;
-        }
-        if (levels[levelIndex].stars > 0 && (levelIndex + 1) < levels.length) {
-          levels[levelIndex + 1].isUnlocked = true;
-        }
-      });
+      final coinsEarnedInLevel = coinProvider.levelCoins;
+      final levelData = levels[levelIndex];
+      final previousStars = levelData.stars;
+      final starsEarned = ((coinsEarnedInLevel / 10).floor())
+          .clamp(0, 3) as int;
+
+      final bool gainedMoreStars = starsEarned > previousStars;
+      final bool shouldReward =
+          gainedMoreStars && previousStars == 0 && levelData.reward > 0;
+
+      if (gainedMoreStars) {
+        levelData.stars = starsEarned;
+      }
+
+      _updateUnlockStatuses();
+      setState(() {});
       await _saveProgress();
+
+      if (shouldReward && mounted) {
+        await coinProvider.addCoins(levelData.reward);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⭐ כל הכבוד! קיבלתם בונוס של ${levelData.reward} מטבעות.'),
+            backgroundColor: Colors.blueGrey.shade700,
+          ),
+        );
+      }
     }
   }
 
@@ -151,6 +247,10 @@ class _MapScreenState extends State<MapScreen> {
                 Icon(Icons.monetization_on, color: Colors.yellow.shade700),
                 const SizedBox(width: 4),
                 Text('${coinProvider.coins}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 12),
+                const Icon(Icons.star, color: Colors.amber),
+                const SizedBox(width: 4),
+                Text('$_totalStars', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -169,10 +269,13 @@ class _MapScreenState extends State<MapScreen> {
               );
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'הגדרות',
+            onPressed: _openSettings,
+          ),
         ],
       ),
-      // --- התיקון כאן ---
-      // ה-body הוא רק ה-Stack. ה-ListView נמחק.
       body: Stack(
         children: [
           Image.asset(
@@ -181,27 +284,44 @@ class _MapScreenState extends State<MapScreen> {
             height: double.infinity,
             width: double.infinity,
           ),
-          ..._buildLevelNodes(),
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator())
+          else if (levels.isEmpty)
+            const Center(
+              child: Text(
+                'אין שלבים זמינים כרגע. נסו שוב מאוחר יותר.',
+                style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            )
+          else ..._buildLevelNodes(context),
+          if (_errorMessage != null && !_isLoading)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 32,
+              child: _InfoBanner(message: _errorMessage!),
+            ),
         ],
       ),
     );
   }
 
-  List<Widget> _buildLevelNodes() {
-    List<Widget> nodes = [];
+  List<Widget> _buildLevelNodes(BuildContext context) {
+    final List<Widget> nodes = [];
     for (int i = 0; i < levels.length; i++) {
-      if (i < levelPositions.length) {
-        nodes.add(
-          Align(
-            alignment: Alignment(levelPositions[i].dx * 2 - 1, levelPositions[i].dy * 2 - 1),
-            child: _LevelNode(
-              level: levels[i],
-              levelNumber: i + 1,
-              onTap: () => _navigateToLevel(levels[i], i),
-            ),
+      final level = levels[i];
+      nodes.add(
+        Align(
+          alignment: Alignment(level.positionX * 2 - 1, level.positionY * 2 - 1),
+          child: _LevelNode(
+            level: level,
+            levelNumber: i + 1,
+            onTap: () => _navigateToLevel(level, i),
+            onLockedTap: () => _showLockedMessage(level),
           ),
-        );
-      }
+        ),
+      );
     }
     return nodes;
   }
@@ -211,27 +331,81 @@ class _LevelNode extends StatelessWidget {
   final LevelData level;
   final int levelNumber;
   final VoidCallback? onTap;
+  final VoidCallback? onLockedTap;
 
-  const _LevelNode({required this.level, required this.levelNumber, this.onTap});
+  const _LevelNode({required this.level, required this.levelNumber, this.onTap, this.onLockedTap});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: level.isUnlocked ? onTap : null,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: level.isUnlocked ? Colors.amber.shade600 : Colors.grey.shade600,
-          shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 6, spreadRadius: 2)],
-          border: Border.all(color: Colors.white, width: 3),
+    final int cappedStars = level.stars.clamp(0, 3) as int;
+    return Tooltip(
+      message: level.description ?? '${level.words.length} מילים בשלב',
+      child: InkWell(
+        onTap: () {
+          if (level.isUnlocked) {
+            onTap?.call();
+          } else {
+            onLockedTap?.call();
+          }
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: level.isUnlocked ? Colors.amber.shade600 : Colors.grey.shade600,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 6, spreadRadius: 2),
+                ],
+                border: Border.all(color: Colors.white, width: 3),
+              ),
+              child: level.isUnlocked
+                  ? Text(
+                      levelNumber.toString(),
+                      style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                    )
+                  : const Icon(Icons.lock, color: Colors.white, size: 28),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(3, (index) {
+                return Icon(
+                  index < cappedStars ? Icons.star : Icons.star_border,
+                  color: index < cappedStars ? Colors.amber : Colors.white,
+                  size: 18,
+                );
+              }),
+            ),
+          ],
         ),
-        child: level.isUnlocked
-            ? Text(
-            levelNumber.toString(),
-            style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)
-        )
-            : const Icon(Icons.lock, color: Colors.white, size: 28),
+      ),
+    );
+  }
+}
+
+class _InfoBanner extends StatelessWidget {
+  final String message;
+
+  const _InfoBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.65),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }

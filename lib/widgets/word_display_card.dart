@@ -1,16 +1,17 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:cloudinary_url_gen/cloudinary.dart';
 import '../models/word_data.dart';
 
 class WordDisplayCard extends StatelessWidget {
   final WordData wordData;
-  final Cloudinary cloudinary;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
 
   const WordDisplayCard({
     super.key,
     required this.wordData,
-    required this.cloudinary,
+    this.onPrevious,
+    this.onNext,
   });
 
   @override
@@ -43,18 +44,14 @@ class WordDisplayCard extends StatelessWidget {
                   left: 0,
                   child: IconButton(
                     icon: const Icon(Icons.arrow_back_ios, size: 28),
-                    onPressed: () {
-                      // TODO: פעולה למעבר אחורה
-                    },
+                    onPressed: onPrevious,
                   ),
                 ),
                 Positioned(
                   right: 0,
                   child: IconButton(
                     icon: const Icon(Icons.arrow_forward_ios, size: 28),
-                    onPressed: () {
-                      // TODO: פעולה למעבר קדימה
-                    },
+                    onPressed: onNext,
                   ),
                 ),
               ],
