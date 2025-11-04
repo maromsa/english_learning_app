@@ -160,91 +160,86 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
         backgroundColor: Colors.green.shade700,
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _buildScoreHeader(context),
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildScoreHeader(context),
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))],
+                ),
+                clipBehavior: Clip.hardEdge,
+                child: Image.asset(
+                  quizItem.imageAsset,
+                  height: 220,
+                  fit: BoxFit.cover,
+                ),
               ),
-              clipBehavior: Clip.hardEdge,
-              child: Image.asset(
-                quizItem.imageAsset,
-                height: 220,
-                fit: BoxFit.cover,
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: OutlinedButton.icon(
+                  onPressed: (!_answered && !_hintUsed && _currentOptions.length > 2) ? _useHint : null,
+                  icon: const Icon(Icons.lightbulb_outline),
+                  label: Text(_hintUsed ? 'רמז בשימוש' : 'קבל רמז'),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton.icon(
-                onPressed: (!_answered && !_hintUsed && _currentOptions.length > 2) ? _useHint : null,
-                icon: const Icon(Icons.lightbulb_outline),
-                label: Text(_hintUsed ? 'רמז בשימוש' : 'קבל רמז'),
+              const SizedBox(height: 16),
+              ..._currentOptions.map(
+                (answer) => AnswerButton(
+                  key: ValueKey(answer),
+                  answer: answer,
+                  isSelected: _selectedAnswer == answer,
+                  isCorrect: answer == quizItem.correctAnswer,
+                  answered: _answered,
+                  onTap: () {
+                    _answerQuestion(answer);
+                  },
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: _currentOptions
-                      .map(
-                        (answer) => AnswerButton(
-                          key: ValueKey(answer),
-                          answer: answer,
-                          isSelected: _selectedAnswer == answer,
-                          isCorrect: answer == quizItem.correctAnswer,
-                          answered: _answered,
-                          onTap: () {
-                            _answerQuestion(answer);
-                          },
+              const SizedBox(height: 12),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _feedbackMessage == null
+                    ? const SizedBox.shrink()
+                    : Container(
+                        key: ValueKey(_feedbackMessage),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3))],
                         ),
-                      )
-                      .toList(),
+                        child: Text(
+                          _feedbackMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.purple),
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _answered ? Colors.green.shade700 : Colors.grey.shade400,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 6,
+                  ),
+                  onPressed: _answered ? _nextQuestion : null,
+                  child: Text(
+                    _answered ? 'שאלה הבאה' : 'בחר תשובה כדי להמשיך',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: _feedbackMessage == null
-                  ? const SizedBox.shrink()
-                  : Container(
-                      key: ValueKey(_feedbackMessage),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3))],
-                      ),
-                      child: Text(
-                        _feedbackMessage!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.purple),
-                      ),
-                    ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _answered ? Colors.green.shade700 : Colors.grey.shade400,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 6,
-                ),
-                onPressed: _answered ? _nextQuestion : null,
-                child: Text(
-                  _answered ? 'שאלה הבאה' : 'בחר תשובה כדי להמשיך',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

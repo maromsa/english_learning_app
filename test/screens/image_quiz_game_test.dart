@@ -43,7 +43,8 @@ void main() {
     final correctAnswerFinder = find.text(quizItems.first.correctAnswer);
     expect(correctAnswerFinder, findsOneWidget);
 
-    await tester.tap(correctAnswerFinder);
+    await tester.ensureVisible(correctAnswerFinder);
+    await tester.tap(correctAnswerFinder, warnIfMissed: false);
     await tester.pumpAndSettle();
 
     expect(coinProvider.coins, greaterThanOrEqualTo(10));
@@ -51,6 +52,7 @@ void main() {
 
     final nextButtonFinder = find.widgetWithText(ElevatedButton, 'שאלה הבאה');
     expect(nextButtonFinder, findsOneWidget);
+    await tester.ensureVisible(nextButtonFinder);
     final ElevatedButton nextButton = tester.widget(nextButtonFinder);
     expect(nextButton.onPressed, isNotNull);
   });
@@ -72,7 +74,9 @@ void main() {
 
     expect(find.byType(AnswerButton), findsNWidgets(4));
 
-    await tester.tap(find.text('קבל רמז'));
+    final hintButtonFinder = find.text('קבל רמז');
+    await tester.ensureVisible(hintButtonFinder);
+    await tester.tap(hintButtonFinder, warnIfMissed: false);
     await tester.pumpAndSettle();
 
     expect(find.byType(AnswerButton), findsNWidgets(3));
