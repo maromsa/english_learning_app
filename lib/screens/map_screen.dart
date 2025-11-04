@@ -34,21 +34,21 @@ class _MapScreenState extends State<MapScreen> {
   void _loadLevels() {
     // This is your level data
     levels = [
-      LevelData(
-        name: "שלב 1: פירות",
-        isUnlocked: true,
-        words: [
-          WordData(word: 'Apple', imageUrl: 'https://i.imgur.com/gAYAEa5.png'),
-          WordData(word: 'Banana', imageUrl: 'https://i.imgur.com/r3yC4QG.png'),
-        ],
-      ),
-      LevelData(
-        name: "שלב 2: חיות",
-        words: [
-          WordData(word: 'Dog', imageUrl: 'https://i.imgur.com/v2p4EKC.png'),
-          WordData(word: 'Cat', imageUrl: 'https://i.imgur.com/AU4Jj1z.png'),
-        ],
-      ),
+        LevelData(
+          name: "שלב 1: פירות",
+          isUnlocked: true,
+          words: [
+            WordData(word: 'Apple', imageUrl: 'assets/images/words/apple.png'),
+            WordData(word: 'Banana', imageUrl: 'assets/images/words/banana.png'),
+          ],
+        ),
+        LevelData(
+          name: "שלב 2: חיות",
+          words: [
+            WordData(word: 'Dog', imageUrl: 'assets/images/words/dog.png'),
+            WordData(word: 'Cat', imageUrl: 'assets/images/words/cat.png'),
+          ],
+        ),
     ];
   }
 
