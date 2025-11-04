@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CoinProvider with ChangeNotifier {
   int _coins = 0;
@@ -7,25 +8,46 @@ class CoinProvider with ChangeNotifier {
   int get coins => _coins;
   int get levelCoins => _coins - _coinsAtLevelStart;
 
-  void addCoins(int amount) {
+  Future<void> loadCoins() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _coins = prefs.getInt('totalCoins') ?? 0;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading coins: $e');
+    }
+  }
+
+  Future<void> _saveCoins() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('totalCoins', _coins);
+    } catch (e) {
+      debugPrint('Error saving coins: $e');
+    }
+  }
+
+  Future<void> addCoins(int amount) async {
     _coins += amount;
     notifyListeners();
+    await _saveCoins();
   }
 
-  void setCoins(int amount) {
+  Future<void> setCoins(int amount) async {
     _coins = amount;
     notifyListeners();
+    await _saveCoins();
   }
 
-  bool spendCoins(int amount) {
+  Future<bool> spendCoins(int amount) async {
     if (_coins >= amount) {
       _coins -= amount;
       notifyListeners();
+      await _saveCoins();
       return true;
     } else {
       return false;
     }
-
   }
 
   void startLevel() {

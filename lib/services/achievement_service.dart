@@ -48,10 +48,18 @@ class AchievementService with ChangeNotifier {
     if (!achievement.isUnlocked) {
       achievement.isUnlocked = true;
       await _saveAchievement(id, true);
-      print("Achievement Unlocked: ${achievement.name}");
+      debugPrint("Achievement Unlocked: ${achievement.name}");
       notifyListeners(); // מודיע לאפליקציה על השינוי
-      // כאן אפשר להוסיף קריאה להצגת ההודעה למשתמש
+      // Emit achievement unlocked event that UI can listen to
+      _achievementUnlockedCallback?.call(achievement);
     }
+  }
+
+  // Callback for UI to show achievement notifications
+  Function(Achievement)? _achievementUnlockedCallback;
+  
+  void setAchievementUnlockedCallback(Function(Achievement) callback) {
+    _achievementUnlockedCallback = callback;
   }
 
   // שמירה וטעינה מהזיכרון

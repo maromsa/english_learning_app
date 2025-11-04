@@ -1,7 +1,9 @@
+import 'package:english_learning_app/firebase_options.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/shop_provider.dart';
 import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -13,16 +15,36 @@ import 'screens/onboarding_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Firebase
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase initialization error: $e');
+  }
+
   final prefs = await SharedPreferences.getInstance();
   final bool hasSeenOnboarding = prefs.getBool('onboarding_seen') ?? false;
+
+  // Initialize providers with persistence
+  final coinProvider = CoinProvider();
+  final themeProvider = ThemeProvider();
+  final achievementService = AchievementService();
+  final shopProvider = ShopProvider();
+
+  // Load persisted data
+  await coinProvider.loadCoins();
+  await themeProvider.loadTheme();
+  await shopProvider.loadPurchasedItems();
 
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => CoinProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => AchievementService()),
-        ChangeNotifierProvider(create: (_) => ShopProvider()),
+        ChangeNotifierProvider.value(value: coinProvider),
+        ChangeNotifierProvider.value(value: themeProvider),
+        ChangeNotifierProvider.value(value: achievementService),
+        ChangeNotifierProvider.value(value: shopProvider),
       ],
       child: MyApp(hasSeenOnboarding: hasSeenOnboarding),
     ),

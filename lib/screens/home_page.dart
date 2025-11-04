@@ -9,9 +9,11 @@ import 'package:english_learning_app/screens/image_quiz_game.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/widgets/action_button.dart';
+import 'package:english_learning_app/widgets/achievement_notification.dart';
 import 'package:english_learning_app/widgets/score_display.dart';
 import 'package:english_learning_app/widgets/word_display_card.dart';
 import 'package:english_learning_app/widgets/words_progress_bar.dart';
+import 'package:english_learning_app/models/achievement.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -50,13 +52,48 @@ class _MyHomePageState extends State<MyHomePage> {
   String _recognizedWords = '';
   bool _speechEnabled = false;
   int _streak = 0;
+  OverlayEntry? _achievementOverlay;
 
   @override
   void initState() {
     super.initState();
     _confettiController = ConfettiController(duration: const Duration(seconds: 1));
     _words = widget.wordsForLevel;
+    _setupAchievementListener();
     _initializeServices();
+  }
+
+  void _setupAchievementListener() {
+    // Set up achievement notification callback
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final achievementService = Provider.of<AchievementService>(context, listen: false);
+      achievementService.setAchievementUnlockedCallback((achievement) {
+        if (mounted) {
+          _showAchievementNotification(achievement);
+        }
+      });
+    });
+  }
+
+  void _showAchievementNotification(Achievement achievement) {
+    final overlay = Overlay.of(context);
+    _achievementOverlay = OverlayEntry(
+      builder: (context) => Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        child: SafeArea(
+          child: AchievementNotification(
+            achievement: achievement,
+            onDismiss: () {
+              _achievementOverlay?.remove();
+              _achievementOverlay = null;
+            },
+          ),
+        ),
+      ),
+    );
+    overlay.insert(_achievementOverlay!);
   }
 
   @override
@@ -65,6 +102,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _speechToText.stop();
     _confettiController.dispose();
     _audioPlayer.dispose();
+    _achievementOverlay?.remove();
     super.dispose();
   }
 
@@ -105,15 +143,25 @@ class _MyHomePageState extends State<MyHomePage> {
         await _audioPlayer.setAudioSource(BytesAudioSource(audioBytes));
         _audioPlayer.play();
       } else {
-        print("Google TTS Error: ${response.body}");
+        debugPrint("Google TTS Error: ${response.body}");
+        if (mounted) {
+          setState(() {
+            _feedbackText = "שגיאה בהשמעת הקול. אנא נסה שוב.";
+          });
+        }
       }
     } catch (e) {
-      print("Error in _speak function: $e");
+      debugPrint("Error in _speak function: $e");
+      if (mounted) {
+        setState(() {
+          _feedbackText = "שגיאה בהשמעת הקול. אנא נסה שוב.";
+        });
+      }
     }
   }
 
   Future<void> _loadWordsFromCloudinary() async {
-    print("--- Starting to load words from Cloudinary... ---");
+    debugPrint("--- Starting to load words from Cloudinary... ---");
 
     final auth = 'Basic ${base64Encode(utf8.encode('$cloudinaryApiKey:$cloudinaryApiSecret'))}';
 
@@ -124,15 +172,18 @@ class _MyHomePageState extends State<MyHomePage> {
     });
     try {
       final url = Uri.parse('https://api.cloudinary.com/v1_1/$cloudinaryCloudName/resources/search');
-      final response = await http.post(url, headers: {'Authorization': auth, 'Content-Type': 'application/json',}, body: requestBody);
-      print("Cloudinary API response status: ${response.statusCode}");
-      print("--- Full Cloudinary Response Body ---");
-      print(response.body);
+      final response = await http.post(
+        url,
+        headers: {'Authorization': auth, 'Content-Type': 'application/json'},
+        body: requestBody,
+      ).timeout(const Duration(seconds: 10));
+
+      debugPrint("Cloudinary API response status: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final resources = data['resources'] as List<dynamic>? ?? [];
-        print("Successfully parsed response. Found ${resources.length} resources.");
+        debugPrint("Successfully parsed response. Found ${resources.length} resources.");
 
         final loadedWords = <WordData>[];
         for (final resource in resources) {
@@ -147,12 +198,28 @@ class _MyHomePageState extends State<MyHomePage> {
             ));
           }
         }
-        if (mounted) setState(() => _words = loadedWords);
+        if (mounted) {
+          setState(() {
+            _words = loadedWords.isEmpty ? widget.wordsForLevel : loadedWords;
+          });
+        }
       } else {
-        print("Error response from Cloudinary: ${response.body}");
+        debugPrint("Error response from Cloudinary: ${response.body}");
+        // Fallback to default words if Cloudinary fails
+        if (mounted) {
+          setState(() {
+            _words = widget.wordsForLevel;
+          });
+        }
       }
     } catch (e) {
-      print("An exception occurred: $e");
+      debugPrint("An exception occurred loading words: $e");
+      // Fallback to default words on error
+      if (mounted) {
+        setState(() {
+          _words = widget.wordsForLevel;
+        });
+      }
     }
   }
 
@@ -190,7 +257,7 @@ class _MyHomePageState extends State<MyHomePage> {
       final response = await _model.generateContent(content);
       final identifiedWord = response.text?.trim() ?? "unclear";
 
-      print("Gemini identified: $identifiedWord");
+      debugPrint("Gemini identified: $identifiedWord");
 
       // 4. Handle the response
       if (identifiedWord.toLowerCase() == 'unclear' || identifiedWord.contains(' ')) {
@@ -209,10 +276,13 @@ class _MyHomePageState extends State<MyHomePage> {
         flutterTts.speak("Great! I see a ${newWord.word}.");
       }
     } catch (e) {
-      print("Error identifying image: $e");
-      setState(() {
-        _feedbackText = "Sorry, something went wrong.";
-      });
+      debugPrint("Error identifying image: $e");
+      if (mounted) {
+        setState(() {
+          _feedbackText = "מצטער, משהו השתבש. אנא נסה שוב.";
+        });
+        await _speak("Sorry, something went wrong. Please try again.", languageCode: "en-US");
+      }
     }
   }
 
@@ -221,7 +291,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final newPath = '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
     final savedImageFile = await File(imageFile.path).copy(newPath);
 
-    print("Saved new image to: ${savedImageFile.path}");
+      debugPrint("Saved new image to: ${savedImageFile.path}");
 
     return WordData(
       word: word,
@@ -234,8 +304,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<bool> _evaluateSpeechWithGemini(String correctWord, String recognizedWord) async {
     try {
-      print("--- Asking Gemini for phonetic evaluation ---");
-      print("Correct: '$correctWord', Recognized: '$recognizedWord'");
+      debugPrint("--- Asking Gemini for phonetic evaluation ---");
+      debugPrint("Correct: '$correctWord', Recognized: '$recognizedWord'");
 
       final prompt =
           "You are an English teacher for a 3-6 year old child. "
@@ -244,14 +314,15 @@ class _MyHomePageState extends State<MyHomePage> {
           "should this attempt be considered a good and acceptable try? "
           "Answer with only 'yes' or 'no'.";
 
-      final response = await _model.generateContent([Content.text(prompt)]);
+      final response = await _model.generateContent([Content.text(prompt)])
+          .timeout(const Duration(seconds: 10));
       final answer = response.text?.trim().toLowerCase() ?? 'no';
 
-      print("Gemini's answer: '$answer'");
+      debugPrint("Gemini's answer: '$answer'");
       return answer == 'yes';
 
     } catch (e) {
-      print("Error during Gemini evaluation: $e");
+      debugPrint("Error during Gemini evaluation: $e");
       // In case of an error, we fall back to a simple, strict check
       return correctWord.toLowerCase() == recognizedWord.toLowerCase();
     }
@@ -270,7 +341,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (isCorrect) {
       _streak++;
       int pointsToAdd = 10;
-      Provider.of<CoinProvider>(context, listen: false).addCoins(pointsToAdd);
+      await Provider.of<CoinProvider>(context, listen: false).addCoins(pointsToAdd);
 
       Provider.of<AchievementService>(context, listen: false)
           .checkForAchievements(streak: _streak);
@@ -287,24 +358,83 @@ class _MyHomePageState extends State<MyHomePage> {
     await _speak(feedback, languageCode: "he-IL");
   }
 
-  void _startListening() {
-    setState(() { _isListening = true; _feedbackText = 'מקשיב...'; _recognizedWords = ''; });
-    _speechToText.listen(onResult: (result) {
-      if (result.finalResult) {
+  void _startListening() async {
+    if (!_speechEnabled) {
+      setState(() {
+        _feedbackText = "הרשאת מיקרופון לא זמינה. אנא בדוק את ההגדרות.";
+      });
+      return;
+    }
+
+    setState(() {
+      _isListening = true;
+      _feedbackText = 'מקשיב...';
+      _recognizedWords = '';
+    });
+
+    try {
+      await _speechToText.listen(
+        onResult: (result) {
+          if (mounted) {
+            setState(() {
+              _recognizedWords = result.recognizedWords;
+              if (result.finalResult) {
+                _feedbackText = 'סיימתי להקשיב. בודק...';
+                // Auto-evaluate when final result is received
+                Future.delayed(const Duration(milliseconds: 500), () {
+                  if (mounted && _speechToText.isNotListening) {
+                    setState(() {
+                      _isListening = false;
+                    });
+                    _evaluateSpeech();
+                  }
+                });
+              }
+            });
+          }
+        },
+        localeId: "en_US",
+        listenFor: const Duration(seconds: 10),
+        pauseFor: const Duration(seconds: 3),
+      );
+    } catch (e) {
+      debugPrint("Error starting speech recognition: $e");
+      if (mounted) {
         setState(() {
-          _recognizedWords = result.recognizedWords;
+          _isListening = false;
+          _feedbackText = "לא הצלחתי להתחיל להקשיב. אנא נסה שוב.";
         });
       }
-    }, localeId: "en_US",
-    listenFor: const Duration(seconds: 10), // Max listening duration
-    pauseFor: const Duration(seconds: 3));// Stop after 3 seconds of silence);
-
+    }
   }
 
-  void _stopListening() {
-    _speechToText.stop();
-    setState(() => _isListening = false);
-    Future.delayed(const Duration(milliseconds: 200), _evaluateSpeech);
+  void _stopListening() async {
+    try {
+      await _speechToText.stop();
+      if (mounted) {
+        setState(() => _isListening = false);
+      }
+      // Evaluate speech after a short delay to ensure recognition is complete
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          if (_recognizedWords.isNotEmpty) {
+            _evaluateSpeech();
+          } else {
+            setState(() {
+              _feedbackText = "לא שמעתי כלום. בוא ננסה שוב.";
+            });
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint("Error stopping speech recognition: $e");
+      if (mounted) {
+        setState(() {
+          _isListening = false;
+          _feedbackText = "שגיאה. אנא נסה שוב.";
+        });
+      }
+    }
   }
 
   void _handleSpeech() {
