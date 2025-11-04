@@ -6,6 +6,8 @@ import 'package:english_learning_app/screens/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../services/daily_reward_service.dart';
 import 'shop_screen.dart';
 
 class MapScreen extends StatefulWidget {
@@ -17,6 +19,7 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   List<LevelData> levels = [];
+  late final DailyRewardService _dailyRewardService;
 
   final List<Offset> levelPositions = [
     const Offset(0.6, 0.85), // שלב 1 (60% מהרוחב, 85% מהגובה)
@@ -28,6 +31,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    _dailyRewardService = DailyRewardService();
     _loadProgress();
   }
 
@@ -78,6 +82,30 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  Future<void> _claimDailyReward() async {
+    final result = await _dailyRewardService.claimReward();
+    if (!mounted) {
+      return;
+    }
+
+    if (result.claimed) {
+      await Provider.of<CoinProvider>(context, listen: false).addCoins(result.reward);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🎁 קיבלת ${result.reward} מטבעות! רצף יומי: ${result.streak}'),
+          backgroundColor: Colors.green.shade600,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('כבר אספת את המתנה היום! רצף יומי: ${result.streak}'),
+          backgroundColor: Colors.orange.shade600,
+        ),
+      );
+    }
+  }
+
   void _navigateToLevel(LevelData level, int levelIndex) async {
     Provider.of<CoinProvider>(context, listen: false).startLevel();
 
@@ -125,6 +153,11 @@ class _MapScreenState extends State<MapScreen> {
                 Text('${coinProvider.coins}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.card_giftcard),
+            tooltip: 'מתנת היום',
+            onPressed: _claimDailyReward,
           ),
           IconButton(
             icon: const Icon(Icons.store),

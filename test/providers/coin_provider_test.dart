@@ -31,9 +31,20 @@ void main() {
       expect(coinProvider.coins, 15);
     });
 
+    test('addCoins should ignore non-positive amounts', () async {
+      await coinProvider.addCoins(0);
+      await coinProvider.addCoins(-5);
+      expect(coinProvider.coins, 0);
+    });
+
     test('setCoins should set coins to specific value', () async {
       await coinProvider.setCoins(100);
       expect(coinProvider.coins, 100);
+    });
+
+    test('setCoins should clamp negative values to zero', () async {
+      await coinProvider.setCoins(-25);
+      expect(coinProvider.coins, 0);
     });
 
     test('spendCoins should decrease coins when sufficient', () async {
@@ -48,6 +59,15 @@ void main() {
       final result = await coinProvider.spendCoins(30);
       expect(result, false);
       expect(coinProvider.coins, 10);
+    });
+
+    test('spendCoins should reject non-positive amounts', () async {
+      await coinProvider.setCoins(20);
+      final zeroResult = await coinProvider.spendCoins(0);
+      final negativeResult = await coinProvider.spendCoins(-5);
+      expect(zeroResult, false);
+      expect(negativeResult, false);
+      expect(coinProvider.coins, 20);
     });
 
     test('startLevel should track level start coins', () async {
