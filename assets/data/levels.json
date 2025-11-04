@@ -1,0 +1,52 @@
+{
+  "levels": [
+    {
+      "id": "level_fruits",
+      "name": "שלב 1: פירות",
+      "description": "למדו מילים של פירות טעימים",
+      "unlockStars": 0,
+      "reward": 30,
+      "position": {"x": 0.6, "y": 0.85},
+      "words": [
+        {"word": "Apple", "imageUrl": "assets/images/words/apple.png"},
+        {"word": "Banana", "imageUrl": "assets/images/words/banana.png"}
+      ]
+    },
+    {
+      "id": "level_animals",
+      "name": "שלב 2: חיות",
+      "description": "מי מתחבא בגן החיות?",
+      "unlockStars": 2,
+      "reward": 40,
+      "position": {"x": 0.2, "y": 0.65},
+      "words": [
+        {"word": "Dog", "imageUrl": "assets/images/words/dog.png"},
+        {"word": "Cat", "imageUrl": "assets/images/words/cat.png"}
+      ]
+    },
+    {
+      "id": "level_magic_items",
+      "name": "שלב 3: פריטי קסם",
+      "description": "תלבשו את הפריט הנכון למשימה",
+      "unlockStars": 4,
+      "reward": 50,
+      "position": {"x": 0.7, "y": 0.45},
+      "words": [
+        {"word": "Magic Hat", "imageUrl": "assets/images/magic_hat.jpg"},
+        {"word": "Super Shoes", "imageUrl": "assets/images/super_shoes.jpg"}
+      ]
+    },
+    {
+      "id": "level_power_items",
+      "name": "שלב 4: כוח מיוחד",
+      "description": "אספו פריטי כוח מיוחדים",
+      "unlockStars": 6,
+      "reward": 60,
+      "position": {"x": 0.3, "y": 0.25},
+      "words": [
+        {"word": "Power Sword", "imageUrl": "assets/images/power_sword.jpg"},
+        {"word": "Treasure Map", "imageUrl": "assets/images/map/map_background.jpg"}
+      ]
+    }
+  ]
+}

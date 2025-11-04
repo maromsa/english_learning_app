@@ -1,4 +1,4 @@
-import re
+import os
 import requests
 import cloudinary
 from cloudinary import uploader
@@ -8,17 +8,6 @@ WORDS_TO_UPLOAD = [
     'Apple', 'Banana', 'Car', 'Dog', 'Cat', 'House', 'Tree', 'Sun', 'Moon', 'Star'
 ]
 APP_TAG = 'english_kids_app'
-
-def get_config_value_from_dart(file_path, variable_name):
-    try:
-        with open(file_path, 'r') as f:
-            content = f.read()
-            match = re.search(f"const String {variable_name} = '(.*?)';", content)
-            if match:
-                return match.group(1)
-        return None
-    except FileNotFoundError:
-        return None
 
 def search_image_on_pixabay(query, api_key):
     url = f"https://pixabay.com/api/?key={api_key}&q={requests.utils.quote(query)}&image_type=photo&orientation=horizontal&per_page=3"
@@ -34,14 +23,13 @@ def search_image_on_pixabay(query, api_key):
     return None
 
 def main():
-    config_file = 'lib/config.dart'
-    cloudinary_cloud_name = get_config_value_from_dart(config_file, 'cloudinaryCloudName')
-    cloudinary_api_key = get_config_value_from_dart(config_file, 'cloudinaryApiKey')
-    cloudinary_api_secret = get_config_value_from_dart(config_file, 'cloudinaryApiSecret')
-    pixabay_api_key = get_config_value_from_dart(config_file, 'pixabayApiKey')
+    cloudinary_cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME')
+    cloudinary_api_key = os.environ.get('CLOUDINARY_API_KEY')
+    cloudinary_api_secret = os.environ.get('CLOUDINARY_API_SECRET')
+    pixabay_api_key = os.environ.get('PIXABAY_API_KEY')
 
     if not all([pixabay_api_key, cloudinary_cloud_name, cloudinary_api_key, cloudinary_api_secret]):
-        print("❌ Error: Missing keys in lib/config.dart. Please check the file.")
+        print("❌ Error: Missing required environment variables. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, and PIXABAY_API_KEY.")
         return
 
     cloudinary.config(cloud_name=cloudinary_cloud_name, api_key=cloudinary_api_key, api_secret=cloudinary_api_secret)

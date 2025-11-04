@@ -1,19 +1,58 @@
 # english_app_final
 
-A new Flutter project.
+Gamified English-learning Flutter app with optional AI coaching and camera powered vocabulary building.
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+This project targets families and teachers who want fun English vocabulary
+practice with camera, speech, and mini-game experiences. The app boots with a
+travel map that unlocks levels as kids earn stars.
 
-A few resources to get you started if this is your first Flutter project:
+### Core Features
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- Dynamic world map loaded from assets with multi-stage progression and star requirements.
+- AI-assisted pronunciation feedback and optional smart camera word discovery powered by Gemini (when configured).
+- Daily reward streaks, in-app shop, and achievements with celebratory animations.
+- Offline-friendly word cache with fast startup even when Cloudinary is unreachable.
+- Settings screen to toggle dark mode, reset progress, and clear cached word packs.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### Prerequisites
+
+- Flutter 3.24 or newer
+- Dart 3.5 or newer
+- Firebase CLI (for backend scripts)
+
+### Configuration
+
+Sensitive keys are never checked into the repository. Supply them at runtime via
+`--dart-define` when launching the app or running scripts. The `lib/app_config.dart`
+helper exposes the values at runtime.
+
+| Dart define | Feature | Notes |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | AI-powered pronunciation feedback & photo recognition | Optional. When missing the app gracefully falls back to manual play. |
+| `GOOGLE_TTS_API_KEY` | Server-quality Hebrew TTS | Optional. Falls back to on-device TTS if omitted. |
+| `PIXABAY_API_KEY` | Bulk word uploader scripts | Required for `dart run scripts/upload_words.dart`. |
+| `FIREBASE_USER_ID_FOR_UPLOAD` | Bulk word uploader scripts | Target document owner in Firestore. |
+| `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Remote word sync (Cloudinary) and tooling | Required for pulling remote word packs. |
+
+Example dev run:
+
+```bash
+flutter run \
+  --dart-define=GEMINI_API_KEY=your_key \
+  --dart-define=CLOUDINARY_CLOUD_NAME=your_cloud \
+  --dart-define=CLOUDINARY_API_KEY=your_api_key \
+  --dart-define=CLOUDINARY_API_SECRET=your_secret
+```
+
+Scripts can be executed in the same fashion, e.g.:
+
+```bash
+dart run scripts/upload_words.dart \
+  --define=PIXABAY_API_KEY=your_pixabay_key \
+  --define=FIREBASE_USER_ID_FOR_UPLOAD=your_user_id
+```
 
 ## Continuous Integration
 

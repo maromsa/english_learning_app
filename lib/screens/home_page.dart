@@ -1,14 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
-import 'package:cloudinary_url_gen/cloudinary.dart';
-import 'package:english_learning_app/config.dart';
+import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/screens/image_quiz_game.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
-import 'package:english_learning_app/services/cloudinary_service.dart';
+import 'package:english_learning_app/services/word_repository.dart';
 import 'package:english_learning_app/widgets/action_button.dart';
 import 'package:english_learning_app/widgets/achievement_notification.dart';
 import 'package:english_learning_app/widgets/score_display.dart';
@@ -36,15 +35,14 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  late final GenerativeModel _model;
+  GenerativeModel? _model;
   late final ConfettiController _confettiController;
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   late final FlutterTts flutterTts;
   final SpeechToText _speechToText = SpeechToText();
-  late final Cloudinary cloudinary;
   final ImagePicker _picker = ImagePicker();
-  late final CloudinaryService _cloudinaryService;
+  late final WordRepository _wordRepository;
 
   bool _isLoading = true;
   List<WordData> _words = [];
@@ -55,6 +53,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _speechEnabled = false;
   int _streak = 0;
   OverlayEntry? _achievementOverlay;
+  bool _aiFeaturesEnabled = false;
 
   @override
   void initState() {
@@ -120,17 +119,35 @@ class _MyHomePageState extends State<MyHomePage> {
 
 
   Future<void> _initializeServices() async {
-    _model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: geminiApiKey);
+    final bool geminiAvailable = AppConfig.hasGemini;
+    final bool cloudinaryAvailable = AppConfig.hasCloudinary;
+
+    if (geminiAvailable) {
+      _model = GenerativeModel(
+        model: 'gemini-1.5-flash',
+        apiKey: AppConfig.geminiApiKey,
+      );
+    } else {
+      AppConfig.debugWarnIfMissing('Gemini AI features', false);
+    }
+
     flutterTts = FlutterTts();
     await _configureTts();
     _speechEnabled = await _speechToText.initialize();
-    cloudinary = Cloudinary.fromStringUrl(cloudinaryUrl);
-    _cloudinaryService = CloudinaryService();
 
-    await _loadWordsFromCloudinary();
+    if (!cloudinaryAvailable) {
+      AppConfig.debugWarnIfMissing('Cloudinary word sync', false);
+    }
+
+    _wordRepository = WordRepository();
+
+    await _loadWords(remoteEnabled: cloudinaryAvailable);
 
     if (mounted) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _aiFeaturesEnabled = geminiAvailable;
+      });
     }
   }
 
@@ -138,12 +155,21 @@ class _MyHomePageState extends State<MyHomePage> {
     if (text.isEmpty) return;
 
     try {
+      if (!AppConfig.hasGoogleTts) {
+        await flutterTts.setLanguage(languageCode);
+        await flutterTts.speak(text);
+        return;
+      }
+
       final response = await http.post(
-        Uri.parse('https://texttospeech.googleapis.com/v1/text:synthesize?key=$googleTtsApiKey'),
+        Uri.parse('https://texttospeech.googleapis.com/v1/text:synthesize?key=${AppConfig.googleTtsApiKey}'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'input': {'text': text},
-          'voice': {'languageCode': languageCode, 'name': languageCode == 'en-US' ? 'en-US-Wavenet-D' : 'he-IL-Wavenet-A'},
+          'voice': {
+            'languageCode': languageCode,
+            'name': languageCode == 'en-US' ? 'en-US-Wavenet-D' : 'he-IL-Wavenet-A'
+          },
           'audioConfig': {'audioEncoding': 'MP3'}
         }),
       );
@@ -152,7 +178,6 @@ class _MyHomePageState extends State<MyHomePage> {
         final body = jsonDecode(response.body);
         final audioBytes = base64Decode(body['audioContent']);
 
-        // Use just_audio to play the audio from memory
         await _audioPlayer.setAudioSource(BytesAudioSource(audioBytes));
         _audioPlayer.play();
       } else {
@@ -173,16 +198,16 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<void> _loadWordsFromCloudinary() async {
-    debugPrint("--- Starting to load words from Cloudinary... ---");
+  Future<void> _loadWords({required bool remoteEnabled}) async {
+    debugPrint('--- Loading lesson words (remoteEnabled=$remoteEnabled) ---');
     try {
-      final words = await _cloudinaryService.fetchWords(
-        cloudName: cloudinaryCloudName,
+      final words = await _wordRepository.loadWords(
+        remoteEnabled: remoteEnabled,
+        fallbackWords: widget.wordsForLevel,
+        cloudName: AppConfig.cloudinaryCloudName,
         tagName: 'english_kids_app',
         maxResults: 50,
       );
-
-      debugPrint('Fetched ${words.length} words from Cloudinary.');
 
       if (mounted) {
         setState(() {
@@ -190,7 +215,7 @@ class _MyHomePageState extends State<MyHomePage> {
         });
       }
     } catch (e) {
-      debugPrint("An exception occurred loading words: $e");
+      debugPrint('An exception occurred loading words: $e');
       if (mounted) {
         setState(() {
           _words = widget.wordsForLevel;
@@ -205,22 +230,31 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _takePictureAndIdentify() async {
-    // 1. Open the camera and let the user take a picture
+    if (!_aiFeaturesEnabled || _model == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('תכונת ה-AI כבויה. הוסף מפתחות API כדי להפעיל צילום חכם.'),
+          ),
+        );
+      }
+      return;
+    }
+
     final XFile? imageFile = await _picker.pickImage(source: ImageSource.camera);
 
     if (imageFile == null) {
-      // User canceled the camera
       return;
     }
 
     setState(() {
-      _feedbackText = "Analyzing your picture...";
+      _feedbackText = 'Analyzing your picture...';
     });
 
     try {
-      // 2. Prepare the image and prompt for Gemini
       final imageBytes = await imageFile.readAsBytes();
-      const prompt = "Identify the main, single object in this image. Respond with only the object's name in English, in singular form. For example: 'Apple', 'Car', 'Dog'. If you cannot identify a single clear object, respond with the word 'unclear'.";
+      const prompt =
+          "Identify the main, single object in this image. Respond with only the object's name in English, in singular form. For example: 'Apple', 'Car', 'Dog'. If you cannot identify a single clear object, respond with the word 'unclear'.";
 
       final content = [
         Content.multi([
@@ -229,37 +263,35 @@ class _MyHomePageState extends State<MyHomePage> {
         ])
       ];
 
-      // 3. Send to Gemini and get the response
-      final response = await _model.generateContent(content);
-      final identifiedWord = response.text?.trim() ?? "unclear";
+      final response = await _model!.generateContent(content);
+      final identifiedWord = response.text?.trim() ?? 'unclear';
 
-      debugPrint("Gemini identified: $identifiedWord");
+      debugPrint('Gemini identified: $identifiedWord');
 
-      // 4. Handle the response
       if (identifiedWord.toLowerCase() == 'unclear' || identifiedWord.contains(' ')) {
         setState(() {
           _feedbackText = "I couldn't see that clearly. Please try taking another picture.";
         });
         flutterTts.speak("I couldn't see that clearly. Please try again.");
       } else {
-        // 5. Save the image and add the new word to our list
         final newWord = await _saveImageAndCreateWordData(imageFile, identifiedWord);
         setState(() {
           _words.add(newWord);
-          _currentIndex = _words.length - 1; // Go to the new word
+          _currentIndex = _words.length - 1;
           _feedbackText = "Great! I see a ${newWord.word}. Let's learn it!";
         });
+        await _wordRepository.cacheWords(_words);
         Provider.of<AchievementService>(context, listen: false)
             .checkForAchievements(streak: _streak, wordAdded: true);
         flutterTts.speak("Great! I see a ${newWord.word}.");
       }
     } catch (e) {
-      debugPrint("Error identifying image: $e");
+      debugPrint('Error identifying image: $e');
       if (mounted) {
         setState(() {
           _feedbackText = "מצטער, משהו השתבש. אנא נסה שוב.";
         });
-        await _speak("Sorry, something went wrong. Please try again.", languageCode: "en-US");
+        await _speak('Sorry, something went wrong. Please try again.', languageCode: 'en-US');
       }
     }
   }
@@ -292,7 +324,12 @@ class _MyHomePageState extends State<MyHomePage> {
           "should this attempt be considered a good and acceptable try? "
           "Answer with only 'yes' or 'no'.";
 
-      final response = await _model.generateContent([Content.text(prompt)])
+        final model = _model;
+        if (model == null) {
+          return correctWord.toLowerCase() == recognizedWord.toLowerCase();
+        }
+
+        final response = await model.generateContent([Content.text(prompt)])
           .timeout(const Duration(seconds: 10));
       final answer = response.text?.trim().toLowerCase() ?? 'no';
 
@@ -314,7 +351,7 @@ class _MyHomePageState extends State<MyHomePage> {
     String feedback;
 
     // --- קריאה ל-Gemini כדי לבדוק את התשובה ---
-    final bool isCorrect = await _evaluateSpeechWithGemini(currentWordObject.word, recognizedWord);
+      final bool isCorrect = await _evaluateSpeechWithGemini(currentWordObject.word, recognizedWord);
 
     if (isCorrect) {
       _streak++;
@@ -478,16 +515,16 @@ class _MyHomePageState extends State<MyHomePage> {
                 icon: const Icon(Icons.image_search),
                 tooltip: 'משחק תמונות',
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ImageQuizGame()),
-                  );
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ImageQuizGame()),
+                    );
                 },
               ),
               IconButton(
                 icon: const Icon(Icons.camera_alt),
                 tooltip: 'הוסף מילה',
-                onPressed: _takePictureAndIdentify,
+                  onPressed: _aiFeaturesEnabled ? _takePictureAndIdentify : null,
               ),
               IconButton(
                 icon: const Icon(Icons.store),
@@ -501,8 +538,8 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: _takePictureAndIdentify,
+            floatingActionButton: FloatingActionButton.extended(
+              onPressed: _aiFeaturesEnabled ? _takePictureAndIdentify : null,
             label: const Text('הוסף מילה'),
             icon: const Icon(Icons.camera_alt),
           ),
@@ -517,15 +554,33 @@ class _MyHomePageState extends State<MyHomePage> {
                     totalWords: _words.length,
                     completedWords: _words.where((w) => w.isCompleted).length,
                   ),
-                  if (currentWordData != null)
-                    WordDisplayCard(
-                        wordData: currentWordData, cloudinary: cloudinary)
+                    if (currentWordData != null)
+                      WordDisplayCard(
+                        wordData: currentWordData,
+                        onPrevious: _previousWord,
+                        onNext: _nextWord,
+                      )
                   else
                     const SizedBox(height: 346,
                         child: Center(child: Text(
                             "אין עדיין מילים לתרגול. לחץ על המצלמה כדי להוסיף אחת חדשה!",
                             style: TextStyle(fontSize: 22)))),
-                  const SizedBox(height: 40),
+                    const SizedBox(height: 40),
+                    if (!_aiFeaturesEnabled)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade100,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.orange.shade300),
+                        ),
+                        child: const Text(
+                          'תכונות ה-AI כבויות כרגע. השתמשו באפליקציה גם ללא צילום חכם או הוסיפו מפתחות API כדי להפעיל אותן.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                      ),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
