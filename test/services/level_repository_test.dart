@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:english_learning_app/services/level_repository.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -6,6 +9,16 @@ class _FakeBundle extends CachingAssetBundle {
   _FakeBundle(this._responses);
 
   final Map<String, String> _responses;
+
+  @override
+  Future<ByteData> load(String key) async {
+    final value = _responses[key];
+    if (value == null) {
+      throw FlutterError('missing asset: $key');
+    }
+    final bytes = Uint8List.fromList(value.codeUnits);
+    return bytes.buffer.asByteData();
+  }
 
   @override
   Future<String> loadString(String key, {bool cache = true}) async {
