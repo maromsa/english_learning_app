@@ -16,7 +16,9 @@ class WordDisplayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String? imageUrl = wordData.imageUrl;
-    final bool isLocalFile = imageUrl != null && !imageUrl.startsWith('http');
+    final bool isAssetImage = imageUrl != null && imageUrl.startsWith('assets/');
+    final bool isLocalFile =
+        imageUrl != null && !imageUrl.startsWith('http') && !isAssetImage;
 
     return Card(
       elevation: 10,
@@ -31,7 +33,11 @@ class WordDisplayCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(20.0),
-                  child: _buildImage(imageUrl, isLocalFile),
+                  child: _buildImage(
+                    imageUrl,
+                    isLocalFile: isLocalFile,
+                    isAssetImage: isAssetImage,
+                  ),
                 ),
                 Positioned(
                   left: 0,
@@ -70,7 +76,11 @@ class WordDisplayCard extends StatelessWidget {
     );
   }
 
-  Widget _buildImage(String? imageUrl, bool isLocalFile) {
+  Widget _buildImage(
+    String? imageUrl, {
+    required bool isLocalFile,
+    required bool isAssetImage,
+  }) {
     if (imageUrl == null || imageUrl.isEmpty) {
       return _buildPlaceholder();
     }
@@ -78,20 +88,27 @@ class WordDisplayCard extends StatelessWidget {
     return SizedBox(
       width: 250,
       height: 250,
-      child: isLocalFile
-          ? Image.file(
-        File(imageUrl),
-        key: ValueKey(imageUrl),
-        fit: BoxFit.cover,
-        errorBuilder: _errorBuilder,
-      )
-          : Image.network(
-        imageUrl,
-        key: ValueKey(imageUrl),
-        fit: BoxFit.cover,
-        loadingBuilder: _loadingBuilder,
-        errorBuilder: _errorBuilder,
-      ),
+      child: isAssetImage
+          ? Image.asset(
+              imageUrl,
+              key: ValueKey(imageUrl),
+              fit: BoxFit.cover,
+              errorBuilder: _errorBuilder,
+            )
+          : isLocalFile
+              ? Image.file(
+                  File(imageUrl),
+                  key: ValueKey(imageUrl),
+                  fit: BoxFit.cover,
+                  errorBuilder: _errorBuilder,
+                )
+              : Image.network(
+                  imageUrl,
+                  key: ValueKey(imageUrl),
+                  fit: BoxFit.cover,
+                  loadingBuilder: _loadingBuilder,
+                  errorBuilder: _errorBuilder,
+                ),
     );
   }
 
