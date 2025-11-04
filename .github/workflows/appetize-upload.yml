@@ -13,6 +13,7 @@ jobs:
   build-and-upload:
     name: Build Android Debug APK and upload to Appetize
     runs-on: ubuntu-latest
+    if: ${{ secrets.APPETIZE_API_TOKEN != '' }}
     permissions:
       contents: read
 
