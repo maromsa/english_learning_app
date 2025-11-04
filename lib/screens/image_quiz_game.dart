@@ -5,19 +5,19 @@ import '../widgets/answer_button.dart';
 // רשימת שאלות (אפשר להוציא לקובץ נפרד, או API)
 final List<QuizItem> quizItems = [
   QuizItem(
-    imageAsset: 'assets/images/apple.png',
-    correctAnswer: 'Apple',
-    wrongAnswers: ['Banana', 'Car', 'Dog'],
+    imageAsset: 'assets/images/magic_hat.jpg',
+    correctAnswer: 'Magic Hat',
+    wrongAnswers: ['Super Shoes', 'Power Sword', 'Treasure Map'],
   ),
   QuizItem(
-    imageAsset: 'assets/images/dog.png',
-    correctAnswer: 'Dog',
-    wrongAnswers: ['Cat', 'Fish', 'Bird'],
+    imageAsset: 'assets/images/super_shoes.jpg',
+    correctAnswer: 'Super Shoes',
+    wrongAnswers: ['Magic Hat', 'Power Sword', 'Golden Trophy'],
   ),
   QuizItem(
-    imageAsset: 'assets/images/banana.png',
-    correctAnswer: 'Banana',
-    wrongAnswers: ['Apple', 'Car', 'Dog'],
+    imageAsset: 'assets/images/power_sword.jpg',
+    correctAnswer: 'Power Sword',
+    wrongAnswers: ['Magic Hat', 'Super Shoes', 'Magic Wand'],
   ),
 ];
 
