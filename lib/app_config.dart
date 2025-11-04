@@ -31,6 +31,8 @@ class AppConfig {
       String.fromEnvironment('CLOUDINARY_API_SECRET', defaultValue: '');
   static const String googleTtsApiKey =
       String.fromEnvironment('GOOGLE_TTS_API_KEY', defaultValue: '');
+  static const String aiImageValidationUrl =
+      String.fromEnvironment('AI_IMAGE_VALIDATION_URL', defaultValue: '');
 
   static bool get hasGemini => geminiApiKey.isNotEmpty;
   static bool get hasPixabay => pixabayApiKey.isNotEmpty;
@@ -40,10 +42,14 @@ class AppConfig {
       cloudinaryApiSecret.isNotEmpty;
   static bool get hasGoogleTts => googleTtsApiKey.isNotEmpty;
   static bool get hasFirebaseUserId => firebaseUserIdForUpload.isNotEmpty;
+  static bool get hasAiImageValidation => aiImageValidationUrl.isNotEmpty;
 
   static String? get cloudinaryUrl => hasCloudinary
       ? 'cloudinary://$cloudinaryApiKey:$cloudinaryApiSecret@$cloudinaryCloudName'
       : null;
+
+  static Uri? get aiImageValidationEndpoint =>
+      hasAiImageValidation ? Uri.tryParse(aiImageValidationUrl) : null;
 
   /// Provides a quick overview for debug logs/tests.
   static Map<String, bool> diagnostics() => {
@@ -52,6 +58,7 @@ class AppConfig {
         'cloudinary': hasCloudinary,
         'googleTts': hasGoogleTts,
         'firebaseUserId': hasFirebaseUserId,
+        'aiImageValidation': hasAiImageValidation,
       };
 
   /// Logs helpful hints when a required secret is missing.

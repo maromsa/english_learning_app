@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../models/quiz_item.dart';
 import '../providers/coin_provider.dart';
+import '../services/telemetry_service.dart';
 import '../widgets/answer_button.dart';
 
 // רשימת שאלות (אפשר להוציא לקובץ נפרד, או API)
@@ -62,6 +63,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
 
     final quizItem = quizItems[_currentIndex];
     final isCorrect = answer == quizItem.correctAnswer;
+    final telemetry = Provider.maybeOf<TelemetryService>(context, listen: false);
 
     int reward = 0;
     int newScore = _score;
@@ -87,6 +89,15 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       _score = newScore;
       _feedbackMessage = feedback;
     });
+
+    telemetry?.logQuizAnswered(
+      word: quizItem.correctAnswer,
+      correct: isCorrect,
+      reward: reward,
+      streak: newStreak,
+      questionIndex: _currentIndex,
+      hintUsed: _hintUsed,
+    );
   }
 
   void _nextQuestion() {
@@ -116,12 +127,19 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
     }
 
     final answerToRemove = wrongAnswers[_random.nextInt(wrongAnswers.length)];
+    final telemetry = Provider.maybeOf<TelemetryService>(context, listen: false);
+    final remainingOptions = _currentOptions.length - 1;
 
     setState(() {
       _currentOptions = List<String>.from(_currentOptions)..remove(answerToRemove);
       _hintUsed = true;
       _feedbackMessage = 'הסרתי תשובה אחת שלא מתאימה 😉';
     });
+
+    telemetry?.logHintUsed(
+      word: quizItem.correctAnswer,
+      optionsRemaining: remainingOptions,
+    );
   }
 
   Widget _buildScoreHeader(BuildContext context) {
