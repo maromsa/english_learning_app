@@ -63,7 +63,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
 
     final quizItem = quizItems[_currentIndex];
     final isCorrect = answer == quizItem.correctAnswer;
-    final telemetry = Provider.maybeOf<TelemetryService>(context, listen: false);
+    final telemetry = TelemetryService.maybeOf(context);
 
     int reward = 0;
     int newScore = _score;
@@ -127,7 +127,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
     }
 
     final answerToRemove = wrongAnswers[_random.nextInt(wrongAnswers.length)];
-    final telemetry = Provider.maybeOf<TelemetryService>(context, listen: false);
+    final telemetry = TelemetryService.maybeOf(context);
     final remainingOptions = _currentOptions.length - 1;
 
     setState(() {

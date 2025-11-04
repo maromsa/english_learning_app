@@ -34,7 +34,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_seen', true);
 
-    final telemetry = Provider.maybeOf<TelemetryService>(context, listen: false);
+    final telemetry = TelemetryService.maybeOf(context);
     final personalization = _latestPersonalization;
     telemetry?.logOnboardingCompleted(
       tipIds: personalization?.insights.map((tip) => tip.id).toList() ?? const <String>[],
@@ -58,7 +58,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
     _loggedTipImpression = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.maybeOf<TelemetryService>(context, listen: false)?.logOnboardingTipsShown(
+      TelemetryService.maybeOf(context)?.logOnboardingTipsShown(
         tipIds: personalization.insights.map((tip) => tip.id).toList(),
         appliedRules: personalization.appliedRules,
         returningLearner: personalization.isReturningLearner,

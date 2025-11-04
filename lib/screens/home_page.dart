@@ -69,7 +69,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _setupAchievementListener();
     _initializeServices();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final telemetry = Provider.maybeOf<TelemetryService>(context, listen: false);
+      final telemetry = TelemetryService.maybeOf(context);
       telemetry?.startScreenSession('home');
     });
   }
@@ -119,7 +119,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void dispose() {
-    Provider.maybeOf<TelemetryService>(context, listen: false)?.endScreenSession(
+    TelemetryService.maybeOf(context)?.endScreenSession(
       'home',
       extra: {
         'words_total': _words.length,
@@ -283,7 +283,7 @@ class _MyHomePageState extends State<MyHomePage> {
       return;
     }
 
-    final telemetry = Provider.maybeOf<TelemetryService>(context, listen: false);
+    final telemetry = TelemetryService.maybeOf(context);
 
     final XFile? imageFile = await _picker.pickImage(source: ImageSource.camera);
 

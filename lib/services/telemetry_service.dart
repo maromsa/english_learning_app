@@ -2,6 +2,8 @@ import 'dart:collection';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
 
 class TelemetryService {
   TelemetryService({FirebaseAnalytics? analytics, this.enableDebugLogging = kDebugMode})
@@ -15,6 +17,14 @@ class TelemetryService {
     try {
       return FirebaseAnalytics.instance;
     } catch (_) {
+      return null;
+    }
+  }
+
+  static TelemetryService? maybeOf(BuildContext context, {bool listen = false}) {
+    try {
+      return Provider.of<TelemetryService>(context, listen: listen);
+    } on ProviderNotFoundException {
       return null;
     }
   }
@@ -107,7 +117,7 @@ class TelemetryService {
   }
 
   Future<void> _logEvent(String name, Map<String, Object?> params) async {
-    final sanitized = <String, Object?>{};
+    final sanitized = <String, Object>{};
     params.forEach((key, value) {
       if (value == null) {
         return;
@@ -115,7 +125,7 @@ class TelemetryService {
       if (value is bool) {
         sanitized[key] = value ? 1 : 0;
       } else {
-        sanitized[key] = value;
+        sanitized[key] = value as Object;
       }
     });
 
