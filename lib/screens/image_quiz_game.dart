@@ -188,21 +188,23 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
             ),
             const SizedBox(height: 8),
             Expanded(
-              child: ListView.builder(
-                itemCount: _currentOptions.length,
-                itemBuilder: (context, index) {
-                  final answer = _currentOptions[index];
-                  return AnswerButton(
-                    key: ValueKey(answer),
-                    answer: answer,
-                    isSelected: _selectedAnswer == answer,
-                    isCorrect: answer == quizItem.correctAnswer,
-                    answered: _answered,
-                    onTap: () {
-                      _answerQuestion(answer);
-                    },
-                  );
-                },
+              child: SingleChildScrollView(
+                child: Column(
+                  children: _currentOptions
+                      .map(
+                        (answer) => AnswerButton(
+                          key: ValueKey(answer),
+                          answer: answer,
+                          isSelected: _selectedAnswer == answer,
+                          isCorrect: answer == quizItem.correctAnswer,
+                          answered: _answered,
+                          onTap: () {
+                            _answerQuestion(answer);
+                          },
+                        ),
+                      )
+                      .toList(),
+                ),
               ),
             ),
             const SizedBox(height: 12),
