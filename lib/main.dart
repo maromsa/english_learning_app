@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/map_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'services/telemetry_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,28 +28,30 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
   final bool hasSeenOnboarding = prefs.getBool('onboarding_seen') ?? false;
 
-  // Initialize providers with persistence
-  final coinProvider = CoinProvider();
-  final themeProvider = ThemeProvider();
-  final achievementService = AchievementService();
-  final shopProvider = ShopProvider();
+    // Initialize providers with persistence
+    final coinProvider = CoinProvider();
+    final themeProvider = ThemeProvider();
+    final achievementService = AchievementService();
+    final shopProvider = ShopProvider();
+    final telemetryService = TelemetryService();
 
-  // Load persisted data
-  await coinProvider.loadCoins();
-  await themeProvider.loadTheme();
-  await shopProvider.loadPurchasedItems();
+    // Load persisted data
+    await coinProvider.loadCoins();
+    await themeProvider.loadTheme();
+    await shopProvider.loadPurchasedItems();
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: coinProvider),
-        ChangeNotifierProvider.value(value: themeProvider),
-        ChangeNotifierProvider.value(value: achievementService),
-        ChangeNotifierProvider.value(value: shopProvider),
-      ],
-      child: MyApp(hasSeenOnboarding: hasSeenOnboarding),
-    ),
-  );
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: coinProvider),
+          ChangeNotifierProvider.value(value: themeProvider),
+          ChangeNotifierProvider.value(value: achievementService),
+          ChangeNotifierProvider.value(value: shopProvider),
+          Provider<TelemetryService>.value(value: telemetryService),
+        ],
+        child: MyApp(hasSeenOnboarding: hasSeenOnboarding),
+      ),
+    );
 }
 
 class MyApp extends StatelessWidget {

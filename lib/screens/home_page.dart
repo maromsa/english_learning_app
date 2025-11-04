@@ -8,6 +8,7 @@ import 'package:english_learning_app/screens/image_quiz_game.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
+import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
 import 'package:english_learning_app/widgets/action_button.dart';
@@ -46,6 +47,8 @@ class _MyHomePageState extends State<MyHomePage> {
   final ImagePicker _picker = ImagePicker();
   late final WordRepository _wordRepository;
   WebImageService? _webImageService;
+  AiImageValidator _cameraValidator = const PassthroughAiImageValidator();
+  HttpFunctionAiImageValidator? _httpImageValidator;
 
   bool _isLoading = true;
   List<WordData> _words = [];
@@ -65,6 +68,10 @@ class _MyHomePageState extends State<MyHomePage> {
     _words = widget.wordsForLevel;
     _setupAchievementListener();
     _initializeServices();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final telemetry = TelemetryService.maybeOf(context);
+      telemetry?.startScreenSession('home');
+    });
   }
 
   void _setupAchievementListener() {
@@ -112,11 +119,20 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void dispose() {
+    TelemetryService.maybeOf(context)?.endScreenSession(
+      'home',
+      extra: {
+        'words_total': _words.length,
+        'words_completed': _words.where((word) => word.isCompleted).length,
+        'streak': _streak,
+      },
+    );
     flutterTts.stop();
     _speechToText.stop();
     _confettiController.dispose();
     _audioPlayer.dispose();
     _achievementOverlay?.remove();
+    _httpImageValidator?.dispose();
     _webImageService?.dispose();
     super.dispose();
   }
@@ -126,6 +142,14 @@ class _MyHomePageState extends State<MyHomePage> {
     final bool geminiAvailable = AppConfig.hasGemini;
     final bool cloudinaryAvailable = AppConfig.hasCloudinary;
     final bool pixabayAvailable = AppConfig.hasPixabay;
+    final Uri? validationEndpoint = AppConfig.aiImageValidationEndpoint;
+
+    if (validationEndpoint != null) {
+      _httpImageValidator = HttpFunctionAiImageValidator(validationEndpoint);
+      _cameraValidator = _httpImageValidator!;
+    } else if (AppConfig.hasAiImageValidation) {
+      AppConfig.debugWarnIfMissing('AI image validation endpoint', false);
+    }
 
     if (geminiAvailable) {
       _model = GenerativeModel(
@@ -136,14 +160,14 @@ class _MyHomePageState extends State<MyHomePage> {
       AppConfig.debugWarnIfMissing('Gemini AI features', false);
     }
 
-    if (pixabayAvailable) {
-      final validator = _model != null
-          ? GeminiAiImageValidator(_model!)
-          : const PassthroughAiImageValidator();
+    if (_cameraValidator is PassthroughAiImageValidator && _model != null) {
+      _cameraValidator = GeminiAiImageValidator(_model!);
+    }
 
+    if (pixabayAvailable) {
       _webImageService = WebImageService(
         apiKey: AppConfig.pixabayApiKey,
-        imageValidator: validator,
+        imageValidator: _cameraValidator,
       );
     } else {
       AppConfig.debugWarnIfMissing('Pixabay image search', false);
@@ -259,6 +283,8 @@ class _MyHomePageState extends State<MyHomePage> {
       return;
     }
 
+    final telemetry = TelemetryService.maybeOf(context);
+
     final XFile? imageFile = await _picker.pickImage(source: ImageSource.camera);
 
     if (imageFile == null) {
@@ -287,11 +313,44 @@ class _MyHomePageState extends State<MyHomePage> {
       debugPrint('Gemini identified: $identifiedWord');
 
       if (identifiedWord.toLowerCase() == 'unclear' || identifiedWord.contains(' ')) {
+        telemetry?.logCameraValidation(
+          word: identifiedWord,
+          accepted: false,
+          validatorType: _cameraValidatorType,
+          confidence: null,
+        );
         setState(() {
           _feedbackText = "I couldn't see that clearly. Please try taking another picture.";
         });
         flutterTts.speak("I couldn't see that clearly. Please try again.");
       } else {
+        final bool validationPassed = await _cameraValidator.validate(
+          imageBytes,
+          identifiedWord,
+          mimeType: 'image/jpeg',
+        );
+        debugPrint('Camera validation for "$identifiedWord": $validationPassed');
+
+        if (!validationPassed) {
+          if (mounted) {
+            setState(() {
+              _feedbackText =
+                  "The photo doesn't quite look like a $identifiedWord yet. Try centering it and snapping again.";
+            });
+          }
+          telemetry?.logCameraValidation(
+            word: identifiedWord,
+            accepted: false,
+            validatorType: _cameraValidatorType,
+            confidence: _currentValidationConfidence(),
+          );
+          await _speak(
+            "Let's try again. Keep the $identifiedWord in the middle of the photo and take another shot.",
+            languageCode: 'en-US',
+          );
+          return;
+        }
+
         final newWord = await _saveImageAndCreateWordData(imageFile, identifiedWord);
         setState(() {
           _words.add(newWord);
@@ -302,6 +361,12 @@ class _MyHomePageState extends State<MyHomePage> {
         Provider.of<AchievementService>(context, listen: false)
             .checkForAchievements(streak: _streak, wordAdded: true);
         flutterTts.speak("Great! I see a ${newWord.word}.");
+        telemetry?.logCameraValidation(
+          word: identifiedWord,
+          accepted: true,
+          validatorType: _cameraValidatorType,
+          confidence: _currentValidationConfidence(),
+        );
       }
     } catch (e) {
       debugPrint('Error identifying image: $e');
@@ -701,6 +766,16 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   bool get _isLevelComplete => !_words.any((word) => !word.isCompleted);
+
+  String get _cameraValidatorType => _cameraValidator.runtimeType.toString();
+
+  double? _currentValidationConfidence() {
+    final validator = _cameraValidator;
+    if (validator is HttpFunctionAiImageValidator) {
+      return validator.lastConfidence;
+    }
+    return null;
+  }
 
 }
 
