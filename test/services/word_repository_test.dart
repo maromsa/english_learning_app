@@ -1,5 +1,6 @@
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/services/cloudinary_service.dart';
+import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,6 +22,19 @@ class _FakeCloudinaryService extends CloudinaryService {
       throw Exception('network error');
     }
     return _words;
+  }
+}
+
+class _StubWebImageProvider implements WebImageProvider {
+  _StubWebImageProvider(this._lookup);
+
+  final Map<String, String?> _lookup;
+  final List<String> requestedWords = <String>[];
+
+  @override
+  Future<String?> fetchImageForWord(String word) async {
+    requestedWords.add(word);
+    return _lookup[word];
   }
 }
 
@@ -74,6 +88,47 @@ void main() {
     );
 
     expect(secondLoad.map((w) => w.word), ['Dog', 'Cat']);
+  });
+
+  test('enriches asset fallback words with web images and stores them in cache', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final webProvider = _StubWebImageProvider({
+      'Apple': 'https://images.example/apple.jpg',
+      'Banana': null,
+    });
+
+    final repository = WordRepository(
+      prefs: prefs,
+      cloudinaryService: _FakeCloudinaryService(const []),
+      webImageProvider: webProvider,
+    );
+
+    final fallback = [
+      WordData(word: 'Apple', imageUrl: 'assets/images/words/apple.png'),
+      WordData(word: 'Banana', imageUrl: 'assets/images/words/banana.png'),
+      WordData(word: 'Cherry', imageUrl: 'https://example.com/cherry.jpg'),
+    ];
+
+    final words = await repository.loadWords(
+      remoteEnabled: false,
+      fallbackWords: fallback,
+    );
+
+    expect(words[0].imageUrl, 'https://images.example/apple.jpg');
+    expect(words[1].imageUrl, 'assets/images/words/banana.png');
+    expect(words[2].imageUrl, 'https://example.com/cherry.jpg');
+    expect(webProvider.requestedWords, equals(<String>['Apple', 'Banana']));
+
+    final cachedWords = await repository.loadWords(
+      remoteEnabled: false,
+      fallbackWords: const [],
+    );
+
+    expect(webProvider.requestedWords, equals(<String>['Apple', 'Banana']));
+    expect(
+      cachedWords.map((w) => w.imageUrl).toList(),
+      words.map((w) => w.imageUrl).toList(),
+    );
   });
 
   test('clearCache removes cached data', () async {

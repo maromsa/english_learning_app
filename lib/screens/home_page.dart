@@ -7,6 +7,8 @@ import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/screens/image_quiz_game.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
+import 'package:english_learning_app/services/ai_image_validator.dart';
+import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
 import 'package:english_learning_app/widgets/action_button.dart';
 import 'package:english_learning_app/widgets/achievement_notification.dart';
@@ -43,6 +45,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final SpeechToText _speechToText = SpeechToText();
   final ImagePicker _picker = ImagePicker();
   late final WordRepository _wordRepository;
+  WebImageService? _webImageService;
 
   bool _isLoading = true;
   List<WordData> _words = [];
@@ -114,6 +117,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _confettiController.dispose();
     _audioPlayer.dispose();
     _achievementOverlay?.remove();
+    _webImageService?.dispose();
     super.dispose();
   }
 
@@ -121,6 +125,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _initializeServices() async {
     final bool geminiAvailable = AppConfig.hasGemini;
     final bool cloudinaryAvailable = AppConfig.hasCloudinary;
+    final bool pixabayAvailable = AppConfig.hasPixabay;
 
     if (geminiAvailable) {
       _model = GenerativeModel(
@@ -131,6 +136,19 @@ class _MyHomePageState extends State<MyHomePage> {
       AppConfig.debugWarnIfMissing('Gemini AI features', false);
     }
 
+    if (pixabayAvailable) {
+      final validator = _model != null
+          ? GeminiAiImageValidator(_model!)
+          : const PassthroughAiImageValidator();
+
+      _webImageService = WebImageService(
+        apiKey: AppConfig.pixabayApiKey,
+        imageValidator: validator,
+      );
+    } else {
+      AppConfig.debugWarnIfMissing('Pixabay image search', false);
+    }
+
     flutterTts = FlutterTts();
     await _configureTts();
     _speechEnabled = await _speechToText.initialize();
@@ -139,7 +157,7 @@ class _MyHomePageState extends State<MyHomePage> {
       AppConfig.debugWarnIfMissing('Cloudinary word sync', false);
     }
 
-    _wordRepository = WordRepository();
+    _wordRepository = WordRepository(webImageProvider: _webImageService);
 
     await _loadWords(remoteEnabled: cloudinaryAvailable);
 
