@@ -39,12 +39,27 @@ class AchievementService with ChangeNotifier {
     }
   }
 
+  Achievement? _findAchievement(String id) {
+    for (final achievement in achievements) {
+      if (achievement.id == id) {
+        return achievement;
+      }
+    }
+    debugPrint('Requested achievement "$id" was not found.');
+    return null;
+  }
+
   bool isUnlocked(String id) {
-    return achievements.firstWhere((a) => a.id == id).isUnlocked;
+    final achievement = _findAchievement(id);
+    return achievement?.isUnlocked ?? false;
   }
 
   void unlockAchievement(String id) async {
-    final achievement = achievements.firstWhere((a) => a.id == id);
+    final achievement = _findAchievement(id);
+    if (achievement == null) {
+      return;
+    }
+
     if (!achievement.isUnlocked) {
       achievement.isUnlocked = true;
       await _saveAchievement(id, true);

@@ -1,6 +1,11 @@
+import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/screens/image_quiz_game.dart';
+import 'package:english_learning_app/widgets/answer_button.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -18,5 +23,64 @@ void main() {
       expect(options, contains(item.correctAnswer));
       expect(options.length, item.wrongAnswers.length + 1);
     }
+  });
+
+  testWidgets('awards coins and updates score after a correct answer', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final coinProvider = CoinProvider();
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<CoinProvider>.value(
+        value: coinProvider,
+        child: const MaterialApp(
+          home: ImageQuizGame(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final correctAnswerFinder = find.text(quizItems.first.correctAnswer);
+    expect(correctAnswerFinder, findsOneWidget);
+
+    await tester.tap(correctAnswerFinder);
+    await tester.pumpAndSettle();
+
+    expect(coinProvider.coins, greaterThanOrEqualTo(10));
+    expect(find.textContaining('כל הכבוד!'), findsOneWidget);
+
+    final nextButtonFinder = find.widgetWithText(ElevatedButton, 'שאלה הבאה');
+    expect(nextButtonFinder, findsOneWidget);
+    final ElevatedButton nextButton = tester.widget(nextButtonFinder);
+    expect(nextButton.onPressed, isNotNull);
+  });
+
+  testWidgets('hint removes one wrong answer per question', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final coinProvider = CoinProvider();
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<CoinProvider>.value(
+        value: coinProvider,
+        child: const MaterialApp(
+          home: ImageQuizGame(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AnswerButton), findsNWidgets(4));
+
+    await tester.tap(find.text('קבל רמז'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AnswerButton), findsNWidgets(3));
+    expect(find.text('רמז בשימוש'), findsOneWidget);
+
+    await tester.tap(find.text('רמז בשימוש'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AnswerButton), findsNWidgets(3));
   });
 }

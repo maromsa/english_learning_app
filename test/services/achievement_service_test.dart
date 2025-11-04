@@ -28,6 +28,10 @@ void main() {
       expect(achievementService.isUnlocked('first_correct'), false);
     });
 
+    test('isUnlocked should safely handle unknown ids', () {
+      expect(achievementService.isUnlocked('unknown_achievement'), false);
+    });
+
     test('unlockAchievement should unlock achievement', () async {
       // Create a fresh service instance
       SharedPreferences.setMockInitialValues({});
@@ -48,6 +52,13 @@ void main() {
       
       // Also verify via isUnlocked method
       expect(testService.isUnlocked('first_correct'), true);
+    });
+
+    test('unlockAchievement should ignore unknown ids without throwing', () {
+      expect(
+        () => achievementService.unlockAchievement('unknown_achievement'),
+        returnsNormally,
+      );
     });
 
     test('checkForAchievements should unlock first_correct', () {

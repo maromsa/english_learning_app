@@ -1,3 +1,5 @@
+import 'dart:math';
+
 // מודל לשאלה
 class QuizItem {
   final String imageAsset;
@@ -10,9 +12,9 @@ class QuizItem {
     required this.wrongAnswers,
   });
 
-  List<String> getShuffledAnswers() {
+  List<String> getShuffledAnswers({Random? random}) {
     final all = List<String>.from(wrongAnswers)..add(correctAnswer);
-    all.shuffle();
+    all.shuffle(random);
     return all;
   }
 }

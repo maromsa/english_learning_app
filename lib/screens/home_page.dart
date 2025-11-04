@@ -79,7 +79,14 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _showAchievementNotification(Achievement achievement) {
     final overlay = Overlay.of(context);
-    _achievementOverlay = OverlayEntry(
+    if (overlay == null) {
+      return;
+    }
+
+    _achievementOverlay?.remove();
+
+    late final OverlayEntry entry;
+    entry = OverlayEntry(
       builder: (context) => Positioned(
         top: 0,
         left: 0,
@@ -88,14 +95,17 @@ class _MyHomePageState extends State<MyHomePage> {
           child: AchievementNotification(
             achievement: achievement,
             onDismiss: () {
-              _achievementOverlay?.remove();
-              _achievementOverlay = null;
+              entry.remove();
+              if (_achievementOverlay == entry) {
+                _achievementOverlay = null;
+              }
             },
           ),
         ),
       ),
     );
-    overlay.insert(_achievementOverlay!);
+    _achievementOverlay = entry;
+    overlay.insert(entry);
   }
 
   @override
@@ -239,6 +249,8 @@ class _MyHomePageState extends State<MyHomePage> {
           _currentIndex = _words.length - 1; // Go to the new word
           _feedbackText = "Great! I see a ${newWord.word}. Let's learn it!";
         });
+        Provider.of<AchievementService>(context, listen: false)
+            .checkForAchievements(streak: _streak, wordAdded: true);
         flutterTts.speak("Great! I see a ${newWord.word}.");
       }
     } catch (e) {
