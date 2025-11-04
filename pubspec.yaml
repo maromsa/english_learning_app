@@ -58,5 +58,6 @@ flutter:
   assets:
     - assets/images/
     - assets/images/map/
+    - assets/images/words/
     - assets/data/levels.json
 
