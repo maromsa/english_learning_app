@@ -162,39 +162,46 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _loadWordsFromCloudinary() async {
     debugPrint("--- Starting to load words from Cloudinary... ---");
-
-    final auth = 'Basic ${base64Encode(utf8.encode('$cloudinaryApiKey:$cloudinaryApiSecret'))}';
-
-    final requestBody = jsonEncode({
-      'expression': 'tags=english_kids_app',
-      'with_field': 'tags',
-      'max_results': 50,
-    });
+    const tagName = 'english_kids_app';
+    final url = Uri.parse('https://res.cloudinary.com/$cloudinaryCloudName/image/list/$tagName.json');
     try {
-      final url = Uri.parse('https://api.cloudinary.com/v1_1/$cloudinaryCloudName/resources/search');
-      final response = await http.post(
-        url,
-        headers: {'Authorization': auth, 'Content-Type': 'application/json'},
-        body: requestBody,
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(url)
+          .timeout(const Duration(seconds: 10));
 
-      debugPrint("Cloudinary API response status: ${response.statusCode}");
+      debugPrint("Cloudinary list API response status: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final resources = data['resources'] as List<dynamic>? ?? [];
+        final resources = (data['resources'] as List<dynamic>? ?? [])
+            .take(50)
+            .toList();
         debugPrint("Successfully parsed response. Found ${resources.length} resources.");
 
         final loadedWords = <WordData>[];
         for (final resource in resources) {
-          final tags = List<String>.from(resource['tags'] ?? []);
-          final secureUrl = resource['secure_url'];
-          final wordTag = tags.firstWhere((tag) => tag != 'english_kids_app', orElse: () => '');
+          if (resource is! Map<String, dynamic>) {
+            continue;
+          }
 
-          if (wordTag.isNotEmpty && secureUrl != null) {
+          final tags = List<String>.from(resource['tags'] ?? []);
+          final secureUrl = resource['secure_url'] as String?;
+          final publicId = resource['public_id'] as String?;
+          final format = resource['format'] as String?;
+          final version = resource['version'];
+
+          final fallbackUrl = (publicId != null && format != null)
+              ? 'https://res.cloudinary.com/$cloudinaryCloudName/image/upload/v$version/$publicId.$format'
+              : null;
+          final wordTag = tags.firstWhere((tag) => tag != tagName, orElse: () => '');
+
+          final imageUrl = secureUrl ?? fallbackUrl;
+
+          if (wordTag.isNotEmpty && imageUrl != null) {
             loadedWords.add(WordData(
               word: wordTag[0].toUpperCase() + wordTag.substring(1),
-              imageUrl: secureUrl,
+              imageUrl: imageUrl,
+              publicId: publicId,
             ));
           }
         }
