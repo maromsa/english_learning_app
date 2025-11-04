@@ -4,15 +4,6 @@ import 'package:english_learning_app/services/daily_reward_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class _FixedRandom extends math.Random {
-  _FixedRandom(this.fixedValue);
-
-  final int fixedValue;
-
-  @override
-  int nextInt(int max) => max <= 0 ? 0 : math.min(fixedValue, max - 1);
-}
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -25,7 +16,7 @@ void main() {
       currentDate = DateTime(2024, 1, 1);
       service = DailyRewardService(
         now: () => currentDate,
-        random: _FixedRandom(0),
+        random: math.Random(0),
       );
     });
 
