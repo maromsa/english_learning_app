@@ -1,0 +1,146 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:http/http.dart' as http;
+
+import 'ai_image_validator.dart';
+
+/// Contract for fetching web images for a given word.
+abstract class WebImageProvider {
+  Future<String?> fetchImageForWord(String word);
+}
+
+class WebImageService implements WebImageProvider {
+  WebImageService({
+    required String apiKey,
+    AiImageValidator? imageValidator,
+    http.Client? httpClient,
+  })  : _apiKey = apiKey,
+        _httpClient = httpClient ?? http.Client(),
+        _ownsClient = httpClient == null,
+        _imageValidator = imageValidator;
+
+  static const Duration _requestTimeout = Duration(seconds: 8);
+  static const int _maxCandidates = 8;
+
+  final String _apiKey;
+  final http.Client _httpClient;
+  final bool _ownsClient;
+  final AiImageValidator? _imageValidator;
+
+  @override
+  Future<String?> fetchImageForWord(String word) async {
+    if (_apiKey.isEmpty) {
+      return null;
+    }
+
+    final candidates = await _searchPixabay(word);
+    if (candidates.isEmpty) {
+      return null;
+    }
+
+    for (final candidate in candidates) {
+      final imageUrl = _extractImageUrl(candidate);
+      if (imageUrl == null) {
+        continue;
+      }
+
+      if (_imageValidator == null) {
+        return imageUrl;
+      }
+
+      final downloaded = await _downloadImage(imageUrl);
+      if (downloaded == null) {
+        continue;
+      }
+
+      final matches = await _imageValidator!.validate(
+        downloaded.bytes,
+        word,
+        mimeType: downloaded.mimeType,
+      );
+
+      if (matches) {
+        return imageUrl;
+      }
+    }
+
+    return null;
+  }
+
+  void dispose() {
+    if (_ownsClient) {
+      _httpClient.close();
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _searchPixabay(String word) async {
+    final queryParameters = <String, String>{
+      'key': _apiKey,
+      'q': word,
+      'image_type': 'photo',
+      'orientation': 'horizontal',
+      'per_page': '$_maxCandidates',
+      'safesearch': 'true',
+    };
+
+    final uri = Uri.https('pixabay.com', '/api/', queryParameters);
+
+    try {
+      final response = await _httpClient.get(uri).timeout(_requestTimeout);
+      if (response.statusCode != 200) {
+        return const <Map<String, dynamic>>[];
+      }
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>?;
+      if (decoded == null) {
+        return const <Map<String, dynamic>>[];
+      }
+
+      final hits = decoded['hits'] as List<dynamic>?;
+      if (hits == null) {
+        return const <Map<String, dynamic>>[];
+      }
+
+      return hits.whereType<Map<String, dynamic>>().toList(growable: false);
+    } catch (_) {
+      return const <Map<String, dynamic>>[];
+    }
+  }
+
+  Future<_DownloadedImage?> _downloadImage(String url) async {
+    try {
+      final response = await _httpClient.get(Uri.parse(url)).timeout(_requestTimeout);
+      if (response.statusCode != 200) {
+        return null;
+      }
+
+      final contentTypeHeader = response.headers['content-type'];
+      final mimeType = contentTypeHeader?.split(';').first;
+
+      return _DownloadedImage(response.bodyBytes, mimeType);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _extractImageUrl(Map<String, dynamic> candidate) {
+    final url = candidate['webformatURL'] as String? ??
+        candidate['largeImageURL'] as String? ??
+        candidate['previewURL'] as String?;
+
+    if (url == null || url.isEmpty) {
+      return null;
+    }
+
+    return url;
+  }
+}
+
+class _DownloadedImage {
+  _DownloadedImage(this.bytes, this.mimeType);
+
+  final Uint8List bytes;
+  final String? mimeType;
+}

@@ -5,22 +5,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/word_data.dart';
 import 'cloudinary_service.dart';
+import 'web_image_service.dart';
 
 class WordRepository {
   WordRepository({
     SharedPreferences? prefs,
     CloudinaryService? cloudinaryService,
+    WebImageProvider? webImageProvider,
     Duration cacheDuration = const Duration(hours: 12),
   })  : _prefsFuture =
-            prefs != null ? Future.value(prefs) : SharedPreferences.getInstance(),
-        _cloudinaryService = cloudinaryService ?? CloudinaryService(),
-        _cacheDuration = cacheDuration;
+              prefs != null ? Future.value(prefs) : SharedPreferences.getInstance(),
+          _cloudinaryService = cloudinaryService ?? CloudinaryService(),
+          _webImageProvider = webImageProvider,
+          _cacheDuration = cacheDuration;
 
   static const String cacheKey = 'word_repository.cache.words';
   static const String cacheTimestampKey = 'word_repository.cache.timestamp';
 
   final Future<SharedPreferences> _prefsFuture;
   final CloudinaryService _cloudinaryService;
+  final WebImageProvider? _webImageProvider;
   final Duration _cacheDuration;
 
   Future<List<WordData>> loadWords({
@@ -63,7 +67,13 @@ class WordRepository {
       return cachedWords;
     }
 
-    return fallbackWords;
+    final enrichedFallback = await _maybeAddWebImages(fallbackWords);
+
+    if (enrichedFallback.isNotEmpty) {
+      await _saveCache(prefs, enrichedFallback);
+    }
+
+    return enrichedFallback;
   }
 
   Future<void> cacheWords(List<WordData> words) async {
@@ -94,5 +104,57 @@ class WordRepository {
     final jsonStr = jsonEncode(words.map((w) => w.toJson()).toList());
     await prefs.setString(cacheKey, jsonStr);
     await prefs.setInt(cacheTimestampKey, DateTime.now().millisecondsSinceEpoch);
+  }
+
+  Future<List<WordData>> _maybeAddWebImages(List<WordData> words) async {
+    final provider = _webImageProvider;
+    if (provider == null || words.isEmpty) {
+      return List<WordData>.from(words);
+    }
+
+    final List<WordData> results = [];
+
+    for (final word in words) {
+      if (_shouldSkipWebLookup(word)) {
+        results.add(word);
+        continue;
+      }
+
+      try {
+        final remoteUrl = await provider.fetchImageForWord(word.word);
+        if (remoteUrl == null) {
+          results.add(word);
+          continue;
+        }
+
+        results.add(
+          WordData(
+            word: word.word,
+            publicId: word.publicId,
+            imageUrl: remoteUrl,
+            isCompleted: word.isCompleted,
+            stickerUnlocked: word.stickerUnlocked,
+          ),
+        );
+      } catch (_) {
+        results.add(word);
+      }
+    }
+
+    return results;
+  }
+
+  bool _shouldSkipWebLookup(WordData word) {
+    final imageUrl = word.imageUrl;
+
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return false;
+    }
+
+    if (imageUrl.startsWith('assets/')) {
+      return false;
+    }
+
+    return true;
   }
 }
