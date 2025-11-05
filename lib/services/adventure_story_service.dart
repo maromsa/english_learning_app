@@ -165,7 +165,7 @@ Do not include markdown code fences around the JSON.''';
 }
 
 class AdventureStoryContext {
-  AdventureStoryContext({
+  const AdventureStoryContext({
     required this.levelName,
     required this.levelDescription,
     required this.vocabularyWords,
