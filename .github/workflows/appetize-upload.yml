@@ -81,34 +81,24 @@ jobs:
             exit 1
           fi
 
-          python_out=$(RESPONSE_FILE="$response_file" python3 <<'PY'
-import json
-import os
+          public_key=$(jq -r '.publicKey // empty' "$response_file")
+          app_url=$(jq -r '.appURL // empty' "$response_file")
 
-response_path = os.environ["RESPONSE_FILE"]
-with open(response_path, "r", encoding="utf-8") as f:
-    data = json.load(f)
-
-public_key = data.get("publicKey", "")
-app_url = data.get("appURL", "")
-
-if not public_key:
-    raise SystemExit("Missing public key in Appetize response")
-
-lines = [f"public_key={public_key}"]
-if app_url:
-    lines.append(f"app_url={app_url}")
-
-print("\n".join(lines))
-PY
-          )
-
-          eval "$python_out"
+          if [ -z "$public_key" ]; then
+            echo "::error::Missing public key in Appetize response"
+            cat "$response_file"
+            exit 1
+          fi
 
           rm -f "$response_file"
 
+          echo "public_key=$public_key"
+          if [ -n "$app_url" ]; then
+            echo "app_url=$app_url"
+          fi
+
           echo "public_key=$public_key" >> "$GITHUB_OUTPUT"
-          if [ -n "${app_url:-}" ]; then
+          if [ -n "$app_url" ]; then
             echo "app_url=$app_url" >> "$GITHUB_OUTPUT"
           fi
 
