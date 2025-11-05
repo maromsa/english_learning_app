@@ -121,17 +121,22 @@ class WordRepository {
       }
 
       try {
-        final remoteUrl = await provider.fetchImageForWord(word.word);
-        if (remoteUrl == null) {
+        final result = await provider.fetchImageForWord(
+          word.word,
+          searchHint: word.searchHint,
+        );
+
+        if (result == null) {
           results.add(word);
           continue;
         }
 
         results.add(
           WordData(
-            word: word.word,
+            word: result.inferredWord.isNotEmpty ? result.inferredWord : word.word,
+            searchHint: word.searchHint ?? word.word,
             publicId: word.publicId,
-            imageUrl: remoteUrl,
+            imageUrl: result.imageUrl,
             isCompleted: word.isCompleted,
             stickerUnlocked: word.stickerUnlocked,
           ),

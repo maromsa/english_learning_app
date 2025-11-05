@@ -8,7 +8,7 @@ import 'ai_image_validator.dart';
 
 /// Contract for fetching web images for a given word.
 abstract class WebImageProvider {
-  Future<String?> fetchImageForWord(String word);
+  Future<WebImageResult?> fetchImageForWord(String word, {String? searchHint});
 }
 
 class WebImageService implements WebImageProvider {
@@ -30,12 +30,17 @@ class WebImageService implements WebImageProvider {
   final AiImageValidator? _imageValidator;
 
   @override
-  Future<String?> fetchImageForWord(String word) async {
+  Future<WebImageResult?> fetchImageForWord(String word, {String? searchHint}) async {
     if (_apiKey.isEmpty) {
       return null;
     }
 
-    final candidates = await _searchPixabay(word);
+    final query = (searchHint ?? word).trim();
+    if (query.isEmpty) {
+      return null;
+    }
+
+    final candidates = await _searchPixabay(query);
     if (candidates.isEmpty) {
       return null;
     }
@@ -46,8 +51,10 @@ class WebImageService implements WebImageProvider {
         continue;
       }
 
+      final inferredWord = _extractLabel(candidate) ?? word;
+
       if (_imageValidator == null) {
-        return imageUrl;
+        return WebImageResult(imageUrl: imageUrl, inferredWord: inferredWord);
       }
 
       final downloaded = await _downloadImage(imageUrl);
@@ -57,12 +64,12 @@ class WebImageService implements WebImageProvider {
 
       final matches = await _imageValidator!.validate(
         downloaded.bytes,
-        word,
+        inferredWord,
         mimeType: downloaded.mimeType,
       );
 
       if (matches) {
-        return imageUrl;
+        return WebImageResult(imageUrl: imageUrl, inferredWord: inferredWord);
       }
     }
 
@@ -136,6 +143,35 @@ class WebImageService implements WebImageProvider {
 
     return url;
   }
+
+  String? _extractLabel(Map<String, dynamic> candidate) {
+    final tags = candidate['tags'] as String?;
+    if (tags == null || tags.isEmpty) {
+      return null;
+    }
+
+    final firstTag = tags.split(',').map((tag) => tag.trim()).firstWhere(
+          (tag) => tag.isNotEmpty,
+          orElse: () => '',
+        );
+
+    return firstTag.isEmpty ? null : _normalizeLabel(firstTag);
+  }
+
+  String _normalizeLabel(String label) {
+    final words = label
+        .split(RegExp(r'[\s_-]+'))
+        .where((part) => part.trim().isNotEmpty)
+        .map((part) {
+      final lowercase = part.toLowerCase();
+      if (lowercase.length <= 1) {
+        return lowercase.toUpperCase();
+      }
+      return lowercase[0].toUpperCase() + lowercase.substring(1);
+    }).toList();
+
+    return words.isEmpty ? label : words.join(' ');
+  }
 }
 
 class _DownloadedImage {
@@ -143,4 +179,11 @@ class _DownloadedImage {
 
   final Uint8List bytes;
   final String? mimeType;
+}
+
+class WebImageResult {
+  const WebImageResult({required this.imageUrl, required this.inferredWord});
+
+  final String imageUrl;
+  final String inferredWord;
 }

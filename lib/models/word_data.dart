@@ -1,6 +1,7 @@
 // lib/models/word_data.dart
 class WordData {
   final String word;
+  final String? searchHint;
   final String? publicId; // From Cloudinary
   final String? imageUrl; // For local files from camera
   bool isCompleted;
@@ -8,6 +9,7 @@ class WordData {
 
   WordData({
     required this.word,
+    this.searchHint,
     this.publicId,
     this.imageUrl,
     this.isCompleted = false,
@@ -20,8 +22,18 @@ class WordData {
       throw ArgumentError('WordData JSON is missing a "word" field: $json');
     }
 
+    final rawHint = json['searchHint'] as String?;
+    final rawQuery = json['query'] as String?;
+    final normalizedHint = rawHint?.trim();
+    final normalizedQuery = rawQuery?.trim();
+
     return WordData(
       word: word,
+      searchHint: normalizedHint != null && normalizedHint.isNotEmpty
+          ? normalizedHint
+          : normalizedQuery != null && normalizedQuery.isNotEmpty
+              ? normalizedQuery
+              : null,
       publicId: json['publicId'] as String?,
       imageUrl: json['imageUrl'] as String?,
       isCompleted: json['isCompleted'] as bool? ?? false,
@@ -31,6 +43,7 @@ class WordData {
 
   Map<String, dynamic> toJson() => {
         'word': word,
+        if (searchHint != null && searchHint!.isNotEmpty) 'searchHint': searchHint,
         if (publicId != null) 'publicId': publicId,
         if (imageUrl != null) 'imageUrl': imageUrl,
         'isCompleted': isCompleted,

@@ -23,11 +23,11 @@ class _FakeAiValidator implements AiImageValidator {
 }
 
 void main() {
-  test('returns the first validated image url', () async {
+  test('returns the first validated image result', () async {
     final client = MockClient((request) async {
       if (request.url.host == 'pixabay.com') {
         return http.Response(
-          '{"hits":[{"webformatURL":"https://cdn.pixabay.com/photo1.jpg"}]}',
+          '{"hits":[{"webformatURL":"https://cdn.pixabay.com/photo1.jpg","tags":"Apple, Fruit"}]}',
           200,
           headers: {'content-type': 'application/json'},
         );
@@ -51,10 +51,11 @@ void main() {
       httpClient: client,
     );
 
-    final url = await service.fetchImageForWord('apple');
+    final result = await service.fetchImageForWord('apple');
 
-    expect(url, 'https://cdn.pixabay.com/photo1.jpg');
-    expect(validator.validatedWords, equals(<String>['apple']));
+    expect(result?.imageUrl, 'https://cdn.pixabay.com/photo1.jpg');
+    expect(result?.inferredWord, 'Apple');
+    expect(validator.validatedWords, equals(<String>['Apple']));
 
     service.dispose();
   });
@@ -63,8 +64,8 @@ void main() {
     final client = MockClient((request) async {
       if (request.url.host == 'pixabay.com') {
         return http.Response(
-          '{"hits":[{"webformatURL":"https://cdn.pixabay.com/photo_bad.jpg"},'
-          '{"webformatURL":"https://cdn.pixabay.com/photo_good.jpg"}]}',
+          '{"hits":[{"webformatURL":"https://cdn.pixabay.com/photo_bad.jpg","tags":"Stone"},'
+          '{"webformatURL":"https://cdn.pixabay.com/photo_good.jpg","tags":"Banana"}]}',
           200,
           headers: {'content-type': 'application/json'},
         );
@@ -96,9 +97,10 @@ void main() {
       httpClient: client,
     );
 
-    final url = await service.fetchImageForWord('banana');
+    final result = await service.fetchImageForWord('banana');
 
-    expect(url, 'https://cdn.pixabay.com/photo_good.jpg');
+    expect(result?.imageUrl, 'https://cdn.pixabay.com/photo_good.jpg');
+    expect(result?.inferredWord, 'Banana');
     expect(validator.validationCount, 2);
 
     service.dispose();
@@ -113,9 +115,9 @@ void main() {
       httpClient: client,
     );
 
-    final url = await service.fetchImageForWord('cat');
+    final result = await service.fetchImageForWord('cat');
 
-    expect(url, isNull);
+    expect(result, isNull);
     expect(validator.validationCount, 0);
 
     service.dispose();
