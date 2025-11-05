@@ -12,6 +12,7 @@ travel map that unlocks levels as kids earn stars.
 
 - Dynamic world map loaded from assets with multi-stage progression and star requirements.
 - AI-assisted pronunciation feedback and optional smart camera word discovery powered by Gemini (when configured).
+- Spark's Adventure Lab generates custom story quests, challenges, and pep talks for any unlocked world using Gemini.
 - Daily reward streaks, in-app shop, and achievements with celebratory animations.
 - Offline-friendly word cache with fast startup even when Cloudinary is unreachable.
 - Settings screen to toggle dark mode, reset progress, and clear cached word packs.
