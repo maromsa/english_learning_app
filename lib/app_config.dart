@@ -15,6 +15,8 @@ class AppConfig {
 
   static const String geminiApiKey =
       String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+  static const String _enableGeminiStubFlag =
+      String.fromEnvironment('ENABLE_GEMINI_STUB', defaultValue: 'false');
   static const String pixabayApiKey =
       String.fromEnvironment('PIXABAY_API_KEY', defaultValue: '');
   static const String firebaseUserIdForUpload = String.fromEnvironment(
@@ -35,6 +37,7 @@ class AppConfig {
       String.fromEnvironment('AI_IMAGE_VALIDATION_URL', defaultValue: '');
 
   static bool get hasGemini => geminiApiKey.isNotEmpty;
+  static bool get hasGeminiStub => _parseBool(_enableGeminiStubFlag);
   static bool get hasPixabay => pixabayApiKey.isNotEmpty;
   static bool get hasCloudinary =>
       cloudinaryCloudName.isNotEmpty &&
@@ -54,6 +57,7 @@ class AppConfig {
   /// Provides a quick overview for debug logs/tests.
   static Map<String, bool> diagnostics() => {
         'gemini': hasGemini,
+        'geminiStub': hasGeminiStub,
         'pixabay': hasPixabay,
         'cloudinary': hasCloudinary,
         'googleTts': hasGoogleTts,
@@ -71,5 +75,10 @@ class AppConfig {
       }
       return true;
     }());
+  }
+
+  static bool _parseBool(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized == 'true' || normalized == '1' || normalized == 'yes';
   }
 }

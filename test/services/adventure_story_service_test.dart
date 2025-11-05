@@ -42,8 +42,19 @@ void main() {
       expect(story.title, 'Spark\'s Surprise Quest');
     });
 
+    test('uses stub story when enabled and Gemini is unavailable', () async {
+      final service = AdventureStoryService(enableStub: true);
+
+      final story = await service.generateAdventure(baseContext);
+
+      expect(story.title, contains('Fruits Fiesta'));
+      expect(story.scene, contains('Spark zooms into Fruits Fiesta'));
+      expect(story.vocabulary, equals(baseContext.vocabularyWords));
+      expect(story.prompt, 'stub');
+    });
+
     test('throws when generator is unavailable', () async {
-      final service = AdventureStoryService();
+      final service = AdventureStoryService(enableStub: false);
 
       expect(
         () => service.generateAdventure(baseContext),

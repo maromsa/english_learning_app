@@ -65,7 +65,8 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasGemini = AppConfig.hasGemini;
+    final sparkReady = AppConfig.hasGemini || AppConfig.hasGeminiStub;
+    final usingStub = !AppConfig.hasGemini && AppConfig.hasGeminiStub;
     final coins = context.watch<CoinProvider>().coins;
 
     return Scaffold(
@@ -96,9 +97,11 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        hasGemini
-                            ? 'Spark the Gemini mentor is ready to spin a quest just for you.'
-                            : 'Add a GEMINI_API_KEY via --dart-define to unlock Spark\'s quests.',
+                        sparkReady
+                            ? (usingStub
+                                ? 'Spark is running in offline story mode. Add a GEMINI_API_KEY for live adventures.'
+                                : 'Spark the Gemini mentor is ready to spin a quest just for you.')
+                            : 'Add a GEMINI_API_KEY or run with --dart-define=ENABLE_GEMINI_STUB=true to unlock Spark\'s quests.',
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 16),
@@ -111,7 +114,7 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
                       _buildStatsRow(coins: coins),
                       const SizedBox(height: 24),
                       FilledButton.icon(
-                        onPressed: hasGemini && !_isGenerating ? () => _generateAdventure(coins) : null,
+                        onPressed: sparkReady && !_isGenerating ? () => _generateAdventure(coins) : null,
                         icon: const Icon(Icons.auto_awesome),
                         label: Text(_isGenerating ? 'Summoning Spark...' : 'Create My Quest'),
                       ),

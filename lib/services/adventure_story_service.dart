@@ -8,17 +8,28 @@ import '../app_config.dart';
 typedef GeminiTextGenerator = Future<String?> Function(String prompt);
 
 class AdventureStoryService {
-  AdventureStoryService({GeminiTextGenerator? generator, Duration? timeout, GenerativeModel? model})
-      : _timeout = timeout ?? const Duration(seconds: 12),
-        _generator = generator ?? _inferGenerator(model);
+  AdventureStoryService({
+    GeminiTextGenerator? generator,
+    Duration? timeout,
+    GenerativeModel? model,
+    bool? enableStub,
+  })  : _timeout = timeout ?? const Duration(seconds: 12),
+        _generator = generator ?? _inferGenerator(model),
+        _allowStub = enableStub ?? AppConfig.hasGeminiStub;
 
   final GeminiTextGenerator? _generator;
   final Duration _timeout;
+  final bool _allowStub;
 
   Future<AdventureStory> generateAdventure(AdventureStoryContext context) async {
     final generator = _generator;
     if (generator == null) {
-      throw const AdventureStoryUnavailableException('Gemini API key is missing. Provide GEMINI_API_KEY via --dart-define.');
+      if (_allowStub) {
+        return _generateStubStory(context);
+      }
+      throw const AdventureStoryUnavailableException(
+        'Gemini API key is missing. Provide GEMINI_API_KEY via --dart-define or enable the offline stub.',
+      );
     }
 
     final prompt = _buildPrompt(context);
@@ -124,6 +135,32 @@ Do not include markdown code fences around the JSON.''';
       return trimmed.substring(3).replaceFirst(RegExp(r'^json\s*'), '');
     }
     return trimmed;
+  }
+
+  Future<AdventureStory> _generateStubStory(AdventureStoryContext context) async {
+    final words = List<String>.from(context.vocabularyWords);
+    final friendlyWords = words.isEmpty ? 'new English words' : words.join(', ');
+    final title = "Spark's ${context.levelName} Quest";
+    final playerName = context.playerName?.trim();
+    final player = (playerName != null && playerName.isNotEmpty) ? playerName : 'friend';
+
+    final scene =
+        'Spark zooms into ${context.levelName} with you, $player! Together you explore a ${context.mood} adventure where ${friendlyWords.toLowerCase()} twinkle in the air. Spark points out clues that help you practice each word with smiles and movement.';
+    final challenge =
+        'Say each vocabulary word with Spark, then act it out. Can you use one word in a sentence about ${context.levelName}?';
+    final encouragement =
+        'Brilliant energy! Spark loves how you keep trying. Let the stars you earned guide the next quest!';
+
+    return AdventureStory(
+      title: title,
+      scene: scene,
+      challenge: challenge,
+      encouragement: encouragement,
+      vocabulary: words,
+      rawText: scene,
+      prompt: 'stub',
+      parsedFromJson: true,
+    );
   }
 }
 
