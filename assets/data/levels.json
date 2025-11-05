@@ -6,14 +6,41 @@
       "description": "למדו מילים של פירות טעימים",
       "unlockStars": 0,
       "reward": 30,
-      "position": {"x": 0.6, "y": 0.85},
+      "position": {
+        "x": 0.6,
+        "y": 0.85
+      },
       "words": [
-        {"word": "Apple", "searchHint": "ripe red apple fruit"},
-        {"word": "Banana", "searchHint": "yellow banana fruit bunch"},
-        {"word": "Orange", "searchHint": "fresh orange citrus fruit"},
-        {"word": "Strawberry", "searchHint": "sweet strawberry fruit"},
-        {"word": "Pineapple", "searchHint": "pineapple tropical fruit"},
-        {"word": "Grapes", "searchHint": "grapes fruit bunch purple"}
+        {
+          "word": "Apple",
+          "searchHint": "ripe red apple fruit",
+          "imageUrl": "assets/images/words/apple.png"
+        },
+        {
+          "word": "Banana",
+          "searchHint": "yellow banana fruit bunch",
+          "imageUrl": "assets/images/words/banana.png"
+        },
+        {
+          "word": "Orange",
+          "searchHint": "fresh orange citrus fruit",
+          "imageUrl": "assets/images/words/orange.png"
+        },
+        {
+          "word": "Strawberry",
+          "searchHint": "sweet strawberry fruit",
+          "imageUrl": "assets/images/words/strawberry.png"
+        },
+        {
+          "word": "Pineapple",
+          "searchHint": "pineapple tropical fruit",
+          "imageUrl": "assets/images/words/pineapple.png"
+        },
+        {
+          "word": "Grapes",
+          "searchHint": "grapes fruit bunch purple",
+          "imageUrl": "assets/images/words/grapes.png"
+        }
       ]
     },
     {
@@ -22,14 +49,41 @@
       "description": "מי מתחבא בגן החיות?",
       "unlockStars": 3,
       "reward": 45,
-      "position": {"x": 0.2, "y": 0.68},
+      "position": {
+        "x": 0.2,
+        "y": 0.68
+      },
       "words": [
-        {"word": "Dog", "searchHint": "happy dog pet"},
-        {"word": "Cat", "searchHint": "curious cat kitty"},
-        {"word": "Elephant", "searchHint": "elephant safari animal"},
-        {"word": "Lion", "searchHint": "roaring lion wildlife"},
-        {"word": "Penguin", "searchHint": "penguin waddling arctic"},
-        {"word": "Monkey", "searchHint": "playful monkey jungle"}
+        {
+          "word": "Dog",
+          "searchHint": "happy dog pet",
+          "imageUrl": "assets/images/words/dog.png"
+        },
+        {
+          "word": "Cat",
+          "searchHint": "curious cat kitty",
+          "imageUrl": "assets/images/words/cat.png"
+        },
+        {
+          "word": "Elephant",
+          "searchHint": "elephant safari animal",
+          "imageUrl": "assets/images/words/elephant.png"
+        },
+        {
+          "word": "Lion",
+          "searchHint": "roaring lion wildlife",
+          "imageUrl": "assets/images/words/lion.png"
+        },
+        {
+          "word": "Penguin",
+          "searchHint": "penguin waddling arctic",
+          "imageUrl": "assets/images/words/penguin.png"
+        },
+        {
+          "word": "Monkey",
+          "searchHint": "playful monkey jungle",
+          "imageUrl": "assets/images/words/monkey.png"
+        }
       ]
     },
     {
@@ -38,14 +92,41 @@
       "description": "תלבשו את הפריט הנכון למשימה",
       "unlockStars": 7,
       "reward": 55,
-      "position": {"x": 0.74, "y": 0.46},
+      "position": {
+        "x": 0.74,
+        "y": 0.46
+      },
       "words": [
-        {"word": "Magic Hat", "searchHint": "wizard magic hat"},
-        {"word": "Crystal Ball", "searchHint": "glowing crystal ball magic"},
-        {"word": "Spell Book", "searchHint": "ancient spell book"},
-        {"word": "Magic Wand", "searchHint": "sparkling magic wand"},
-        {"word": "Potion", "searchHint": "magical potion bottle"},
-        {"word": "Flying Broom", "searchHint": "witch flying broomstick"}
+        {
+          "word": "Magic Hat",
+          "searchHint": "wizard magic hat",
+          "imageUrl": "assets/images/words/magic_hat.png"
+        },
+        {
+          "word": "Crystal Ball",
+          "searchHint": "glowing crystal ball magic",
+          "imageUrl": "assets/images/words/crystal_ball.png"
+        },
+        {
+          "word": "Spell Book",
+          "searchHint": "ancient spell book",
+          "imageUrl": "assets/images/words/spell_book.png"
+        },
+        {
+          "word": "Magic Wand",
+          "searchHint": "sparkling magic wand",
+          "imageUrl": "assets/images/words/magic_wand.png"
+        },
+        {
+          "word": "Potion",
+          "searchHint": "magical potion bottle",
+          "imageUrl": "assets/images/words/potion.png"
+        },
+        {
+          "word": "Flying Broom",
+          "searchHint": "witch flying broomstick",
+          "imageUrl": "assets/images/words/flying_broom.png"
+        }
       ]
     },
     {
@@ -54,14 +135,41 @@
       "description": "אספו פריטי כוח מיוחדים",
       "unlockStars": 11,
       "reward": 65,
-      "position": {"x": 0.32, "y": 0.32},
+      "position": {
+        "x": 0.32,
+        "y": 0.32
+      },
       "words": [
-        {"word": "Power Sword", "searchHint": "shining power sword"},
-        {"word": "Treasure Map", "searchHint": "ancient treasure map"},
-        {"word": "Hero Shield", "searchHint": "bright hero shield"},
-        {"word": "Energy Gauntlet", "searchHint": "futuristic energy gauntlet"},
-        {"word": "Magic Amulet", "searchHint": "glowing magic amulet"},
-        {"word": "Dragon Armor", "searchHint": "dragon scale armor"}
+        {
+          "word": "Power Sword",
+          "searchHint": "shining power sword",
+          "imageUrl": "assets/images/words/power_sword.png"
+        },
+        {
+          "word": "Treasure Map",
+          "searchHint": "ancient treasure map",
+          "imageUrl": "assets/images/words/treasure_map.png"
+        },
+        {
+          "word": "Hero Shield",
+          "searchHint": "bright hero shield",
+          "imageUrl": "assets/images/words/hero_shield.png"
+        },
+        {
+          "word": "Energy Gauntlet",
+          "searchHint": "futuristic energy gauntlet",
+          "imageUrl": "assets/images/words/energy_gauntlet.png"
+        },
+        {
+          "word": "Magic Amulet",
+          "searchHint": "glowing magic amulet",
+          "imageUrl": "assets/images/words/magic_amulet.png"
+        },
+        {
+          "word": "Dragon Armor",
+          "searchHint": "dragon scale armor",
+          "imageUrl": "assets/images/words/dragon_armor.png"
+        }
       ]
     },
     {
@@ -70,14 +178,41 @@
       "description": "איזה כלי יביא אתכם להרפתקה הבאה?",
       "unlockStars": 15,
       "reward": 75,
-      "position": {"x": 0.15, "y": 0.18},
+      "position": {
+        "x": 0.15,
+        "y": 0.18
+      },
       "words": [
-        {"word": "Car", "searchHint": "red family car road"},
-        {"word": "Train", "searchHint": "passenger train railway"},
-        {"word": "Helicopter", "searchHint": "helicopter flying sky"},
-        {"word": "Submarine", "searchHint": "yellow submarine underwater"},
-        {"word": "Bicycle", "searchHint": "kid bicycle ride"},
-        {"word": "Hot Air Balloon", "searchHint": "colorful hot air balloon"}
+        {
+          "word": "Car",
+          "searchHint": "red family car road",
+          "imageUrl": "assets/images/words/car.png"
+        },
+        {
+          "word": "Train",
+          "searchHint": "passenger train railway",
+          "imageUrl": "assets/images/words/train.png"
+        },
+        {
+          "word": "Helicopter",
+          "searchHint": "helicopter flying sky",
+          "imageUrl": "assets/images/words/helicopter.png"
+        },
+        {
+          "word": "Submarine",
+          "searchHint": "yellow submarine underwater",
+          "imageUrl": "assets/images/words/submarine.png"
+        },
+        {
+          "word": "Bicycle",
+          "searchHint": "kid bicycle ride",
+          "imageUrl": "assets/images/words/bicycle.png"
+        },
+        {
+          "word": "Hot Air Balloon",
+          "searchHint": "colorful hot air balloon",
+          "imageUrl": "assets/images/words/hot_air_balloon.png"
+        }
       ]
     },
     {
@@ -86,14 +221,41 @@
       "description": "צאו למסע בין הכוכבים",
       "unlockStars": 20,
       "reward": 90,
-      "position": {"x": 0.85, "y": 0.18},
+      "position": {
+        "x": 0.85,
+        "y": 0.18
+      },
       "words": [
-        {"word": "Astronaut", "searchHint": "astronaut space suit"},
-        {"word": "Rocket", "searchHint": "rocket launch space"},
-        {"word": "Moon", "searchHint": "full moon night sky"},
-        {"word": "Space Station", "searchHint": "international space station"},
-        {"word": "Satellite", "searchHint": "satellite orbit earth"},
-        {"word": "Mars Rover", "searchHint": "mars rover exploration"}
+        {
+          "word": "Astronaut",
+          "searchHint": "astronaut space suit",
+          "imageUrl": "assets/images/words/astronaut.png"
+        },
+        {
+          "word": "Rocket",
+          "searchHint": "rocket launch space",
+          "imageUrl": "assets/images/words/rocket.png"
+        },
+        {
+          "word": "Moon",
+          "searchHint": "full moon night sky",
+          "imageUrl": "assets/images/words/moon.png"
+        },
+        {
+          "word": "Space Station",
+          "searchHint": "international space station",
+          "imageUrl": "assets/images/words/space_station.png"
+        },
+        {
+          "word": "Satellite",
+          "searchHint": "satellite orbit earth",
+          "imageUrl": "assets/images/words/satellite.png"
+        },
+        {
+          "word": "Mars Rover",
+          "searchHint": "mars rover exploration",
+          "imageUrl": "assets/images/words/mars_rover.png"
+        }
       ]
     }
   ]
