@@ -29,8 +29,15 @@ import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title, required this.wordsForLevel});
+  const MyHomePage({
+    super.key,
+    required this.title,
+    required this.levelId,
+    required this.wordsForLevel,
+  });
+
   final String title;
+  final String levelId;
   final List<WordData> wordsForLevel;
 
   @override
@@ -249,6 +256,7 @@ class _MyHomePageState extends State<MyHomePage> {
         cloudName: AppConfig.cloudinaryCloudName,
         tagName: 'english_kids_app',
         maxResults: 50,
+        cacheNamespace: widget.levelId,
       );
 
       if (mounted) {
@@ -357,7 +365,10 @@ class _MyHomePageState extends State<MyHomePage> {
           _currentIndex = _words.length - 1;
           _feedbackText = "Great! I see a ${newWord.word}. Let's learn it!";
         });
-        await _wordRepository.cacheWords(_words);
+        await _wordRepository.cacheWords(
+          _words,
+          cacheNamespace: widget.levelId,
+        );
         Provider.of<AchievementService>(context, listen: false)
             .checkForAchievements(streak: _streak, wordAdded: true);
         flutterTts.speak("Great! I see a ${newWord.word}.");

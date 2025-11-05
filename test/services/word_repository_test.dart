@@ -95,7 +95,46 @@ void main() {
     expect(secondLoad.map((w) => w.word), ['Dog', 'Cat']);
   });
 
-    test('enriches fallback words with web images and stores them in cache', () async {
+  test('stores cached words per namespace', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final repository = WordRepository(
+      prefs: prefs,
+      cloudinaryService: _FakeCloudinaryService(const []),
+    );
+
+    final fruits = [WordData(word: 'Apple')];
+    final animals = [WordData(word: 'Dog')];
+
+    final fruitsFirst = await repository.loadWords(
+      remoteEnabled: false,
+      fallbackWords: fruits,
+      cacheNamespace: 'level_fruits',
+    );
+    expect(fruitsFirst.map((w) => w.word), ['Apple']);
+
+    final animalsFirst = await repository.loadWords(
+      remoteEnabled: false,
+      fallbackWords: animals,
+      cacheNamespace: 'level_animals',
+    );
+    expect(animalsFirst.map((w) => w.word), ['Dog']);
+
+    final fruitsReload = await repository.loadWords(
+      remoteEnabled: false,
+      fallbackWords: [WordData(word: 'Banana')],
+      cacheNamespace: 'level_fruits',
+    );
+    expect(fruitsReload.map((w) => w.word), ['Apple']);
+
+    final animalsReload = await repository.loadWords(
+      remoteEnabled: false,
+      fallbackWords: [WordData(word: 'Cat')],
+      cacheNamespace: 'level_animals',
+    );
+    expect(animalsReload.map((w) => w.word), ['Dog']);
+  });
+
+  test('enriches fallback words with web images and stores them in cache', () async {
     final prefs = await SharedPreferences.getInstance();
     final webProvider = _StubWebImageProvider({
       'ripe red apple fruit': const WebImageResult(
