@@ -271,6 +271,7 @@ class _MapScreenState extends State<MapScreen> {
       MaterialPageRoute(
         builder: (context) => MyHomePage(
           title: level.name,
+          levelId: level.id,
           wordsForLevel: level.words,
         ),
       ),

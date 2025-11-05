@@ -14,13 +14,15 @@ class WordRepository {
     WebImageProvider? webImageProvider,
     Duration cacheDuration = const Duration(hours: 12),
   })  : _prefsFuture =
-              prefs != null ? Future.value(prefs) : SharedPreferences.getInstance(),
-          _cloudinaryService = cloudinaryService ?? CloudinaryService(),
-          _webImageProvider = webImageProvider,
-          _cacheDuration = cacheDuration;
+                prefs != null ? Future.value(prefs) : SharedPreferences.getInstance(),
+            _cloudinaryService = cloudinaryService ?? CloudinaryService(),
+            _webImageProvider = webImageProvider,
+            _cacheDuration = cacheDuration;
 
-    static const String cacheKey = 'word_repository.cache.words.v2';
-    static const String cacheTimestampKey = 'word_repository.cache.timestamp.v2';
+  static const String cacheKey = 'word_repository.cache.words.v2';
+  static const String cacheTimestampKey = 'word_repository.cache.timestamp.v2';
+  static const String _defaultNamespace = 'default';
+  static const String _namespacedKeyPrefix = 'word_repository.cache';
 
   final Future<SharedPreferences> _prefsFuture;
   final CloudinaryService _cloudinaryService;
@@ -33,10 +35,13 @@ class WordRepository {
     String cloudName = '',
     String tagName = '',
     int maxResults = 50,
+    String cacheNamespace = _defaultNamespace,
   }) async {
     final prefs = await _prefsFuture;
-    final cachedJson = prefs.getString(cacheKey);
-    final cachedTimestamp = prefs.getInt(cacheTimestampKey);
+    final namespacedCacheKey = _cacheKey(cacheNamespace);
+    final namespacedTimestampKey = _cacheTimestampKey(cacheNamespace);
+    final cachedJson = prefs.getString(namespacedCacheKey);
+    final cachedTimestamp = prefs.getInt(namespacedTimestampKey);
     final now = DateTime.now();
 
     List<WordData>? cachedWords;
@@ -58,7 +63,7 @@ class WordRepository {
       );
 
       if (remoteWords.isNotEmpty) {
-        await _saveCache(prefs, remoteWords);
+        await _saveCache(prefs, remoteWords, cacheNamespace);
         return remoteWords;
       }
     }
@@ -70,21 +75,38 @@ class WordRepository {
     final enrichedFallback = await _maybeAddWebImages(fallbackWords);
 
     if (enrichedFallback.isNotEmpty) {
-      await _saveCache(prefs, enrichedFallback);
+      await _saveCache(prefs, enrichedFallback, cacheNamespace);
     }
 
     return enrichedFallback;
   }
 
-  Future<void> cacheWords(List<WordData> words) async {
+  Future<void> cacheWords(
+    List<WordData> words, {
+    String cacheNamespace = _defaultNamespace,
+  }) async {
     final prefs = await _prefsFuture;
-    await _saveCache(prefs, words);
+    await _saveCache(prefs, words, cacheNamespace);
   }
 
-  Future<void> clearCache() async {
+  Future<void> clearCache({String? cacheNamespace}) async {
     final prefs = await _prefsFuture;
-    await prefs.remove(cacheKey);
-    await prefs.remove(cacheTimestampKey);
+    if (cacheNamespace != null) {
+      await prefs.remove(_cacheKey(cacheNamespace));
+      await prefs.remove(_cacheTimestampKey(cacheNamespace));
+      return;
+    }
+
+    final keysToRemove = prefs.getKeys().where((key) {
+      return key == cacheKey ||
+          key == cacheTimestampKey ||
+          key.startsWith('$_namespacedKeyPrefix.words.') ||
+          key.startsWith('$_namespacedKeyPrefix.timestamp.');
+    }).toList();
+
+    for (final key in keysToRemove) {
+      await prefs.remove(key);
+    }
   }
 
   List<WordData>? _decodeWords(String jsonStr) {
@@ -100,10 +122,17 @@ class WordRepository {
     }
   }
 
-  Future<void> _saveCache(SharedPreferences prefs, List<WordData> words) async {
+  Future<void> _saveCache(
+    SharedPreferences prefs,
+    List<WordData> words,
+    String cacheNamespace,
+  ) async {
     final jsonStr = jsonEncode(words.map((w) => w.toJson()).toList());
-    await prefs.setString(cacheKey, jsonStr);
-    await prefs.setInt(cacheTimestampKey, DateTime.now().millisecondsSinceEpoch);
+    await prefs.setString(_cacheKey(cacheNamespace), jsonStr);
+    await prefs.setInt(
+      _cacheTimestampKey(cacheNamespace),
+      DateTime.now().millisecondsSinceEpoch,
+    );
   }
 
   Future<List<WordData>> _maybeAddWebImages(List<WordData> words) async {
@@ -161,5 +190,23 @@ class WordRepository {
     }
 
     return true;
+  }
+
+  static String _cacheKey(String namespace) {
+    if (namespace == _defaultNamespace) {
+      return cacheKey;
+    }
+    return '$_namespacedKeyPrefix.words.${_sanitizeNamespace(namespace)}.v2';
+  }
+
+  static String _cacheTimestampKey(String namespace) {
+    if (namespace == _defaultNamespace) {
+      return cacheTimestampKey;
+    }
+    return '$_namespacedKeyPrefix.timestamp.${_sanitizeNamespace(namespace)}.v2';
+  }
+
+  static String _sanitizeNamespace(String namespace) {
+    return namespace.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
   }
 }
