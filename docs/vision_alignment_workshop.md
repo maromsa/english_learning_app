@@ -39,6 +39,17 @@
 | 2:00 – 2:40 | MVP Scope & Guardrails | Product/Engineering | MVP pillars & out-of-scope list |
 | 2:40 – 3:00 | Next Steps & Owners | Product Lead | Action register & follow-ups |
 
+**Candidate Feature Themes for MVP Discussion**
+- **Onboarding & Personalization**: Adaptive onboarding quiz, AI-generated learning paths, profile-based daily goals.
+- **Core Gameplay Loop**: Map-based level progression, timed image quizzes, contextual hints, adaptive difficulty ramps.
+- **AI-Powered Validation**: Real-time user image assessment, feedback explanations, confidence scoring with retry guidance.
+- **Reward Economy**: Daily streak bonuses, coin rewards, unlockable power-ups (e.g., clue reveals, time extensions), shop inventory tied to progress.
+- **Social & Accountability**: Friend leaderboards, weekly challenges, shareable progress cards, opt-in study groups.
+- **Content Expansion**: Dynamic level packs, seasonal events, vocabulary expansions, educator-curated playlists.
+- **Engagement & Retention Hooks**: Push notifications for streak protection, in-app tips from AI coach, milestone celebrations.
+- **Analytics & Telemetry**: In-app feedback prompts, session recording toggles, funnel tracking for onboarding and core loops.
+- **Safety & Compliance**: Content moderation dashboard, parental controls, GDPR/CCPA consent flows.
+
 **Artifacts to Capture During Session**
 - Persona summaries with pains/gains and prioritized journeys.
 - Value proposition canvas highlighting AI-enabled advantages.
