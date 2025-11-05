@@ -88,6 +88,10 @@
 - AI capability overview (models, datasets, performance benchmarks, ethical considerations).
 - Existing user interviews or survey highlights.
 - Draft financial model and monetization experiments.
+- Persona drafts (`docs/templates/persona_template.md`).
+- Value proposition canvas per target segment (`docs/templates/value_prop_canvas.md`).
+- Risk register seeded ahead of session (`docs/templates/risk_register.md`).
+- Metrics tree skeleton (`docs/templates/metrics_tree_template.md`).
 
 **Post-Workshop Follow-Up**
 - Publish workshop notes and artifacts within 24 hours (owner: Product Lead).
