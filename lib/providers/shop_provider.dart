@@ -6,19 +6,19 @@ class ShopProvider with ChangeNotifier {
   final List<Product> _products = [
     Product(
       id: 'magic_hat',
-      name: 'Magic Hat',
+      name: 'כובע קסמים (Magic Hat)',
       price: 50,
       assetImagePath: 'assets/images/magic_hat.jpg',
     ),
     Product(
       id: 'super_shoes',
-      name: 'Super Shoes',
+      name: 'נעלי-על (Super Shoes)',
       price: 100,
       assetImagePath: 'assets/images/super_shoes.jpg',
     ),
     Product(
       id: 'power_sword',
-      name: 'Power Sword',
+      name: 'חרב כוח (Power Sword)',
       price: 200,
       assetImagePath: 'assets/images/power_sword.jpg',
     ),

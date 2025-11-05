@@ -5,6 +5,7 @@ import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -62,11 +63,21 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     return MaterialApp(
-      title: 'English Learning App',
+      title: 'מסע המילים באנגלית',
+      locale: const Locale('he', 'IL'),
+      supportedLocales: const [
+        Locale('he', 'IL'),
+        Locale('en', 'US'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue.shade100),
         useMaterial3: true,
-        textTheme: GoogleFonts.nunitoTextTheme(Theme.of(context).textTheme),
+        textTheme: GoogleFonts.assistantTextTheme(Theme.of(context).textTheme),
       ),
       darkTheme: ThemeData.dark(),
       themeMode: themeProvider.themeMode,

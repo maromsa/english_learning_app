@@ -10,6 +10,9 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_localizations:
+    sdk: flutter
+
   cached_network_image: ^3.3.1
   speech_to_text: ^7.1.0
 

@@ -61,7 +61,7 @@ class _MyHomePageState extends State<MyHomePage> {
   List<WordData> _words = [];
   int _currentIndex = 0;
   bool _isListening = false;
-  String _feedbackText = 'לחץ על המיקרופון כדי לדבר';
+    String _feedbackText = 'לחצו על המיקרופון כדי לדבר';
   String _recognizedWords = '';
   bool _speechEnabled = false;
   int _streak = 0;
@@ -233,17 +233,17 @@ class _MyHomePageState extends State<MyHomePage> {
         debugPrint("Google TTS Error: ${response.body}");
         if (mounted) {
           setState(() {
-            _feedbackText = "שגיאה בהשמעת הקול. אנא נסה שוב.";
+            _feedbackText = 'שגיאה בהשמעת הקול. אנא נסו שוב.';
           });
         }
       }
     } catch (e) {
       debugPrint("Error in _speak function: $e");
-      if (mounted) {
-        setState(() {
-          _feedbackText = "שגיאה בהשמעת הקול. אנא נסה שוב.";
-        });
-      }
+        if (mounted) {
+          setState(() {
+            _feedbackText = 'שגיאה בהשמעת הקול. אנא נסו שוב.';
+          });
+        }
     }
   }
 
@@ -300,7 +300,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     setState(() {
-      _feedbackText = 'Analyzing your picture...';
+      _feedbackText = 'מנתחים את התמונה שלכם...';
     });
 
     try {
@@ -320,73 +320,75 @@ class _MyHomePageState extends State<MyHomePage> {
 
       debugPrint('Gemini identified: $identifiedWord');
 
-      if (identifiedWord.toLowerCase() == 'unclear' || identifiedWord.contains(' ')) {
-        telemetry?.logCameraValidation(
-          word: identifiedWord,
-          accepted: false,
-          validatorType: _cameraValidatorType,
-          confidence: null,
-        );
-        setState(() {
-          _feedbackText = "I couldn't see that clearly. Please try taking another picture.";
-        });
-        flutterTts.speak("I couldn't see that clearly. Please try again.");
-      } else {
-        final bool validationPassed = await _cameraValidator.validate(
-          imageBytes,
-          identifiedWord,
-          mimeType: 'image/jpeg',
-        );
-        debugPrint('Camera validation for "$identifiedWord": $validationPassed');
-
-        if (!validationPassed) {
-          if (mounted) {
-            setState(() {
-              _feedbackText =
-                  "The photo doesn't quite look like a $identifiedWord yet. Try centering it and snapping again.";
-            });
-          }
+        if (identifiedWord.toLowerCase() == 'unclear' || identifiedWord.contains(' ')) {
           telemetry?.logCameraValidation(
             word: identifiedWord,
             accepted: false,
             validatorType: _cameraValidatorType,
+            confidence: null,
+          );
+          setState(() {
+            _feedbackText = 'לא הצלחתי לראות ברור. נסו לצלם מחדש.';
+          });
+          await _speak('לא ראיתי ברור. בואו ננסה שוב.', languageCode: 'he-IL');
+        } else {
+          final bool validationPassed = await _cameraValidator.validate(
+            imageBytes,
+            identifiedWord,
+            mimeType: 'image/jpeg',
+          );
+          debugPrint('Camera validation for "$identifiedWord": $validationPassed');
+
+          if (!validationPassed) {
+            if (mounted) {
+              setState(() {
+                _feedbackText =
+                    'התמונה עדיין לא נראית כמו $identifiedWord. נסו למקם את הפריט במרכז ולצלם שוב.';
+              });
+            }
+            telemetry?.logCameraValidation(
+              word: identifiedWord,
+              accepted: false,
+              validatorType: _cameraValidatorType,
+              confidence: _currentValidationConfidence(),
+            );
+            await _speak(
+              'בואו ננסה שוב. שמרו את $identifiedWord במרכז התמונה וצלמו עוד פעם.',
+              languageCode: 'he-IL',
+            );
+            return;
+          }
+
+          final newWord = await _saveImageAndCreateWordData(imageFile, identifiedWord);
+          setState(() {
+            _words.add(newWord);
+            _currentIndex = _words.length - 1;
+            _feedbackText = 'איזה יופי! אני רואה ${newWord.word}. בואו נלמד אותה יחד!';
+          });
+          await _wordRepository.cacheWords(
+            _words,
+            cacheNamespace: widget.levelId,
+          );
+          Provider.of<AchievementService>(context, listen: false)
+              .checkForAchievements(streak: _streak, wordAdded: true);
+          await _speak('מצוין! אני רואה ${newWord.word}.', languageCode: 'he-IL');
+          await flutterTts.setLanguage('en-US');
+          await flutterTts.speak(newWord.word);
+          telemetry?.logCameraValidation(
+            word: identifiedWord,
+            accepted: true,
+            validatorType: _cameraValidatorType,
             confidence: _currentValidationConfidence(),
           );
-          await _speak(
-            "Let's try again. Keep the $identifiedWord in the middle of the photo and take another shot.",
-            languageCode: 'en-US',
-          );
-          return;
         }
-
-        final newWord = await _saveImageAndCreateWordData(imageFile, identifiedWord);
-        setState(() {
-          _words.add(newWord);
-          _currentIndex = _words.length - 1;
-          _feedbackText = "Great! I see a ${newWord.word}. Let's learn it!";
-        });
-        await _wordRepository.cacheWords(
-          _words,
-          cacheNamespace: widget.levelId,
-        );
-        Provider.of<AchievementService>(context, listen: false)
-            .checkForAchievements(streak: _streak, wordAdded: true);
-        flutterTts.speak("Great! I see a ${newWord.word}.");
-        telemetry?.logCameraValidation(
-          word: identifiedWord,
-          accepted: true,
-          validatorType: _cameraValidatorType,
-          confidence: _currentValidationConfidence(),
-        );
-      }
     } catch (e) {
       debugPrint('Error identifying image: $e');
-      if (mounted) {
-        setState(() {
-          _feedbackText = "מצטער, משהו השתבש. אנא נסה שוב.";
-        });
-        await _speak('Sorry, something went wrong. Please try again.', languageCode: 'en-US');
-      }
+        if (mounted) {
+          setState(() {
+            _feedbackText = "מצטער, משהו השתבש. אנא נסו שוב.";
+          });
+          await _speak('אוי, משהו השתבש. נסו שוב.', languageCode: 'he-IL');
+        }
     }
   }
 
@@ -703,18 +705,20 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
 
                   const SizedBox(height: 20),
-                  SizedBox(
-                    height: 100,
-                    child: Text(
-                      _feedbackText.isEmpty
-                          ? "לחץ על המקרופון בשביל לדבר"
-                          : _feedbackText,
-                      style: const TextStyle(fontSize: 22,
+                    SizedBox(
+                      height: 100,
+                      child: Text(
+                        _feedbackText.isEmpty
+                            ? 'לחצו על המיקרופון כדי לדבר'
+                            : _feedbackText,
+                        style: const TextStyle(
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: Colors.purple),
-                      textAlign: TextAlign.center,
+                          color: Colors.purple,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
-                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: <Widget>[

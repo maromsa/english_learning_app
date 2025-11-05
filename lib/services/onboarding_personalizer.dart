@@ -56,9 +56,9 @@ class OnboardingPersonalizer {
         OnboardingInsight(
           id: 'daily_streak',
           icon: Icons.calendar_today,
-          title: 'Keep Your Daily Streak',
-          body:
-              'You are already on a $dailyStreak-day streak! Keep claiming daily rewards to boost your progress.',
+            title: 'שמרו על הרצף היומי',
+            body:
+                'אתם כבר ברצף של $dailyStreak ימים! אספו את המתנה היומית כדי להמשיך להתקדם.',
         ),
       );
       appliedRules.add('daily_streak');
@@ -69,9 +69,9 @@ class OnboardingPersonalizer {
         OnboardingInsight(
           id: 'coin_bank',
           icon: Icons.auto_awesome,
-          title: 'Spend Coins for Power-Ups',
-          body:
-              'You have $coins coins saved. Visit the shop to unlock gear that helps you master tougher words.',
+            title: 'נצלו מטבעות לשדרוגים',
+            body:
+                'צברתם $coins מטבעות. קפצו לחנות כדי לפתוח ציוד שיעזור לכם להתמודד עם מילים קשות יותר.',
         ),
       );
       appliedRules.add('coin_balance_high');
@@ -82,9 +82,9 @@ class OnboardingPersonalizer {
         OnboardingInsight(
           id: 'shop_collector',
           icon: Icons.style,
-          title: 'Customize Your Journey',
-          body:
-              'You already own ${purchasedItems.length} item(s). Pair new gear with daily challenges for faster learning.',
+            title: 'התאימו את המסע שלכם',
+            body:
+                'כבר רכשתם ${purchasedItems.length} פריטים. שלבו ציוד חדש עם אתגרים יומיים כדי ללמוד מהר יותר.',
         ),
       );
       appliedRules.add('shop_purchases');
@@ -92,12 +92,12 @@ class OnboardingPersonalizer {
 
     if (anyAchievements) {
       insights.add(
-        const OnboardingInsight(
+          const OnboardingInsight(
           id: 'achievement_hunter',
           icon: Icons.emoji_events,
-          title: 'Chase New Achievements',
-          body:
-              'Nice work unlocking achievements! Explore the map for new quests tailored to your skills.',
+            title: 'לכדו הישגים חדשים',
+            body:
+                'כל הכבוד על ההישגים! צאו למפת המסע וחפשו משימות חדשות שמתאימות לכישורים שלכם.',
         ),
       );
       appliedRules.add('achievements_unlocked');
@@ -109,34 +109,34 @@ class OnboardingPersonalizer {
         const OnboardingInsight(
           id: 'camera_intro',
           icon: Icons.lightbulb,
-          title: 'Snap Real-World Words',
-          body:
-              'Use the camera challenges to capture each word in your world. The app gives instant feedback to keep you on track.',
+            title: 'צלמו מילים מהעולם האמיתי',
+            body:
+                'השתמשו באתגרי המצלמה כדי לצלם מילים שאתם פוגשים סביבכם. האפליקציה תיתן לכם משוב מיידי ותכוון אתכם קדימה.',
         ),
         const OnboardingInsight(
           id: 'quiz_streak',
           icon: Icons.sports_martial_arts,
-          title: 'Build a Winning Streak',
-          body:
-              'Answer quiz questions in a row to grow your streak and earn bonus coins. Hints adapt based on how you play.',
+            title: 'בנו רצף מנצח',
+            body:
+                'ענו על שאלות החידון ברצף כדי לחזק את הרצף ולקבל בונוס מטבעות. הרמזים יתאימו את עצמם לקצב שלכם.',
         ),
         const OnboardingInsight(
           id: 'daily_reward',
           icon: Icons.card_giftcard,
-          title: 'Claim Daily Rewards',
-          body: 'Come back tomorrow to collect a daily bonus. Streaks unlock higher rewards and new challenges.',
+            title: 'אספו מתנות יומיות',
+            body: 'חזרו מחר כדי לקבל בונוס יומי. רצפים פותחים תגמולים גדולים יותר ואתגרים חדשים.',
         ),
       ]);
       appliedRules.add('brand_new_defaults');
     } else {
       // Ensure at least one forward-looking suggestion for returning users.
       insights.add(
-        const OnboardingInsight(
+          const OnboardingInsight(
           id: 'adaptive_levels',
           icon: Icons.explore,
-          title: 'Discover Adaptive Levels',
-          body:
-              'Levels unlock based on your progress. Play a mix of quizzes and camera challenges so the app can tailor what comes next.',
+            title: 'גלו שלבים שמתאימים אליכם',
+            body:
+                'שלבים נפתחים לפי ההתקדמות שלכם. שלבו חידונים ואתגרי מצלמה כדי שנוכל להתאים לכם את המשימה הבאה.',
         ),
       );
     }

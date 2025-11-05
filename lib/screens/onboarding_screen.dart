@@ -78,14 +78,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Welcome to the App!',
+                Text(
+                  'ברוכים הבאים למסע המילים!',
                 style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                'We gathered a few smart tips to get you learning faster.',
+                  'אספנו כמה טיפים שיעזרו לכם ללמוד באנגלית בקצב שמתאים לכם.',
                 style: theme.textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),
@@ -124,8 +124,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                icon: const Icon(Icons.rocket_launch),
-                label: const Text('Let’s Go'),
+                  icon: const Icon(Icons.rocket_launch),
+                  label: const Text('קדימה!'),
               ),
             ],
           ),
@@ -179,18 +179,18 @@ class _InsightFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: const [
-        SizedBox(height: 32),
-        _InsightCard(
-          insight: OnboardingInsight(
-            id: 'fallback_map',
-            icon: Icons.lightbulb,
-            title: 'Explore the Map',
-            body: 'Play through your first level to discover how rewards and quests adapt to you.',
+      return ListView(
+        children: const [
+          SizedBox(height: 32),
+          _InsightCard(
+            insight: OnboardingInsight(
+              id: 'fallback_map',
+              icon: Icons.lightbulb,
+              title: 'גלו את המפה',
+              body: 'שחקו בשלב הראשון ותראו איך המשימות והפרסים משתנים בשבילכם.',
+            ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
   }
 }
