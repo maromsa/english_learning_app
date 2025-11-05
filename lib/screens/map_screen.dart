@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/daily_reward_service.dart';
 import '../services/level_repository.dart';
+import 'ai_adventure_screen.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
 
@@ -316,6 +317,21 @@ class _MapScreenState extends State<MapScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+            IconButton(
+              icon: const Icon(Icons.auto_awesome),
+              tooltip: 'מסע קסם עם Spark',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AiAdventureScreen(
+                      levels: List<LevelData>.unmodifiable(levels),
+                      totalStars: _totalStars,
+                    ),
+                  ),
+                );
+              },
+            ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Row(
