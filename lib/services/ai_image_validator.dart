@@ -63,28 +63,36 @@ class GeminiAiImageValidator implements AiImageValidator {
 /// Calls an HTTP endpoint (e.g., Cloud Function) to validate image-word matches.
 class HttpFunctionAiImageValidator implements AiImageValidator {
   HttpFunctionAiImageValidator(
-    this._endpoint, {
+    this._validationEndpoint, {
     http.Client? client,
     Duration timeout = const Duration(seconds: 8),
-  })  : _client = client ?? http.Client(),
-        _ownsClient = client == null,
-        _timeout = timeout;
+    double minimumConfidence = 0.5,
+  })  : assert(minimumConfidence >= 0 && minimumConfidence <= 1,
+          'minimumConfidence must be between 0 and 1.'),
+          _httpClient = client ?? http.Client(),
+          _disposeClientOnClose = client == null,
+          _requestTimeout = timeout,
+          _minimumConfidence = minimumConfidence;
 
-  final Uri _endpoint;
-  final http.Client _client;
-  final bool _ownsClient;
-  final Duration _timeout;
+  final Uri _validationEndpoint;
+  final http.Client _httpClient;
+  final bool _disposeClientOnClose;
+  final Duration _requestTimeout;
+  final double _minimumConfidence;
   double? _lastConfidence;
+  bool? _lastApproval;
 
   double? get lastConfidence => _lastConfidence;
+  bool? get lastApproval => _lastApproval;
 
   @override
   Future<bool> validate(Uint8List imageBytes, String word, {String? mimeType}) async {
     try {
       _lastConfidence = null;
-      final response = await _client
+      _lastApproval = null;
+      final response = await _httpClient
           .post(
-            _endpoint,
+              _validationEndpoint,
             headers: const {'Content-Type': 'application/json'},
             body: jsonEncode({
               'word': word,
@@ -92,7 +100,7 @@ class HttpFunctionAiImageValidator implements AiImageValidator {
               'imageBase64': base64Encode(imageBytes),
             }),
           )
-          .timeout(_timeout);
+            .timeout(_requestTimeout);
 
       if (response.statusCode != 200) {
         return false;
@@ -103,27 +111,46 @@ class HttpFunctionAiImageValidator implements AiImageValidator {
         return false;
       }
 
-      final confidenceValue = decoded['confidence'];
-      if (confidenceValue is num) {
-        _lastConfidence = confidenceValue.toDouble();
+      final parsedConfidence = _parseConfidence(decoded['confidence']);
+      if (parsedConfidence != null) {
+        _lastConfidence = parsedConfidence;
       }
 
-      final approved = decoded['approved'] as bool?;
-      if (approved != null) {
+      final approved = decoded['approved'];
+      if (approved is bool) {
         _lastConfidence ??= approved ? 1.0 : 0.0;
+        _lastApproval = approved;
         return approved;
       }
 
       final confidence = _lastConfidence;
-      return confidence != null && confidence >= 0.5;
+      if (confidence != null) {
+        final isApproved = confidence >= _minimumConfidence;
+        _lastApproval = isApproved;
+        return isApproved;
+      }
+
+      return false;
     } catch (_) {
+      _lastConfidence = null;
+      _lastApproval = null;
       return false;
     }
   }
 
   void dispose() {
-    if (_ownsClient) {
-      _client.close();
+    if (_disposeClientOnClose) {
+      _httpClient.close();
     }
+  }
+
+  double? _parseConfidence(Object? value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    if (value is String) {
+      return double.tryParse(value);
+    }
+    return null;
   }
 }
