@@ -57,6 +57,38 @@
 - MVP definition sheet including must-have features, success criteria, dependencies, and out-of-scope decisions.
 - Risk & assumption log with validation plan.
 
+**Success Metrics Framework (Draft)**
+| Funnel Stage | North-Star Metric | Supporting Metrics | Instrumentation Status |
+| --- | --- | --- | --- |
+| Acquisition | New activated users / week | Install-to-onboard rate, CAC by channel | Verify Firebase attribution setup |
+| Activation | Onboarding completion rate | Time-to-complete onboarding, drop-off screen index | Map analytics events `onboarding_step_*` |
+| Engagement | Weekly active learners | Average sessions/week, quiz completion %, hint usage | Ensure session tracking + quiz events |
+| Retention | D30 retention | Streak adherence %, notification opt-in rate | Confirm push notification analytics |
+| Monetization | ARPDAU | Conversion to paid bundle, average order value | Validate in-app purchase reporting |
+
+**Assumption & Risk Starter List**
+- AI image validation accuracy meets user expectations across age segments (risk: false negatives erode trust).
+- Content sourcing can scale without IP/licensing issues (risk: legal exposure, delays).
+- Daily streak mechanic drives retention without fatigue (risk: push notifications ignored -> churn).
+- Cloud costs remain manageable with projected MAU growth (risk: margin pressure, require optimization).
+- Compliance review can be completed pre-launch for target geos (risk: delayed go-to-market).
+
+**Action Register Template**
+| Action | Owner | Due Date | Status | Notes |
+| --- | --- | --- | --- | --- |
+| Capture finalized personas | Design/UX | _TBD_ | Not started | Populate Figma board |
+| Audit AI model training data | Data/AI | _TBD_ | Not started | Confirm diversity coverage |
+| Draft MVP sprint plan | Product | _TBD_ | Not started | Align with engineering capacity |
+| Validate legal/compliance requirements | Compliance | _TBD_ | Not started | Schedule review with counsel |
+| Instrument metrics events | Engineering/Data | _TBD_ | Not started | Tie to analytics backlog |
+
+**Pre-Read Packet Checklist**
+- Current app usage dashboards (Firebase/Amplitude snapshots).
+- Competitive landscape summary (top 5 apps, differentiators, pricing).
+- AI capability overview (models, datasets, performance benchmarks, ethical considerations).
+- Existing user interviews or survey highlights.
+- Draft financial model and monetization experiments.
+
 **Post-Workshop Follow-Up**
 - Publish workshop notes and artifacts within 24 hours (owner: Product Lead).
 - Assign action items with deadlines in the project tracker (owner: PMO/Product Ops).
