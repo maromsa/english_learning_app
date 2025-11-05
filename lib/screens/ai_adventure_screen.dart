@@ -34,6 +34,13 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
     'silly comedian',
   ];
 
+  static const Map<String, String> _moodLabels = <String, String>{
+    'brave explorer': 'חוקר אמיץ',
+    'curious scientist': 'מדען סקרן',
+    'kind helper': 'עוזר טוב',
+    'silly comedian': 'ליצן מצחיק',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -51,7 +58,7 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
     }
     return LevelData(
       id: 'placeholder_world',
-      name: 'Starter World',
+      name: 'עולם ראשון',
       words: const <WordData>[],
       isUnlocked: true,
     );
@@ -71,7 +78,7 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Spark\'s Adventure Lab'),
+        title: const Text('מעבדת ההרפתקאות של ספרק'),
         backgroundColor: Colors.deepPurple.shade400,
       ),
       body: Container(
@@ -83,57 +90,56 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
           ),
         ),
         child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 620),
-              child: Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                elevation: 8,
-                color: Colors.white,
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        sparkReady
-                            ? (usingStub
-                                ? 'Spark is running in offline story mode. Add a GEMINI_API_KEY for live adventures.'
-                                : 'Spark the Gemini mentor is ready to spin a quest just for you.')
-                            : 'Add a GEMINI_API_KEY or run with --dart-define=ENABLE_GEMINI_STUB=true to unlock Spark\'s quests.',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildNameField(),
-                      const SizedBox(height: 16),
-                      _buildLevelPicker(),
-                      const SizedBox(height: 16),
-                      _buildMoodPicker(),
-                      const SizedBox(height: 16),
-                      _buildStatsRow(coins: coins),
-                      const SizedBox(height: 24),
-                      FilledButton.icon(
-                        onPressed: sparkReady && !_isGenerating ? () => _generateAdventure(coins) : null,
-                        icon: const Icon(Icons.auto_awesome),
-                        label: Text(_isGenerating ? 'Summoning Spark...' : 'Create My Quest'),
-                      ),
-                      const SizedBox(height: 16),
-                      if (_isGenerating)
-                        const Center(child: CircularProgressIndicator()),
-                      if (_error != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: Text(
-                            _error!,
-                            style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.w600),
-                          ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 620),
+                child: Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  elevation: 8,
+                  color: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          sparkReady
+                              ? (usingStub
+                                  ? 'ספרק פועל במצב סיפור ללא חיבור. הוסיפו GEMINI_API_KEY כדי לקבל הרפתקאות חיות.'
+                                  : 'ספרק, המנטור הקוסמי, מוכן לטוות הרפתקה מיוחדת בשבילכם!')
+                              : 'הוסיפו GEMINI_API_KEY או הפעילו --dart-define=ENABLE_GEMINI_STUB=true כדי לפתוח את מסעות ספרק.',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                         ),
-                      if (_story != null) _StoryView(story: _story!),
-                    ],
+                        const SizedBox(height: 16),
+                        _buildNameField(),
+                        const SizedBox(height: 16),
+                        _buildLevelPicker(),
+                        const SizedBox(height: 16),
+                        _buildMoodPicker(),
+                        const SizedBox(height: 16),
+                        _buildStatsRow(coins: coins),
+                        const SizedBox(height: 24),
+                        FilledButton.icon(
+                          onPressed: sparkReady && !_isGenerating ? () => _generateAdventure(coins) : null,
+                          icon: const Icon(Icons.auto_awesome),
+                          label: Text(_isGenerating ? 'ספרק בדרך...' : 'צרו לי משימה'),
+                        ),
+                        const SizedBox(height: 16),
+                        if (_isGenerating) const Center(child: CircularProgressIndicator()),
+                        if (_error != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Text(
+                              _error!,
+                              style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        if (_story != null) _StoryView(story: _story!),
+                      ],
+                    ),
                   ),
                 ),
-              ),
             ),
           ),
         ),
@@ -145,7 +151,7 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
     return TextField(
       controller: _nameController,
       decoration: const InputDecoration(
-        labelText: 'Player name (optional)',
+        labelText: 'שם המטייל/ת (לא חובה)',
         prefixIcon: Icon(Icons.person_outline),
         border: OutlineInputBorder(),
       ),
@@ -155,12 +161,12 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
 
   Widget _buildLevelPicker() {
     if (widget.levels.isEmpty) {
-      return const Text('No levels available yet. Start your journey from the map!');
+      return const Text('אין עדיין שלבים זמינים. התחילו את המסע מהמפה!');
     }
 
     return InputDecorator(
       decoration: const InputDecoration(
-        labelText: 'Choose a world',
+        labelText: 'בחרו עולם',
         border: OutlineInputBorder(),
       ),
       child: DropdownButtonHideUnderline(
@@ -198,17 +204,19 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
   Widget _buildMoodPicker() {
     return InputDecorator(
       decoration: const InputDecoration(
-        labelText: 'Pick a vibe',
+        labelText: 'איזה מצב רוח מתאים?',
         border: OutlineInputBorder(),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedMood,
           items: _moods
-              .map((mood) => DropdownMenuItem<String>(
-                    value: mood,
-                    child: Text(mood[0].toUpperCase() + mood.substring(1)),
-                  ))
+              .map(
+                (mood) => DropdownMenuItem<String>(
+                  value: mood,
+                  child: Text(_moodLabels[mood] ?? mood),
+                ),
+              )
               .toList(growable: false),
           onChanged: (value) {
             if (value != null) {
@@ -233,9 +241,9 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _StatChip(icon: Icons.monetization_on, label: 'Coins', value: coins.toString()),
-            _StatChip(icon: Icons.star_rate, label: 'Total stars', value: '${widget.totalStars}'),
-            _StatChip(icon: Icons.stars, label: 'Level stars', value: '${_selectedLevel.stars}'),
+            _StatChip(icon: Icons.monetization_on, label: 'מטבעות', value: coins.toString()),
+            _StatChip(icon: Icons.star_rate, label: 'סה"כ כוכבים', value: '${widget.totalStars}'),
+            _StatChip(icon: Icons.stars, label: 'כוכבים בשלב', value: '${_selectedLevel.stars}'),
           ],
         ),
       ),
@@ -251,7 +259,7 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
     final selected = _selectedLevel;
     final context = AdventureStoryContext(
       levelName: selected.name,
-      levelDescription: selected.description ?? 'A surprise level full of learning treasures.',
+        levelDescription: selected.description ?? 'שלב מפתיע מלא אוצרות למידה מרגשים.',
       vocabularyWords: selected.words.map((word) => word.word).take(6).toList(growable: false),
       levelStars: selected.stars,
       totalStars: widget.totalStars,
@@ -295,7 +303,7 @@ class _StoryView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            story.title.isEmpty ? 'Spark\'s Quest' : story.title,
+              story.title.isEmpty ? 'המשימה של ספרק' : story.title,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: Colors.deepPurple.shade700,
                   fontWeight: FontWeight.w700,
@@ -310,13 +318,13 @@ class _StoryView extends StatelessWidget {
           if (story.challenge.isNotEmpty)
             _StorySection(
               icon: Icons.flash_on,
-              label: 'Challenge',
+                label: 'אתגר',
               text: story.challenge,
             ),
           if (story.encouragement.isNotEmpty)
             _StorySection(
               icon: Icons.favorite,
-              label: 'Spark says',
+                label: 'ספרק אומר',
               text: story.encouragement,
             ),
           if (story.vocabulary.isNotEmpty)

@@ -13,7 +13,7 @@ class ShopScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Shop'),
+          title: const Text('חנות הקסמים'),
         actions: [
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -33,7 +33,7 @@ class ShopScreen extends StatelessWidget {
             child: ListTile(
               leading: Image.asset(product.assetImagePath, width: 50),
               title: Text(product.name),
-              subtitle: Text('${product.price} coins'),
+                subtitle: Text('${product.price} מטבעות'),
               trailing: isPurchased
                   ? const Icon(Icons.check, color: Colors.green)
                      : ElevatedButton(
