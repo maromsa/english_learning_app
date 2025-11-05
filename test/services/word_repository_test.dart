@@ -104,8 +104,8 @@ void main() {
     );
 
     final fallback = [
-      WordData(word: 'Apple', imageUrl: 'assets/images/words/apple.png'),
-      WordData(word: 'Banana', imageUrl: 'assets/images/words/banana.png'),
+      WordData(word: 'Apple', imageUrl: 'assets/images/words/apple.jpg'),
+      WordData(word: 'Banana', imageUrl: 'assets/images/words/banana.jpg'),
       WordData(word: 'Cherry', imageUrl: 'https://example.com/cherry.jpg'),
     ];
 
@@ -115,7 +115,7 @@ void main() {
     );
 
     expect(words[0].imageUrl, 'https://images.example/apple.jpg');
-    expect(words[1].imageUrl, 'assets/images/words/banana.png');
+    expect(words[1].imageUrl, 'assets/images/words/banana.jpg');
     expect(words[2].imageUrl, 'https://example.com/cherry.jpg');
     expect(webProvider.requestedWords, equals(<String>['Apple', 'Banana']));
 

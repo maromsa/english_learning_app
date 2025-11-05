@@ -19,8 +19,8 @@ class WordRepository {
           _webImageProvider = webImageProvider,
           _cacheDuration = cacheDuration;
 
-  static const String cacheKey = 'word_repository.cache.words';
-  static const String cacheTimestampKey = 'word_repository.cache.timestamp';
+    static const String cacheKey = 'word_repository.cache.words.v2';
+    static const String cacheTimestampKey = 'word_repository.cache.timestamp.v2';
 
   final Future<SharedPreferences> _prefsFuture;
   final CloudinaryService _cloudinaryService;
