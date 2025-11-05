@@ -8,44 +8,92 @@
       "reward": 30,
       "position": {"x": 0.6, "y": 0.85},
       "words": [
-        {"word": "Apple", "imageUrl": "assets/images/words/apple.jpg"},
-        {"word": "Banana", "imageUrl": "assets/images/words/banana.jpg"}
+        {"word": "Apple", "searchHint": "ripe red apple fruit"},
+        {"word": "Banana", "searchHint": "yellow banana fruit bunch"},
+        {"word": "Orange", "searchHint": "fresh orange citrus fruit"},
+        {"word": "Strawberry", "searchHint": "sweet strawberry fruit"},
+        {"word": "Pineapple", "searchHint": "pineapple tropical fruit"},
+        {"word": "Grapes", "searchHint": "grapes fruit bunch purple"}
       ]
     },
     {
       "id": "level_animals",
       "name": "שלב 2: חיות",
       "description": "מי מתחבא בגן החיות?",
-      "unlockStars": 2,
-      "reward": 40,
-      "position": {"x": 0.2, "y": 0.65},
+      "unlockStars": 3,
+      "reward": 45,
+      "position": {"x": 0.2, "y": 0.68},
       "words": [
-        {"word": "Dog", "imageUrl": "assets/images/words/dog.jpg"},
-        {"word": "Cat", "imageUrl": "assets/images/words/cat.jpg"}
+        {"word": "Dog", "searchHint": "happy dog pet"},
+        {"word": "Cat", "searchHint": "curious cat kitty"},
+        {"word": "Elephant", "searchHint": "elephant safari animal"},
+        {"word": "Lion", "searchHint": "roaring lion wildlife"},
+        {"word": "Penguin", "searchHint": "penguin waddling arctic"},
+        {"word": "Monkey", "searchHint": "playful monkey jungle"}
       ]
     },
     {
       "id": "level_magic_items",
       "name": "שלב 3: פריטי קסם",
       "description": "תלבשו את הפריט הנכון למשימה",
-      "unlockStars": 4,
-      "reward": 50,
-      "position": {"x": 0.7, "y": 0.45},
+      "unlockStars": 7,
+      "reward": 55,
+      "position": {"x": 0.74, "y": 0.46},
       "words": [
-        {"word": "Magic Hat", "imageUrl": "assets/images/magic_hat.jpg"},
-        {"word": "Super Shoes", "imageUrl": "assets/images/super_shoes.jpg"}
+        {"word": "Magic Hat", "searchHint": "wizard magic hat"},
+        {"word": "Crystal Ball", "searchHint": "glowing crystal ball magic"},
+        {"word": "Spell Book", "searchHint": "ancient spell book"},
+        {"word": "Magic Wand", "searchHint": "sparkling magic wand"},
+        {"word": "Potion", "searchHint": "magical potion bottle"},
+        {"word": "Flying Broom", "searchHint": "witch flying broomstick"}
       ]
     },
     {
       "id": "level_power_items",
       "name": "שלב 4: כוח מיוחד",
       "description": "אספו פריטי כוח מיוחדים",
-      "unlockStars": 6,
-      "reward": 60,
-      "position": {"x": 0.3, "y": 0.25},
+      "unlockStars": 11,
+      "reward": 65,
+      "position": {"x": 0.32, "y": 0.32},
       "words": [
-        {"word": "Power Sword", "imageUrl": "assets/images/power_sword.jpg"},
-        {"word": "Treasure Map", "imageUrl": "assets/images/map/map_background.jpg"}
+        {"word": "Power Sword", "searchHint": "shining power sword"},
+        {"word": "Treasure Map", "searchHint": "ancient treasure map"},
+        {"word": "Hero Shield", "searchHint": "bright hero shield"},
+        {"word": "Energy Gauntlet", "searchHint": "futuristic energy gauntlet"},
+        {"word": "Magic Amulet", "searchHint": "glowing magic amulet"},
+        {"word": "Dragon Armor", "searchHint": "dragon scale armor"}
+      ]
+    },
+    {
+      "id": "level_vehicles",
+      "name": "שלב 5: כלי תחבורה",
+      "description": "איזה כלי יביא אתכם להרפתקה הבאה?",
+      "unlockStars": 15,
+      "reward": 75,
+      "position": {"x": 0.15, "y": 0.18},
+      "words": [
+        {"word": "Car", "searchHint": "red family car road"},
+        {"word": "Train", "searchHint": "passenger train railway"},
+        {"word": "Helicopter", "searchHint": "helicopter flying sky"},
+        {"word": "Submarine", "searchHint": "yellow submarine underwater"},
+        {"word": "Bicycle", "searchHint": "kid bicycle ride"},
+        {"word": "Hot Air Balloon", "searchHint": "colorful hot air balloon"}
+      ]
+    },
+    {
+      "id": "level_space",
+      "name": "שלב 6: חקר החלל",
+      "description": "צאו למסע בין הכוכבים",
+      "unlockStars": 20,
+      "reward": 90,
+      "position": {"x": 0.85, "y": 0.18},
+      "words": [
+        {"word": "Astronaut", "searchHint": "astronaut space suit"},
+        {"word": "Rocket", "searchHint": "rocket launch space"},
+        {"word": "Moon", "searchHint": "full moon night sky"},
+        {"word": "Space Station", "searchHint": "international space station"},
+        {"word": "Satellite", "searchHint": "satellite orbit earth"},
+        {"word": "Mars Rover", "searchHint": "mars rover exploration"}
       ]
     }
   ]

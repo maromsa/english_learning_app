@@ -28,13 +28,18 @@ class _FakeCloudinaryService extends CloudinaryService {
 class _StubWebImageProvider implements WebImageProvider {
   _StubWebImageProvider(this._lookup);
 
-  final Map<String, String?> _lookup;
+  final Map<String, WebImageResult?> _lookup;
+  final List<String> requestedKeys = <String>[];
   final List<String> requestedWords = <String>[];
+  final List<String?> requestedHints = <String?>[];
 
   @override
-  Future<String?> fetchImageForWord(String word) async {
+  Future<WebImageResult?> fetchImageForWord(String word, {String? searchHint}) async {
+    final key = searchHint ?? word;
     requestedWords.add(word);
-    return _lookup[word];
+    requestedHints.add(searchHint);
+    requestedKeys.add(key);
+    return _lookup[key];
   }
 }
 
@@ -90,11 +95,14 @@ void main() {
     expect(secondLoad.map((w) => w.word), ['Dog', 'Cat']);
   });
 
-  test('enriches asset fallback words with web images and stores them in cache', () async {
+    test('enriches fallback words with web images and stores them in cache', () async {
     final prefs = await SharedPreferences.getInstance();
     final webProvider = _StubWebImageProvider({
-      'Apple': 'https://images.example/apple.jpg',
-      'Banana': null,
+      'ripe red apple fruit': const WebImageResult(
+        imageUrl: 'https://images.example/apple.jpg',
+        inferredWord: 'Apple',
+      ),
+      'yellow banana fruit bunch': null,
     });
 
     final repository = WordRepository(
@@ -104,8 +112,8 @@ void main() {
     );
 
     final fallback = [
-      WordData(word: 'Apple', imageUrl: 'assets/images/words/apple.jpg'),
-      WordData(word: 'Banana', imageUrl: 'assets/images/words/banana.jpg'),
+      WordData(word: 'Apple', searchHint: 'ripe red apple fruit'),
+      WordData(word: 'Banana', searchHint: 'yellow banana fruit bunch'),
       WordData(word: 'Cherry', imageUrl: 'https://example.com/cherry.jpg'),
     ];
 
@@ -114,17 +122,20 @@ void main() {
       fallbackWords: fallback,
     );
 
+    expect(words[0].word, 'Apple');
+    expect(words[0].searchHint, 'ripe red apple fruit');
     expect(words[0].imageUrl, 'https://images.example/apple.jpg');
-    expect(words[1].imageUrl, 'assets/images/words/banana.jpg');
+    expect(words[1].searchHint, 'yellow banana fruit bunch');
+    expect(words[1].imageUrl, null);
     expect(words[2].imageUrl, 'https://example.com/cherry.jpg');
-    expect(webProvider.requestedWords, equals(<String>['Apple', 'Banana']));
+    expect(webProvider.requestedKeys, equals(<String>['ripe red apple fruit', 'yellow banana fruit bunch']));
 
     final cachedWords = await repository.loadWords(
       remoteEnabled: false,
       fallbackWords: const [],
     );
 
-    expect(webProvider.requestedWords, equals(<String>['Apple', 'Banana']));
+    expect(webProvider.requestedKeys, equals(<String>['ripe red apple fruit', 'yellow banana fruit bunch']));
     expect(
       cachedWords.map((w) => w.imageUrl).toList(),
       words.map((w) => w.imageUrl).toList(),
