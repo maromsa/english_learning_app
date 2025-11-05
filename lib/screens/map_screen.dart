@@ -70,8 +70,8 @@ class _MapScreenState extends State<MapScreen> {
         positionY: 0.85,
         isUnlocked: true,
         words: [
-          WordData(word: 'Apple', imageUrl: 'assets/images/words/apple.png'),
-          WordData(word: 'Banana', imageUrl: 'assets/images/words/banana.png'),
+          WordData(word: 'Apple', imageUrl: 'assets/images/words/apple.jpg'),
+          WordData(word: 'Banana', imageUrl: 'assets/images/words/banana.jpg'),
         ],
       ),
       LevelData(
@@ -83,8 +83,8 @@ class _MapScreenState extends State<MapScreen> {
         positionX: 0.2,
         positionY: 0.65,
         words: [
-          WordData(word: 'Dog', imageUrl: 'assets/images/words/dog.png'),
-          WordData(word: 'Cat', imageUrl: 'assets/images/words/cat.png'),
+          WordData(word: 'Dog', imageUrl: 'assets/images/words/dog.jpg'),
+          WordData(word: 'Cat', imageUrl: 'assets/images/words/cat.jpg'),
         ],
       ),
     ];
