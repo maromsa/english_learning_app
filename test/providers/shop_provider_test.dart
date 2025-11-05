@@ -16,11 +16,11 @@ void main() {
       expect(shopProvider.products.length, 3);
     });
 
-    test('products should include Magic Hat', () {
+    test('products should include Magic Hat (Hebrew display)', () {
       final magicHat = shopProvider.products.firstWhere(
         (p) => p.id == 'magic_hat',
       );
-      expect(magicHat.name, 'Magic Hat');
+      expect(magicHat.name, 'כובע קסמים (Magic Hat)');
       expect(magicHat.price, 50);
     });
 

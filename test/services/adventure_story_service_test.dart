@@ -30,28 +30,28 @@ void main() {
       expect(story.parsedFromJson, isTrue);
     });
 
-    test('falls back to raw text when JSON parsing fails', () async {
-      final service = AdventureStoryService(
-        generator: (_) async => 'Let\'s imagine a floating fruit castle together!',
-      );
+      test('falls back to raw text when JSON parsing fails', () async {
+        final service = AdventureStoryService(
+          generator: (_) async => 'Let\'s imagine a floating fruit castle together!',
+        );
 
-      final story = await service.generateAdventure(baseContext);
+        final story = await service.generateAdventure(baseContext);
 
-      expect(story.scene, contains('fruit castle'));
-      expect(story.parsedFromJson, isFalse);
-      expect(story.title, 'Spark\'s Surprise Quest');
-    });
+        expect(story.scene, contains('fruit castle'));
+        expect(story.parsedFromJson, isFalse);
+        expect(story.title, 'הפתעת ספרק');
+      });
 
-    test('uses stub story when enabled and Gemini is unavailable', () async {
-      final service = AdventureStoryService(enableStub: true);
+      test('uses stub story when enabled and Gemini is unavailable', () async {
+        final service = AdventureStoryService(enableStub: true);
 
-      final story = await service.generateAdventure(baseContext);
+        final story = await service.generateAdventure(baseContext);
 
-      expect(story.title, contains('Fruits Fiesta'));
-      expect(story.scene, contains('Spark zooms into Fruits Fiesta'));
-      expect(story.vocabulary, equals(baseContext.vocabularyWords));
-      expect(story.prompt, 'stub');
-    });
+        expect(story.title, contains('Fruits Fiesta'));
+        expect(story.scene, contains('ספרק טס אל Fruits Fiesta'));
+        expect(story.vocabulary, equals(baseContext.vocabularyWords));
+        expect(story.prompt, 'stub');
+      });
 
     test('throws when generator is unavailable', () async {
       final service = AdventureStoryService(enableStub: false);
