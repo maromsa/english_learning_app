@@ -174,7 +174,6 @@ class WordRepository {
         results.add(word);
       }
     }
-
     return results;
   }
 
@@ -185,10 +184,8 @@ class WordRepository {
       return false;
     }
 
-    if (imageUrl.startsWith('assets/')) {
-      return false;
-    }
-
+    // When a word already has an associated image (asset, local file or cached
+    // download) we keep it instead of replacing it with a remote lookup.
     return true;
   }
 
