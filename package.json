@@ -1,0 +1,28 @@
+{
+  "name": "workspace",
+  "version": "1.0.0",
+  "description": "Gamified English-learning Flutter app with optional AI coaching and camera powered vocabulary building.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maromsa/english_learning_app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/maromsa/english_learning_app/issues"
+  },
+  "homepage": "https://github.com/maromsa/english_learning_app#readme",
+  "dependencies": {
+    "puppeteer": "^22.15.0"
+  }
+}

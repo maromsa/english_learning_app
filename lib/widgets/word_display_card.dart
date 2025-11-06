@@ -90,21 +90,30 @@ class WordDisplayCard extends StatelessWidget {
               imageUrl,
               key: ValueKey(imageUrl),
               fit: BoxFit.cover,
-              errorBuilder: _errorBuilder,
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint('Failed to load asset image "$imageUrl": $error');
+                  return _errorBuilder(context, error, stackTrace);
+                },
             )
           : isLocalFile
               ? Image.file(
                   File(imageUrl),
                   key: ValueKey(imageUrl),
                   fit: BoxFit.cover,
-                  errorBuilder: _errorBuilder,
+                    errorBuilder: (context, error, stackTrace) {
+                      debugPrint('Failed to load local image "$imageUrl": $error');
+                      return _errorBuilder(context, error, stackTrace);
+                    },
                 )
               : Image.network(
                   imageUrl,
                   key: ValueKey(imageUrl),
                   fit: BoxFit.cover,
                   loadingBuilder: _loadingBuilder,
-                  errorBuilder: _errorBuilder,
+                    errorBuilder: (context, error, stackTrace) {
+                      debugPrint('Failed to load network image "$imageUrl": $error');
+                      return _errorBuilder(context, error, stackTrace);
+                    },
                 ),
     );
   }
