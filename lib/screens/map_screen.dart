@@ -60,6 +60,14 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   List<LevelData> _fallbackLevels() {
+    WordData createWord(String word, String hint, String assetFileName) {
+      return WordData(
+        word: word,
+        searchHint: hint,
+        imageUrl: 'assets/images/words/$assetFileName',
+      );
+    }
+
     return [
       LevelData(
         id: 'fallback_fruits',
@@ -71,12 +79,12 @@ class _MapScreenState extends State<MapScreen> {
         positionY: 0.85,
         isUnlocked: true,
         words: [
-          WordData(word: 'Apple', searchHint: 'ripe red apple fruit'),
-          WordData(word: 'Banana', searchHint: 'yellow banana fruit bunch'),
-          WordData(word: 'Orange', searchHint: 'fresh orange citrus fruit'),
-          WordData(word: 'Strawberry', searchHint: 'sweet strawberry fruit'),
-          WordData(word: 'Pineapple', searchHint: 'pineapple tropical fruit'),
-          WordData(word: 'Grapes', searchHint: 'grapes fruit bunch purple'),
+          createWord('Apple', 'ripe red apple fruit', 'apple.png'),
+          createWord('Banana', 'yellow banana fruit bunch', 'banana.png'),
+          createWord('Orange', 'fresh orange citrus fruit', 'orange.png'),
+          createWord('Strawberry', 'sweet strawberry fruit', 'strawberry.png'),
+          createWord('Pineapple', 'pineapple tropical fruit', 'pineapple.png'),
+          createWord('Grapes', 'grapes fruit bunch purple', 'grapes.png'),
         ],
       ),
       LevelData(
@@ -88,12 +96,12 @@ class _MapScreenState extends State<MapScreen> {
         positionX: 0.2,
         positionY: 0.68,
         words: [
-          WordData(word: 'Dog', searchHint: 'happy dog pet'),
-          WordData(word: 'Cat', searchHint: 'curious cat kitty'),
-          WordData(word: 'Elephant', searchHint: 'elephant safari animal'),
-          WordData(word: 'Lion', searchHint: 'roaring lion wildlife'),
-          WordData(word: 'Penguin', searchHint: 'penguin waddling arctic'),
-          WordData(word: 'Monkey', searchHint: 'playful monkey jungle'),
+          createWord('Dog', 'happy dog pet', 'dog.png'),
+          createWord('Cat', 'curious cat kitty', 'cat.png'),
+          createWord('Elephant', 'elephant safari animal', 'elephant.png'),
+          createWord('Lion', 'roaring lion wildlife', 'lion.png'),
+          createWord('Penguin', 'penguin waddling arctic', 'penguin.png'),
+          createWord('Monkey', 'playful monkey jungle', 'monkey.png'),
         ],
       ),
       LevelData(
@@ -105,12 +113,12 @@ class _MapScreenState extends State<MapScreen> {
         positionX: 0.74,
         positionY: 0.46,
         words: [
-          WordData(word: 'Magic Hat', searchHint: 'wizard magic hat'),
-          WordData(word: 'Crystal Ball', searchHint: 'glowing crystal ball magic'),
-          WordData(word: 'Spell Book', searchHint: 'ancient spell book'),
-          WordData(word: 'Magic Wand', searchHint: 'sparkling magic wand'),
-          WordData(word: 'Potion', searchHint: 'magical potion bottle'),
-          WordData(word: 'Flying Broom', searchHint: 'witch flying broomstick'),
+          createWord('Magic Hat', 'wizard magic hat', 'magic_hat.png'),
+          createWord('Crystal Ball', 'glowing crystal ball magic', 'crystal_ball.png'),
+          createWord('Spell Book', 'ancient spell book', 'spell_book.png'),
+          createWord('Magic Wand', 'sparkling magic wand', 'magic_wand.png'),
+          createWord('Potion', 'magical potion bottle', 'potion.png'),
+          createWord('Flying Broom', 'witch flying broomstick', 'flying_broom.png'),
         ],
       ),
       LevelData(
@@ -122,12 +130,12 @@ class _MapScreenState extends State<MapScreen> {
         positionX: 0.32,
         positionY: 0.32,
         words: [
-          WordData(word: 'Power Sword', searchHint: 'shining power sword'),
-          WordData(word: 'Treasure Map', searchHint: 'ancient treasure map'),
-          WordData(word: 'Hero Shield', searchHint: 'bright hero shield'),
-          WordData(word: 'Energy Gauntlet', searchHint: 'futuristic energy gauntlet'),
-          WordData(word: 'Magic Amulet', searchHint: 'glowing magic amulet'),
-          WordData(word: 'Dragon Armor', searchHint: 'dragon scale armor'),
+          createWord('Power Sword', 'shining power sword', 'power_sword.png'),
+          createWord('Treasure Map', 'ancient treasure map', 'treasure_map.png'),
+          createWord('Hero Shield', 'bright hero shield', 'hero_shield.png'),
+          createWord('Energy Gauntlet', 'futuristic energy gauntlet', 'energy_gauntlet.png'),
+          createWord('Magic Amulet', 'glowing magic amulet', 'magic_amulet.png'),
+          createWord('Dragon Armor', 'dragon scale armor', 'dragon_armor.png'),
         ],
       ),
       LevelData(
@@ -139,12 +147,12 @@ class _MapScreenState extends State<MapScreen> {
         positionX: 0.15,
         positionY: 0.18,
         words: [
-          WordData(word: 'Car', searchHint: 'red family car road'),
-          WordData(word: 'Train', searchHint: 'passenger train railway'),
-          WordData(word: 'Helicopter', searchHint: 'helicopter flying sky'),
-          WordData(word: 'Submarine', searchHint: 'yellow submarine underwater'),
-          WordData(word: 'Bicycle', searchHint: 'kid bicycle ride'),
-          WordData(word: 'Hot Air Balloon', searchHint: 'colorful hot air balloon'),
+          createWord('Car', 'red family car road', 'car.png'),
+          createWord('Train', 'passenger train railway', 'train.png'),
+          createWord('Helicopter', 'helicopter flying sky', 'helicopter.png'),
+          createWord('Submarine', 'yellow submarine underwater', 'submarine.png'),
+          createWord('Bicycle', 'kid bicycle ride', 'bicycle.png'),
+          createWord('Hot Air Balloon', 'colorful hot air balloon', 'hot_air_balloon.png'),
         ],
       ),
       LevelData(
@@ -156,12 +164,12 @@ class _MapScreenState extends State<MapScreen> {
         positionX: 0.85,
         positionY: 0.18,
         words: [
-          WordData(word: 'Astronaut', searchHint: 'astronaut space suit'),
-          WordData(word: 'Rocket', searchHint: 'rocket launch space'),
-          WordData(word: 'Moon', searchHint: 'full moon night sky'),
-          WordData(word: 'Space Station', searchHint: 'international space station'),
-          WordData(word: 'Satellite', searchHint: 'satellite orbit earth'),
-          WordData(word: 'Mars Rover', searchHint: 'mars rover exploration'),
+          createWord('Astronaut', 'astronaut space suit', 'astronaut.png'),
+          createWord('Rocket', 'rocket launch space', 'rocket.png'),
+          createWord('Moon', 'full moon night sky', 'moon.png'),
+          createWord('Space Station', 'international space station', 'space_station.png'),
+          createWord('Satellite', 'satellite orbit earth', 'satellite.png'),
+          createWord('Mars Rover', 'mars rover exploration', 'mars_rover.png'),
         ],
       ),
     ];
