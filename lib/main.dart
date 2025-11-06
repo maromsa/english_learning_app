@@ -1,4 +1,5 @@
 import 'package:english_learning_app/firebase_options.dart';
+import 'package:english_learning_app/providers/auth_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/shop_provider.dart';
@@ -11,8 +12,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'screens/map_screen.dart';
-import 'screens/onboarding_screen.dart';
+import 'screens/auth_gate.dart';
 import 'services/telemetry_service.dart';
 
 Future<void> main() async {
@@ -52,6 +52,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: achievementService),
         ChangeNotifierProvider.value(value: shopProvider),
         ChangeNotifierProvider.value(value: dailyMissionProvider),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
         Provider<TelemetryService>.value(value: telemetryService),
       ],
       child: MyApp(hasSeenOnboarding: hasSeenOnboarding),
@@ -86,7 +87,7 @@ class MyApp extends StatelessWidget {
       darkTheme: ThemeData.dark(),
       themeMode: themeProvider.themeMode,
       debugShowCheckedModeBanner: false,
-      home: hasSeenOnboarding ? const MapScreen() : const OnboardingScreen(),
+      home: AuthGate(hasSeenOnboarding: hasSeenOnboarding),
     );
   }
 }
