@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
 import '../app_config.dart';
+import 'gemini_api_key_resolver.dart';
 
 typedef GeminiTextGenerator = Future<String?> Function(String prompt);
 
@@ -21,6 +22,12 @@ class AdventureStoryService {
   final GeminiTextGenerator? _generator;
   final Duration _timeout;
   final bool _allowStub;
+  static Future<GenerativeModel?>? _defaultModelFuture;
+  static const String _storySystemInstruction =
+      'You are Spark, a playful mentor guiding 5-8 year olds through English adventures. '
+      'Speak in simple, upbeat Hebrew so young native Hebrew speakers feel at home, '
+      'but keep every English vocabulary word exactly as provided. '
+      'Always respect the JSON schema instructions.';
 
   Future<AdventureStory> generateAdventure(AdventureStoryContext context) async {
     final generator = _generator;
@@ -56,21 +63,51 @@ class AdventureStoryService {
       return null;
     }
 
-    final model = providedModel ?? GenerativeModel(
-      model: 'gemini-1.5-flash',
-      apiKey: AppConfig.geminiApiKey,
-      systemInstruction: Content.text(
-          'You are Spark, a playful mentor guiding 5-8 year olds through English adventures. '
-          'Speak in simple, upbeat Hebrew so young native Hebrew speakers feel at home, '
-          'but keep every English vocabulary word exactly as provided. '
-          'Always respect the JSON schema instructions.',
-      ),
-    );
-
     return (prompt) async {
+      final GenerativeModel? model = providedModel ?? await _loadDefaultModel();
+      if (model == null) {
+        throw const AdventureStoryUnavailableException(
+          'לא הצלחנו לטעון את מפתח Gemini מהגדרות GitHub. ודאו שהסוד קיים ונגיש.',
+        );
+      }
+
       final response = await model.generateContent([Content.text(prompt)]);
       return response.text;
     };
+  }
+
+  static Future<GenerativeModel?> _loadDefaultModel() {
+    final pending = _defaultModelFuture;
+    if (pending != null) {
+      return pending;
+    }
+
+    final completer = Completer<GenerativeModel?>();
+    _defaultModelFuture = completer.future;
+
+    () async {
+      try {
+        final key = await GeminiApiKeyResolver.resolve();
+        if (key.isEmpty) {
+          _defaultModelFuture = null;
+          completer.complete(null);
+          return;
+        }
+
+        final model = GenerativeModel(
+          model: 'gemini-1.5-flash',
+          apiKey: key,
+          systemInstruction: Content.text(_storySystemInstruction),
+        );
+
+        completer.complete(model);
+      } catch (error, stackTrace) {
+        _defaultModelFuture = null;
+        completer.completeError(error, stackTrace);
+      }
+    }();
+
+    return completer.future;
   }
 
   String _buildPrompt(AdventureStoryContext context) {

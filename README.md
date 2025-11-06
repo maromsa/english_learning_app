@@ -32,6 +32,8 @@ helper exposes the values at runtime.
 | Dart define | Feature | Notes |
 | --- | --- | --- |
 | `GEMINI_API_KEY` | AI-powered pronunciation feedback & photo recognition | Optional. When missing the app gracefully falls back to manual play. |
+| `GITHUB_GEMINI_SECRET_URL` | Gemini key fallback from GitHub | Optional. Raw URL that returns only the Gemini API key (for example a private repository file or GitHub gist). |
+| `GITHUB_ACCESS_TOKEN` | Authorization for GitHub secret URL | Optional. Token used to authenticate when fetching `GITHUB_GEMINI_SECRET_URL`; omit for public files. |
 | `ENABLE_GEMINI_STUB` | Spark's Adventure Lab offline stub | Optional. Set to `true` in CI to serve deterministic stories without exposing a real Gemini key. |
 | `GOOGLE_TTS_API_KEY` | Server-quality Hebrew TTS | Optional. Falls back to on-device TTS if omitted. |
 | `PIXABAY_API_KEY` | Bulk word uploader scripts | Required for `dart run scripts/upload_words.dart`. |
@@ -60,6 +62,18 @@ flutter test \
 The app, widget tests, and web builds will still complete successfully, and the AI adventure screen shows offline copy suitable for demos.
 
 When you do need live Gemini features in CI, store the key as an encrypted secret (for example `GEMINI_API_KEY`) and pass it via `--dart-define=GEMINI_API_KEY=$GEMINI_API_KEY` so nothing is hard-coded in your configuration files.
+
+### Gemini key from GitHub
+
+If you prefer to keep the Gemini key inside GitHub, expose it through a file that returns only the secret string (for example, a private repository file or gist) and provide its raw URL via:
+
+```bash
+flutter run \
+  --dart-define=GITHUB_GEMINI_SECRET_URL=https://raw.githubusercontent.com/your-org/your-repo/main/.secrets/gemini.key \
+  --dart-define=GITHUB_ACCESS_TOKEN=$GITHUB_TOKEN
+```
+
+The app resolves the key at startup and reuses it for all Gemini requests. Skip `GITHUB_ACCESS_TOKEN` when the URL is publicly readable.
 
 Scripts can be executed in the same fashion, e.g.:
 

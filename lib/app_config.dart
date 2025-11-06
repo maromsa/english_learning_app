@@ -15,6 +15,10 @@ class AppConfig {
 
   static const String geminiApiKey =
       String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+  static const String githubGeminiSecretUrl =
+      String.fromEnvironment('GITHUB_GEMINI_SECRET_URL', defaultValue: '');
+  static const String githubAccessToken =
+      String.fromEnvironment('GITHUB_ACCESS_TOKEN', defaultValue: '');
   static const String _enableGeminiStubFlag =
       String.fromEnvironment('ENABLE_GEMINI_STUB', defaultValue: 'false');
   static const String pixabayApiKey =
@@ -36,7 +40,9 @@ class AppConfig {
   static const String aiImageValidationUrl =
       String.fromEnvironment('AI_IMAGE_VALIDATION_URL', defaultValue: '');
 
-  static bool get hasGemini => geminiApiKey.isNotEmpty;
+  static bool get hasGemini =>
+      geminiApiKey.isNotEmpty || hasGithubGeminiSecret;
+  static bool get hasGithubGeminiSecret => githubGeminiSecretUrl.isNotEmpty;
   static bool get hasGeminiStub => _parseBool(_enableGeminiStubFlag);
   static bool get hasPixabay => pixabayApiKey.isNotEmpty;
   static bool get hasCloudinary =>
@@ -58,6 +64,7 @@ class AppConfig {
   static Map<String, bool> diagnostics() => {
         'gemini': hasGemini,
         'geminiStub': hasGeminiStub,
+        'geminiGitHubSecret': hasGithubGeminiSecret,
         'pixabay': hasPixabay,
         'cloudinary': hasCloudinary,
         'googleTts': hasGoogleTts,

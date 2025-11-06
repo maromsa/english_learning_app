@@ -8,6 +8,7 @@ import 'package:english_learning_app/screens/image_quiz_game.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
+import 'package:english_learning_app/services/gemini_api_key_resolver.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
@@ -144,9 +145,9 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
-
   Future<void> _initializeServices() async {
-    final bool geminiAvailable = AppConfig.hasGemini;
+    final String geminiKey = await GeminiApiKeyResolver.resolve();
+    final bool geminiAvailable = geminiKey.isNotEmpty;
     final bool cloudinaryAvailable = AppConfig.hasCloudinary;
     final bool pixabayAvailable = AppConfig.hasPixabay;
     final Uri? validationEndpoint = AppConfig.aiImageValidationEndpoint;
@@ -161,7 +162,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (geminiAvailable) {
       _model = GenerativeModel(
         model: 'gemini-1.5-flash',
-        apiKey: AppConfig.geminiApiKey,
+        apiKey: geminiKey,
       );
     } else {
       AppConfig.debugWarnIfMissing('Gemini AI features', false);
