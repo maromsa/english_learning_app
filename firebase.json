@@ -1,1 +1,44 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"englishkidsapp-916be","appId":"1:923322418087:android:a616efff0e5b8f4d43ac82","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"englishkidsapp-916be","appId":"1:923322418087:ios:bfe054434113b41a43ac82","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"englishkidsapp-916be","appId":"1:923322418087:ios:bfe054434113b41a43ac82","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"englishkidsapp-916be","configurations":{"android":"1:923322418087:android:a616efff0e5b8f4d43ac82","ios":"1:923322418087:ios:bfe054434113b41a43ac82","macos":"1:923322418087:ios:bfe054434113b41a43ac82","web":"1:923322418087:web:3b18f93ae5f80cdc43ac82","windows":"1:923322418087:web:2d23240705ef246f43ac82"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "englishkidsapp-916be",
+          "appId": "1:923322418087:android:a616efff0e5b8f4d43ac82",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "englishkidsapp-916be",
+          "appId": "1:923322418087:ios:bfe054434113b41a43ac82",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "englishkidsapp-916be",
+          "appId": "1:923322418087:ios:bfe054434113b41a43ac82",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "englishkidsapp-916be",
+          "configurations": {
+            "android": "1:923322418087:android:a616efff0e5b8f4d43ac82",
+            "ios": "1:923322418087:ios:bfe054434113b41a43ac82",
+            "macos": "1:923322418087:ios:bfe054434113b41a43ac82",
+            "web": "1:923322418087:web:3b18f93ae5f80cdc43ac82",
+            "windows": "1:923322418087:web:2d23240705ef246f43ac82"
+          }
+        }
+      }
+    }
+  }
+}
