@@ -114,26 +114,33 @@ class WordDisplayCard extends StatelessWidget {
   }
 
   Widget _buildAssetImage(String imageUrl) {
-    if (kIsWeb) {
-      final resolvedUrl = _resolveWebAssetUrl(imageUrl);
-      return Image.network(
-        resolvedUrl,
-        key: ValueKey(imageUrl),
-        fit: BoxFit.cover,
-        loadingBuilder: _loadingBuilder,
-        errorBuilder: (context, error, stackTrace) {
-          debugPrint('Failed to load web asset "$imageUrl" (resolved $resolvedUrl): $error');
-          return _errorBuilder(context, error, stackTrace);
-        },
-      );
-    }
-
     return Image.asset(
       imageUrl,
       key: ValueKey(imageUrl),
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) {
         debugPrint('Failed to load asset image "$imageUrl": $error');
+
+        if (kIsWeb) {
+          final resolvedUrl = _resolveWebAssetUrl(imageUrl);
+          debugPrint(
+            'Attempting web asset fallback for "$imageUrl" (resolved $resolvedUrl)',
+          );
+          return Image.network(
+            resolvedUrl,
+            key: ValueKey('web_$imageUrl'),
+            fit: BoxFit.cover,
+            loadingBuilder: _loadingBuilder,
+            errorBuilder: (context, fallbackError, fallbackStackTrace) {
+              debugPrint(
+                'Failed to load web asset fallback "$imageUrl" '
+                '(resolved $resolvedUrl): $fallbackError',
+              );
+              return _errorBuilder(context, fallbackError, fallbackStackTrace);
+            },
+          );
+        }
+
         return _errorBuilder(context, error, stackTrace);
       },
     );
