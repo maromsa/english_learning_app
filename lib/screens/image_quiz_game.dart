@@ -92,18 +92,22 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       _feedbackMessage = feedback;
     });
 
-    telemetry?.logQuizAnswered(
-      word: quizItem.correctAnswer,
-      correct: isCorrect,
-      reward: reward,
-      streak: newStreak,
-      questionIndex: _currentIndex,
-      hintUsed: _hintUsed,
-    );
+      telemetry?.logQuizAnswered(
+        word: quizItem.correctAnswer,
+        correct: isCorrect,
+        reward: reward,
+        streak: newStreak,
+        questionIndex: _currentIndex,
+        hintUsed: _hintUsed,
+      );
 
-    context.read<DailyMissionProvider>().incrementByType(
-          DailyMissionType.quizPlay,
-        );
+      try {
+        context.read<DailyMissionProvider>().incrementByType(
+              DailyMissionType.quizPlay,
+            );
+      } on ProviderNotFoundException {
+        // Tests or standalone screens might not provide DailyMissionProvider; ignore silently.
+      }
   }
 
   void _nextQuestion() {
