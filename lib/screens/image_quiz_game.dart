@@ -8,7 +8,7 @@ import '../providers/coin_provider.dart';
 import '../services/telemetry_service.dart';
 import '../widgets/answer_button.dart';
 
-// רשימת שאלות (אפשר להוציא לקובץ נפרד, או API)
+// Quiz question list (can be moved to a separate file or API)
 final List<QuizItem> quizItems = [
   QuizItem(
     imageAsset: 'assets/images/magic_hat.jpg',
@@ -74,11 +74,11 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       newStreak = _streak + 1;
       reward = _baseReward + (newStreak - 1) * _streakBonusStep;
       newScore += reward;
-      feedback = 'כל הכבוד! זכית ב+$reward מטבעות';
+      feedback = 'Great job! You earned +$reward coins';
       await context.read<CoinProvider>().addCoins(reward);
     } else {
       newStreak = 0;
-      feedback = 'אופס! התשובה הנכונה היא ${quizItem.correctAnswer}.';
+      feedback = 'Oops! The correct answer is ${quizItem.correctAnswer}.';
     }
 
     setState(() {
@@ -133,7 +133,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
     setState(() {
       _currentOptions = List<String>.from(_currentOptions)..remove(answerToRemove);
       _hintUsed = true;
-      _feedbackMessage = 'הסרתי תשובה אחת שלא מתאימה 😉';
+      _feedbackMessage = 'I removed one incorrect option 😉';
     });
 
     telemetry?.logHintUsed(
@@ -157,10 +157,10 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
           spacing: 20,
           runSpacing: 12,
           children: [
-            _StatBadge(label: 'ניקוד', value: _score, icon: Icons.emoji_events),
-            _StatBadge(label: 'רצף', value: _streak, icon: Icons.local_fire_department),
-            _StatBadge(label: 'שיא רצף', value: _bestStreak, icon: Icons.military_tech),
-            _StatBadge(label: 'מטבעות', value: totalCoins, icon: Icons.attach_money),
+            _StatBadge(label: 'Score', value: _score, icon: Icons.emoji_events),
+            _StatBadge(label: 'Streak', value: _streak, icon: Icons.local_fire_department),
+            _StatBadge(label: 'Best Streak', value: _bestStreak, icon: Icons.military_tech),
+            _StatBadge(label: 'Coins', value: totalCoins, icon: Icons.attach_money),
           ],
         ),
       ),
@@ -174,7 +174,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
     return Scaffold(
       backgroundColor: Colors.green.shade50,
       appBar: AppBar(
-        title: const Text('משחק תמונות'),
+        title: const Text('Image Quiz Game'),
         backgroundColor: Colors.green.shade700,
         centerTitle: true,
       ),
@@ -199,11 +199,11 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
               ),
               const SizedBox(height: 16),
               Align(
-                alignment: Alignment.centerRight,
+                alignment: Alignment.centerLeft,
                 child: OutlinedButton.icon(
                   onPressed: (!_answered && !_hintUsed && _currentOptions.length > 2) ? _useHint : null,
                   icon: const Icon(Icons.lightbulb_outline),
-                  label: Text(_hintUsed ? 'רמז בשימוש' : 'קבל רמז'),
+                  label: Text(_hintUsed ? 'Hint used' : 'Get a hint'),
                 ),
               ),
               const SizedBox(height: 16),
@@ -251,7 +251,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
                   ),
                   onPressed: _answered ? _nextQuestion : null,
                   child: Text(
-                    _answered ? 'שאלה הבאה' : 'בחר תשובה כדי להמשיך',
+                    _answered ? 'Next question' : 'Choose an answer to continue',
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                 ),

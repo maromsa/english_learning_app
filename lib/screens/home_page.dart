@@ -609,7 +609,7 @@ class _MyHomePageState extends State<MyHomePage> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.image_search),
-                tooltip: 'משחק תמונות',
+                tooltip: 'Image Quiz Game',
                 onPressed: () {
                     Navigator.push(
                       context,
