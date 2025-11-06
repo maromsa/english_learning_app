@@ -32,6 +32,8 @@ helper exposes the values at runtime.
 | Dart define | Feature | Notes |
 | --- | --- | --- |
 | `GEMINI_API_KEY` | AI-powered pronunciation feedback & photo recognition | Optional. When missing the app gracefully falls back to manual play. |
+| `GEMINI_TOKEN_ENDPOINT` | Secure Gemini token service URL | Optional. When supplied the app fetches the Gemini key from this HTTPS endpoint. |
+| `GEMINI_SERVICE_KEY` | Shared secret for the token service | Optional. Sent as `x-service-key` header when calling `GEMINI_TOKEN_ENDPOINT`. |
 | `GITHUB_GEMINI_SECRET_URL` | Gemini key fallback from GitHub | Optional. Raw URL that returns only the Gemini API key (for example a private repository file or GitHub gist). |
 | `GITHUB_ACCESS_TOKEN` | Authorization for GitHub secret URL | Optional. Token used to authenticate when fetching `GITHUB_GEMINI_SECRET_URL`; omit for public files. |
 | `ENABLE_GEMINI_STUB` | Spark's Adventure Lab offline stub | Optional. Set to `true` in CI to serve deterministic stories without exposing a real Gemini key. |
@@ -63,7 +65,19 @@ The app, widget tests, and web builds will still complete successfully, and the 
 
 When you do need live Gemini features in CI, store the key as an encrypted secret (for example `GEMINI_API_KEY`) and pass it via `--dart-define=GEMINI_API_KEY=$GEMINI_API_KEY` so nothing is hard-coded in your configuration files.
 
-### Gemini key from GitHub
+### Secure Gemini key service
+
+Deploy the sample service under `server/gemini-key-service` (or your own equivalent) and expose it via HTTPS. Then run the app with:
+
+```bash
+flutter run \
+  --dart-define=GEMINI_TOKEN_ENDPOINT=https://<your-service>/v1/gemini-token \
+  --dart-define=GEMINI_SERVICE_KEY=$SERVICE_API_KEY
+```
+
+The app caches the token until the `expiresAt` timestamp returned by the service and refreshes it automatically when needed. You can still supply `GEMINI_API_KEY` directly for local development.
+
+### Gemini key from GitHub (fallback)
 
 If you prefer to keep the Gemini key inside GitHub, expose it through a file that returns only the secret string (for example, a private repository file or gist) and provide its raw URL via:
 
