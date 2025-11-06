@@ -1,5 +1,8 @@
 import 'dart:io';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+
 import '../models/word_data.dart';
 
 class WordDisplayCard extends StatelessWidget {
@@ -86,36 +89,59 @@ class WordDisplayCard extends StatelessWidget {
       width: 250,
       height: 250,
       child: isAssetImage
-          ? Image.asset(
-              imageUrl,
-              key: ValueKey(imageUrl),
-              fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  debugPrint('Failed to load asset image "$imageUrl": $error');
-                  return _errorBuilder(context, error, stackTrace);
-                },
-            )
+          ? _buildAssetImage(imageUrl)
           : isLocalFile
               ? Image.file(
                   File(imageUrl),
                   key: ValueKey(imageUrl),
                   fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      debugPrint('Failed to load local image "$imageUrl": $error');
-                      return _errorBuilder(context, error, stackTrace);
-                    },
+                  errorBuilder: (context, error, stackTrace) {
+                    debugPrint('Failed to load local image "$imageUrl": $error');
+                    return _errorBuilder(context, error, stackTrace);
+                  },
                 )
               : Image.network(
                   imageUrl,
                   key: ValueKey(imageUrl),
                   fit: BoxFit.cover,
                   loadingBuilder: _loadingBuilder,
-                    errorBuilder: (context, error, stackTrace) {
-                      debugPrint('Failed to load network image "$imageUrl": $error');
-                      return _errorBuilder(context, error, stackTrace);
-                    },
+                  errorBuilder: (context, error, stackTrace) {
+                    debugPrint('Failed to load network image "$imageUrl": $error');
+                    return _errorBuilder(context, error, stackTrace);
+                  },
                 ),
     );
+  }
+
+  Widget _buildAssetImage(String imageUrl) {
+    if (kIsWeb) {
+      final resolvedUrl = _resolveWebAssetUrl(imageUrl);
+      return Image.network(
+        resolvedUrl,
+        key: ValueKey(imageUrl),
+        fit: BoxFit.cover,
+        loadingBuilder: _loadingBuilder,
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('Failed to load web asset "$imageUrl" (resolved $resolvedUrl): $error');
+          return _errorBuilder(context, error, stackTrace);
+        },
+      );
+    }
+
+    return Image.asset(
+      imageUrl,
+      key: ValueKey(imageUrl),
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        debugPrint('Failed to load asset image "$imageUrl": $error');
+        return _errorBuilder(context, error, stackTrace);
+      },
+    );
+  }
+
+  String _resolveWebAssetUrl(String assetPath) {
+    final normalized = assetPath.startsWith('/') ? assetPath.substring(1) : assetPath;
+    return Uri.base.resolve('assets/$normalized').toString();
   }
 
   Widget _buildPlaceholder() => Container(
