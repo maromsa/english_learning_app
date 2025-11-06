@@ -69,6 +69,10 @@ dart run scripts/upload_words.dart \
   --define=FIREBASE_USER_ID_FOR_UPLOAD=your_user_id
 ```
 
+### Artwork regeneration
+
+The fallback lesson artwork is generated from OpenMoji icons with a small set of custom illustrations. Run `python3 scripts/generate_word_images.py` whenever you need to rebuild the assets under `assets/images/words/`. See `docs/ICON_ATTRIBUTION.md` for licence details.
+
 ## Continuous Integration
 
 ### GitHub Pages preview (free)
