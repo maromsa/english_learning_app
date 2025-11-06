@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/quiz_item.dart';
+import '../models/daily_mission.dart';
 import '../providers/coin_provider.dart';
+import '../providers/daily_mission_provider.dart';
 import '../services/telemetry_service.dart';
 import '../widgets/answer_button.dart';
 
@@ -90,14 +92,22 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       _feedbackMessage = feedback;
     });
 
-    telemetry?.logQuizAnswered(
-      word: quizItem.correctAnswer,
-      correct: isCorrect,
-      reward: reward,
-      streak: newStreak,
-      questionIndex: _currentIndex,
-      hintUsed: _hintUsed,
-    );
+      telemetry?.logQuizAnswered(
+        word: quizItem.correctAnswer,
+        correct: isCorrect,
+        reward: reward,
+        streak: newStreak,
+        questionIndex: _currentIndex,
+        hintUsed: _hintUsed,
+      );
+
+      try {
+        context.read<DailyMissionProvider>().incrementByType(
+              DailyMissionType.quizPlay,
+            );
+      } on ProviderNotFoundException {
+        // Tests or standalone screens might not provide DailyMissionProvider; ignore silently.
+      }
   }
 
   void _nextQuestion() {

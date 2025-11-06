@@ -99,6 +99,40 @@ class TelemetryService {
     });
   }
 
+  Future<void> logLightningAnswer({
+    required String word,
+    required bool correct,
+    required int streak,
+    required int elapsedSeconds,
+    required int remainingSeconds,
+    required int reward,
+  }) {
+    return _logEvent('lightning_answered', {
+      'word': _truncate(word),
+      'correct': correct,
+      'streak': streak,
+      'elapsed_s': elapsedSeconds,
+      'remaining_s': remainingSeconds,
+      'reward': reward,
+    });
+  }
+
+  Future<void> logLightningSession({
+    required int score,
+    required int correct,
+    required int incorrect,
+    required int bestStreak,
+    required int totalQuestions,
+  }) {
+    return _logEvent('lightning_session', {
+      'score': score,
+      'correct': correct,
+      'incorrect': incorrect,
+      'best_streak': bestStreak,
+      'questions': totalQuestions,
+    });
+  }
+
   void startScreenSession(String screenName) {
     _activeSessions[screenName] = DateTime.now();
   }
