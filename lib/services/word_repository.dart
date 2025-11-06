@@ -47,6 +47,13 @@ class WordRepository {
     List<WordData>? cachedWords;
     if (cachedJson != null) {
       cachedWords = _decodeWords(cachedJson);
+      if (cachedWords != null) {
+        final hydrated = _hydrateWithFallbackImages(cachedWords, fallbackWords);
+        if (!identical(hydrated, cachedWords)) {
+          cachedWords = hydrated;
+          await _saveCache(prefs, hydrated, cacheNamespace);
+        }
+      }
       if (cachedWords != null &&
           cachedTimestamp != null &&
           now.difference(DateTime.fromMillisecondsSinceEpoch(cachedTimestamp)) <
@@ -63,8 +70,9 @@ class WordRepository {
       );
 
       if (remoteWords.isNotEmpty) {
-        await _saveCache(prefs, remoteWords, cacheNamespace);
-        return remoteWords;
+        final hydratedRemote = _hydrateWithFallbackImages(remoteWords, fallbackWords);
+        await _saveCache(prefs, hydratedRemote, cacheNamespace);
+        return hydratedRemote;
       }
     }
 
@@ -175,6 +183,52 @@ class WordRepository {
       }
     }
     return results;
+  }
+
+  List<WordData> _hydrateWithFallbackImages(
+    List<WordData> source,
+    List<WordData> fallback,
+  ) {
+    if (source.isEmpty) {
+      return source;
+    }
+
+    final fallbackByWord = {
+      for (final word in fallback)
+        word.word.toLowerCase(): word,
+    };
+
+    bool changed = false;
+    final List<WordData> hydrated = [];
+
+    for (final word in source) {
+      final imageUrl = word.imageUrl;
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        hydrated.add(word);
+        continue;
+      }
+
+      final fallbackMatch = fallbackByWord[word.word.toLowerCase()];
+      if (fallbackMatch != null &&
+          fallbackMatch.imageUrl != null &&
+          fallbackMatch.imageUrl!.isNotEmpty) {
+        changed = true;
+        hydrated.add(
+          WordData(
+            word: word.word,
+            searchHint: word.searchHint,
+            publicId: word.publicId,
+            imageUrl: fallbackMatch.imageUrl,
+            isCompleted: word.isCompleted,
+            stickerUnlocked: word.stickerUnlocked,
+          ),
+        );
+      } else {
+        hydrated.add(word);
+      }
+    }
+
+    return changed ? hydrated : source;
   }
 
   bool _shouldSkipWebLookup(WordData word) {
