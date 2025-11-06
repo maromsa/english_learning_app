@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/daily_reward_service.dart';
 import '../services/level_repository.dart';
 import 'ai_adventure_screen.dart';
+import 'daily_missions_screen.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
 
@@ -316,44 +317,89 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  Future<void> _openDailyMissions() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const DailyMissionsScreen()),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result == 'lightning') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('פתחו שלב ובחרו באפשרות "ריצת ברק" כדי להשלים את המשימה!'),
+          backgroundColor: Colors.blueGrey.shade700,
+        ),
+      );
+    } else if (result == 'quiz') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('היכנסו לשלב ולחצו על אייקון החידון כדי לשחק מיד.'),
+          backgroundColor: Colors.blueGrey.shade700,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final coinProvider = Provider.of<CoinProvider>(context);
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text("מסע המילים", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(blurRadius: 4, color: Colors.black45)])),
+        title: const Text(
+          "מסע המילים",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+          ),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-            IconButton(
-              icon: const Icon(Icons.auto_awesome),
-              tooltip: 'מסע קסם עם Spark',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AiAdventureScreen(
-                      levels: List<LevelData>.unmodifiable(levels),
-                      totalStars: _totalStars,
-                    ),
+          IconButton(
+            icon: const Icon(Icons.auto_awesome),
+            tooltip: 'מסע קסם עם Spark',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AiAdventureScreen(
+                    levels: List<LevelData>.unmodifiable(levels),
+                    totalStars: _totalStars,
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Row(
               children: [
                 Icon(Icons.monetization_on, color: Colors.yellow.shade700),
                 const SizedBox(width: 4),
-                Text('${coinProvider.coins}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  '${coinProvider.coins}',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(width: 12),
                 const Icon(Icons.star, color: Colors.amber),
                 const SizedBox(width: 4),
-                Text('$_totalStars', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  '$_totalStars',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.flag),
+            tooltip: 'משימות היום',
+            onPressed: _openDailyMissions,
           ),
           IconButton(
             icon: const Icon(Icons.card_giftcard),

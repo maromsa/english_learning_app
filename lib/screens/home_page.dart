@@ -2,9 +2,14 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 import 'package:english_learning_app/app_config.dart';
+import 'package:english_learning_app/models/achievement.dart';
+import 'package:english_learning_app/models/daily_mission.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/screens/image_quiz_game.dart';
+import 'package:english_learning_app/screens/daily_missions_screen.dart';
+import 'package:english_learning_app/screens/lightning_practice_screen.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
@@ -16,7 +21,6 @@ import 'package:english_learning_app/widgets/achievement_notification.dart';
 import 'package:english_learning_app/widgets/score_display.dart';
 import 'package:english_learning_app/widgets/word_display_card.dart';
 import 'package:english_learning_app/widgets/words_progress_bar.dart';
-import 'package:english_learning_app/models/achievement.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -406,6 +410,13 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  Future<void> _openDailyMissionsFromHome() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const DailyMissionsScreen()),
+    );
+  }
+
   // lib/screens/home_page.dart
 
   Future<bool> _evaluateSpeechWithGemini(String correctWord, String recognizedWord) async {
@@ -454,8 +465,12 @@ class _MyHomePageState extends State<MyHomePage> {
       int pointsToAdd = 10;
       await Provider.of<CoinProvider>(context, listen: false).addCoins(pointsToAdd);
 
-      Provider.of<AchievementService>(context, listen: false)
-          .checkForAchievements(streak: _streak);
+        Provider.of<AchievementService>(context, listen: false)
+            .checkForAchievements(streak: _streak);
+
+        context.read<DailyMissionProvider>().incrementByType(
+              DailyMissionType.speakPractice,
+            );
 
       feedback = "כל הכבוד! +10 מטבעות";
       setState(() => currentWordObject.isCompleted = true);
@@ -650,17 +665,51 @@ class _MyHomePageState extends State<MyHomePage> {
                     totalWords: _words.length,
                     completedWords: _words.where((w) => w.isCompleted).length,
                   ),
-                    if (currentWordData != null)
-                      WordDisplayCard(
-                        wordData: currentWordData,
-                        onPrevious: _previousWord,
-                        onNext: _nextWord,
-                      )
+                  Consumer<DailyMissionProvider>(
+                    builder: (context, missionsProvider, _) {
+                      if (!missionsProvider.isInitialized || missionsProvider.missions.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+
+                      DailyMission? claimable;
+                      DailyMission? next;
+                      for (final mission in missionsProvider.missions) {
+                        if (mission.isClaimable) {
+                          claimable = mission;
+                          break;
+                        }
+                        if (!mission.isCompleted && next == null) {
+                          next = mission;
+                        }
+                      }
+
+                      final DailyMission highlight = claimable ?? next ?? missionsProvider.missions.first;
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 12.0),
+                        child: _MissionNudgeCard(
+                          mission: highlight,
+                          isClaimable: highlight.isClaimable,
+                          onTap: _openDailyMissionsFromHome,
+                        ),
+                      );
+                    },
+                  ),
+                  if (currentWordData != null)
+                    WordDisplayCard(
+                      wordData: currentWordData,
+                      onPrevious: _previousWord,
+                      onNext: _nextWord,
+                    )
                   else
-                    const SizedBox(height: 346,
-                        child: Center(child: Text(
-                            "אין עדיין מילים לתרגול. לחץ על המצלמה כדי להוסיף אחת חדשה!",
-                            style: TextStyle(fontSize: 22)))),
+                    const SizedBox(
+                      height: 346,
+                      child: Center(
+                        child: Text(
+                          "אין עדיין מילים לתרגול. לחץ על המצלמה כדי להוסיף אחת חדשה!",
+                          style: TextStyle(fontSize: 22),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 40),
                     if (!_aiFeaturesEnabled)
                       Container(
@@ -677,32 +726,57 @@ class _MyHomePageState extends State<MyHomePage> {
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                       ),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ActionButton(
-                          text: 'הקשב',
-                          icon: Icons.volume_up,
-                          color: Colors.lightBlue.shade400,
-                          onPressed: (currentWordData == null)
-                              ? null
-                              : () async {
-                            await flutterTts.setLanguage("en-US");
-                            flutterTts.speak(currentWordData.word);
-                          },
-                        ),
-                        const SizedBox(width: 20),
-                        ActionButton(
-                          text: 'דבר',
-                          icon: _isListening ? Icons.stop : Icons.mic,
-                          color: _isListening ? Colors.grey.shade600 : Colors.redAccent,
-                          onPressed: _handleSpeech,
-                        ),
-                      ],
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ActionButton(
+                            text: 'הקשב',
+                            icon: Icons.volume_up,
+                            color: Colors.lightBlue.shade400,
+                            onPressed: (currentWordData == null)
+                                ? null
+                                : () async {
+                                    await flutterTts.setLanguage("en-US");
+                                    flutterTts.speak(currentWordData.word);
+                                  },
+                          ),
+                          const SizedBox(width: 20),
+                          ActionButton(
+                            text: 'דבר',
+                            icon: _isListening ? Icons.stop : Icons.mic,
+                            color: _isListening ? Colors.grey.shade600 : Colors.redAccent,
+                            onPressed: _handleSpeech,
+                          ),
+                          const SizedBox(width: 20),
+                          ActionButton(
+                            text: 'ריצת ברק',
+                            icon: Icons.flash_on,
+                            color: Colors.orangeAccent,
+                            onPressed: _words.length < 2
+                                ? () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('הוסיפו לפחות שתי מילים כדי להתחיל ריצת ברק!'),
+                                      ),
+                                    );
+                                  }
+                                : () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => LightningPracticeScreen(
+                                          words: List<WordData>.unmodifiable(_words),
+                                          levelTitle: widget.title,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
 
                   const SizedBox(height: 20),
                     SizedBox(
@@ -810,6 +884,122 @@ class BytesAudioSource extends StreamAudioSource {
       offset: start ?? 0,
       stream: Stream.value(_bytes.sublist(start ?? 0, end)),
       contentType: 'audio/mpeg',
+    );
+  }
+}
+
+class _MissionNudgeCard extends StatelessWidget {
+  const _MissionNudgeCard({
+    required this.mission,
+    required this.isClaimable,
+    required this.onTap,
+  });
+
+  final DailyMission mission;
+  final bool isClaimable;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color accent = isClaimable ? Colors.green.shade500 : Colors.indigo.shade400;
+    final double progress = mission.completionRatio;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        color: isClaimable ? Colors.green.shade50 : Colors.indigo.shade50,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: accent.withOpacity(0.15),
+                    child: Icon(
+                      isClaimable ? Icons.card_giftcard : Icons.flag,
+                      color: accent,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'משימה יומית',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: accent,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          mission.title,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: accent),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                mission.description,
+                style: const TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: LinearProgressIndicator(
+                  minHeight: 8,
+                  value: progress,
+                  backgroundColor: Colors.white,
+                  valueColor: AlwaysStoppedAnimation<Color>(accent),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${mission.progress}/${mission.target}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  if (isClaimable)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade100,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.monetization_on, size: 16, color: Colors.green),
+                          const SizedBox(width: 4),
+                          Text('+${mission.reward}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    )
+                  else
+                    Text(
+                      mission.remaining > 0
+                          ? 'עוד ${mission.remaining} כדי לנצח'
+                          : 'המשיכו להצליח!',
+                      style: TextStyle(color: accent, fontWeight: FontWeight.w600),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

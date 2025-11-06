@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/quiz_item.dart';
+import '../models/daily_mission.dart';
 import '../providers/coin_provider.dart';
+import '../providers/daily_mission_provider.dart';
 import '../services/telemetry_service.dart';
 import '../widgets/answer_button.dart';
 
@@ -98,6 +100,10 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       questionIndex: _currentIndex,
       hintUsed: _hintUsed,
     );
+
+    context.read<DailyMissionProvider>().incrementByType(
+          DailyMissionType.quizPlay,
+        );
   }
 
   void _nextQuestion() {

@@ -1,5 +1,6 @@
 import 'package:english_learning_app/firebase_options.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/shop_provider.dart';
 import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
@@ -29,30 +30,33 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
   final bool hasSeenOnboarding = prefs.getBool('onboarding_seen') ?? false;
 
-    // Initialize providers with persistence
-    final coinProvider = CoinProvider();
-    final themeProvider = ThemeProvider();
-    final achievementService = AchievementService();
-    final shopProvider = ShopProvider();
-    final telemetryService = TelemetryService();
+  // Initialize providers with persistence
+  final coinProvider = CoinProvider();
+  final themeProvider = ThemeProvider();
+  final achievementService = AchievementService();
+  final shopProvider = ShopProvider();
+  final telemetryService = TelemetryService();
+  final dailyMissionProvider = DailyMissionProvider();
 
-    // Load persisted data
-    await coinProvider.loadCoins();
-    await themeProvider.loadTheme();
-    await shopProvider.loadPurchasedItems();
+  // Load persisted data
+  await coinProvider.loadCoins();
+  await themeProvider.loadTheme();
+  await shopProvider.loadPurchasedItems();
+  await dailyMissionProvider.initialize();
 
-    runApp(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: coinProvider),
-          ChangeNotifierProvider.value(value: themeProvider),
-          ChangeNotifierProvider.value(value: achievementService),
-          ChangeNotifierProvider.value(value: shopProvider),
-          Provider<TelemetryService>.value(value: telemetryService),
-        ],
-        child: MyApp(hasSeenOnboarding: hasSeenOnboarding),
-      ),
-    );
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: coinProvider),
+        ChangeNotifierProvider.value(value: themeProvider),
+        ChangeNotifierProvider.value(value: achievementService),
+        ChangeNotifierProvider.value(value: shopProvider),
+        ChangeNotifierProvider.value(value: dailyMissionProvider),
+        Provider<TelemetryService>.value(value: telemetryService),
+      ],
+      child: MyApp(hasSeenOnboarding: hasSeenOnboarding),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
