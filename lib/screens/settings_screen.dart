@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../providers/auth_provider.dart';
 import '../providers/coin_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/word_repository.dart';
@@ -27,6 +28,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       body: ListView(
         children: [
+          _buildProfileHeader(context),
+          const Divider(),
           SwitchListTile.adaptive(
             secondary: const Icon(Icons.dark_mode),
             title: const Text('מצב כהה'),
@@ -51,8 +54,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
             enabled: !_isBusy,
             onTap: _isBusy ? null : () => _clearWordCache(context),
           ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('התנתקות מהחשבון'),
+            subtitle: const Text('חזרה למסך הכניסה של Google'),
+            enabled: !_isBusy,
+            onTap: _isBusy
+                ? null
+                : () async {
+                    setState(() => _isBusy = true);
+                    try {
+                      await context.read<AuthProvider>().signOut();
+                    } finally {
+                      if (mounted) {
+                        setState(() => _isBusy = false);
+                      }
+                    }
+                  },
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProfileHeader(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    final appUser = authProvider.currentUser;
+    final firebaseUser = authProvider.firebaseUser;
+
+    final displayName = appUser?.displayName ?? firebaseUser?.displayName;
+    final email = appUser?.email ?? firebaseUser?.email ?? '';
+    final photoUrl = appUser?.photoUrl ?? firebaseUser?.photoURL;
+
+    return ListTile(
+      leading: CircleAvatar(
+        radius: 28,
+        backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+        backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+        child: photoUrl == null
+            ? Text(
+                email.isNotEmpty ? email[0].toUpperCase() : '?',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              )
+            : null,
+      ),
+      title: Text(displayName ?? 'משתמש ללא שם'),
+      subtitle: Text(email.isEmpty ? 'לא נמצאה כתובת Gmail' : email),
+      trailing: authProvider.isBusy
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : null,
     );
   }
 
