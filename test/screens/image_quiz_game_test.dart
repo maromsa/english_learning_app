@@ -48,9 +48,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(coinProvider.coins, greaterThanOrEqualTo(10));
-    expect(find.textContaining('כל הכבוד!'), findsOneWidget);
+    expect(find.textContaining('Great job!'), findsOneWidget);
 
-    final nextButtonFinder = find.widgetWithText(ElevatedButton, 'שאלה הבאה');
+    final nextButtonFinder = find.widgetWithText(ElevatedButton, 'Next question');
     expect(nextButtonFinder, findsOneWidget);
     await tester.ensureVisible(nextButtonFinder);
     final ElevatedButton nextButton = tester.widget(nextButtonFinder);
@@ -74,15 +74,15 @@ void main() {
 
     expect(find.byType(AnswerButton), findsNWidgets(4));
 
-    final hintButtonFinder = find.text('קבל רמז');
+    final hintButtonFinder = find.text('Get a hint');
     await tester.ensureVisible(hintButtonFinder);
     await tester.tap(hintButtonFinder, warnIfMissed: false);
     await tester.pumpAndSettle();
 
     expect(find.byType(AnswerButton), findsNWidgets(3));
-    expect(find.text('רמז בשימוש'), findsOneWidget);
+    expect(find.text('Hint used'), findsOneWidget);
 
-    await tester.tap(find.text('רמז בשימוש'));
+    await tester.tap(find.text('Hint used'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AnswerButton), findsNWidgets(3));
