@@ -13,6 +13,7 @@ import 'package:english_learning_app/screens/lightning_practice_screen.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
+import 'package:english_learning_app/services/gemini_proxy_service.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
@@ -60,6 +61,7 @@ class _MyHomePageState extends State<MyHomePage> {
   WebImageService? _webImageService;
   AiImageValidator _cameraValidator = const PassthroughAiImageValidator();
   HttpFunctionAiImageValidator? _httpImageValidator;
+  GeminiProxyService? _geminiProxy;
 
   bool _isLoading = true;
   List<WordData> _words = [];
@@ -145,15 +147,18 @@ class _MyHomePageState extends State<MyHomePage> {
     _achievementOverlay?.remove();
     _httpImageValidator?.dispose();
     _webImageService?.dispose();
+    _geminiProxy?.dispose();
     super.dispose();
   }
 
 
   Future<void> _initializeServices() async {
     final bool geminiAvailable = AppConfig.hasGemini;
+    final bool geminiProxyAvailable = AppConfig.hasGeminiProxy;
     final bool cloudinaryAvailable = AppConfig.hasCloudinary;
     final bool pixabayAvailable = AppConfig.hasPixabay;
-    final Uri? validationEndpoint = AppConfig.aiImageValidationEndpoint;
+    final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
+    final Uri? validationEndpoint = AppConfig.aiImageValidationEndpoint ?? proxyEndpoint;
 
     if (validationEndpoint != null) {
       _httpImageValidator = HttpFunctionAiImageValidator(validationEndpoint);
@@ -162,7 +167,9 @@ class _MyHomePageState extends State<MyHomePage> {
       AppConfig.debugWarnIfMissing('AI image validation endpoint', false);
     }
 
-    if (geminiAvailable) {
+    if (geminiProxyAvailable && proxyEndpoint != null) {
+      _geminiProxy = GeminiProxyService(proxyEndpoint);
+    } else if (geminiAvailable) {
       _model = GenerativeModel(
         model: 'gemini-1.5-flash',
         apiKey: AppConfig.geminiApiKey,
@@ -199,7 +206,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (mounted) {
       setState(() {
         _isLoading = false;
-        _aiFeaturesEnabled = geminiAvailable;
+        _aiFeaturesEnabled = geminiProxyAvailable || geminiAvailable;
       });
     }
   }
@@ -278,51 +285,61 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<void> _configureTts() async {
-    await flutterTts.setLanguage("en-US");
-    await flutterTts.setSpeechRate(0.5);
-  }
+    Future<void> _configureTts() async {
+      await flutterTts.setLanguage("en-US");
+      await flutterTts.setSpeechRate(0.5);
+    }
 
-  Future<void> _takePictureAndIdentify() async {
-    if (!_aiFeaturesEnabled || _model == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('תכונת ה-AI כבויה. הוסף מפתחות API כדי להפעיל צילום חכם.'),
-          ),
-        );
+    Future<void> _takePictureAndIdentify() async {
+      if (!_aiFeaturesEnabled || (_model == null && _geminiProxy == null)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('תכונת ה-AI כבויה. הוסיפו GEMINI_API_KEY או הגדירו GEMINI_PROXY_URL כדי להפעיל צילום חכם.'),
+            ),
+          );
+        }
+        return;
       }
-      return;
-    }
 
-    final telemetry = TelemetryService.maybeOf(context);
+      final telemetry = TelemetryService.maybeOf(context);
 
-    final XFile? imageFile = await _picker.pickImage(source: ImageSource.camera);
+      final XFile? imageFile = await _picker.pickImage(source: ImageSource.camera);
 
-    if (imageFile == null) {
-      return;
-    }
+      if (imageFile == null) {
+        return;
+      }
 
-    setState(() {
-      _feedbackText = 'מנתחים את התמונה שלכם...';
-    });
+      setState(() {
+        _feedbackText = 'מנתחים את התמונה שלכם...';
+      });
 
-    try {
-      final imageBytes = await imageFile.readAsBytes();
-      const prompt =
-          "Identify the main, single object in this image. Respond with only the object's name in English, in singular form. For example: 'Apple', 'Car', 'Dog'. If you cannot identify a single clear object, respond with the word 'unclear'.";
+      try {
+        final imageBytes = await imageFile.readAsBytes();
+        const prompt =
+            "Identify the main, single object in this image. Respond with only the object's name in English, in singular form. For example: 'Apple', 'Car', 'Dog'. If you cannot identify a single clear object, respond with the word 'unclear'.";
 
-      final content = [
-        Content.multi([
-          TextPart(prompt),
-          DataPart('image/jpeg', imageBytes),
-        ])
-      ];
+        String identifiedWord;
+        if (_geminiProxy != null) {
+          final proxyResult = await _geminiProxy!.identifyMainObject(
+            imageBytes,
+            prompt: prompt,
+            mimeType: 'image/jpeg',
+          );
+          identifiedWord = proxyResult ?? 'unclear';
+        } else {
+          final content = [
+            Content.multi([
+              TextPart(prompt),
+              DataPart('image/jpeg', imageBytes),
+            ]),
+          ];
 
-      final response = await _model!.generateContent(content);
-      final identifiedWord = response.text?.trim() ?? 'unclear';
+          final response = await _model!.generateContent(content);
+          identifiedWord = response.text?.trim() ?? 'unclear';
+        }
 
-      debugPrint('Gemini identified: $identifiedWord');
+        debugPrint('Gemini identified: $identifiedWord');
 
         if (identifiedWord.toLowerCase() == 'unclear' || identifiedWord.contains(' ')) {
           telemetry?.logCameraValidation(
@@ -385,16 +402,16 @@ class _MyHomePageState extends State<MyHomePage> {
             confidence: _currentValidationConfidence(),
           );
         }
-    } catch (e) {
-      debugPrint('Error identifying image: $e');
+      } catch (e) {
+        debugPrint('Error identifying image: $e');
         if (mounted) {
           setState(() {
             _feedbackText = "מצטער, משהו השתבש. אנא נסו שוב.";
           });
           await _speak('אוי, משהו השתבש. נסו שוב.', languageCode: 'he-IL');
         }
+      }
     }
-  }
 
   Future<WordData> _saveImageAndCreateWordData(XFile imageFile, String word) async {
     final directory = await getApplicationDocumentsDirectory();

@@ -72,8 +72,8 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final sparkReady = AppConfig.hasGemini || AppConfig.hasGeminiStub;
-    final usingStub = !AppConfig.hasGemini && AppConfig.hasGeminiStub;
+    final sparkReady = AppConfig.hasGemini || AppConfig.hasGeminiProxy || AppConfig.hasGeminiStub;
+    final usingStub = !AppConfig.hasGemini && !AppConfig.hasGeminiProxy && AppConfig.hasGeminiStub;
     final coins = context.watch<CoinProvider>().coins;
 
     return Scaffold(
@@ -105,10 +105,10 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
                       children: [
                         Text(
                           sparkReady
-                              ? (usingStub
-                                  ? 'ספרק פועל במצב סיפור ללא חיבור. הוסיפו GEMINI_API_KEY כדי לקבל הרפתקאות חיות.'
+                                ? (usingStub
+                                    ? 'ספרק פועל במצב סיפור ללא חיבור. הוסיפו GEMINI_API_KEY או GEMINI_PROXY_URL כדי לקבל הרפתקאות חיות.'
                                   : 'ספרק, המנטור הקוסמי, מוכן לטוות הרפתקה מיוחדת בשבילכם!')
-                              : 'הוסיפו GEMINI_API_KEY או הפעילו --dart-define=ENABLE_GEMINI_STUB=true כדי לפתוח את מסעות ספרק.',
+                                : 'הוסיפו GEMINI_API_KEY, או הגדירו GEMINI_PROXY_URL, או הפעילו --dart-define=ENABLE_GEMINI_STUB=true כדי לפתוח את מסעות ספרק.',
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 16),

@@ -32,6 +32,7 @@ helper exposes the values at runtime.
 | Dart define | Feature | Notes |
 | --- | --- | --- |
 | `GEMINI_API_KEY` | AI-powered pronunciation feedback & photo recognition | Optional. When missing the app gracefully falls back to manual play. |
+| `GEMINI_PROXY_URL` | Hosted Gemini proxy endpoint (Firebase Functions / Cloud Run) | Preferred for production so the key stays on the server. Clients call the proxy instead of talking to Gemini directly. |
 | `ENABLE_GEMINI_STUB` | Spark's Adventure Lab offline stub | Optional. Set to `true` in CI to serve deterministic stories without exposing a real Gemini key. |
 | `GOOGLE_TTS_API_KEY` | Server-quality Hebrew TTS | Optional. Falls back to on-device TTS if omitted. |
 | `PIXABAY_API_KEY` | Bulk word uploader scripts | Required for `dart run scripts/upload_words.dart`. |
@@ -47,6 +48,45 @@ flutter run \
   --dart-define=CLOUDINARY_API_KEY=your_api_key \
   --dart-define=CLOUDINARY_API_SECRET=your_secret
 ```
+
+#### Automatic local injection
+
+To avoid repeating the flags, copy `.env.example` to `.env`, fill in your secrets, and use the provided wrapper:
+
+```bash
+cp .env.example .env
+echo "GEMINI_API_KEY=your_key" >> .env
+
+./scripts/flutterw run -d chrome
+```
+
+The script sources `.env`, injects `--dart-define=GEMINI_API_KEY=...` when missing, and falls back to any existing environment variables. It works with other Flutter subcommands too (e.g. `./scripts/flutterw build web`). In CI you can keep using plain `flutter` with explicit `--dart-define` flags so secrets stay in your secret manager.
+
+When you deploy the Gemini proxy (see below), place the URL in `.env` as `GEMINI_PROXY_URL=...`. The wrapper will automatically pass it to Flutter and, if the key is omitted, enforce that the proxy is present instead.
+
+#### Server-side Gemini proxy (Firebase Functions / Cloud Run)
+
+Keep your Gemini key on the server by deploying the bundled proxy under `functions/`:
+
+1. `cd functions`
+2. `npm install`
+3. Store the key securely:  
+   - **Firebase Functions**: `firebase functions:secrets:set GEMINI_API_KEY`  
+   - **Cloud Run (via Cloud Build)**: configure `GEMINI_API_KEY` as a secret/env var in your deployment pipeline.
+4. For Firebase, build and deploy:
+   ```bash
+   npm run build
+   firebase deploy --only functions:geminiProxy
+   ```
+   For Cloud Run, package `functions/src/index.ts` into your service entrypoint (the code exports `geminiProxy` as an HTTP handler).
+5. Copy the published HTTPS URL and set it in `.env` as `GEMINI_PROXY_URL`. Optionally point `AI_IMAGE_VALIDATION_URL` to the same URL (otherwise the app defaults to the proxy when present).
+
+The proxy supports three operations:
+- **Image identification** (`mode: "identify"`): returns the primary object name for camera capture.
+- **Image validation** (default payload): answers whether an image matches a requested word and returns confidence.
+- **Text generation** (`mode: "text"` / `"story"`): powers Spark's adventure stories and other Gemini prompts on the server.
+
+Because the mobile/web client now talks to your proxy, the Gemini key never ships with the app binary—users only see the public endpoint you control.
 
 ### CI without live Gemini
 
