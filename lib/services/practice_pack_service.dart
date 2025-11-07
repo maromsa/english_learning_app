@@ -340,6 +340,14 @@ class PracticePack {
   }
 }
 
+String _sanitize(dynamic value) {
+  if (value is String) {
+    return value.trim();
+  }
+  return '';
+}
+
+
 class PracticeActivity {
   PracticeActivity({
     required this.title,
