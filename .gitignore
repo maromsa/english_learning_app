@@ -47,3 +47,5 @@ app.*.map.json
 scripts/service-account-key.json
 /lib/config.dart
 .env
+functions/node_modules/
+functions/lib/

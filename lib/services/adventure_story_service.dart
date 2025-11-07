@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
 import '../app_config.dart';
+import 'gemini_proxy_service.dart';
 
 typedef GeminiTextGenerator = Future<String?> Function(String prompt);
 
@@ -28,9 +29,9 @@ class AdventureStoryService {
       if (_allowStub) {
         return _generateStubStory(context);
       }
-        throw const AdventureStoryUnavailableException(
-          'חסר מפתח Gemini. הוסיפו GEMINI_API_KEY באמצעות --dart-define או הפעילו את מצב הדמה (stub).',
-        );
+      throw const AdventureStoryUnavailableException(
+        'חסר חיבור ל-Gemini. הוסיפו GEMINI_API_KEY באמצעות --dart-define, הגדירו GEMINI_PROXY_URL, או הפעילו את מצב הדמה (stub).',
+      );
     }
 
     final prompt = _buildPrompt(context);
@@ -51,7 +52,29 @@ class AdventureStoryService {
     }
   }
 
+  static const String _sparkSystemInstruction =
+      'You are Spark, a playful mentor guiding 5-8 year olds through English adventures. '
+      'Speak in simple, upbeat Hebrew so young native Hebrew speakers feel at home, '
+      'but keep every English vocabulary word exactly as provided. '
+      'Always respect the JSON schema instructions.';
+
   static GeminiTextGenerator? _inferGenerator(GenerativeModel? providedModel) {
+    final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
+
+    if (AppConfig.hasGeminiProxy && proxyEndpoint != null) {
+      return (prompt) async {
+        final service = GeminiProxyService(proxyEndpoint);
+        try {
+          return await service.generateText(
+            prompt,
+            systemInstruction: _sparkSystemInstruction,
+          );
+        } finally {
+          service.dispose();
+        }
+      };
+    }
+
     if (!AppConfig.hasGemini && providedModel == null) {
       return null;
     }
@@ -59,12 +82,7 @@ class AdventureStoryService {
     final model = providedModel ?? GenerativeModel(
       model: 'gemini-1.5-flash',
       apiKey: AppConfig.geminiApiKey,
-      systemInstruction: Content.text(
-          'You are Spark, a playful mentor guiding 5-8 year olds through English adventures. '
-          'Speak in simple, upbeat Hebrew so young native Hebrew speakers feel at home, '
-          'but keep every English vocabulary word exactly as provided. '
-          'Always respect the JSON schema instructions.',
-      ),
+      systemInstruction: Content.text(_sparkSystemInstruction),
     );
 
     return (prompt) async {

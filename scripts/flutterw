@@ -13,22 +13,35 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
 fi
 
-has_gemini_define=false
-for arg in "$@"; do
-  case "$arg" in
-    --dart-define=GEMINI_API_KEY=*)
-      has_gemini_define=true
-      break
-      ;;
-  esac
-done
+args=("$@")
 
-if [[ "$has_gemini_define" != true ]]; then
-  if [[ -z "${GEMINI_API_KEY:-}" ]]; then
-    echo "[flutterw] error: GEMINI_API_KEY is missing. Provide it via .env or the environment, or pass --dart-define=GEMINI_API_KEY=..." >&2
-    exit 1
-  fi
-  set -- "$@" "--dart-define=GEMINI_API_KEY=${GEMINI_API_KEY}"
+has_define() {
+  local key="$1"
+  for existing in "${args[@]}"; do
+    if [[ "$existing" == --dart-define=${key}=* ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+if ! has_define GEMINI_API_KEY && [[ -n "${GEMINI_API_KEY:-}" ]]; then
+  args+=("--dart-define=GEMINI_API_KEY=${GEMINI_API_KEY}")
 fi
 
+if ! has_define GEMINI_PROXY_URL && [[ -n "${GEMINI_PROXY_URL:-}" ]]; then
+  args+=("--dart-define=GEMINI_PROXY_URL=${GEMINI_PROXY_URL}")
+fi
+
+if ! has_define AI_IMAGE_VALIDATION_URL && [[ -n "${AI_IMAGE_VALIDATION_URL:-}" ]]; then
+  args+=("--dart-define=AI_IMAGE_VALIDATION_URL=${AI_IMAGE_VALIDATION_URL}")
+fi
+
+if ! has_define GEMINI_API_KEY && [[ -z "${GEMINI_API_KEY:-}" ]] && \
+   ! has_define GEMINI_PROXY_URL && [[ -z "${GEMINI_PROXY_URL:-}" ]]; then
+  echo "[flutterw] error: GEMINI_API_KEY or GEMINI_PROXY_URL is required. Provide one via .env, the environment, or pass the corresponding --dart-define flag." >&2
+  exit 1
+fi
+
+set -- "${args[@]}"
 exec flutter "$@"

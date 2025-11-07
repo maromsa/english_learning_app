@@ -17,6 +17,8 @@ class AppConfig {
       String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
   static const String _enableGeminiStubFlag =
       String.fromEnvironment('ENABLE_GEMINI_STUB', defaultValue: 'false');
+  static const String geminiProxyUrl =
+      String.fromEnvironment('GEMINI_PROXY_URL', defaultValue: '');
   static const String pixabayApiKey =
       String.fromEnvironment('PIXABAY_API_KEY', defaultValue: '');
   static const String firebaseUserIdForUpload = String.fromEnvironment(
@@ -37,6 +39,7 @@ class AppConfig {
       String.fromEnvironment('AI_IMAGE_VALIDATION_URL', defaultValue: '');
 
   static bool get hasGemini => geminiApiKey.isNotEmpty;
+  static bool get hasGeminiProxy => geminiProxyUrl.isNotEmpty;
   static bool get hasGeminiStub => _parseBool(_enableGeminiStubFlag);
   static bool get hasPixabay => pixabayApiKey.isNotEmpty;
   static bool get hasCloudinary =>
@@ -54,16 +57,20 @@ class AppConfig {
   static Uri? get aiImageValidationEndpoint =>
       hasAiImageValidation ? Uri.tryParse(aiImageValidationUrl) : null;
 
-  /// Provides a quick overview for debug logs/tests.
-  static Map<String, bool> diagnostics() => {
-        'gemini': hasGemini,
-        'geminiStub': hasGeminiStub,
-        'pixabay': hasPixabay,
-        'cloudinary': hasCloudinary,
-        'googleTts': hasGoogleTts,
-        'firebaseUserId': hasFirebaseUserId,
-        'aiImageValidation': hasAiImageValidation,
-      };
+  static Uri? get geminiProxyEndpoint =>
+      hasGeminiProxy ? Uri.tryParse(geminiProxyUrl) : null;
+
+    /// Provides a quick overview for debug logs/tests.
+    static Map<String, bool> diagnostics() => {
+          'gemini': hasGemini,
+          'geminiProxy': hasGeminiProxy,
+          'geminiStub': hasGeminiStub,
+          'pixabay': hasPixabay,
+          'cloudinary': hasCloudinary,
+          'googleTts': hasGoogleTts,
+          'firebaseUserId': hasFirebaseUserId,
+          'aiImageValidation': hasAiImageValidation,
+        };
 
   /// Logs helpful hints when a required secret is missing.
   static void debugWarnIfMissing(String feature, bool isAvailable) {
