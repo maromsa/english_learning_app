@@ -7,6 +7,8 @@ import 'package:english_learning_app/models/daily_mission.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
+import 'package:english_learning_app/screens/ai_conversation_screen.dart';
+import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/image_quiz_game.dart';
 import 'package:english_learning_app/screens/daily_missions_screen.dart';
 import 'package:english_learning_app/screens/lightning_practice_screen.dart';
@@ -627,56 +629,82 @@ class _MyHomePageState extends State<MyHomePage> {
       );
     }
     final currentWordData = _words.isNotEmpty ? _words[_currentIndex] : null;
-    return Stack(
-      alignment: Alignment.topCenter,
-      children: [
-        Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.lightBlue.shade300,
-            title: Text(
-              widget.title,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            centerTitle: true,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.image_search),
-                tooltip: 'Image Quiz Game',
-                onPressed: () {
+      return Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          Scaffold(
+            appBar: AppBar(
+              backgroundColor: Colors.lightBlue.shade300,
+              title: Text(
+                widget.title,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              centerTitle: true,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.chat),
+                  tooltip: 'חבר שיחה של ספרק',
+                  onPressed: () {
+                    final focusWords = _words.take(6).map((word) => word.word).toList(growable: false);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AiConversationScreen(focusWords: focusWords),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.emoji_events),
+                  tooltip: 'חבילת אימון AI',
+                  onPressed: () {
+                    final focusWords = _words.take(6).map((word) => word.word).toList(growable: false);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AiPracticePackScreen(focusWords: focusWords),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.image_search),
+                  tooltip: 'Image Quiz Game',
+                  onPressed: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => ImageQuizGame()),
                     );
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.camera_alt),
-                tooltip: 'הוסף מילה',
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.camera_alt),
+                  tooltip: 'הוסף מילה',
                   onPressed: _aiFeaturesEnabled ? _takePictureAndIdentify : null,
-              ),
-              IconButton(
-                icon: const Icon(Icons.store),
-                tooltip: 'חנות',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ShopScreen()),
-                  );
-                },
-              ),
-            ],
-          ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.store),
+                  tooltip: 'חנות',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ShopScreen()),
+                    );
+                  },
+                ),
+              ],
+            ),
             floatingActionButton: FloatingActionButton.extended(
               onPressed: _aiFeaturesEnabled ? _takePictureAndIdentify : null,
-            label: const Text('הוסף מילה'),
-            icon: const Icon(Icons.camera_alt),
-          ),
-          body: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
+              label: const Text('הוסף מילה'),
+              icon: const Icon(Icons.camera_alt),
+            ),
+            body: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
                   ScoreDisplay(coins: Provider.of<CoinProvider>(context).coins),
                   WordsProgressBar(
                     totalWords: _words.length,
