@@ -2,6 +2,8 @@
 import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/screens/ai_conversation_screen.dart';
+import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -344,6 +346,24 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  void _handleAiShortcut(_QuickAiAction action) {
+    switch (action) {
+      case _QuickAiAction.chatBuddy:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AiConversationScreen()),
+        );
+        break;
+      case _QuickAiAction.practicePack:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AiPracticePackScreen()),
+        );
+        break;
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final coinProvider = Provider.of<CoinProvider>(context);
@@ -361,6 +381,21 @@ class _MapScreenState extends State<MapScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          PopupMenuButton<_QuickAiAction>(
+            icon: const Icon(Icons.psychology_alt),
+            tooltip: 'כלי AI חדשים',
+            onSelected: _handleAiShortcut,
+            itemBuilder: (context) => const [
+              PopupMenuItem<_QuickAiAction>(
+                value: _QuickAiAction.chatBuddy,
+                child: Text('חבר שיחה של ספרק'),
+              ),
+              PopupMenuItem<_QuickAiAction>(
+                value: _QuickAiAction.practicePack,
+                child: Text('חבילת אימון AI'),
+              ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.auto_awesome),
             tooltip: 'מסע קסם עם Spark',
@@ -423,7 +458,7 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ],
       ),
-      body: Stack(
+        body: Stack(
         children: [
           Image.asset(
             'assets/images/map/map_background.jpg',
@@ -557,3 +592,5 @@ class _InfoBanner extends StatelessWidget {
     );
   }
 }
+
+enum _QuickAiAction { chatBuddy, practicePack }
