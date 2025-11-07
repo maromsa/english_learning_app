@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ROOT_DIR="$(cd -- "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_FILE="$ROOT_DIR/.env"
+
+# Load environment variables from .env if available (without exporting functions)
+if [[ -f "$ENV_FILE" ]]; then
+  # shellcheck source=/dev/null
+  set -a
+  source "$ENV_FILE"
+  set +a
+fi
+
+has_gemini_define=false
+for arg in "$@"; do
+  case "$arg" in
+    --dart-define=GEMINI_API_KEY=*)
+      has_gemini_define=true
+      break
+      ;;
+  esac
+done
+
+if [[ "$has_gemini_define" != true ]]; then
+  if [[ -z "${GEMINI_API_KEY:-}" ]]; then
+    echo "[flutterw] error: GEMINI_API_KEY is missing. Provide it via .env or the environment, or pass --dart-define=GEMINI_API_KEY=..." >&2
+    exit 1
+  fi
+  set -- "$@" "--dart-define=GEMINI_API_KEY=${GEMINI_API_KEY}"
+fi
+
+exec flutter "$@"

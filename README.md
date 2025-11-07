@@ -48,6 +48,19 @@ flutter run \
   --dart-define=CLOUDINARY_API_SECRET=your_secret
 ```
 
+#### Automatic local injection
+
+To avoid repeating the flags, copy `.env.example` to `.env`, fill in your secrets, and use the provided wrapper:
+
+```bash
+cp .env.example .env
+echo "GEMINI_API_KEY=your_key" >> .env
+
+./scripts/flutterw run -d chrome
+```
+
+The script sources `.env`, injects `--dart-define=GEMINI_API_KEY=...` when missing, and falls back to any existing environment variables. It works with other Flutter subcommands too (e.g. `./scripts/flutterw build web`). In CI you can keep using plain `flutter` with explicit `--dart-define` flags so secrets stay in your secret manager.
+
 ### CI without live Gemini
 
 For automated CI builds or preview deployments where secrets are unavailable, enable Spark's deterministic stub stories instead of providing a real Gemini key:
