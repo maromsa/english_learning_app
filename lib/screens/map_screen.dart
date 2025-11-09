@@ -2,6 +2,8 @@
 import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/screens/ai_conversation_screen.dart';
+import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/daily_reward_service.dart';
 import '../services/level_repository.dart';
 import 'ai_adventure_screen.dart';
+import 'daily_missions_screen.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
 
@@ -316,44 +319,122 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  Future<void> _openDailyMissions() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const DailyMissionsScreen()),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result == 'lightning') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('פתחו שלב ובחרו באפשרות "ריצת ברק" כדי להשלים את המשימה!'),
+          backgroundColor: Colors.blueGrey.shade700,
+        ),
+      );
+    } else if (result == 'quiz') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('היכנסו לשלב ולחצו על אייקון החידון כדי לשחק מיד.'),
+          backgroundColor: Colors.blueGrey.shade700,
+        ),
+      );
+    }
+  }
+
+  void _handleAiShortcut(_QuickAiAction action) {
+    switch (action) {
+      case _QuickAiAction.chatBuddy:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AiConversationScreen()),
+        );
+        break;
+      case _QuickAiAction.practicePack:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AiPracticePackScreen()),
+        );
+        break;
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final coinProvider = Provider.of<CoinProvider>(context);
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text("מסע המילים", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(blurRadius: 4, color: Colors.black45)])),
+        title: const Text(
+          "מסע המילים",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+          ),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-            IconButton(
-              icon: const Icon(Icons.auto_awesome),
-              tooltip: 'מסע קסם עם Spark',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AiAdventureScreen(
-                      levels: List<LevelData>.unmodifiable(levels),
-                      totalStars: _totalStars,
-                    ),
+          PopupMenuButton<_QuickAiAction>(
+            icon: const Icon(Icons.psychology_alt),
+            tooltip: 'כלי AI חדשים',
+            onSelected: _handleAiShortcut,
+            itemBuilder: (context) => const [
+              PopupMenuItem<_QuickAiAction>(
+                value: _QuickAiAction.chatBuddy,
+                child: Text('חבר שיחה של ספרק'),
+              ),
+              PopupMenuItem<_QuickAiAction>(
+                value: _QuickAiAction.practicePack,
+                child: Text('חבילת אימון AI'),
+              ),
+            ],
+          ),
+          IconButton(
+            icon: const Icon(Icons.auto_awesome),
+            tooltip: 'מסע קסם עם Spark',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AiAdventureScreen(
+                    levels: List<LevelData>.unmodifiable(levels),
+                    totalStars: _totalStars,
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Row(
               children: [
                 Icon(Icons.monetization_on, color: Colors.yellow.shade700),
                 const SizedBox(width: 4),
-                Text('${coinProvider.coins}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  '${coinProvider.coins}',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(width: 12),
                 const Icon(Icons.star, color: Colors.amber),
                 const SizedBox(width: 4),
-                Text('$_totalStars', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  '$_totalStars',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.flag),
+            tooltip: 'משימות היום',
+            onPressed: _openDailyMissions,
           ),
           IconButton(
             icon: const Icon(Icons.card_giftcard),
@@ -377,7 +458,7 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ],
       ),
-      body: Stack(
+        body: Stack(
         children: [
           Image.asset(
             'assets/images/map/map_background.jpg',
@@ -511,3 +592,5 @@ class _InfoBanner extends StatelessWidget {
     );
   }
 }
+
+enum _QuickAiAction { chatBuddy, practicePack }

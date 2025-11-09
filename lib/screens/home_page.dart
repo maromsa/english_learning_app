@@ -2,13 +2,20 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 import 'package:english_learning_app/app_config.dart';
+import 'package:english_learning_app/models/achievement.dart';
+import 'package:english_learning_app/models/daily_mission.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/daily_mission_provider.dart';
+import 'package:english_learning_app/screens/ai_conversation_screen.dart';
+import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/image_quiz_game.dart';
+import 'package:english_learning_app/screens/daily_missions_screen.dart';
+import 'package:english_learning_app/screens/lightning_practice_screen.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
-import 'package:english_learning_app/services/gemini_api_key_resolver.dart';
+import 'package:english_learning_app/services/gemini_proxy_service.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
@@ -17,7 +24,6 @@ import 'package:english_learning_app/widgets/achievement_notification.dart';
 import 'package:english_learning_app/widgets/score_display.dart';
 import 'package:english_learning_app/widgets/word_display_card.dart';
 import 'package:english_learning_app/widgets/words_progress_bar.dart';
-import 'package:english_learning_app/models/achievement.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -57,6 +63,7 @@ class _MyHomePageState extends State<MyHomePage> {
   WebImageService? _webImageService;
   AiImageValidator _cameraValidator = const PassthroughAiImageValidator();
   HttpFunctionAiImageValidator? _httpImageValidator;
+  GeminiProxyService? _geminiProxy;
 
   bool _isLoading = true;
   List<WordData> _words = [];
@@ -142,15 +149,17 @@ class _MyHomePageState extends State<MyHomePage> {
     _achievementOverlay?.remove();
     _httpImageValidator?.dispose();
     _webImageService?.dispose();
+    _geminiProxy?.dispose();
     super.dispose();
   }
 
   Future<void> _initializeServices() async {
-    final String geminiKey = await GeminiApiKeyResolver.resolve();
-    final bool geminiAvailable = geminiKey.isNotEmpty;
+    final bool geminiAvailable = AppConfig.hasGemini;
+    final bool geminiProxyAvailable = AppConfig.hasGeminiProxy;
     final bool cloudinaryAvailable = AppConfig.hasCloudinary;
     final bool pixabayAvailable = AppConfig.hasPixabay;
-    final Uri? validationEndpoint = AppConfig.aiImageValidationEndpoint;
+    final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
+    final Uri? validationEndpoint = AppConfig.aiImageValidationEndpoint ?? proxyEndpoint;
 
     if (validationEndpoint != null) {
       _httpImageValidator = HttpFunctionAiImageValidator(validationEndpoint);
@@ -159,7 +168,9 @@ class _MyHomePageState extends State<MyHomePage> {
       AppConfig.debugWarnIfMissing('AI image validation endpoint', false);
     }
 
-    if (geminiAvailable) {
+    if (geminiProxyAvailable && proxyEndpoint != null) {
+      _geminiProxy = GeminiProxyService(proxyEndpoint);
+    } else if (geminiAvailable) {
       _model = GenerativeModel(
         model: 'gemini-1.5-flash',
         apiKey: geminiKey,
@@ -196,7 +207,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (mounted) {
       setState(() {
         _isLoading = false;
-        _aiFeaturesEnabled = geminiAvailable;
+        _aiFeaturesEnabled = geminiProxyAvailable || geminiAvailable;
       });
     }
   }
@@ -275,51 +286,61 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<void> _configureTts() async {
-    await flutterTts.setLanguage("en-US");
-    await flutterTts.setSpeechRate(0.5);
-  }
+    Future<void> _configureTts() async {
+      await flutterTts.setLanguage("en-US");
+      await flutterTts.setSpeechRate(0.5);
+    }
 
-  Future<void> _takePictureAndIdentify() async {
-    if (!_aiFeaturesEnabled || _model == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('תכונת ה-AI כבויה. הוסף מפתחות API כדי להפעיל צילום חכם.'),
-          ),
-        );
+    Future<void> _takePictureAndIdentify() async {
+      if (!_aiFeaturesEnabled || (_model == null && _geminiProxy == null)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('תכונת ה-AI כבויה. הוסיפו GEMINI_API_KEY או הגדירו GEMINI_PROXY_URL כדי להפעיל צילום חכם.'),
+            ),
+          );
+        }
+        return;
       }
-      return;
-    }
 
-    final telemetry = TelemetryService.maybeOf(context);
+      final telemetry = TelemetryService.maybeOf(context);
 
-    final XFile? imageFile = await _picker.pickImage(source: ImageSource.camera);
+      final XFile? imageFile = await _picker.pickImage(source: ImageSource.camera);
 
-    if (imageFile == null) {
-      return;
-    }
+      if (imageFile == null) {
+        return;
+      }
 
-    setState(() {
-      _feedbackText = 'מנתחים את התמונה שלכם...';
-    });
+      setState(() {
+        _feedbackText = 'מנתחים את התמונה שלכם...';
+      });
 
-    try {
-      final imageBytes = await imageFile.readAsBytes();
-      const prompt =
-          "Identify the main, single object in this image. Respond with only the object's name in English, in singular form. For example: 'Apple', 'Car', 'Dog'. If you cannot identify a single clear object, respond with the word 'unclear'.";
+      try {
+        final imageBytes = await imageFile.readAsBytes();
+        const prompt =
+            "Identify the main, single object in this image. Respond with only the object's name in English, in singular form. For example: 'Apple', 'Car', 'Dog'. If you cannot identify a single clear object, respond with the word 'unclear'.";
 
-      final content = [
-        Content.multi([
-          TextPart(prompt),
-          DataPart('image/jpeg', imageBytes),
-        ])
-      ];
+        String identifiedWord;
+        if (_geminiProxy != null) {
+          final proxyResult = await _geminiProxy!.identifyMainObject(
+            imageBytes,
+            prompt: prompt,
+            mimeType: 'image/jpeg',
+          );
+          identifiedWord = proxyResult ?? 'unclear';
+        } else {
+          final content = [
+            Content.multi([
+              TextPart(prompt),
+              DataPart('image/jpeg', imageBytes),
+            ]),
+          ];
 
-      final response = await _model!.generateContent(content);
-      final identifiedWord = response.text?.trim() ?? 'unclear';
+          final response = await _model!.generateContent(content);
+          identifiedWord = response.text?.trim() ?? 'unclear';
+        }
 
-      debugPrint('Gemini identified: $identifiedWord');
+        debugPrint('Gemini identified: $identifiedWord');
 
         if (identifiedWord.toLowerCase() == 'unclear' || identifiedWord.contains(' ')) {
           telemetry?.logCameraValidation(
@@ -382,16 +403,16 @@ class _MyHomePageState extends State<MyHomePage> {
             confidence: _currentValidationConfidence(),
           );
         }
-    } catch (e) {
-      debugPrint('Error identifying image: $e');
+      } catch (e) {
+        debugPrint('Error identifying image: $e');
         if (mounted) {
           setState(() {
             _feedbackText = "מצטער, משהו השתבש. אנא נסו שוב.";
           });
           await _speak('אוי, משהו השתבש. נסו שוב.', languageCode: 'he-IL');
         }
+      }
     }
-  }
 
   Future<WordData> _saveImageAndCreateWordData(XFile imageFile, String word) async {
     final directory = await getApplicationDocumentsDirectory();
@@ -404,6 +425,13 @@ class _MyHomePageState extends State<MyHomePage> {
       word: word,
       imageUrl: savedImageFile.path, // The URL is now a local file path
       isCompleted: false,
+    );
+  }
+
+  Future<void> _openDailyMissionsFromHome() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const DailyMissionsScreen()),
     );
   }
 
@@ -455,8 +483,12 @@ class _MyHomePageState extends State<MyHomePage> {
       int pointsToAdd = 10;
       await Provider.of<CoinProvider>(context, listen: false).addCoins(pointsToAdd);
 
-      Provider.of<AchievementService>(context, listen: false)
-          .checkForAchievements(streak: _streak);
+        Provider.of<AchievementService>(context, listen: false)
+            .checkForAchievements(streak: _streak);
+
+        context.read<DailyMissionProvider>().incrementByType(
+              DailyMissionType.speakPractice,
+            );
 
       feedback = "כל הכבוד! +10 מטבעות";
       setState(() => currentWordObject.isCompleted = true);
@@ -596,72 +628,132 @@ class _MyHomePageState extends State<MyHomePage> {
       );
     }
     final currentWordData = _words.isNotEmpty ? _words[_currentIndex] : null;
-    return Stack(
-      alignment: Alignment.topCenter,
-      children: [
-        Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.lightBlue.shade300,
-            title: Text(
-              widget.title,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            centerTitle: true,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.image_search),
-                tooltip: 'Image Quiz Game',
-                onPressed: () {
+      return Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          Scaffold(
+            appBar: AppBar(
+              backgroundColor: Colors.lightBlue.shade300,
+              title: Text(
+                widget.title,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              centerTitle: true,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.chat),
+                  tooltip: 'חבר שיחה של ספרק',
+                  onPressed: () {
+                    final focusWords = _words.take(6).map((word) => word.word).toList(growable: false);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AiConversationScreen(focusWords: focusWords),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.emoji_events),
+                  tooltip: 'חבילת אימון AI',
+                  onPressed: () {
+                    final focusWords = _words.take(6).map((word) => word.word).toList(growable: false);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AiPracticePackScreen(focusWords: focusWords),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.image_search),
+                  tooltip: 'Image Quiz Game',
+                  onPressed: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => ImageQuizGame()),
                     );
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.camera_alt),
-                tooltip: 'הוסף מילה',
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.camera_alt),
+                  tooltip: 'הוסף מילה',
                   onPressed: _aiFeaturesEnabled ? _takePictureAndIdentify : null,
-              ),
-              IconButton(
-                icon: const Icon(Icons.store),
-                tooltip: 'חנות',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ShopScreen()),
-                  );
-                },
-              ),
-            ],
-          ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.store),
+                  tooltip: 'חנות',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ShopScreen()),
+                    );
+                  },
+                ),
+              ],
+            ),
             floatingActionButton: FloatingActionButton.extended(
               onPressed: _aiFeaturesEnabled ? _takePictureAndIdentify : null,
-            label: const Text('הוסף מילה'),
-            icon: const Icon(Icons.camera_alt),
-          ),
-          body: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
+              label: const Text('הוסף מילה'),
+              icon: const Icon(Icons.camera_alt),
+            ),
+            body: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
                   ScoreDisplay(coins: Provider.of<CoinProvider>(context).coins),
                   WordsProgressBar(
                     totalWords: _words.length,
                     completedWords: _words.where((w) => w.isCompleted).length,
                   ),
-                    if (currentWordData != null)
-                      WordDisplayCard(
-                        wordData: currentWordData,
-                        onPrevious: _previousWord,
-                        onNext: _nextWord,
-                      )
+                  Consumer<DailyMissionProvider>(
+                    builder: (context, missionsProvider, _) {
+                      if (!missionsProvider.isInitialized || missionsProvider.missions.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+
+                      DailyMission? claimable;
+                      DailyMission? next;
+                      for (final mission in missionsProvider.missions) {
+                        if (mission.isClaimable) {
+                          claimable = mission;
+                          break;
+                        }
+                        if (!mission.isCompleted && next == null) {
+                          next = mission;
+                        }
+                      }
+
+                      final DailyMission highlight = claimable ?? next ?? missionsProvider.missions.first;
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 12.0),
+                        child: _MissionNudgeCard(
+                          mission: highlight,
+                          isClaimable: highlight.isClaimable,
+                          onTap: _openDailyMissionsFromHome,
+                        ),
+                      );
+                    },
+                  ),
+                  if (currentWordData != null)
+                    WordDisplayCard(
+                      wordData: currentWordData,
+                      onPrevious: _previousWord,
+                      onNext: _nextWord,
+                    )
                   else
-                    const SizedBox(height: 346,
-                        child: Center(child: Text(
-                            "אין עדיין מילים לתרגול. לחץ על המצלמה כדי להוסיף אחת חדשה!",
-                            style: TextStyle(fontSize: 22)))),
+                    const SizedBox(
+                      height: 346,
+                      child: Center(
+                        child: Text(
+                          "אין עדיין מילים לתרגול. לחץ על המצלמה כדי להוסיף אחת חדשה!",
+                          style: TextStyle(fontSize: 22),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 40),
                     if (!_aiFeaturesEnabled)
                       Container(
@@ -678,32 +770,57 @@ class _MyHomePageState extends State<MyHomePage> {
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                       ),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ActionButton(
-                          text: 'הקשב',
-                          icon: Icons.volume_up,
-                          color: Colors.lightBlue.shade400,
-                          onPressed: (currentWordData == null)
-                              ? null
-                              : () async {
-                            await flutterTts.setLanguage("en-US");
-                            flutterTts.speak(currentWordData.word);
-                          },
-                        ),
-                        const SizedBox(width: 20),
-                        ActionButton(
-                          text: 'דבר',
-                          icon: _isListening ? Icons.stop : Icons.mic,
-                          color: _isListening ? Colors.grey.shade600 : Colors.redAccent,
-                          onPressed: _handleSpeech,
-                        ),
-                      ],
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ActionButton(
+                            text: 'הקשב',
+                            icon: Icons.volume_up,
+                            color: Colors.lightBlue.shade400,
+                            onPressed: (currentWordData == null)
+                                ? null
+                                : () async {
+                                    await flutterTts.setLanguage("en-US");
+                                    flutterTts.speak(currentWordData.word);
+                                  },
+                          ),
+                          const SizedBox(width: 20),
+                          ActionButton(
+                            text: 'דבר',
+                            icon: _isListening ? Icons.stop : Icons.mic,
+                            color: _isListening ? Colors.grey.shade600 : Colors.redAccent,
+                            onPressed: _handleSpeech,
+                          ),
+                          const SizedBox(width: 20),
+                          ActionButton(
+                            text: 'ריצת ברק',
+                            icon: Icons.flash_on,
+                            color: Colors.orangeAccent,
+                            onPressed: _words.length < 2
+                                ? () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('הוסיפו לפחות שתי מילים כדי להתחיל ריצת ברק!'),
+                                      ),
+                                    );
+                                  }
+                                : () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => LightningPracticeScreen(
+                                          words: List<WordData>.unmodifiable(_words),
+                                          levelTitle: widget.title,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
 
                   const SizedBox(height: 20),
                     SizedBox(
@@ -811,6 +928,122 @@ class BytesAudioSource extends StreamAudioSource {
       offset: start ?? 0,
       stream: Stream.value(_bytes.sublist(start ?? 0, end)),
       contentType: 'audio/mpeg',
+    );
+  }
+}
+
+class _MissionNudgeCard extends StatelessWidget {
+  const _MissionNudgeCard({
+    required this.mission,
+    required this.isClaimable,
+    required this.onTap,
+  });
+
+  final DailyMission mission;
+  final bool isClaimable;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color accent = isClaimable ? Colors.green.shade500 : Colors.indigo.shade400;
+    final double progress = mission.completionRatio;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        color: isClaimable ? Colors.green.shade50 : Colors.indigo.shade50,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: accent.withOpacity(0.15),
+                    child: Icon(
+                      isClaimable ? Icons.card_giftcard : Icons.flag,
+                      color: accent,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'משימה יומית',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: accent,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          mission.title,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: accent),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                mission.description,
+                style: const TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: LinearProgressIndicator(
+                  minHeight: 8,
+                  value: progress,
+                  backgroundColor: Colors.white,
+                  valueColor: AlwaysStoppedAnimation<Color>(accent),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${mission.progress}/${mission.target}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  if (isClaimable)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade100,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.monetization_on, size: 16, color: Colors.green),
+                          const SizedBox(width: 4),
+                          Text('+${mission.reward}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    )
+                  else
+                    Text(
+                      mission.remaining > 0
+                          ? 'עוד ${mission.remaining} כדי לנצח'
+                          : 'המשיכו להצליח!',
+                      style: TextStyle(color: accent, fontWeight: FontWeight.w600),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
