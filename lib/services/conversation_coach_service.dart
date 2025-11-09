@@ -2,10 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 
 import '../app_config.dart';
-import 'gemini_api_key_resolver.dart';
 import 'gemini_proxy_service.dart';
 
 typedef _ConversationGenerator = Future<String?> Function(String prompt);
@@ -13,30 +11,18 @@ typedef _ConversationGenerator = Future<String?> Function(String prompt);
 class ConversationCoachService {
   ConversationCoachService({
     Duration? timeout,
-    GenerativeModel? model,
     _ConversationGenerator? generator,
-    bool? enableStub,
   })  : _timeout = timeout ?? const Duration(seconds: 12),
-        _generator = generator ?? _inferGenerator(model),
-        _allowStub = enableStub ?? AppConfig.hasGeminiStub;
+        _generator = generator ?? _inferGenerator();
 
-  final _ConversationGenerator? _generator;
+  final _ConversationGenerator _generator;
   final Duration _timeout;
-  final bool _allowStub;
 
   Future<SparkCoachResponse> startConversation(ConversationSetup setup) async {
-    final generator = _generator;
-    if (generator == null) {
-      if (_allowStub) {
-        return _stubOpening(setup);
-      }
-      throw const ConversationUnavailableException(_geminiUnavailableMessage);
-    }
-
     final prompt = _buildOpeningPrompt(setup);
 
     try {
-      final raw = await generator(prompt).timeout(_timeout);
+      final raw = await _generator(prompt).timeout(_timeout);
       if (raw == null || raw.trim().isEmpty) {
         throw const ConversationGenerationException('לא התקבלה תשובה מ-Gemini. נסו שוב בעוד רגע.');
       }
@@ -47,11 +33,6 @@ class ConversationCoachService {
         fallbackMessage:
             'שלום! אני ספרק. היום נשחק ${setup.topicDescription()} ונלמד מילים חדשות באנגלית יחד.',
       );
-    } on ConversationUnavailableException {
-      if (_allowStub) {
-        return _stubOpening(setup);
-      }
-      rethrow;
     } on TimeoutException {
       throw const ConversationGenerationException('נראה ש-Gemini מתעכב. נסו שוב עוד מעט.');
     } on ConversationGenerationException {
@@ -67,14 +48,6 @@ class ConversationCoachService {
     required List<ConversationTurn> history,
     required String learnerMessage,
   }) async {
-    final generator = _generator;
-    if (generator == null) {
-      if (_allowStub) {
-        return _stubFollowUp(learnerMessage);
-      }
-      throw const ConversationUnavailableException(_geminiUnavailableMessage);
-    }
-
     final prompt = _buildFollowUpPrompt(
       setup: setup,
       history: history,
@@ -82,7 +55,7 @@ class ConversationCoachService {
     );
 
     try {
-      final raw = await generator(prompt).timeout(_timeout);
+      final raw = await _generator(prompt).timeout(_timeout);
       if (raw == null || raw.trim().isEmpty) {
         throw const ConversationGenerationException('ספרק לא הצליח לענות. נסו לשאול שוב.');
       }
@@ -92,11 +65,6 @@ class ConversationCoachService {
         isOpening: false,
         fallbackMessage: 'איזו תשובה נהדרת! רוצים לנסות לומר עוד משפט באנגלית?',
       );
-    } on ConversationUnavailableException {
-      if (_allowStub) {
-        return _stubFollowUp(learnerMessage);
-      }
-      rethrow;
     } on TimeoutException {
       throw const ConversationGenerationException('ספרק עסוק כרגע. נסו שוב בעוד רגע.');
     } on ConversationGenerationException {
@@ -107,61 +75,36 @@ class ConversationCoachService {
     }
   }
 
-    static const String _sparkSystemInstruction =
-        'You are Spark, an energetic AI mentor helping Hebrew-speaking kids aged 6-10 practise English conversation. '
-        'You reply in warm, supportive Hebrew sentences sprinkled with short English phrases that match the lesson focus. '
-        'Keep answers concise (max 70 Hebrew words) and highlight no more than three English words per turn. '
-        'Always output minified JSON following the caller instructions. Never mention JSON, prompts, or Gemini.';
+  static const String _sparkSystemInstruction =
+      'You are Spark, an energetic AI mentor helping Hebrew-speaking kids aged 6-10 practise English conversation. '
+      'You reply in warm, supportive Hebrew sentences sprinkled with short English phrases that match the lesson focus. '
+      'Keep answers concise (max 70 Hebrew words) and highlight no more than three English words per turn. '
+      'Always output minified JSON following the caller instructions. Never mention JSON, prompts, or Gemini.';
 
-    static const String _geminiUnavailableMessage =
-        'תכונת שיחת ה-AI של ספרק מושבתת. הוסיפו GEMINI_API_KEY או GEMINI_PROXY_URL כדי לאפשר שיחות חיות, או הפעילו --dart-define=ENABLE_GEMINI_STUB=true לדוגמה לא מקוונת.';
+  static const String _geminiUnavailableMessage =
+      'תכונת שיחת ה-AI של ספרק מושבתת. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי לאפשר שיחות חיות.';
 
-    static _ConversationGenerator? _inferGenerator(GenerativeModel? providedModel) {
+  static _ConversationGenerator _inferGenerator() {
     final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
-    if (AppConfig.hasGeminiProxy && proxyEndpoint != null) {
-      return (prompt) async {
-        final service = GeminiProxyService(proxyEndpoint);
-        try {
-          return await service.generateText(
-            prompt,
-            systemInstruction: _sparkSystemInstruction,
-          );
-        } finally {
-          service.dispose();
-        }
-      };
-    }
-
-    GenerativeModel? cachedModel = providedModel;
-
-    Future<GenerativeModel?> loadModel() async {
-      if (cachedModel != null) {
-        return cachedModel;
-      }
-
-      final key = await GeminiApiKeyResolver.resolve();
-      if (key == null || key.isEmpty) {
-        return null;
-      }
-
-      cachedModel = GenerativeModel(
-        model: 'gemini-1.5-flash',
-        apiKey: key,
-        systemInstruction: Content.text(_sparkSystemInstruction),
-      );
-
-      return cachedModel;
+    if (proxyEndpoint == null) {
+      throw const ConversationUnavailableException(_geminiUnavailableMessage);
     }
 
     return (prompt) async {
-      final model = await loadModel();
-      if (model == null) {
-        throw const ConversationUnavailableException(_geminiUnavailableMessage);
+      final service = GeminiProxyService(proxyEndpoint);
+      try {
+        final response = await service.generateText(
+          prompt,
+          systemInstruction: _sparkSystemInstruction,
+        );
+        if (response == null || response.trim().isEmpty) {
+          throw const ConversationUnavailableException(_geminiUnavailableMessage);
+        }
+        return response;
+      } finally {
+        service.dispose();
       }
-
-      final response = await model.generateContent([Content.text(prompt)]);
-      return response.text;
     };
   }
 
@@ -267,44 +210,6 @@ Output JSON (no markdown fences) with keys:
       rawText: cleaned,
       prompt: prompt,
       parsedFromJson: false,
-    );
-  }
-
-  SparkCoachResponse _stubOpening(ConversationSetup setup) {
-    final topic = setup.topicDescription();
-    final learner = setup.learnerName?.isNotEmpty == true ? setup.learnerName : 'חבר/ה יקר/ה';
-    return SparkCoachResponse(
-      message: '$learner, אני ספרק! היום נשחק $topic ונשתמש במילים כמו ${setup.stubVocabularySample()}. מה תרצו להגיד באנגלית?',
-      followUp: 'נסו להגיד משפט עם אחת המילים ולצרף תנועה קטנה.',
-      sparkTip: 'אפשר להתחיל עם I like... ואז לציין את המילה באנגלית.',
-      celebration: '✨',
-      vocabularyHighlights: setup.focusWords.take(3).toList(),
-      suggestedLearnerReplies: const [
-        'I like the red rocket!',
-        'Can I fly to the moon?',
-      ],
-      miniChallenge: 'בחרו מילה אחת ובצעו תנועה שמתאימה לה תוך כדי שאומרים אותה.',
-      rawText: 'stub',
-      prompt: 'stub',
-      parsedFromJson: true,
-    );
-  }
-
-  SparkCoachResponse _stubFollowUp(String learnerMessage) {
-    return SparkCoachResponse(
-      message: 'איזו תשובה מקסימה! שמעתם את עצמכם אומרים "$learnerMessage" באנגלית! רוצים להוסיף עוד פרט קטן?',
-      followUp: 'נסו להוסיף Because... ולהסביר למה בחרתם את זה.',
-      sparkTip: 'נסו להאריך את המשפט עם And או Because. זה נשמע בוגר יותר!',
-      celebration: '🌟',
-      vocabularyHighlights: const [],
-      suggestedLearnerReplies: const [
-        'Because it is super fun!',
-        'And my friend comes too!',
-      ],
-      miniChallenge: null,
-      rawText: 'stub-follow-up',
-      prompt: 'stub',
-      parsedFromJson: true,
     );
   }
 

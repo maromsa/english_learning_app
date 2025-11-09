@@ -12,16 +12,15 @@ void main() {
       learnerName: 'נועה',
     );
 
-    test('builds stub pack when generator is not available', () async {
+    test('throws when the generator does not return a response', () async {
       final service = PracticePackService(
-        generator: null,
-        enableStub: true,
+        generator: (_) async => null,
       );
 
-      final pack = await service.generatePack(request);
-      expect(pack.activities, isNotEmpty);
-      expect(pack.pepTalk, contains('ספרק'));
-      expect(pack.activities.first.steps.length, greaterThan(1));
+      expect(
+        () => service.generatePack(request),
+        throwsA(isA<PracticePackGenerationException>()),
+      );
     });
 
     test('parses JSON pack from the generator', () async {
@@ -57,7 +56,6 @@ void main() {
 
       final service = PracticePackService(
         generator: (_) async => json,
-        enableStub: false,
       );
 
       final pack = await service.generatePack(request);
@@ -67,10 +65,9 @@ void main() {
       expect(pack.activities.first.englishFocus, contains('hello'));
     });
 
-    test('falls back to stub when JSON cannot be parsed', () async {
+    test('falls back to deterministic content when JSON cannot be parsed', () async {
       final service = PracticePackService(
         generator: (_) async => 'oops',
-        enableStub: false,
       );
 
       final pack = await service.generatePack(request);

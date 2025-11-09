@@ -5,7 +5,7 @@
 // `AppConfig` helper. For example:
 //
 // flutter run \
-//   --dart-define=GEMINI_API_KEY=xxx \
+//   --dart-define=GEMINI_PROXY_URL=https://<region>-<project>.cloudfunctions.net/geminiProxy \
 //   --dart-define=PIXABAY_API_KEY=yyy \
 //   --dart-define=CLOUDINARY_CLOUD_NAME=zzz
 //

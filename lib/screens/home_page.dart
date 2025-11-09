@@ -27,7 +27,6 @@ import 'package:english_learning_app/widgets/words_progress_bar.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:just_audio/just_audio.dart';
@@ -52,7 +51,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  GenerativeModel? _model;
   late final ConfettiController _confettiController;
   final AudioPlayer _audioPlayer = AudioPlayer();
 
@@ -155,7 +153,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
 
   Future<void> _initializeServices() async {
-    final bool geminiAvailable = AppConfig.hasGemini;
     final bool geminiProxyAvailable = AppConfig.hasGeminiProxy;
     final bool cloudinaryAvailable = AppConfig.hasCloudinary;
     final bool pixabayAvailable = AppConfig.hasPixabay;
@@ -171,17 +168,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
     if (geminiProxyAvailable && proxyEndpoint != null) {
       _geminiProxy = GeminiProxyService(proxyEndpoint);
-    } else if (geminiAvailable) {
-      _model = GenerativeModel(
-        model: 'gemini-1.5-flash',
-        apiKey: AppConfig.geminiApiKey,
-      );
     } else {
       AppConfig.debugWarnIfMissing('Gemini AI features', false);
-    }
-
-    if (_cameraValidator is PassthroughAiImageValidator && _model != null) {
-      _cameraValidator = GeminiAiImageValidator(_model!);
     }
 
     if (pixabayAvailable) {
@@ -208,7 +196,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (mounted) {
       setState(() {
         _isLoading = false;
-        _aiFeaturesEnabled = geminiProxyAvailable || geminiAvailable;
+        _aiFeaturesEnabled = geminiProxyAvailable && proxyEndpoint != null;
       });
     }
   }
@@ -292,128 +280,114 @@ class _MyHomePageState extends State<MyHomePage> {
       await flutterTts.setSpeechRate(0.5);
     }
 
-    Future<void> _takePictureAndIdentify() async {
-      if (!_aiFeaturesEnabled || (_model == null && _geminiProxy == null)) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('תכונת ה-AI כבויה. הוסיפו GEMINI_API_KEY או הגדירו GEMINI_PROXY_URL כדי להפעיל צילום חכם.'),
-            ),
-          );
-        }
-        return;
+  Future<void> _takePictureAndIdentify() async {
+    if (!_aiFeaturesEnabled || _geminiProxy == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('תכונת ה-AI כבויה. הגדירו GEMINI_PROXY_URL של פונקציית הענן כדי להפעיל צילום חכם.'),
+          ),
+        );
       }
+      return;
+    }
 
-      final telemetry = TelemetryService.maybeOf(context);
+    final telemetry = TelemetryService.maybeOf(context);
 
-      final XFile? imageFile = await _picker.pickImage(source: ImageSource.camera);
+    final XFile? imageFile = await _picker.pickImage(source: ImageSource.camera);
+    if (imageFile == null) {
+      return;
+    }
 
-      if (imageFile == null) {
-        return;
-      }
+    setState(() {
+      _feedbackText = 'מנתחים את התמונה שלכם...';
+    });
 
-      setState(() {
-        _feedbackText = 'מנתחים את התמונה שלכם...';
-      });
+    try {
+      final imageBytes = await imageFile.readAsBytes();
+      const prompt =
+          "Identify the main, single object in this image. Respond with only the object's name in English, in singular form. For example: 'Apple', 'Car', 'Dog'. If you cannot identify a single clear object, respond with the word 'unclear'.";
 
-      try {
-        final imageBytes = await imageFile.readAsBytes();
-        const prompt =
-            "Identify the main, single object in this image. Respond with only the object's name in English, in singular form. For example: 'Apple', 'Car', 'Dog'. If you cannot identify a single clear object, respond with the word 'unclear'.";
+      final proxyResult = await _geminiProxy!.identifyMainObject(
+        imageBytes,
+        prompt: prompt,
+        mimeType: 'image/jpeg',
+      );
+      final identifiedWord = proxyResult ?? 'unclear';
 
-        String identifiedWord;
-        if (_geminiProxy != null) {
-          final proxyResult = await _geminiProxy!.identifyMainObject(
-            imageBytes,
-            prompt: prompt,
-            mimeType: 'image/jpeg',
-          );
-          identifiedWord = proxyResult ?? 'unclear';
-        } else {
-          final content = [
-            Content.multi([
-              TextPart(prompt),
-              DataPart('image/jpeg', imageBytes),
-            ]),
-          ];
+      debugPrint('Gemini identified: $identifiedWord');
 
-          final response = await _model!.generateContent(content);
-          identifiedWord = response.text?.trim() ?? 'unclear';
-        }
+      if (identifiedWord.toLowerCase() == 'unclear' || identifiedWord.contains(' ')) {
+        telemetry?.logCameraValidation(
+          word: identifiedWord,
+          accepted: false,
+          validatorType: _cameraValidatorType,
+          confidence: null,
+        );
+        setState(() {
+          _feedbackText = 'לא הצלחתי לראות ברור. נסו לצלם מחדש.';
+        });
+        await _speak('לא ראיתי ברור. בואו ננסה שוב.', languageCode: 'he-IL');
+      } else {
+        final bool validationPassed = await _cameraValidator.validate(
+          imageBytes,
+          identifiedWord,
+          mimeType: 'image/jpeg',
+        );
+        debugPrint('Camera validation for "$identifiedWord": $validationPassed');
 
-        debugPrint('Gemini identified: $identifiedWord');
-
-        if (identifiedWord.toLowerCase() == 'unclear' || identifiedWord.contains(' ')) {
+        if (!validationPassed) {
+          if (mounted) {
+            setState(() {
+              _feedbackText =
+                  'התמונה עדיין לא נראית כמו $identifiedWord. נסו למקם את הפריט במרכז ולצלם שוב.';
+            });
+          }
           telemetry?.logCameraValidation(
             word: identifiedWord,
             accepted: false,
             validatorType: _cameraValidatorType,
-            confidence: null,
-          );
-          setState(() {
-            _feedbackText = 'לא הצלחתי לראות ברור. נסו לצלם מחדש.';
-          });
-          await _speak('לא ראיתי ברור. בואו ננסה שוב.', languageCode: 'he-IL');
-        } else {
-          final bool validationPassed = await _cameraValidator.validate(
-            imageBytes,
-            identifiedWord,
-            mimeType: 'image/jpeg',
-          );
-          debugPrint('Camera validation for "$identifiedWord": $validationPassed');
-
-          if (!validationPassed) {
-            if (mounted) {
-              setState(() {
-                _feedbackText =
-                    'התמונה עדיין לא נראית כמו $identifiedWord. נסו למקם את הפריט במרכז ולצלם שוב.';
-              });
-            }
-            telemetry?.logCameraValidation(
-              word: identifiedWord,
-              accepted: false,
-              validatorType: _cameraValidatorType,
-              confidence: _currentValidationConfidence(),
-            );
-            await _speak(
-              'בואו ננסה שוב. שמרו את $identifiedWord במרכז התמונה וצלמו עוד פעם.',
-              languageCode: 'he-IL',
-            );
-            return;
-          }
-
-          final newWord = await _saveImageAndCreateWordData(imageFile, identifiedWord);
-          setState(() {
-            _words.add(newWord);
-            _currentIndex = _words.length - 1;
-            _feedbackText = 'איזה יופי! אני רואה ${newWord.word}. בואו נלמד אותה יחד!';
-          });
-          await _wordRepository.cacheWords(
-            _words,
-            cacheNamespace: widget.levelId,
-          );
-          Provider.of<AchievementService>(context, listen: false)
-              .checkForAchievements(streak: _streak, wordAdded: true);
-          await _speak('מצוין! אני רואה ${newWord.word}.', languageCode: 'he-IL');
-          await flutterTts.setLanguage('en-US');
-          await flutterTts.speak(newWord.word);
-          telemetry?.logCameraValidation(
-            word: identifiedWord,
-            accepted: true,
-            validatorType: _cameraValidatorType,
             confidence: _currentValidationConfidence(),
           );
+          await _speak(
+            'בואו ננסה שוב. שמרו את $identifiedWord במרכז התמונה וצלמו עוד פעם.',
+            languageCode: 'he-IL',
+          );
+          return;
         }
-      } catch (e) {
-        debugPrint('Error identifying image: $e');
-        if (mounted) {
-          setState(() {
-            _feedbackText = "מצטער, משהו השתבש. אנא נסו שוב.";
-          });
-          await _speak('אוי, משהו השתבש. נסו שוב.', languageCode: 'he-IL');
-        }
+
+        final newWord = await _saveImageAndCreateWordData(imageFile, identifiedWord);
+        setState(() {
+          _words.add(newWord);
+          _currentIndex = _words.length - 1;
+          _feedbackText = 'איזה יופי! אני רואה ${newWord.word}. בואו נלמד אותה יחד!';
+        });
+        await _wordRepository.cacheWords(
+          _words,
+          cacheNamespace: widget.levelId,
+        );
+        Provider.of<AchievementService>(context, listen: false)
+            .checkForAchievements(streak: _streak, wordAdded: true);
+        await _speak('מצוין! אני רואה ${newWord.word}.', languageCode: 'he-IL');
+        await flutterTts.setLanguage('en-US');
+        await flutterTts.speak(newWord.word);
+        telemetry?.logCameraValidation(
+          word: identifiedWord,
+          accepted: true,
+          validatorType: _cameraValidatorType,
+          confidence: _currentValidationConfidence(),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error identifying image: $e');
+      if (mounted) {
+        setState(() {
+          _feedbackText = "מצטער, משהו השתבש. אנא נסו שוב.";
+        });
+        await _speak('אוי, משהו השתבש. נסו שוב.', languageCode: 'he-IL');
       }
     }
+  }
 
   Future<WordData> _saveImageAndCreateWordData(XFile imageFile, String word) async {
     final directory = await getApplicationDocumentsDirectory();
@@ -436,8 +410,6 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  // lib/screens/home_page.dart
-
   Future<bool> _evaluateSpeechWithGemini(String correctWord, String recognizedWord) async {
     try {
       debugPrint("--- Asking Gemini for phonetic evaluation ---");
@@ -450,18 +422,16 @@ class _MyHomePageState extends State<MyHomePage> {
           "should this attempt be considered a good and acceptable try? "
           "Answer with only 'yes' or 'no'.";
 
-        final model = _model;
-        if (model == null) {
-          return correctWord.toLowerCase() == recognizedWord.toLowerCase();
-        }
+      final proxy = _geminiProxy;
+      if (proxy == null) {
+        throw StateError('Gemini proxy is not initialized');
+      }
 
-        final response = await model.generateContent([Content.text(prompt)])
-          .timeout(const Duration(seconds: 10));
-      final answer = response.text?.trim().toLowerCase() ?? 'no';
+      final response = await proxy.generateText(prompt).timeout(const Duration(seconds: 10));
+      final answer = response?.trim().toLowerCase() ?? 'no';
 
       debugPrint("Gemini's answer: '$answer'");
       return answer == 'yes';
-
     } catch (e) {
       debugPrint("Error during Gemini evaluation: $e");
       // In case of an error, we fall back to a simple, strict check
@@ -477,19 +447,20 @@ class _MyHomePageState extends State<MyHomePage> {
     String feedback;
 
     // --- קריאה ל-Gemini כדי לבדוק את התשובה ---
-      final bool isCorrect = await _evaluateSpeechWithGemini(currentWordObject.word, recognizedWord);
+    final bool isCorrect =
+        await _evaluateSpeechWithGemini(currentWordObject.word, recognizedWord);
 
     if (isCorrect) {
       _streak++;
-      int pointsToAdd = 10;
+      const int pointsToAdd = 10;
       await Provider.of<CoinProvider>(context, listen: false).addCoins(pointsToAdd);
 
-        Provider.of<AchievementService>(context, listen: false)
-            .checkForAchievements(streak: _streak);
+      Provider.of<AchievementService>(context, listen: false)
+          .checkForAchievements(streak: _streak);
 
-        context.read<DailyMissionProvider>().incrementByType(
-              DailyMissionType.speakPractice,
-            );
+      context.read<DailyMissionProvider>().incrementByType(
+            DailyMissionType.speakPractice,
+          );
 
       feedback = "כל הכבוד! +10 מטבעות";
       setState(() => currentWordObject.isCompleted = true);

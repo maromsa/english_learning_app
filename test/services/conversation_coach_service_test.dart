@@ -11,23 +11,21 @@ void main() {
       learnerName: 'אורי',
     );
 
-    test('falls back to stub conversation when generator is missing', () async {
+    test('throws when the generator does not return a reply', () async {
       final service = ConversationCoachService(
-        generator: null,
-        enableStub: true,
+        generator: (_) async => null,
       );
 
-      final response = await service.startConversation(setup);
-      expect(response.message, contains('ספרק'));
-      expect(response.suggestedLearnerReplies, isNotEmpty);
-      expect(response.vocabularyHighlights, isNotEmpty);
+      expect(
+        () => service.startConversation(setup),
+        throwsA(isA<ConversationGenerationException>()),
+      );
     });
 
     test('parses structured JSON from the generator', () async {
       final service = ConversationCoachService(
         generator: (_) async =>
             '{"opening":"שלום!","sparkTip":"טיפ","vocabularyHighlights":["hello"],"suggestedLearnerReplies":["Hi Spark!"],"miniChallenge":"משימה קצרה"}',
-        enableStub: false,
       );
 
       final response = await service.startConversation(setup);
@@ -40,7 +38,6 @@ void main() {
     test('uses graceful fallback when follow-up JSON is malformed', () async {
       final service = ConversationCoachService(
         generator: (_) async => 'not json',
-        enableStub: false,
       );
 
       final history = [

@@ -2,10 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 
 import '../app_config.dart';
-import 'gemini_api_key_resolver.dart';
 import 'gemini_proxy_service.dart';
 
 typedef _PracticePackGenerator = Future<String?> Function(String prompt);
@@ -13,39 +11,22 @@ typedef _PracticePackGenerator = Future<String?> Function(String prompt);
 class PracticePackService {
   PracticePackService({
     Duration? timeout,
-    GenerativeModel? model,
     _PracticePackGenerator? generator,
-    bool? enableStub,
   })  : _timeout = timeout ?? const Duration(seconds: 12),
-        _generator = generator ?? _inferGenerator(model),
-        _allowStub = enableStub ?? AppConfig.hasGeminiStub;
+        _generator = generator ?? _inferGenerator();
 
-  final _PracticePackGenerator? _generator;
+  final _PracticePackGenerator _generator;
   final Duration _timeout;
-  final bool _allowStub;
 
   Future<PracticePack> generatePack(PracticePackRequest request) async {
-    final generator = _generator;
-    if (generator == null) {
-      if (_allowStub) {
-        return _stubPack(request);
-      }
-      throw const PracticePackUnavailableException(_geminiUnavailableMessage);
-    }
-
     final prompt = _buildPrompt(request);
 
     try {
-      final raw = await generator(prompt).timeout(_timeout);
+      final raw = await _generator(prompt).timeout(_timeout);
       if (raw == null || raw.trim().isEmpty) {
         throw const PracticePackGenerationException('לא התקבלה תשובה מ-Gemini. נסו שוב עוד רגע.');
       }
       return _parseResponse(raw, prompt: prompt, fallback: _stubFallback(request));
-    } on PracticePackUnavailableException {
-      if (_allowStub) {
-        return _stubPack(request);
-      }
-      rethrow;
     } on TimeoutException {
       throw const PracticePackGenerationException('נראה ש-Gemini מתעכב. נסו שוב עוד רגע.');
     } on PracticePackGenerationException {
@@ -56,60 +37,35 @@ class PracticePackService {
     }
   }
 
-    static const String _sparkSystemInstruction =
-        'You are Spark, an upbeat AI mentor helping Hebrew-speaking kids practise English. '
-        'You design playful activities that mix Hebrew guidance with English words and phrases the child should try. '
-        'Keep instructions short, energetic, and friendly. Always return compact JSON as instructed by the prompt.';
+  static const String _sparkSystemInstruction =
+      'You are Spark, an upbeat AI mentor helping Hebrew-speaking kids practise English. '
+      'You design playful activities that mix Hebrew guidance with English words and phrases the child should try. '
+      'Keep instructions short, energetic, and friendly. Always return compact JSON as instructed by the prompt.';
 
-    static const String _geminiUnavailableMessage =
-        'חבילת האימון של ספרק דורשת חיבור ל-Gemini. הוסיפו GEMINI_API_KEY או GEMINI_PROXY_URL, או הפעילו --dart-define=ENABLE_GEMINI_STUB=true לניסיון ללא חיבור.';
+  static const String _geminiUnavailableMessage =
+      'חבילת האימון של ספרק דורשת חיבור ל-Gemini. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי להפעיל את התכונה.';
 
-    static _PracticePackGenerator? _inferGenerator(GenerativeModel? providedModel) {
+  static _PracticePackGenerator _inferGenerator() {
     final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
-    if (AppConfig.hasGeminiProxy && proxyEndpoint != null) {
-      return (prompt) async {
-        final service = GeminiProxyService(proxyEndpoint);
-        try {
-          return await service.generateText(
-            prompt,
-            systemInstruction: _sparkSystemInstruction,
-          );
-        } finally {
-          service.dispose();
-        }
-      };
-    }
-
-    GenerativeModel? cachedModel = providedModel;
-
-    Future<GenerativeModel?> loadModel() async {
-      if (cachedModel != null) {
-        return cachedModel;
-      }
-
-      final key = await GeminiApiKeyResolver.resolve();
-      if (key == null || key.isEmpty) {
-        return null;
-      }
-
-      cachedModel = GenerativeModel(
-        model: 'gemini-1.5-flash',
-        apiKey: key,
-        systemInstruction: Content.text(_sparkSystemInstruction),
-      );
-
-      return cachedModel;
+    if (proxyEndpoint == null) {
+      throw const PracticePackUnavailableException(_geminiUnavailableMessage);
     }
 
     return (prompt) async {
-      final model = await loadModel();
-      if (model == null) {
-        throw const PracticePackUnavailableException(_geminiUnavailableMessage);
+      final service = GeminiProxyService(proxyEndpoint);
+      try {
+        final response = await service.generateText(
+          prompt,
+          systemInstruction: _sparkSystemInstruction,
+        );
+        if (response == null || response.trim().isEmpty) {
+          throw const PracticePackUnavailableException(_geminiUnavailableMessage);
+        }
+        return response;
+      } finally {
+        service.dispose();
       }
-
-      final response = await model.generateContent([Content.text(prompt)]);
-      return response.text;
     };
   }
 
