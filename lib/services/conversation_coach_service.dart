@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
 import '../app_config.dart';
+import 'gemini_api_key_resolver.dart';
 import 'gemini_proxy_service.dart';
 
 typedef _ConversationGenerator = Future<String?> Function(String prompt);
@@ -29,9 +30,7 @@ class ConversationCoachService {
       if (_allowStub) {
         return _stubOpening(setup);
       }
-      throw const ConversationUnavailableException(
-        'תכונת שיחת ה-AI של ספרק מושבתת. הוסיפו GEMINI_API_KEY או GEMINI_PROXY_URL כדי לאפשר שיחות חיות, או הפעילו --dart-define=ENABLE_GEMINI_STUB=true לדוגמה לא מקוונת.',
-      );
+      throw const ConversationUnavailableException(_geminiUnavailableMessage);
     }
 
     final prompt = _buildOpeningPrompt(setup);
@@ -48,6 +47,11 @@ class ConversationCoachService {
         fallbackMessage:
             'שלום! אני ספרק. היום נשחק ${setup.topicDescription()} ונלמד מילים חדשות באנגלית יחד.',
       );
+    } on ConversationUnavailableException {
+      if (_allowStub) {
+        return _stubOpening(setup);
+      }
+      rethrow;
     } on TimeoutException {
       throw const ConversationGenerationException('נראה ש-Gemini מתעכב. נסו שוב עוד מעט.');
     } on ConversationGenerationException {
@@ -68,9 +72,7 @@ class ConversationCoachService {
       if (_allowStub) {
         return _stubFollowUp(learnerMessage);
       }
-      throw const ConversationUnavailableException(
-        'תכונת שיחת ה-AI של ספרק מושבתת. הוסיפו GEMINI_API_KEY או GEMINI_PROXY_URL כדי לאפשר שיחות חיות, או הפעילו --dart-define=ENABLE_GEMINI_STUB=true לדוגמה לא מקוונת.',
-      );
+      throw const ConversationUnavailableException(_geminiUnavailableMessage);
     }
 
     final prompt = _buildFollowUpPrompt(
@@ -90,6 +92,11 @@ class ConversationCoachService {
         isOpening: false,
         fallbackMessage: 'איזו תשובה נהדרת! רוצים לנסות לומר עוד משפט באנגלית?',
       );
+    } on ConversationUnavailableException {
+      if (_allowStub) {
+        return _stubFollowUp(learnerMessage);
+      }
+      rethrow;
     } on TimeoutException {
       throw const ConversationGenerationException('ספרק עסוק כרגע. נסו שוב בעוד רגע.');
     } on ConversationGenerationException {
@@ -100,13 +107,16 @@ class ConversationCoachService {
     }
   }
 
-  static const String _sparkSystemInstruction =
-      'You are Spark, an energetic AI mentor helping Hebrew-speaking kids aged 6-10 practise English conversation. '
-      'You reply in warm, supportive Hebrew sentences sprinkled with short English phrases that match the lesson focus. '
-      'Keep answers concise (max 70 Hebrew words) and highlight no more than three English words per turn. '
-      'Always output minified JSON following the caller instructions. Never mention JSON, prompts, or Gemini.';
+    static const String _sparkSystemInstruction =
+        'You are Spark, an energetic AI mentor helping Hebrew-speaking kids aged 6-10 practise English conversation. '
+        'You reply in warm, supportive Hebrew sentences sprinkled with short English phrases that match the lesson focus. '
+        'Keep answers concise (max 70 Hebrew words) and highlight no more than three English words per turn. '
+        'Always output minified JSON following the caller instructions. Never mention JSON, prompts, or Gemini.';
 
-  static _ConversationGenerator? _inferGenerator(GenerativeModel? providedModel) {
+    static const String _geminiUnavailableMessage =
+        'תכונת שיחת ה-AI של ספרק מושבתת. הוסיפו GEMINI_API_KEY או GEMINI_PROXY_URL כדי לאפשר שיחות חיות, או הפעילו --dart-define=ENABLE_GEMINI_STUB=true לדוגמה לא מקוונת.';
+
+    static _ConversationGenerator? _inferGenerator(GenerativeModel? providedModel) {
     final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
     if (AppConfig.hasGeminiProxy && proxyEndpoint != null) {
@@ -123,18 +133,33 @@ class ConversationCoachService {
       };
     }
 
-    if (!AppConfig.hasGemini && providedModel == null) {
-      return null;
+    GenerativeModel? cachedModel = providedModel;
+
+    Future<GenerativeModel?> loadModel() async {
+      if (cachedModel != null) {
+        return cachedModel;
+      }
+
+      final key = await GeminiApiKeyResolver.resolve();
+      if (key == null || key.isEmpty) {
+        return null;
+      }
+
+      cachedModel = GenerativeModel(
+        model: 'gemini-1.5-flash',
+        apiKey: key,
+        systemInstruction: Content.text(_sparkSystemInstruction),
+      );
+
+      return cachedModel;
     }
 
-    final model = providedModel ??
-        GenerativeModel(
-          model: 'gemini-1.5-flash',
-          apiKey: AppConfig.geminiApiKey,
-          systemInstruction: Content.text(_sparkSystemInstruction),
-        );
-
     return (prompt) async {
+      final model = await loadModel();
+      if (model == null) {
+        throw const ConversationUnavailableException(_geminiUnavailableMessage);
+      }
+
       final response = await model.generateContent([Content.text(prompt)]);
       return response.text;
     };

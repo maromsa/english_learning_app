@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
 import '../app_config.dart';
+import 'gemini_api_key_resolver.dart';
 import 'gemini_proxy_service.dart';
 
 typedef _PracticePackGenerator = Future<String?> Function(String prompt);
@@ -29,9 +30,7 @@ class PracticePackService {
       if (_allowStub) {
         return _stubPack(request);
       }
-      throw const PracticePackUnavailableException(
-        'חבילת האימון של ספרק דורשת חיבור ל-Gemini. הוסיפו GEMINI_API_KEY או GEMINI_PROXY_URL, או הפעילו --dart-define=ENABLE_GEMINI_STUB=true לניסיון ללא חיבור.',
-      );
+      throw const PracticePackUnavailableException(_geminiUnavailableMessage);
     }
 
     final prompt = _buildPrompt(request);
@@ -42,8 +41,13 @@ class PracticePackService {
         throw const PracticePackGenerationException('לא התקבלה תשובה מ-Gemini. נסו שוב עוד רגע.');
       }
       return _parseResponse(raw, prompt: prompt, fallback: _stubFallback(request));
+    } on PracticePackUnavailableException {
+      if (_allowStub) {
+        return _stubPack(request);
+      }
+      rethrow;
     } on TimeoutException {
-      throw const PracticePackGenerationException('נראה ש-Gemini מתעכב. נסו שוב בעוד רגע.');
+      throw const PracticePackGenerationException('נראה ש-Gemini מתעכב. נסו שוב עוד רגע.');
     } on PracticePackGenerationException {
       rethrow;
     } catch (error, stackTrace) {
@@ -52,12 +56,15 @@ class PracticePackService {
     }
   }
 
-  static const String _sparkSystemInstruction =
-      'You are Spark, an upbeat AI mentor helping Hebrew-speaking kids practise English. '
-      'You design playful activities that mix Hebrew guidance with English words and phrases the child should try. '
-      'Keep instructions short, energetic, and friendly. Always return compact JSON as instructed by the prompt.';
+    static const String _sparkSystemInstruction =
+        'You are Spark, an upbeat AI mentor helping Hebrew-speaking kids practise English. '
+        'You design playful activities that mix Hebrew guidance with English words and phrases the child should try. '
+        'Keep instructions short, energetic, and friendly. Always return compact JSON as instructed by the prompt.';
 
-  static _PracticePackGenerator? _inferGenerator(GenerativeModel? providedModel) {
+    static const String _geminiUnavailableMessage =
+        'חבילת האימון של ספרק דורשת חיבור ל-Gemini. הוסיפו GEMINI_API_KEY או GEMINI_PROXY_URL, או הפעילו --dart-define=ENABLE_GEMINI_STUB=true לניסיון ללא חיבור.';
+
+    static _PracticePackGenerator? _inferGenerator(GenerativeModel? providedModel) {
     final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
     if (AppConfig.hasGeminiProxy && proxyEndpoint != null) {
@@ -74,18 +81,33 @@ class PracticePackService {
       };
     }
 
-    if (!AppConfig.hasGemini && providedModel == null) {
-      return null;
+    GenerativeModel? cachedModel = providedModel;
+
+    Future<GenerativeModel?> loadModel() async {
+      if (cachedModel != null) {
+        return cachedModel;
+      }
+
+      final key = await GeminiApiKeyResolver.resolve();
+      if (key == null || key.isEmpty) {
+        return null;
+      }
+
+      cachedModel = GenerativeModel(
+        model: 'gemini-1.5-flash',
+        apiKey: key,
+        systemInstruction: Content.text(_sparkSystemInstruction),
+      );
+
+      return cachedModel;
     }
 
-    final model = providedModel ??
-        GenerativeModel(
-          model: 'gemini-1.5-flash',
-          apiKey: AppConfig.geminiApiKey,
-          systemInstruction: Content.text(_sparkSystemInstruction),
-        );
-
     return (prompt) async {
+      final model = await loadModel();
+      if (model == null) {
+        throw const PracticePackUnavailableException(_geminiUnavailableMessage);
+      }
+
       final response = await model.generateContent([Content.text(prompt)]);
       return response.text;
     };

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
 import '../app_config.dart';
+import 'gemini_api_key_resolver.dart';
 import 'gemini_proxy_service.dart';
 
 typedef GeminiTextGenerator = Future<String?> Function(String prompt);
@@ -29,9 +30,7 @@ class AdventureStoryService {
       if (_allowStub) {
         return _generateStubStory(context);
       }
-      throw const AdventureStoryUnavailableException(
-        'חסר חיבור ל-Gemini. הוסיפו GEMINI_API_KEY באמצעות --dart-define, הגדירו GEMINI_PROXY_URL, או הפעילו את מצב הדמה (stub).',
-      );
+      throw const AdventureStoryUnavailableException(_geminiUnavailableMessage);
     }
 
     final prompt = _buildPrompt(context);
@@ -42,6 +41,11 @@ class AdventureStoryService {
         throw const AdventureStoryGenerationException('לא התקבלה תשובה מ-Gemini. נסו שוב בעוד רגע.');
       }
       return _parseResponse(raw, prompt: prompt);
+    } on AdventureStoryUnavailableException {
+      if (_allowStub) {
+        return _generateStubStory(context);
+      }
+      rethrow;
     } on TimeoutException {
       throw const AdventureStoryGenerationException('נראה ש-Gemini מתעכב. נסו שוב בעוד רגע.');
     } on AdventureStoryGenerationException {
@@ -58,6 +62,9 @@ class AdventureStoryService {
       'but keep every English vocabulary word exactly as provided. '
       'Always respect the JSON schema instructions.';
 
+  static const String _geminiUnavailableMessage =
+      'חסר חיבור ל-Gemini. הוסיפו GEMINI_API_KEY באמצעות --dart-define, הגדירו GEMINI_PROXY_URL, או הפעילו את מצב הדמה (stub).';
+
   static GeminiTextGenerator? _inferGenerator(GenerativeModel? providedModel) {
     final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
@@ -72,20 +79,36 @@ class AdventureStoryService {
         } finally {
           service.dispose();
         }
-      };
-    }
+        };
+      }
 
-    if (!AppConfig.hasGemini && providedModel == null) {
-      return null;
-    }
+    GenerativeModel? cachedModel = providedModel;
 
-    final model = providedModel ?? GenerativeModel(
-      model: 'gemini-1.5-flash',
-      apiKey: AppConfig.geminiApiKey,
-      systemInstruction: Content.text(_sparkSystemInstruction),
-    );
+    Future<GenerativeModel?> loadModel() async {
+      if (cachedModel != null) {
+        return cachedModel;
+      }
+
+      final key = await GeminiApiKeyResolver.resolve();
+      if (key == null || key.isEmpty) {
+        return null;
+      }
+
+      cachedModel = GenerativeModel(
+        model: 'gemini-1.5-flash',
+        apiKey: key,
+        systemInstruction: Content.text(_sparkSystemInstruction),
+      );
+
+      return cachedModel;
+    }
 
     return (prompt) async {
+      final model = await loadModel();
+      if (model == null) {
+        throw const AdventureStoryUnavailableException(_geminiUnavailableMessage);
+      }
+
       final response = await model.generateContent([Content.text(prompt)]);
       return response.text;
     };
