@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 
 import '../app_config.dart';
 import 'gemini_proxy_service.dart';
@@ -12,25 +11,18 @@ typedef _PracticePackGenerator = Future<String?> Function(String prompt);
 class PracticePackService {
   PracticePackService({
     Duration? timeout,
-    GenerativeModel? model,
     _PracticePackGenerator? generator,
-    bool? enableStub,
   })  : _timeout = timeout ?? const Duration(seconds: 12),
-        _generator = generator ?? _inferGenerator(model),
-        _allowStub = enableStub ?? AppConfig.hasGeminiStub;
+        _generator = generator ?? _inferGenerator();
 
   final _PracticePackGenerator? _generator;
   final Duration _timeout;
-  final bool _allowStub;
 
   Future<PracticePack> generatePack(PracticePackRequest request) async {
     final generator = _generator;
     if (generator == null) {
-      if (_allowStub) {
-        return _stubPack(request);
-      }
       throw const PracticePackUnavailableException(
-        'חבילת האימון של ספרק דורשת חיבור ל-Gemini. הוסיפו GEMINI_API_KEY או GEMINI_PROXY_URL, או הפעילו --dart-define=ENABLE_GEMINI_STUB=true לניסיון ללא חיבור.',
+        'חבילת האימון של ספרק דורשת חיבור ל-Gemini דרך Firebase Cloud Functions. ודאו שהפונקציה geminiProxy פרוסה והאפליקציה מחוברת אליה.',
       );
     }
 
@@ -57,10 +49,10 @@ class PracticePackService {
       'You design playful activities that mix Hebrew guidance with English words and phrases the child should try. '
       'Keep instructions short, energetic, and friendly. Always return compact JSON as instructed by the prompt.';
 
-  static _PracticePackGenerator? _inferGenerator(GenerativeModel? providedModel) {
+  static _PracticePackGenerator? _inferGenerator() {
     final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
-    if (AppConfig.hasGeminiProxy && proxyEndpoint != null) {
+    if (proxyEndpoint != null) {
       return (prompt) async {
         final service = GeminiProxyService(proxyEndpoint);
         try {
@@ -74,21 +66,7 @@ class PracticePackService {
       };
     }
 
-    if (!AppConfig.hasGemini && providedModel == null) {
-      return null;
-    }
-
-    final model = providedModel ??
-        GenerativeModel(
-          model: 'gemini-1.5-flash',
-          apiKey: AppConfig.geminiApiKey,
-          systemInstruction: Content.text(_sparkSystemInstruction),
-        );
-
-    return (prompt) async {
-      final response = await model.generateContent([Content.text(prompt)]);
-      return response.text;
-    };
+    return null;
   }
 
   String _buildPrompt(PracticePackRequest request) {

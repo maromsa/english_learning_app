@@ -1,4 +1,5 @@
 import 'package:english_learning_app/services/adventure_story_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -30,31 +31,26 @@ void main() {
       expect(story.parsedFromJson, isTrue);
     });
 
-      test('falls back to raw text when JSON parsing fails', () async {
-        final service = AdventureStoryService(
-          generator: (_) async => 'Let\'s imagine a floating fruit castle together!',
-        );
+    test('falls back to raw text when JSON parsing fails', () async {
+      final service = AdventureStoryService(
+        generator: (_) async => 'Let\'s imagine a floating fruit castle together!',
+      );
 
-        final story = await service.generateAdventure(baseContext);
+      final story = await service.generateAdventure(baseContext);
 
-        expect(story.scene, contains('fruit castle'));
-        expect(story.parsedFromJson, isFalse);
-        expect(story.title, 'הפתעת ספרק');
-      });
-
-      test('uses stub story when enabled and Gemini is unavailable', () async {
-        final service = AdventureStoryService(enableStub: true);
-
-        final story = await service.generateAdventure(baseContext);
-
-        expect(story.title, contains('Fruits Fiesta'));
-        expect(story.scene, contains('ספרק טס אל Fruits Fiesta'));
-        expect(story.vocabulary, equals(baseContext.vocabularyWords));
-        expect(story.prompt, 'stub');
-      });
+      expect(story.scene, contains('fruit castle'));
+      expect(story.parsedFromJson, isFalse);
+      expect(story.title, 'הפתעת ספרק');
+    });
 
     test('throws when generator is unavailable', () async {
-      final service = AdventureStoryService(enableStub: false);
+      final previousPlatform = debugDefaultTargetPlatformOverride;
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      addTearDown(() {
+        debugDefaultTargetPlatformOverride = previousPlatform;
+      });
+
+      final service = AdventureStoryService();
 
       expect(
         () => service.generateAdventure(baseContext),

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'firebase_options.dart';
+
 /// Central place to access runtime configuration and API keys.
 ///
 /// Values are read from `--dart-define` entries so that secrets do not live in
@@ -15,8 +17,6 @@ class AppConfig {
 
   static const String geminiApiKey =
       String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
-  static const String _enableGeminiStubFlag =
-      String.fromEnvironment('ENABLE_GEMINI_STUB', defaultValue: 'false');
   static const String geminiProxyUrl =
       String.fromEnvironment('GEMINI_PROXY_URL', defaultValue: '');
   static const String pixabayApiKey =
@@ -39,8 +39,7 @@ class AppConfig {
       String.fromEnvironment('AI_IMAGE_VALIDATION_URL', defaultValue: '');
 
   static bool get hasGemini => geminiApiKey.isNotEmpty;
-  static bool get hasGeminiProxy => geminiProxyUrl.isNotEmpty;
-  static bool get hasGeminiStub => _parseBool(_enableGeminiStubFlag);
+  static bool get hasGeminiProxy => geminiProxyEndpoint != null;
   static bool get hasPixabay => pixabayApiKey.isNotEmpty;
   static bool get hasCloudinary =>
       cloudinaryCloudName.isNotEmpty &&
@@ -57,20 +56,37 @@ class AppConfig {
   static Uri? get aiImageValidationEndpoint =>
       hasAiImageValidation ? Uri.tryParse(aiImageValidationUrl) : null;
 
-  static Uri? get geminiProxyEndpoint =>
-      hasGeminiProxy ? Uri.tryParse(geminiProxyUrl) : null;
+  static Uri? get geminiProxyEndpoint {
+    if (geminiProxyUrl.isNotEmpty) {
+      return Uri.tryParse(geminiProxyUrl);
+    }
+    final projectId = _firebaseProjectId;
+    if (projectId == null || projectId.isEmpty) {
+      return null;
+    }
+    return Uri.tryParse('https://us-central1-$projectId.cloudfunctions.net/geminiProxy');
+  }
 
-    /// Provides a quick overview for debug logs/tests.
-    static Map<String, bool> diagnostics() => {
-          'gemini': hasGemini,
-          'geminiProxy': hasGeminiProxy,
-          'geminiStub': hasGeminiStub,
-          'pixabay': hasPixabay,
-          'cloudinary': hasCloudinary,
-          'googleTts': hasGoogleTts,
-          'firebaseUserId': hasFirebaseUserId,
-          'aiImageValidation': hasAiImageValidation,
-        };
+  static Uri requireGeminiProxyEndpoint() {
+    final endpoint = geminiProxyEndpoint;
+    if (endpoint == null) {
+      throw const StateError(
+        'Gemini proxy endpoint is not configured. Ensure your Firebase project ID is available or set GEMINI_PROXY_URL explicitly.',
+      );
+    }
+    return endpoint;
+  }
+
+  /// Provides a quick overview for debug logs/tests.
+  static Map<String, bool> diagnostics() => {
+        'gemini': hasGemini,
+        'geminiProxy': hasGeminiProxy,
+        'pixabay': hasPixabay,
+        'cloudinary': hasCloudinary,
+        'googleTts': hasGoogleTts,
+        'firebaseUserId': hasFirebaseUserId,
+        'aiImageValidation': hasAiImageValidation,
+      };
 
   /// Logs helpful hints when a required secret is missing.
   static void debugWarnIfMissing(String feature, bool isAvailable) {
@@ -84,8 +100,11 @@ class AppConfig {
     }());
   }
 
-  static bool _parseBool(String value) {
-    final normalized = value.trim().toLowerCase();
-    return normalized == 'true' || normalized == '1' || normalized == 'yes';
+  static String? get _firebaseProjectId {
+    try {
+      return DefaultFirebaseOptions.currentPlatform.projectId;
+    } catch (_) {
+      return null;
+    }
   }
 }

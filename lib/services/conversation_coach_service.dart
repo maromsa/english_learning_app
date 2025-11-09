@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package/flutter/foundation.dart';
 
 import '../app_config.dart';
 import 'gemini_proxy_service.dart';
@@ -12,25 +11,18 @@ typedef _ConversationGenerator = Future<String?> Function(String prompt);
 class ConversationCoachService {
   ConversationCoachService({
     Duration? timeout,
-    GenerativeModel? model,
     _ConversationGenerator? generator,
-    bool? enableStub,
   })  : _timeout = timeout ?? const Duration(seconds: 12),
-        _generator = generator ?? _inferGenerator(model),
-        _allowStub = enableStub ?? AppConfig.hasGeminiStub;
+        _generator = generator ?? _inferGenerator();
 
   final _ConversationGenerator? _generator;
   final Duration _timeout;
-  final bool _allowStub;
 
   Future<SparkCoachResponse> startConversation(ConversationSetup setup) async {
     final generator = _generator;
     if (generator == null) {
-      if (_allowStub) {
-        return _stubOpening(setup);
-      }
       throw const ConversationUnavailableException(
-        'תכונת שיחת ה-AI של ספרק מושבתת. הוסיפו GEMINI_API_KEY או GEMINI_PROXY_URL כדי לאפשר שיחות חיות, או הפעילו --dart-define=ENABLE_GEMINI_STUB=true לדוגמה לא מקוונת.',
+        'תכונת שיחת ה-AI של ספרק דורשת Gemini Proxy פעיל ב-Firebase Cloud Functions. ודאו שהפונקציה geminiProxy זמינה.',
       );
     }
 
@@ -65,11 +57,8 @@ class ConversationCoachService {
   }) async {
     final generator = _generator;
     if (generator == null) {
-      if (_allowStub) {
-        return _stubFollowUp(learnerMessage);
-      }
       throw const ConversationUnavailableException(
-        'תכונת שיחת ה-AI של ספרק מושבתת. הוסיפו GEMINI_API_KEY או GEMINI_PROXY_URL כדי לאפשר שיחות חיות, או הפעילו --dart-define=ENABLE_GEMINI_STUB=true לדוגמה לא מקוונת.',
+        'תכונת שיחת ה-AI של ספרק דורשת Gemini Proxy פעיל ב-Firebase Cloud Functions. ודאו שהפונקציה geminiProxy זמינה.',
       );
     }
 
@@ -106,10 +95,10 @@ class ConversationCoachService {
       'Keep answers concise (max 70 Hebrew words) and highlight no more than three English words per turn. '
       'Always output minified JSON following the caller instructions. Never mention JSON, prompts, or Gemini.';
 
-  static _ConversationGenerator? _inferGenerator(GenerativeModel? providedModel) {
+  static _ConversationGenerator? _inferGenerator() {
     final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
-    if (AppConfig.hasGeminiProxy && proxyEndpoint != null) {
+    if (proxyEndpoint != null) {
       return (prompt) async {
         final service = GeminiProxyService(proxyEndpoint);
         try {
@@ -123,21 +112,7 @@ class ConversationCoachService {
       };
     }
 
-    if (!AppConfig.hasGemini && providedModel == null) {
-      return null;
-    }
-
-    final model = providedModel ??
-        GenerativeModel(
-          model: 'gemini-1.5-flash',
-          apiKey: AppConfig.geminiApiKey,
-          systemInstruction: Content.text(_sparkSystemInstruction),
-        );
-
-    return (prompt) async {
-      final response = await model.generateContent([Content.text(prompt)]);
-      return response.text;
-    };
+    return null;
   }
 
   String _buildOpeningPrompt(ConversationSetup setup) {
@@ -242,44 +217,6 @@ Output JSON (no markdown fences) with keys:
       rawText: cleaned,
       prompt: prompt,
       parsedFromJson: false,
-    );
-  }
-
-  SparkCoachResponse _stubOpening(ConversationSetup setup) {
-    final topic = setup.topicDescription();
-    final learner = setup.learnerName?.isNotEmpty == true ? setup.learnerName : 'חבר/ה יקר/ה';
-    return SparkCoachResponse(
-      message: '$learner, אני ספרק! היום נשחק $topic ונשתמש במילים כמו ${setup.stubVocabularySample()}. מה תרצו להגיד באנגלית?',
-      followUp: 'נסו להגיד משפט עם אחת המילים ולצרף תנועה קטנה.',
-      sparkTip: 'אפשר להתחיל עם I like... ואז לציין את המילה באנגלית.',
-      celebration: '✨',
-      vocabularyHighlights: setup.focusWords.take(3).toList(),
-      suggestedLearnerReplies: const [
-        'I like the red rocket!',
-        'Can I fly to the moon?',
-      ],
-      miniChallenge: 'בחרו מילה אחת ובצעו תנועה שמתאימה לה תוך כדי שאומרים אותה.',
-      rawText: 'stub',
-      prompt: 'stub',
-      parsedFromJson: true,
-    );
-  }
-
-  SparkCoachResponse _stubFollowUp(String learnerMessage) {
-    return SparkCoachResponse(
-      message: 'איזו תשובה מקסימה! שמעתם את עצמכם אומרים "$learnerMessage" באנגלית! רוצים להוסיף עוד פרט קטן?',
-      followUp: 'נסו להוסיף Because... ולהסביר למה בחרתם את זה.',
-      sparkTip: 'נסו להאריך את המשפט עם And או Because. זה נשמע בוגר יותר!',
-      celebration: '🌟',
-      vocabularyHighlights: const [],
-      suggestedLearnerReplies: const [
-        'Because it is super fun!',
-        'And my friend comes too!',
-      ],
-      miniChallenge: null,
-      rawText: 'stub-follow-up',
-      prompt: 'stub',
-      parsedFromJson: true,
     );
   }
 

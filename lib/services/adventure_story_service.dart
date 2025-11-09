@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 
 import '../app_config.dart';
 import 'gemini_proxy_service.dart';
@@ -13,24 +12,17 @@ class AdventureStoryService {
   AdventureStoryService({
     GeminiTextGenerator? generator,
     Duration? timeout,
-    GenerativeModel? model,
-    bool? enableStub,
   })  : _timeout = timeout ?? const Duration(seconds: 12),
-        _generator = generator ?? _inferGenerator(model),
-        _allowStub = enableStub ?? AppConfig.hasGeminiStub;
+        _generator = generator ?? _inferGenerator();
 
   final GeminiTextGenerator? _generator;
   final Duration _timeout;
-  final bool _allowStub;
 
   Future<AdventureStory> generateAdventure(AdventureStoryContext context) async {
     final generator = _generator;
     if (generator == null) {
-      if (_allowStub) {
-        return _generateStubStory(context);
-      }
       throw const AdventureStoryUnavailableException(
-        'חסר חיבור ל-Gemini. הוסיפו GEMINI_API_KEY באמצעות --dart-define, הגדירו GEMINI_PROXY_URL, או הפעילו את מצב הדמה (stub).',
+        'חסר חיבור ל-Gemini דרך Firebase Cloud Functions. ודאו שהפונקציה geminiProxy זמינה לפני הפעלת תכונת הסיפורים.',
       );
     }
 
@@ -58,10 +50,10 @@ class AdventureStoryService {
       'but keep every English vocabulary word exactly as provided. '
       'Always respect the JSON schema instructions.';
 
-  static GeminiTextGenerator? _inferGenerator(GenerativeModel? providedModel) {
+  static GeminiTextGenerator? _inferGenerator() {
     final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
-    if (AppConfig.hasGeminiProxy && proxyEndpoint != null) {
+    if (proxyEndpoint != null) {
       return (prompt) async {
         final service = GeminiProxyService(proxyEndpoint);
         try {
@@ -75,20 +67,7 @@ class AdventureStoryService {
       };
     }
 
-    if (!AppConfig.hasGemini && providedModel == null) {
-      return null;
-    }
-
-    final model = providedModel ?? GenerativeModel(
-      model: 'gemini-1.5-flash',
-      apiKey: AppConfig.geminiApiKey,
-      systemInstruction: Content.text(_sparkSystemInstruction),
-    );
-
-    return (prompt) async {
-      final response = await model.generateContent([Content.text(prompt)]);
-      return response.text;
-    };
+    return null;
   }
 
   String _buildPrompt(AdventureStoryContext context) {
@@ -160,47 +139,6 @@ Do not include markdown code fences around the JSON.''';
     return trimmed;
   }
 
-  Future<AdventureStory> _generateStubStory(AdventureStoryContext context) async {
-    final words = List<String>.from(context.vocabularyWords);
-    final friendlyWords = words.isEmpty ? 'מילים חדשות באנגלית' : words.join(', ');
-    final title = 'המשימה של ספרק ב${context.levelName}';
-    final playerName = context.playerName?.trim();
-    final player = (playerName != null && playerName.isNotEmpty) ? playerName : 'חבר/ה';
-    final moodDescription = _describeMood(context.mood);
-
-    final scene =
-        'ספרק טס אל ${context.levelName} יחד עם $player! אתם יוצאים להרפתקה בסגנון $moodDescription, והמילים $friendlyWords מאירות את הדרך באנגלית. ספרק מצביע על רמזים שיעזרו לכם לתרגל כל מילה עם חיוך ותנועה.';
-    final challenge =
-        'אמרו כל מילה באנגלית יחד עם ספרק ואז הציגו אותה בתנועה קטנה. האם תוכלו לחבר משפט אחד שמתאר את ${context.levelName}?';
-    final encouragement =
-        'איזו אנרגיה מבריקה! ספרק אוהב לראות איך אתם ממשיכים לנסות. הכוכבים שצברתם יובילו אתכם להרפתקה הבאה.';
-
-    return AdventureStory(
-      title: title,
-      scene: scene,
-      challenge: challenge,
-      encouragement: encouragement,
-      vocabulary: words,
-      rawText: scene,
-      prompt: 'stub',
-      parsedFromJson: true,
-    );
-  }
-
-  String _describeMood(String mood) {
-    switch (mood) {
-      case 'brave explorer':
-        return 'של חוקר אמיץ';
-      case 'curious scientist':
-        return 'של מדען סקרן';
-      case 'kind helper':
-        return 'של עוזר טוב לב';
-      case 'silly comedian':
-        return 'מצחיקה ומלאת צחוק';
-      default:
-        return mood;
-    }
-  }
 }
 
 class AdventureStoryContext {

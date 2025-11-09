@@ -1,4 +1,5 @@
 import 'package:english_learning_app/services/conversation_coach_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -11,23 +12,10 @@ void main() {
       learnerName: 'אורי',
     );
 
-    test('falls back to stub conversation when generator is missing', () async {
-      final service = ConversationCoachService(
-        generator: null,
-        enableStub: true,
-      );
-
-      final response = await service.startConversation(setup);
-      expect(response.message, contains('ספרק'));
-      expect(response.suggestedLearnerReplies, isNotEmpty);
-      expect(response.vocabularyHighlights, isNotEmpty);
-    });
-
     test('parses structured JSON from the generator', () async {
       final service = ConversationCoachService(
         generator: (_) async =>
             '{"opening":"שלום!","sparkTip":"טיפ","vocabularyHighlights":["hello"],"suggestedLearnerReplies":["Hi Spark!"],"miniChallenge":"משימה קצרה"}',
-        enableStub: false,
       );
 
       final response = await service.startConversation(setup);
@@ -40,7 +28,6 @@ void main() {
     test('uses graceful fallback when follow-up JSON is malformed', () async {
       final service = ConversationCoachService(
         generator: (_) async => 'not json',
-        enableStub: false,
       );
 
       final history = [
@@ -56,6 +43,21 @@ void main() {
 
       expect(response.message.isNotEmpty, isTrue);
       expect(response.suggestedLearnerReplies, isEmpty);
+    });
+
+    test('throws when generator is unavailable', () async {
+      final previousPlatform = debugDefaultTargetPlatformOverride;
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      addTearDown(() {
+        debugDefaultTargetPlatformOverride = previousPlatform;
+      });
+
+      final service = ConversationCoachService();
+
+      expect(
+        () => service.startConversation(setup),
+        throwsA(isA<ConversationUnavailableException>()),
+      );
     });
   });
 }
