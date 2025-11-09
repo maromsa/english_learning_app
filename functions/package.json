@@ -1,0 +1,22 @@
+{
+  "name": "english-learning-app-functions",
+  "version": "1.0.0",
+  "description": "Firebase Cloud Functions for the English Learning App backend integrations.",
+  "main": "index.js",
+  "type": "module",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "deploy": "firebase deploy --only functions",
+    "serve": "firebase emulators:start --only functions",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "firebase-functions": "^5.1.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-google": "^0.14.0"
+  }
+}

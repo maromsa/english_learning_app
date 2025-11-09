@@ -67,15 +67,40 @@ When you do need live Gemini features in CI, store the key as an encrypted secre
 
 ### Secure Gemini key service
 
-Deploy the sample service under `server/gemini-key-service` (or your own equivalent) and expose it via HTTPS. Then run the app with:
+This repo now ships with a Firebase Function (`functions/index.js`) that stores the Gemini credentials in Firebase-managed secrets and hands them to trusted clients on demand.
 
-```bash
-flutter run \
-  --dart-define=GEMINI_TOKEN_ENDPOINT=https://<your-service>/v1/gemini-token \
-  --dart-define=GEMINI_SERVICE_KEY=$SERVICE_API_KEY
-```
+1. Install dependencies and log in to Firebase:
 
-The app caches the token until the `expiresAt` timestamp returned by the service and refreshes it automatically when needed. You can still supply `GEMINI_API_KEY` directly for local development.
+   ```bash
+   cd functions
+   npm install
+   firebase login
+   ```
+
+2. Store the secrets (run once per project):
+
+   ```bash
+   firebase functions:secrets:set GEMINI_API_KEY
+   firebase functions:secrets:set GEMINI_SERVICE_KEY
+   firebase functions:secrets:set GEMINI_ALLOWED_ORIGINS # optional comma-separated list, use * to allow all
+   firebase functions:secrets:set GEMINI_TOKEN_TTL --data=3600 # optional, seconds
+   ```
+
+3. Deploy the HTTPS function:
+
+   ```bash
+   firebase deploy --only functions:geminiToken
+   ```
+
+4. Configure the app to consume it:
+
+   ```bash
+   flutter run \
+     --dart-define=GEMINI_TOKEN_ENDPOINT=https://<region>-<project>.cloudfunctions.net/geminiToken \
+     --dart-define=GEMINI_SERVICE_KEY=<same value you stored as GEMINI_SERVICE_KEY>
+   ```
+
+The app caches the token until the `expiresAt` timestamp returned by the function and refreshes it automatically when needed. You can still supply `GEMINI_API_KEY` directly for local development. A minimal Express deployment remains available under `server/gemini-key-service` if you prefer to host the service elsewhere.
 
 ### Gemini key from GitHub (fallback)
 

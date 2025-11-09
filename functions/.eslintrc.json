@@ -1,0 +1,16 @@
+{
+  "root": true,
+  "extends": ["eslint:recommended", "google"],
+  "env": {
+    "es2022": true,
+    "node": true
+  },
+  "parserOptions": {
+    "sourceType": "module",
+    "ecmaVersion": 2022
+  },
+  "rules": {
+    "max-len": ["error", { "code": 100, "ignoreUrls": true }],
+    "require-jsdoc": "off"
+  }
+}
