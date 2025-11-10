@@ -67,7 +67,7 @@ class AppConfig {
   static Uri requireGeminiProxyEndpoint() {
     final endpoint = geminiProxyEndpoint;
     if (endpoint == null) {
-      throw const StateError(
+      throw StateError(
         'Gemini proxy endpoint is not configured. Ensure your Firebase project ID is available or set GEMINI_PROXY_URL explicitly.',
       );
     }
