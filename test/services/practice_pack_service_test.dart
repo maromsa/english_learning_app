@@ -1,4 +1,5 @@
 import 'package:english_learning_app/services/practice_pack_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -24,7 +25,7 @@ void main() {
     });
 
     test('parses JSON pack from the generator', () async {
-      final json = '''
+      const json = '''
 {
   "pepTalk":"בוקר טוב!",
   "celebration":"🎈",
@@ -73,6 +74,21 @@ void main() {
       final pack = await service.generatePack(request);
       expect(pack.activities, isNotEmpty);
       expect(pack.parsedFromJson, isFalse);
+    });
+
+    test('throws when generator is unavailable', () async {
+      final previousPlatform = debugDefaultTargetPlatformOverride;
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      addTearDown(() {
+        debugDefaultTargetPlatformOverride = previousPlatform;
+      });
+
+      final service = PracticePackService();
+
+      expect(
+        () => service.generatePack(request),
+        throwsA(isA<PracticePackUnavailableException>()),
+      );
     });
   });
 }

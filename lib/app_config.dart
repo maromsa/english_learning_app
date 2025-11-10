@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'firebase_options.dart';
+
 /// Central place to access runtime configuration and API keys.
 ///
 /// Values are read from `--dart-define` entries so that secrets do not live in
@@ -51,8 +53,26 @@ class AppConfig {
   static Uri? get aiImageValidationEndpoint =>
       hasAiImageValidation ? Uri.tryParse(aiImageValidationUrl) : null;
 
-  static Uri? get geminiProxyEndpoint =>
-      hasGeminiProxy ? Uri.tryParse(geminiProxyUrl) : null;
+  static Uri? get geminiProxyEndpoint {
+    if (geminiProxyUrl.isNotEmpty) {
+      return Uri.tryParse(geminiProxyUrl);
+    }
+    final projectId = _firebaseProjectId;
+    if (projectId == null || projectId.isEmpty) {
+      return null;
+    }
+    return Uri.tryParse('https://us-central1-$projectId.cloudfunctions.net/geminiProxy');
+  }
+
+  static Uri requireGeminiProxyEndpoint() {
+    final endpoint = geminiProxyEndpoint;
+    if (endpoint == null) {
+      throw const StateError(
+        'Gemini proxy endpoint is not configured. Ensure your Firebase project ID is available or set GEMINI_PROXY_URL explicitly.',
+      );
+    }
+    return endpoint;
+  }
 
   /// Provides a quick overview for debug logs/tests.
   static Map<String, bool> diagnostics() => {
@@ -76,8 +96,11 @@ class AppConfig {
     }());
   }
 
-  static bool _parseBool(String value) {
-    final normalized = value.trim().toLowerCase();
-    return normalized == 'true' || normalized == '1' || normalized == 'yes';
+  static String? get _firebaseProjectId {
+    try {
+      return DefaultFirebaseOptions.currentPlatform.projectId;
+    } catch (_) {
+      return null;
+    }
   }
 }

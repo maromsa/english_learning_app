@@ -1,4 +1,5 @@
 import 'package:english_learning_app/services/conversation_coach_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -53,6 +54,21 @@ void main() {
 
       expect(response.message.isNotEmpty, isTrue);
       expect(response.suggestedLearnerReplies, isEmpty);
+    });
+
+    test('throws when generator is unavailable', () async {
+      final previousPlatform = debugDefaultTargetPlatformOverride;
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      addTearDown(() {
+        debugDefaultTargetPlatformOverride = previousPlatform;
+      });
+
+      final service = ConversationCoachService();
+
+      expect(
+        () => service.startConversation(setup),
+        throwsA(isA<ConversationUnavailableException>()),
+      );
     });
   });
 }

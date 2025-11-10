@@ -77,7 +77,7 @@ Keep your Gemini key on the server by deploying the bundled proxy under `functio
    firebase deploy --only functions:geminiProxy
    ```
    For Cloud Run, package `functions/src/index.ts` into your service entrypoint (the code exports `geminiProxy` as an HTTP handler).
-5. Copy the published HTTPS URL and set it in `.env` as `GEMINI_PROXY_URL`. Optionally point `AI_IMAGE_VALIDATION_URL` to the same URL (otherwise the app defaults to the proxy when present).
+5. Confirm the published HTTPS URL. The Flutter app automatically targets `https://us-central1-<project-id>.cloudfunctions.net/geminiProxy`, so no extra flags are needed unless you front the function with a custom domain. In that case set both `GEMINI_PROXY_URL` and (optionally) `AI_IMAGE_VALIDATION_URL` to your public URL.
 
 The proxy supports three operations:
 - **Image identification** (`mode: "identify"`): returns the primary object name for camera capture.

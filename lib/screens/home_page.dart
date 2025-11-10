@@ -156,15 +156,6 @@ class _MyHomePageState extends State<MyHomePage> {
     final bool geminiProxyAvailable = AppConfig.hasGeminiProxy;
     final bool cloudinaryAvailable = AppConfig.hasCloudinary;
     final bool pixabayAvailable = AppConfig.hasPixabay;
-    final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
-    final Uri? validationEndpoint = AppConfig.aiImageValidationEndpoint ?? proxyEndpoint;
-
-    if (validationEndpoint != null) {
-      _httpImageValidator = HttpFunctionAiImageValidator(validationEndpoint);
-      _cameraValidator = _httpImageValidator!;
-    } else if (AppConfig.hasAiImageValidation) {
-      AppConfig.debugWarnIfMissing('AI image validation endpoint', false);
-    }
 
     if (geminiProxyAvailable && proxyEndpoint != null) {
       _geminiProxy = GeminiProxyService(proxyEndpoint);
@@ -240,11 +231,11 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     } catch (e) {
       debugPrint("Error in _speak function: $e");
-        if (mounted) {
-          setState(() {
-            _feedbackText = 'שגיאה בהשמעת הקול. אנא נסו שוב.';
-          });
-        }
+      if (mounted) {
+        setState(() {
+          _feedbackText = 'שגיאה בהשמעת הקול. אנא נסו שוב.';
+        });
+      }
     }
   }
 
@@ -275,10 +266,10 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-    Future<void> _configureTts() async {
-      await flutterTts.setLanguage("en-US");
-      await flutterTts.setSpeechRate(0.5);
-    }
+  Future<void> _configureTts() async {
+    await flutterTts.setLanguage("en-US");
+    await flutterTts.setSpeechRate(0.5);
+  }
 
   Future<void> _takePictureAndIdentify() async {
     if (!_aiFeaturesEnabled || _geminiProxy == null) {
@@ -386,6 +377,7 @@ class _MyHomePageState extends State<MyHomePage> {
         });
         await _speak('אוי, משהו השתבש. נסו שוב.', languageCode: 'he-IL');
       }
+      rethrow;
     }
   }
 
@@ -415,6 +407,11 @@ class _MyHomePageState extends State<MyHomePage> {
       debugPrint("--- Asking Gemini for phonetic evaluation ---");
       debugPrint("Correct: '$correctWord', Recognized: '$recognizedWord'");
 
+      final proxy = _geminiProxy;
+      if (proxy == null) {
+        throw const StateError('Gemini proxy is not initialized.');
+      }
+
       final prompt =
           "You are an English teacher for a 3-6 year old child. "
           "The child was asked to say the word '$correctWord' and they said '$recognizedWord'. "
@@ -430,6 +427,11 @@ class _MyHomePageState extends State<MyHomePage> {
       final response = await proxy.generateText(prompt).timeout(const Duration(seconds: 10));
       final answer = response?.trim().toLowerCase() ?? 'no';
 
+      if (response == null) {
+        throw const StateError('Gemini proxy returned an empty response.');
+      }
+
+      final answer = response.trim().toLowerCase();
       debugPrint("Gemini's answer: '$answer'");
       return answer == 'yes';
     } catch (e) {
@@ -437,14 +439,13 @@ class _MyHomePageState extends State<MyHomePage> {
       // In case of an error, we fall back to a simple, strict check
       return correctWord.toLowerCase() == recognizedWord.toLowerCase();
     }
-  }
 
-  void _evaluateSpeech() async {
-    if (_words.isEmpty) return;
+    void _evaluateSpeech() async {
+      if (_words.isEmpty) return;
 
-    final currentWordObject = _words[_currentIndex];
-    final recognizedWord = _recognizedWords.trim();
-    String feedback;
+      final currentWordObject = _words[_currentIndex];
+      final recognizedWord = _recognizedWords.trim();
+      String feedback;
 
     // --- קריאה ל-Gemini כדי לבדוק את התשובה ---
     final bool isCorrect =
@@ -462,17 +463,17 @@ class _MyHomePageState extends State<MyHomePage> {
             DailyMissionType.speakPractice,
           );
 
-      feedback = "כל הכבוד! +10 מטבעות";
-      setState(() => currentWordObject.isCompleted = true);
-      _confettiController.play();
-    } else {
-      _streak = 0;
-      feedback = "זה נשמע כמו '$recognizedWord'. בוא ננסה שוב.";
-    }
+        feedback = "כל הכבוד! +10 מטבעות";
+        setState(() => currentWordObject.isCompleted = true);
+        _confettiController.play();
+      } else {
+        _streak = 0;
+        feedback = "זה נשמע כמו '$recognizedWord'. בוא ננסה שוב.";
+      }
 
-    setState(() => _feedbackText = feedback);
-    await _speak(feedback, languageCode: "he-IL");
-  }
+      setState(() => _feedbackText = feedback);
+      await _speak(feedback, languageCode: "he-IL");
+    }
 
   void _startListening() async {
     if (!_speechEnabled) {
