@@ -9,14 +9,12 @@ import 'firebase_options.dart';
 ///
 /// ```bash
 /// flutter run \
-///   --dart-define=GEMINI_API_KEY=xxx \
+///   --dart-define=GEMINI_PROXY_URL=https://<region>-<project>.cloudfunctions.net/geminiProxy \
 ///   --dart-define=CLOUDINARY_CLOUD_NAME=yyy
 /// ```
 class AppConfig {
   const AppConfig._();
 
-  static const String geminiApiKey =
-      String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
   static const String geminiProxyUrl =
       String.fromEnvironment('GEMINI_PROXY_URL', defaultValue: '');
   static const String pixabayApiKey =
@@ -38,8 +36,7 @@ class AppConfig {
   static const String aiImageValidationUrl =
       String.fromEnvironment('AI_IMAGE_VALIDATION_URL', defaultValue: '');
 
-  static bool get hasGemini => geminiApiKey.isNotEmpty;
-  static bool get hasGeminiProxy => geminiProxyEndpoint != null;
+  static bool get hasGeminiProxy => geminiProxyUrl.isNotEmpty;
   static bool get hasPixabay => pixabayApiKey.isNotEmpty;
   static bool get hasCloudinary =>
       cloudinaryCloudName.isNotEmpty &&
@@ -79,7 +76,6 @@ class AppConfig {
 
   /// Provides a quick overview for debug logs/tests.
   static Map<String, bool> diagnostics() => {
-        'gemini': hasGemini,
         'geminiProxy': hasGeminiProxy,
         'pixabay': hasPixabay,
         'cloudinary': hasCloudinary,

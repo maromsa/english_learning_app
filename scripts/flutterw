@@ -33,5 +33,10 @@ if ! has_define AI_IMAGE_VALIDATION_URL && [[ -n "${AI_IMAGE_VALIDATION_URL:-}" 
   args+=("--dart-define=AI_IMAGE_VALIDATION_URL=${AI_IMAGE_VALIDATION_URL}")
 fi
 
+if ! has_define GEMINI_PROXY_URL && [[ -z "${GEMINI_PROXY_URL:-}" ]]; then
+  echo "[flutterw] error: GEMINI_PROXY_URL is required. Provide it via .env, the environment, or pass the corresponding --dart-define flag." >&2
+  exit 1
+fi
+
 set -- "${args[@]}"
 exec flutter "$@"

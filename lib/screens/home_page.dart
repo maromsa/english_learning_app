@@ -153,28 +153,15 @@ class _MyHomePageState extends State<MyHomePage> {
 
 
   Future<void> _initializeServices() async {
+    final bool geminiProxyAvailable = AppConfig.hasGeminiProxy;
     final bool cloudinaryAvailable = AppConfig.hasCloudinary;
     final bool pixabayAvailable = AppConfig.hasPixabay;
 
-    late final Uri proxyEndpoint;
-    try {
-      proxyEndpoint = AppConfig.requireGeminiProxyEndpoint();
-    } on StateError catch (error) {
-      debugPrint('Gemini proxy configuration error: $error');
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _aiFeaturesEnabled = false;
-          _feedbackText = 'תכונות ה-AI לא זמינות. ודאו שהפונקציה geminiProxy פרוסה ב-Firebase Cloud Functions.';
-        });
-      }
-      rethrow;
+    if (geminiProxyAvailable && proxyEndpoint != null) {
+      _geminiProxy = GeminiProxyService(proxyEndpoint);
+    } else {
+      AppConfig.debugWarnIfMissing('Gemini AI features', false);
     }
-
-    final Uri validationEndpoint = AppConfig.aiImageValidationEndpoint ?? proxyEndpoint;
-    _httpImageValidator = HttpFunctionAiImageValidator(validationEndpoint);
-    _cameraValidator = _httpImageValidator!;
-    _geminiProxy = GeminiProxyService(proxyEndpoint);
 
     if (pixabayAvailable) {
       _webImageService = WebImageService(
@@ -200,7 +187,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (mounted) {
       setState(() {
         _isLoading = false;
-        _aiFeaturesEnabled = true;
+        _aiFeaturesEnabled = geminiProxyAvailable && proxyEndpoint != null;
       });
     }
   }
@@ -285,12 +272,11 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _takePictureAndIdentify() async {
-    final proxy = _geminiProxy;
-    if (!_aiFeaturesEnabled || proxy == null) {
+    if (!_aiFeaturesEnabled || _geminiProxy == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('תכונת ה-AI כבויה. ודאו שהפונקציה geminiProxy פרוסה ב-Firebase לפני הפעלת צילום חכם.'),
+            content: Text('תכונת ה-AI כבויה. הגדירו GEMINI_PROXY_URL של פונקציית הענן כדי להפעיל צילום חכם.'),
           ),
         );
       }
@@ -300,7 +286,6 @@ class _MyHomePageState extends State<MyHomePage> {
     final telemetry = TelemetryService.maybeOf(context);
 
     final XFile? imageFile = await _picker.pickImage(source: ImageSource.camera);
-
     if (imageFile == null) {
       return;
     }
@@ -314,12 +299,12 @@ class _MyHomePageState extends State<MyHomePage> {
       const prompt =
           "Identify the main, single object in this image. Respond with only the object's name in English, in singular form. For example: 'Apple', 'Car', 'Dog'. If you cannot identify a single clear object, respond with the word 'unclear'.";
 
-      final proxyResult = await proxy.identifyMainObject(
+      final proxyResult = await _geminiProxy!.identifyMainObject(
         imageBytes,
         prompt: prompt,
         mimeType: 'image/jpeg',
       );
-      final identifiedWord = proxyResult?.trim() ?? 'unclear';
+      final identifiedWord = proxyResult ?? 'unclear';
 
       debugPrint('Gemini identified: $identifiedWord');
 
@@ -417,9 +402,8 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  // lib/screens/home_page.dart
-
-    Future<bool> _evaluateSpeechWithGemini(String correctWord, String recognizedWord) async {
+  Future<bool> _evaluateSpeechWithGemini(String correctWord, String recognizedWord) async {
+    try {
       debugPrint("--- Asking Gemini for phonetic evaluation ---");
       debugPrint("Correct: '$correctWord', Recognized: '$recognizedWord'");
 
@@ -435,12 +419,13 @@ class _MyHomePageState extends State<MyHomePage> {
           "should this attempt be considered a good and acceptable try? "
           "Answer with only 'yes' or 'no'.";
 
-      final response = await proxy
-          .generateText(
-            prompt,
-            systemInstruction: 'Always respond with a single word: "yes" or "no".',
-          )
-          .timeout(const Duration(seconds: 10));
+      final proxy = _geminiProxy;
+      if (proxy == null) {
+        throw StateError('Gemini proxy is not initialized');
+      }
+
+      final response = await proxy.generateText(prompt).timeout(const Duration(seconds: 10));
+      final answer = response?.trim().toLowerCase() ?? 'no';
 
       if (response == null) {
         throw const StateError('Gemini proxy returned an empty response.');
@@ -448,15 +433,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
       final answer = response.trim().toLowerCase();
       debugPrint("Gemini's answer: '$answer'");
-
-      if (answer == 'yes' || answer.startsWith('yes')) {
-        return true;
-      }
-      if (answer == 'no' || answer.startsWith('no')) {
-        return false;
-      }
-
-      throw StateError('Unexpected Gemini response: $answer');
+      return answer == 'yes';
+    } catch (e) {
+      debugPrint("Error during Gemini evaluation: $e");
+      // In case of an error, we fall back to a simple, strict check
+      return correctWord.toLowerCase() == recognizedWord.toLowerCase();
     }
 
     void _evaluateSpeech() async {
@@ -466,30 +447,21 @@ class _MyHomePageState extends State<MyHomePage> {
       final recognizedWord = _recognizedWords.trim();
       String feedback;
 
-      bool isCorrect;
-      try {
-        isCorrect = await _evaluateSpeechWithGemini(currentWordObject.word, recognizedWord);
-      } catch (error) {
-        debugPrint("Error during Gemini evaluation: $error");
-        if (mounted) {
-          setState(() {
-            _feedbackText = 'תכונת ההערכה לא זמינה כרגע. בדקו את חיבור Firebase Functions.';
-          });
-        }
-        return;
-      }
+    // --- קריאה ל-Gemini כדי לבדוק את התשובה ---
+    final bool isCorrect =
+        await _evaluateSpeechWithGemini(currentWordObject.word, recognizedWord);
 
-      if (isCorrect) {
-        _streak++;
-        const int pointsToAdd = 10;
-        await Provider.of<CoinProvider>(context, listen: false).addCoins(pointsToAdd);
+    if (isCorrect) {
+      _streak++;
+      const int pointsToAdd = 10;
+      await Provider.of<CoinProvider>(context, listen: false).addCoins(pointsToAdd);
 
-        Provider.of<AchievementService>(context, listen: false)
-            .checkForAchievements(streak: _streak);
+      Provider.of<AchievementService>(context, listen: false)
+          .checkForAchievements(streak: _streak);
 
-        context.read<DailyMissionProvider>().incrementByType(
-              DailyMissionType.speakPractice,
-            );
+      context.read<DailyMissionProvider>().incrementByType(
+            DailyMissionType.speakPractice,
+          );
 
         feedback = "כל הכבוד! +10 מטבעות";
         setState(() => currentWordObject.isCompleted = true);

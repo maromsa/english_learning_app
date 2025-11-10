@@ -15,21 +15,14 @@ class AdventureStoryService {
   })  : _timeout = timeout ?? const Duration(seconds: 12),
         _generator = generator ?? _inferGenerator();
 
-  final GeminiTextGenerator? _generator;
+  final GeminiTextGenerator _generator;
   final Duration _timeout;
 
   Future<AdventureStory> generateAdventure(AdventureStoryContext context) async {
-    final generator = _generator;
-    if (generator == null) {
-      throw const AdventureStoryUnavailableException(
-        'חסר חיבור ל-Gemini דרך Firebase Cloud Functions. ודאו שהפונקציה geminiProxy זמינה לפני הפעלת תכונת הסיפורים.',
-      );
-    }
-
     final prompt = _buildPrompt(context);
 
     try {
-      final raw = await generator(prompt).timeout(_timeout);
+        final raw = await _generator(prompt).timeout(_timeout);
       if (raw == null || raw.trim().isEmpty) {
         throw const AdventureStoryGenerationException('לא התקבלה תשובה מ-Gemini. נסו שוב בעוד רגע.');
       }
@@ -50,24 +43,31 @@ class AdventureStoryService {
       'but keep every English vocabulary word exactly as provided. '
       'Always respect the JSON schema instructions.';
 
-  static GeminiTextGenerator? _inferGenerator() {
+  static const String _geminiUnavailableMessage =
+      'חסר חיבור ל-Gemini. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי להפעיל את התכונה.';
+
+  static GeminiTextGenerator _inferGenerator() {
     final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
-    if (proxyEndpoint != null) {
-      return (prompt) async {
-        final service = GeminiProxyService(proxyEndpoint);
-        try {
-          return await service.generateText(
-            prompt,
-            systemInstruction: _sparkSystemInstruction,
-          );
-        } finally {
-          service.dispose();
-        }
-      };
+    if (proxyEndpoint == null) {
+      throw const AdventureStoryUnavailableException(_geminiUnavailableMessage);
     }
 
-    return null;
+    return (prompt) async {
+      final service = GeminiProxyService(proxyEndpoint);
+      try {
+        final response = await service.generateText(
+          prompt,
+          systemInstruction: _sparkSystemInstruction,
+        );
+        if (response == null || response.trim().isEmpty) {
+          throw const AdventureStoryUnavailableException(_geminiUnavailableMessage);
+        }
+        return response;
+      } finally {
+        service.dispose();
+      }
+    };
   }
 
   String _buildPrompt(AdventureStoryContext context) {

@@ -33,7 +33,7 @@ helper exposes the values at runtime.
 
 | Dart define | Feature | Notes |
 | --- | --- | --- |
-| `GEMINI_PROXY_URL` | Override for the deployed `geminiProxy` HTTPS function | Optional. By default the app derives `https://us-central1-<project-id>.cloudfunctions.net/geminiProxy` from `firebase_options.dart`. Use this when routing through a custom domain. |
+| `GEMINI_PROXY_URL` | Hosted Gemini proxy endpoint (Firebase Functions / Cloud Run) | Required. All AI features go through this endpoint; if it is unreachable, the app surfaces an error instead of falling back. |
 | `GOOGLE_TTS_API_KEY` | Server-quality Hebrew TTS | Optional. Falls back to on-device TTS if omitted. |
 | `PIXABAY_API_KEY` | Bulk word uploader scripts | Required for `dart run scripts/upload_words.dart`. |
 | `FIREBASE_USER_ID_FOR_UPLOAD` | Bulk word uploader scripts | Target document owner in Firestore. |
@@ -43,6 +43,7 @@ Example dev run:
 
 ```bash
 flutter run \
+  --dart-define=GEMINI_PROXY_URL=https://<region>-<project>.cloudfunctions.net/geminiProxy \
   --dart-define=CLOUDINARY_CLOUD_NAME=your_cloud \
   --dart-define=CLOUDINARY_API_KEY=your_api_key \
   --dart-define=CLOUDINARY_API_SECRET=your_secret
@@ -54,12 +55,12 @@ To avoid repeating the flags, copy `.env.example` to `.env`, fill in your secret
 
 ```bash
 cp .env.example .env
+echo "GEMINI_PROXY_URL=https://<region>-<project>.cloudfunctions.net/geminiProxy" >> .env
+
 ./scripts/flutterw run -d chrome
 ```
 
-The script sources `.env`, injects any missing `--dart-define` overrides (for example `GEMINI_PROXY_URL` when you front the function with a custom domain), and falls back to environment variables. It works with other Flutter subcommands too (e.g. `./scripts/flutterw build web`). In CI you can keep using plain `flutter` with explicit flags so secrets stay in your secret manager.
-
-When you deploy the Gemini proxy (see below), no additional client configuration is required as long as the Firebase project in `firebase_options.dart` matches the deployment. If you host the function behind a custom domain, place the public URL in `.env` as `GEMINI_PROXY_URL=...` so the wrapper forwards it.
+The script sources `.env`, injects the necessary `--dart-define` flags when missing, and falls back to any existing environment variables. It works with other Flutter subcommands too (e.g. `./scripts/flutterw build web`). In CI you can keep using plain `flutter` with explicit `--dart-define` flags so secrets stay in your secret manager.
 
 #### Server-side Gemini proxy (Firebase Functions / Cloud Run)
 
@@ -85,9 +86,9 @@ The proxy supports three operations:
 
 Because the mobile/web client now talks to your proxy, the Gemini key never ships with the app binary—users only see the public endpoint you control.
 
-### CI requirements
+### CI without live Gemini
 
-The Flutter client now requires a reachable `geminiProxy` Cloud Function at runtime—there is no offline stub mode. Configure your CI environment so the app and tests talk to a staging Firebase project where the proxy is deployed, and supply the Gemini key to that project via `firebase functions:secrets:set GEMINI_API_KEY`. If the proxy is unreachable, AI flows throw and the test run will fail by design.
+For automated CI builds or preview deployments, provide a reachable Gemini proxy endpoint. If the proxy is unavailable the AI-dependent tests will fail fast with clear errors (no local stubs remain). A common pattern is to host a staging Cloud Function and expose its URL as `GEMINI_PROXY_URL` in your CI secrets.
 
 Scripts can be executed in the same fashion, e.g.:
 
