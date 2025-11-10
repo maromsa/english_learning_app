@@ -12,6 +12,17 @@ void main() {
       learnerName: 'אורי',
     );
 
+    test('throws when the generator does not return a reply', () async {
+      final service = ConversationCoachService(
+        generator: (_) async => null,
+      );
+
+      expect(
+        () => service.startConversation(setup),
+        throwsA(isA<ConversationGenerationException>()),
+      );
+    });
+
     test('parses structured JSON from the generator', () async {
       final service = ConversationCoachService(
         generator: (_) async =>

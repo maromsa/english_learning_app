@@ -33,7 +33,7 @@ void main() {
 
     test('falls back to raw text when JSON parsing fails', () async {
       final service = AdventureStoryService(
-        generator: (_) async => 'Let\'s imagine a floating fruit castle together!',
+        generator: (_) async => "Let's imagine a floating fruit castle together!",
       );
 
       final story = await service.generateAdventure(baseContext);
@@ -43,18 +43,14 @@ void main() {
       expect(story.title, 'הפתעת ספרק');
     });
 
-    test('throws when generator is unavailable', () async {
-      final previousPlatform = debugDefaultTargetPlatformOverride;
-      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
-      addTearDown(() {
-        debugDefaultTargetPlatformOverride = previousPlatform;
-      });
-
-      final service = AdventureStoryService();
+    test('throws when the generator reports an unavailable connection', () async {
+      final service = AdventureStoryService(
+        generator: (_) async => null,
+      );
 
       expect(
         () => service.generateAdventure(baseContext),
-        throwsA(isA<AdventureStoryUnavailableException>()),
+        throwsA(isA<AdventureStoryGenerationException>()),
       );
     });
   });

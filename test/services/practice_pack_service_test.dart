@@ -13,6 +13,17 @@ void main() {
       learnerName: 'נועה',
     );
 
+    test('throws when the generator does not return a response', () async {
+      final service = PracticePackService(
+        generator: (_) async => null,
+      );
+
+      expect(
+        () => service.generatePack(request),
+        throwsA(isA<PracticePackGenerationException>()),
+      );
+    });
+
     test('parses JSON pack from the generator', () async {
       const json = '''
 {
@@ -55,7 +66,7 @@ void main() {
       expect(pack.activities.first.englishFocus, contains('hello'));
     });
 
-    test('falls back to stub when JSON cannot be parsed', () async {
+    test('falls back to deterministic content when JSON cannot be parsed', () async {
       final service = PracticePackService(
         generator: (_) async => 'oops',
       );

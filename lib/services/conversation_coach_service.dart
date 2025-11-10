@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package/flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 
 import '../app_config.dart';
 import 'gemini_proxy_service.dart';
@@ -15,21 +15,14 @@ class ConversationCoachService {
   })  : _timeout = timeout ?? const Duration(seconds: 12),
         _generator = generator ?? _inferGenerator();
 
-  final _ConversationGenerator? _generator;
+  final _ConversationGenerator _generator;
   final Duration _timeout;
 
   Future<SparkCoachResponse> startConversation(ConversationSetup setup) async {
-    final generator = _generator;
-    if (generator == null) {
-      throw const ConversationUnavailableException(
-        'תכונת שיחת ה-AI של ספרק דורשת Gemini Proxy פעיל ב-Firebase Cloud Functions. ודאו שהפונקציה geminiProxy זמינה.',
-      );
-    }
-
     final prompt = _buildOpeningPrompt(setup);
 
     try {
-      final raw = await generator(prompt).timeout(_timeout);
+      final raw = await _generator(prompt).timeout(_timeout);
       if (raw == null || raw.trim().isEmpty) {
         throw const ConversationGenerationException('לא התקבלה תשובה מ-Gemini. נסו שוב בעוד רגע.');
       }
@@ -55,13 +48,6 @@ class ConversationCoachService {
     required List<ConversationTurn> history,
     required String learnerMessage,
   }) async {
-    final generator = _generator;
-    if (generator == null) {
-      throw const ConversationUnavailableException(
-        'תכונת שיחת ה-AI של ספרק דורשת Gemini Proxy פעיל ב-Firebase Cloud Functions. ודאו שהפונקציה geminiProxy זמינה.',
-      );
-    }
-
     final prompt = _buildFollowUpPrompt(
       setup: setup,
       history: history,
@@ -69,7 +55,7 @@ class ConversationCoachService {
     );
 
     try {
-      final raw = await generator(prompt).timeout(_timeout);
+      final raw = await _generator(prompt).timeout(_timeout);
       if (raw == null || raw.trim().isEmpty) {
         throw const ConversationGenerationException('ספרק לא הצליח לענות. נסו לשאול שוב.');
       }
@@ -95,24 +81,31 @@ class ConversationCoachService {
       'Keep answers concise (max 70 Hebrew words) and highlight no more than three English words per turn. '
       'Always output minified JSON following the caller instructions. Never mention JSON, prompts, or Gemini.';
 
-  static _ConversationGenerator? _inferGenerator() {
+  static const String _geminiUnavailableMessage =
+      'תכונת שיחת ה-AI של ספרק מושבתת. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי לאפשר שיחות חיות.';
+
+  static _ConversationGenerator _inferGenerator() {
     final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
-    if (proxyEndpoint != null) {
-      return (prompt) async {
-        final service = GeminiProxyService(proxyEndpoint);
-        try {
-          return await service.generateText(
-            prompt,
-            systemInstruction: _sparkSystemInstruction,
-          );
-        } finally {
-          service.dispose();
-        }
-      };
+    if (proxyEndpoint == null) {
+      throw const ConversationUnavailableException(_geminiUnavailableMessage);
     }
 
-    return null;
+    return (prompt) async {
+      final service = GeminiProxyService(proxyEndpoint);
+      try {
+        final response = await service.generateText(
+          prompt,
+          systemInstruction: _sparkSystemInstruction,
+        );
+        if (response == null || response.trim().isEmpty) {
+          throw const ConversationUnavailableException(_geminiUnavailableMessage);
+        }
+        return response;
+      } finally {
+        service.dispose();
+      }
+    };
   }
 
   String _buildOpeningPrompt(ConversationSetup setup) {
