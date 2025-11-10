@@ -33,9 +33,7 @@ helper exposes the values at runtime.
 
 | Dart define | Feature | Notes |
 | --- | --- | --- |
-| `GEMINI_API_KEY` | AI-powered pronunciation feedback & photo recognition | Optional. When missing the app gracefully falls back to manual play. |
-| `GEMINI_PROXY_URL` | Hosted Gemini proxy endpoint (Firebase Functions / Cloud Run) | Preferred for production so the key stays on the server. Clients call the proxy instead of talking to Gemini directly. |
-| `ENABLE_GEMINI_STUB` | Spark's Adventure Lab offline stub | Optional. Set to `true` in CI to serve deterministic stories without exposing a real Gemini key. |
+| `GEMINI_PROXY_URL` | Hosted Gemini proxy endpoint (Firebase Functions / Cloud Run) | Required. All AI features go through this endpoint; if it is unreachable, the app surfaces an error instead of falling back. |
 | `GOOGLE_TTS_API_KEY` | Server-quality Hebrew TTS | Optional. Falls back to on-device TTS if omitted. |
 | `PIXABAY_API_KEY` | Bulk word uploader scripts | Required for `dart run scripts/upload_words.dart`. |
 | `FIREBASE_USER_ID_FOR_UPLOAD` | Bulk word uploader scripts | Target document owner in Firestore. |
@@ -45,7 +43,7 @@ Example dev run:
 
 ```bash
 flutter run \
-  --dart-define=GEMINI_API_KEY=your_key \
+  --dart-define=GEMINI_PROXY_URL=https://<region>-<project>.cloudfunctions.net/geminiProxy \
   --dart-define=CLOUDINARY_CLOUD_NAME=your_cloud \
   --dart-define=CLOUDINARY_API_KEY=your_api_key \
   --dart-define=CLOUDINARY_API_SECRET=your_secret
@@ -57,14 +55,12 @@ To avoid repeating the flags, copy `.env.example` to `.env`, fill in your secret
 
 ```bash
 cp .env.example .env
-echo "GEMINI_API_KEY=your_key" >> .env
+echo "GEMINI_PROXY_URL=https://<region>-<project>.cloudfunctions.net/geminiProxy" >> .env
 
 ./scripts/flutterw run -d chrome
 ```
 
-The script sources `.env`, injects `--dart-define=GEMINI_API_KEY=...` when missing, and falls back to any existing environment variables. It works with other Flutter subcommands too (e.g. `./scripts/flutterw build web`). In CI you can keep using plain `flutter` with explicit `--dart-define` flags so secrets stay in your secret manager.
-
-When you deploy the Gemini proxy (see below), place the URL in `.env` as `GEMINI_PROXY_URL=...`. The wrapper will automatically pass it to Flutter and, if the key is omitted, enforce that the proxy is present instead.
+The script sources `.env`, injects the necessary `--dart-define` flags when missing, and falls back to any existing environment variables. It works with other Flutter subcommands too (e.g. `./scripts/flutterw build web`). In CI you can keep using plain `flutter` with explicit `--dart-define` flags so secrets stay in your secret manager.
 
 #### Server-side Gemini proxy (Firebase Functions / Cloud Run)
 
@@ -92,16 +88,7 @@ Because the mobile/web client now talks to your proxy, the Gemini key never ship
 
 ### CI without live Gemini
 
-For automated CI builds or preview deployments where secrets are unavailable, enable Spark's deterministic stub stories instead of providing a real Gemini key:
-
-```bash
-flutter test \
-  --dart-define=ENABLE_GEMINI_STUB=true
-```
-
-The app, widget tests, and web builds will still complete successfully, and the AI adventure screen shows offline copy suitable for demos.
-
-When you do need live Gemini features in CI, store the key as an encrypted secret (for example `GEMINI_API_KEY`) and pass it via `--dart-define=GEMINI_API_KEY=$GEMINI_API_KEY` so nothing is hard-coded in your configuration files.
+For automated CI builds or preview deployments, provide a reachable Gemini proxy endpoint. If the proxy is unavailable the AI-dependent tests will fail fast with clear errors (no local stubs remain). A common pattern is to host a staging Cloud Function and expose its URL as `GEMINI_PROXY_URL` in your CI secrets.
 
 Scripts can be executed in the same fashion, e.g.:
 

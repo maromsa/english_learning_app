@@ -72,8 +72,7 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final sparkReady = AppConfig.hasGemini || AppConfig.hasGeminiProxy || AppConfig.hasGeminiStub;
-    final usingStub = !AppConfig.hasGemini && !AppConfig.hasGeminiProxy && AppConfig.hasGeminiStub;
+    final sparkReady = AppConfig.hasGeminiProxy;
     final coins = context.watch<CoinProvider>().coins;
 
     return Scaffold(
@@ -92,25 +91,23 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
         child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 620),
-                child: Card(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                  elevation: 8,
-                  color: Colors.white,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          sparkReady
-                                ? (usingStub
-                                    ? 'ספרק פועל במצב סיפור ללא חיבור. הוסיפו GEMINI_API_KEY או GEMINI_PROXY_URL כדי לקבל הרפתקאות חיות.'
-                                  : 'ספרק, המנטור הקוסמי, מוכן לטוות הרפתקה מיוחדת בשבילכם!')
-                                : 'הוסיפו GEMINI_API_KEY, או הגדירו GEMINI_PROXY_URL, או הפעילו --dart-define=ENABLE_GEMINI_STUB=true כדי לפתוח את מסעות ספרק.',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                        ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 620),
+                  child: Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    elevation: 8,
+                    color: Colors.white,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            sparkReady
+                                ? 'ספרק, המנטור הקוסמי, מוכן לטוות הרפתקה מיוחדת בשבילכם!'
+                                : 'הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי לפתוח את מסעות ספרק.',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          ),
                         const SizedBox(height: 16),
                         _buildNameField(),
                         const SizedBox(height: 16),

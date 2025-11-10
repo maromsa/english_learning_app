@@ -9,7 +9,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
   flutter_localizations:
     sdk: flutter
 
@@ -31,7 +30,6 @@ dependencies:
 
   # AI and Text-to-Speech
   flutter_tts: ^4.0.2
-  google_generative_ai: ^0.4.3
 
   # NEW: Packages for Audio Recording and Permissions
   flutter_sound: ^9.2.13
