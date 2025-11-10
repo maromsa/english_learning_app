@@ -30,6 +30,7 @@ dependencies:
 
   # AI and Text-to-Speech
   flutter_tts: ^4.0.2
+  flutter_dotenv: ^5.1.0
 
   # NEW: Packages for Audio Recording and Permissions
   flutter_sound: ^9.2.13

@@ -1,0 +1,1 @@
+String readPlatformEnvironment(String key) => '';

@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'firebase_options.dart';
+import 'utils/platform_env_stub.dart'
+    if (dart.library.io) 'utils/platform_env_io.dart';
 
 /// Central place to access runtime configuration and API keys.
 ///
@@ -15,26 +18,18 @@ import 'firebase_options.dart';
 class AppConfig {
   const AppConfig._();
 
-  static const String geminiProxyUrl =
-      String.fromEnvironment('GEMINI_PROXY_URL', defaultValue: '');
-  static const String pixabayApiKey =
-      String.fromEnvironment('PIXABAY_API_KEY', defaultValue: '');
-  static const String firebaseUserIdForUpload = String.fromEnvironment(
-    'FIREBASE_USER_ID_FOR_UPLOAD',
-    defaultValue: '',
-  );
-  static const String cloudinaryCloudName = String.fromEnvironment(
-    'CLOUDINARY_CLOUD_NAME',
-    defaultValue: '',
-  );
-  static const String cloudinaryApiKey =
-      String.fromEnvironment('CLOUDINARY_API_KEY', defaultValue: '');
-  static const String cloudinaryApiSecret =
-      String.fromEnvironment('CLOUDINARY_API_SECRET', defaultValue: '');
-  static const String googleTtsApiKey =
-      String.fromEnvironment('GOOGLE_TTS_API_KEY', defaultValue: '');
-  static const String aiImageValidationUrl =
-      String.fromEnvironment('AI_IMAGE_VALIDATION_URL', defaultValue: '');
+  static final String geminiProxyUrl = _readSecret('GEMINI_PROXY_URL');
+  static final String pixabayApiKey = _readSecret('PIXABAY_API_KEY');
+  static final String firebaseUserIdForUpload =
+      _readSecret('FIREBASE_USER_ID_FOR_UPLOAD');
+  static final String cloudinaryCloudName =
+      _readSecret('CLOUDINARY_CLOUD_NAME');
+  static final String cloudinaryApiKey = _readSecret('CLOUDINARY_API_KEY');
+  static final String cloudinaryApiSecret =
+      _readSecret('CLOUDINARY_API_SECRET');
+  static final String googleTtsApiKey = _readSecret('GOOGLE_TTS_API_KEY');
+  static final String aiImageValidationUrl =
+      _readSecret('AI_IMAGE_VALIDATION_URL');
 
   static bool get hasGeminiProxy => geminiProxyUrl.isNotEmpty;
   static bool get hasPixabay => pixabayApiKey.isNotEmpty;
@@ -61,7 +56,8 @@ class AppConfig {
     if (projectId == null || projectId.isEmpty) {
       return null;
     }
-    return Uri.tryParse('https://us-central1-$projectId.cloudfunctions.net/geminiProxy');
+    return Uri.tryParse(
+        'https://us-central1-$projectId.cloudfunctions.net/geminiProxy');
   }
 
   static Uri requireGeminiProxyEndpoint() {
@@ -94,6 +90,25 @@ class AppConfig {
       }
       return true;
     }());
+  }
+
+  static String _readSecret(String key) {
+    final fromDefines = String.fromEnvironment(key, defaultValue: '');
+    if (fromDefines.isNotEmpty) {
+      return fromDefines;
+    }
+
+    final fromDotEnv = dotenv.maybeGet(key);
+    if (fromDotEnv != null && fromDotEnv.isNotEmpty) {
+      return fromDotEnv;
+    }
+
+    final fromPlatform = readPlatformEnvironment(key);
+    if (fromPlatform.isNotEmpty) {
+      return fromPlatform;
+    }
+
+    return '';
   }
 
   static String? get _firebaseProjectId {

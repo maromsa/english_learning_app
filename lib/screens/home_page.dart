@@ -67,17 +67,19 @@ class _MyHomePageState extends State<MyHomePage> {
   List<WordData> _words = [];
   int _currentIndex = 0;
   bool _isListening = false;
-    String _feedbackText = 'לחצו על המיקרופון כדי לדבר';
+  String _feedbackText = 'לחצו על המיקרופון כדי לדבר';
   String _recognizedWords = '';
   bool _speechEnabled = false;
   int _streak = 0;
   OverlayEntry? _achievementOverlay;
   bool _aiFeaturesEnabled = false;
+  Uri? get proxyEndpoint => AppConfig.geminiProxyEndpoint;
 
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 1));
+    _confettiController =
+        ConfettiController(duration: const Duration(seconds: 1));
     _words = widget.wordsForLevel;
     _setupAchievementListener();
     _initializeServices();
@@ -90,7 +92,8 @@ class _MyHomePageState extends State<MyHomePage> {
   void _setupAchievementListener() {
     // Set up achievement notification callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final achievementService = Provider.of<AchievementService>(context, listen: false);
+      final achievementService =
+          Provider.of<AchievementService>(context, listen: false);
       achievementService.setAchievementUnlockedCallback((achievement) {
         if (mounted) {
           _showAchievementNotification(achievement);
@@ -151,14 +154,13 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
-
   Future<void> _initializeServices() async {
     final bool geminiProxyAvailable = AppConfig.hasGeminiProxy;
     final bool cloudinaryAvailable = AppConfig.hasCloudinary;
     final bool pixabayAvailable = AppConfig.hasPixabay;
 
     if (geminiProxyAvailable && proxyEndpoint != null) {
-      _geminiProxy = GeminiProxyService(proxyEndpoint);
+      _geminiProxy = GeminiProxyService(proxyEndpoint!);
     } else {
       AppConfig.debugWarnIfMissing('Gemini AI features', false);
     }
@@ -203,13 +205,15 @@ class _MyHomePageState extends State<MyHomePage> {
       }
 
       final response = await http.post(
-        Uri.parse('https://texttospeech.googleapis.com/v1/text:synthesize?key=${AppConfig.googleTtsApiKey}'),
+        Uri.parse(
+            'https://texttospeech.googleapis.com/v1/text:synthesize?key=${AppConfig.googleTtsApiKey}'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'input': {'text': text},
           'voice': {
             'languageCode': languageCode,
-            'name': languageCode == 'en-US' ? 'en-US-Wavenet-D' : 'he-IL-Wavenet-A'
+            'name':
+                languageCode == 'en-US' ? 'en-US-Wavenet-D' : 'he-IL-Wavenet-A'
           },
           'audioConfig': {'audioEncoding': 'MP3'}
         }),
@@ -276,7 +280,8 @@ class _MyHomePageState extends State<MyHomePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('תכונת ה-AI כבויה. הגדירו GEMINI_PROXY_URL של פונקציית הענן כדי להפעיל צילום חכם.'),
+            content: Text(
+                'תכונת ה-AI כבויה. הגדירו GEMINI_PROXY_URL של פונקציית הענן כדי להפעיל צילום חכם.'),
           ),
         );
       }
@@ -285,7 +290,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final telemetry = TelemetryService.maybeOf(context);
 
-    final XFile? imageFile = await _picker.pickImage(source: ImageSource.camera);
+    final XFile? imageFile =
+        await _picker.pickImage(source: ImageSource.camera);
     if (imageFile == null) {
       return;
     }
@@ -308,7 +314,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
       debugPrint('Gemini identified: $identifiedWord');
 
-      if (identifiedWord.toLowerCase() == 'unclear' || identifiedWord.contains(' ')) {
+      if (identifiedWord.toLowerCase() == 'unclear' ||
+          identifiedWord.contains(' ')) {
         telemetry?.logCameraValidation(
           word: identifiedWord,
           accepted: false,
@@ -325,7 +332,8 @@ class _MyHomePageState extends State<MyHomePage> {
           identifiedWord,
           mimeType: 'image/jpeg',
         );
-        debugPrint('Camera validation for "$identifiedWord": $validationPassed');
+        debugPrint(
+            'Camera validation for "$identifiedWord": $validationPassed');
 
         if (!validationPassed) {
           if (mounted) {
@@ -347,11 +355,13 @@ class _MyHomePageState extends State<MyHomePage> {
           return;
         }
 
-        final newWord = await _saveImageAndCreateWordData(imageFile, identifiedWord);
+        final newWord =
+            await _saveImageAndCreateWordData(imageFile, identifiedWord);
         setState(() {
           _words.add(newWord);
           _currentIndex = _words.length - 1;
-          _feedbackText = 'איזה יופי! אני רואה ${newWord.word}. בואו נלמד אותה יחד!';
+          _feedbackText =
+              'איזה יופי! אני רואה ${newWord.word}. בואו נלמד אותה יחד!';
         });
         await _wordRepository.cacheWords(
           _words,
@@ -381,12 +391,14 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<WordData> _saveImageAndCreateWordData(XFile imageFile, String word) async {
+  Future<WordData> _saveImageAndCreateWordData(
+      XFile imageFile, String word) async {
     final directory = await getApplicationDocumentsDirectory();
-    final newPath = '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final newPath =
+        '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
     final savedImageFile = await File(imageFile.path).copy(newPath);
 
-      debugPrint("Saved new image to: ${savedImageFile.path}");
+    debugPrint("Saved new image to: ${savedImageFile.path}");
 
     return WordData(
       word: word,
@@ -402,59 +414,62 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Future<bool> _evaluateSpeechWithGemini(String correctWord, String recognizedWord) async {
+  Future<bool> _evaluateSpeechWithGemini(
+    String correctWord,
+    String recognizedWord,
+  ) async {
     try {
-      debugPrint("--- Asking Gemini for phonetic evaluation ---");
+      debugPrint('--- Asking Gemini for phonetic evaluation ---');
       debugPrint("Correct: '$correctWord', Recognized: '$recognizedWord'");
 
       final proxy = _geminiProxy;
       if (proxy == null) {
-        throw const StateError('Gemini proxy is not initialized.');
+        throw StateError('Gemini proxy is not initialized.');
       }
 
-      final prompt =
-          "You are an English teacher for a 3-6 year old child. "
+      final prompt = "You are an English teacher for a 3-6 year old child. "
           "The child was asked to say the word '$correctWord' and they said '$recognizedWord'. "
           "Considering their age and common pronunciation mistakes (like confusing 'th' and 't' sounds), "
           "should this attempt be considered a good and acceptable try? "
           "Answer with only 'yes' or 'no'.";
 
-      final proxy = _geminiProxy;
-      if (proxy == null) {
-        throw StateError('Gemini proxy is not initialized');
-      }
-
-      final response = await proxy.generateText(prompt).timeout(const Duration(seconds: 10));
-      final answer = response?.trim().toLowerCase() ?? 'no';
-
-      if (response == null) {
-        throw const StateError('Gemini proxy returned an empty response.');
+      final response =
+          await proxy.generateText(prompt).timeout(const Duration(seconds: 10));
+      if (response == null || response.trim().isEmpty) {
+        throw StateError('Gemini proxy returned an empty response.');
       }
 
       final answer = response.trim().toLowerCase();
       debugPrint("Gemini's answer: '$answer'");
       return answer == 'yes';
     } catch (e) {
-      debugPrint("Error during Gemini evaluation: $e");
-      // In case of an error, we fall back to a simple, strict check
+      debugPrint('Error during Gemini evaluation: $e');
       return correctWord.toLowerCase() == recognizedWord.toLowerCase();
     }
+  }
 
-    void _evaluateSpeech() async {
-      if (_words.isEmpty) return;
+  Future<void> _evaluateSpeech() async {
+    if (_words.isEmpty) return;
 
-      final currentWordObject = _words[_currentIndex];
-      final recognizedWord = _recognizedWords.trim();
-      String feedback;
+    final currentWordObject = _words[_currentIndex];
+    final recognizedWord = _recognizedWords.trim();
 
-    // --- קריאה ל-Gemini כדי לבדוק את התשובה ---
+    if (recognizedWord.isEmpty) {
+      setState(() {
+        _feedbackText = "לא שמעתי כלום. בוא ננסה שוב.";
+      });
+      return;
+    }
+
     final bool isCorrect =
         await _evaluateSpeechWithGemini(currentWordObject.word, recognizedWord);
 
+    String feedback;
     if (isCorrect) {
       _streak++;
       const int pointsToAdd = 10;
-      await Provider.of<CoinProvider>(context, listen: false).addCoins(pointsToAdd);
+      await Provider.of<CoinProvider>(context, listen: false)
+          .addCoins(pointsToAdd);
 
       Provider.of<AchievementService>(context, listen: false)
           .checkForAchievements(streak: _streak);
@@ -463,17 +478,17 @@ class _MyHomePageState extends State<MyHomePage> {
             DailyMissionType.speakPractice,
           );
 
-        feedback = "כל הכבוד! +10 מטבעות";
-        setState(() => currentWordObject.isCompleted = true);
-        _confettiController.play();
-      } else {
-        _streak = 0;
-        feedback = "זה נשמע כמו '$recognizedWord'. בוא ננסה שוב.";
-      }
-
-      setState(() => _feedbackText = feedback);
-      await _speak(feedback, languageCode: "he-IL");
+      feedback = "כל הכבוד! +10 מטבעות";
+      setState(() => currentWordObject.isCompleted = true);
+      _confettiController.play();
+    } else {
+      _streak = 0;
+      feedback = "זה נשמע כמו '$recognizedWord'. בוא ננסה שוב.";
     }
+
+    setState(() => _feedbackText = feedback);
+    await _speak(feedback, languageCode: "he-IL");
+  }
 
   void _startListening() async {
     if (!_speechEnabled) {
@@ -584,99 +599,110 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(backgroundColor: Colors.transparent, appBar: AppBar(title: Text(widget.title)),
-          body: Stack(
-              children: [
-                Image.asset(
-                  'assets/images/background.png',
-                  fit: BoxFit.cover,
-                  height: double.infinity,
-                  width: double.infinity,
-                ),
-                Center(
-                  child: SingleChildScrollView(child: const CircularProgressIndicator()),
-                ),
-              ],
-          ),
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(title: Text(widget.title)),
+        body: Stack(
+          children: [
+            Image.asset(
+              'assets/images/background.png',
+              fit: BoxFit.cover,
+              height: double.infinity,
+              width: double.infinity,
+            ),
+            Center(
+              child: SingleChildScrollView(
+                  child: const CircularProgressIndicator()),
+            ),
+          ],
+        ),
       );
     }
     final currentWordData = _words.isNotEmpty ? _words[_currentIndex] : null;
-      return Stack(
-        alignment: Alignment.topCenter,
-        children: [
-          Scaffold(
-            appBar: AppBar(
-              backgroundColor: Colors.lightBlue.shade300,
-              title: Text(
-                widget.title,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+    return Stack(
+      alignment: Alignment.topCenter,
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.lightBlue.shade300,
+            title: Text(
+              widget.title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            centerTitle: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.chat),
+                tooltip: 'חבר שיחה של ספרק',
+                onPressed: () {
+                  final focusWords = _words
+                      .take(6)
+                      .map((word) => word.word)
+                      .toList(growable: false);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          AiConversationScreen(focusWords: focusWords),
+                    ),
+                  );
+                },
               ),
-              centerTitle: true,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.chat),
-                  tooltip: 'חבר שיחה של ספרק',
-                  onPressed: () {
-                    final focusWords = _words.take(6).map((word) => word.word).toList(growable: false);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AiConversationScreen(focusWords: focusWords),
-                      ),
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.emoji_events),
-                  tooltip: 'חבילת אימון AI',
-                  onPressed: () {
-                    final focusWords = _words.take(6).map((word) => word.word).toList(growable: false);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AiPracticePackScreen(focusWords: focusWords),
-                      ),
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.image_search),
-                  tooltip: 'Image Quiz Game',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => ImageQuizGame()),
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.camera_alt),
-                  tooltip: 'הוסף מילה',
-                  onPressed: _aiFeaturesEnabled ? _takePictureAndIdentify : null,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.store),
-                  tooltip: 'חנות',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => ShopScreen()),
-                    );
-                  },
-                ),
-              ],
-            ),
-            floatingActionButton: FloatingActionButton.extended(
-              onPressed: _aiFeaturesEnabled ? _takePictureAndIdentify : null,
-              label: const Text('הוסף מילה'),
-              icon: const Icon(Icons.camera_alt),
-            ),
-            body: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
+              IconButton(
+                icon: const Icon(Icons.emoji_events),
+                tooltip: 'חבילת אימון AI',
+                onPressed: () {
+                  final focusWords = _words
+                      .take(6)
+                      .map((word) => word.word)
+                      .toList(growable: false);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          AiPracticePackScreen(focusWords: focusWords),
+                    ),
+                  );
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.image_search),
+                tooltip: 'Image Quiz Game',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => ImageQuizGame()),
+                  );
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.camera_alt),
+                tooltip: 'הוסף מילה',
+                onPressed: _aiFeaturesEnabled ? _takePictureAndIdentify : null,
+              ),
+              IconButton(
+                icon: const Icon(Icons.store),
+                tooltip: 'חנות',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => ShopScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: _aiFeaturesEnabled ? _takePictureAndIdentify : null,
+            label: const Text('הוסף מילה'),
+            icon: const Icon(Icons.camera_alt),
+          ),
+          body: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
                   ScoreDisplay(coins: Provider.of<CoinProvider>(context).coins),
                   WordsProgressBar(
                     totalWords: _words.length,
@@ -684,7 +710,8 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   Consumer<DailyMissionProvider>(
                     builder: (context, missionsProvider, _) {
-                      if (!missionsProvider.isInitialized || missionsProvider.missions.isEmpty) {
+                      if (!missionsProvider.isInitialized ||
+                          missionsProvider.missions.isEmpty) {
                         return const SizedBox.shrink();
                       }
 
@@ -700,7 +727,8 @@ class _MyHomePageState extends State<MyHomePage> {
                         }
                       }
 
-                      final DailyMission highlight = claimable ?? next ?? missionsProvider.missions.first;
+                      final DailyMission highlight =
+                          claimable ?? next ?? missionsProvider.missions.first;
                       return Padding(
                         padding: const EdgeInsets.only(top: 12.0),
                         child: _MissionNudgeCard(
@@ -727,89 +755,93 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 40),
-                    if (!_aiFeaturesEnabled)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        margin: const EdgeInsets.only(bottom: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade100,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.orange.shade300),
-                        ),
-                        child: const Text(
-                          'תכונות ה-AI כבויות כרגע. השתמשו באפליקציה גם ללא צילום חכם או הוסיפו מפתחות API כדי להפעיל אותן.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                        ),
+                  const SizedBox(height: 40),
+                  if (!_aiFeaturesEnabled)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade100,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.orange.shade300),
                       ),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ActionButton(
-                            text: 'הקשב',
-                            icon: Icons.volume_up,
-                            color: Colors.lightBlue.shade400,
-                            onPressed: (currentWordData == null)
-                                ? null
-                                : () async {
-                                    await flutterTts.setLanguage("en-US");
-                                    flutterTts.speak(currentWordData.word);
-                                  },
-                          ),
-                          const SizedBox(width: 20),
-                          ActionButton(
-                            text: 'דבר',
-                            icon: _isListening ? Icons.stop : Icons.mic,
-                            color: _isListening ? Colors.grey.shade600 : Colors.redAccent,
-                            onPressed: _handleSpeech,
-                          ),
-                          const SizedBox(width: 20),
-                          ActionButton(
-                            text: 'ריצת ברק',
-                            icon: Icons.flash_on,
-                            color: Colors.orangeAccent,
-                            onPressed: _words.length < 2
-                                ? () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('הוסיפו לפחות שתי מילים כדי להתחיל ריצת ברק!'),
-                                      ),
-                                    );
-                                  }
-                                : () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => LightningPracticeScreen(
-                                          words: List<WordData>.unmodifiable(_words),
-                                          levelTitle: widget.title,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  const SizedBox(height: 20),
-                    SizedBox(
-                      height: 100,
-                      child: Text(
-                        _feedbackText.isEmpty
-                            ? 'לחצו על המיקרופון כדי לדבר'
-                            : _feedbackText,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.purple,
-                        ),
+                      child: const Text(
+                        'תכונות ה-AI כבויות כרגע. השתמשו באפליקציה גם ללא צילום חכם או הוסיפו מפתחות API כדי להפעיל אותן.',
                         textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                     ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ActionButton(
+                          text: 'הקשב',
+                          icon: Icons.volume_up,
+                          color: Colors.lightBlue.shade400,
+                          onPressed: (currentWordData == null)
+                              ? null
+                              : () async {
+                                  await flutterTts.setLanguage("en-US");
+                                  flutterTts.speak(currentWordData.word);
+                                },
+                        ),
+                        const SizedBox(width: 20),
+                        ActionButton(
+                          text: 'דבר',
+                          icon: _isListening ? Icons.stop : Icons.mic,
+                          color: _isListening
+                              ? Colors.grey.shade600
+                              : Colors.redAccent,
+                          onPressed: _handleSpeech,
+                        ),
+                        const SizedBox(width: 20),
+                        ActionButton(
+                          text: 'ריצת ברק',
+                          icon: Icons.flash_on,
+                          color: Colors.orangeAccent,
+                          onPressed: _words.length < 2
+                              ? () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'הוסיפו לפחות שתי מילים כדי להתחיל ריצת ברק!'),
+                                    ),
+                                  );
+                                }
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => LightningPracticeScreen(
+                                        words:
+                                            List<WordData>.unmodifiable(_words),
+                                        levelTitle: widget.title,
+                                      ),
+                                    ),
+                                  );
+                                },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    height: 100,
+                    child: Text(
+                      _feedbackText.isEmpty
+                          ? 'לחצו על המיקרופון כדי לדבר'
+                          : _feedbackText,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purple,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: <Widget>[
@@ -821,13 +853,12 @@ class _MyHomePageState extends State<MyHomePage> {
                         color: Colors.white,
                         style: IconButton.styleFrom(
                             backgroundColor: Colors.lightBlue.withOpacity(0.8),
-                            padding: const EdgeInsets.all(15)
-                        ),
+                            padding: const EdgeInsets.all(15)),
                       ),
 
                       // כאן מגיע התנאי הלוגי
                       if (_isLevelComplete)
-                      // אם השלב הושלם, הצג את כפתור "סיימתי"
+                        // אם השלב הושלם, הצג את כפתור "סיימתי"
                         ElevatedButton(
                           onPressed: () {
                             // החזר את הניקוד והרצף למסך הקודם
@@ -835,22 +866,27 @@ class _MyHomePageState extends State<MyHomePage> {
                           },
                           style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)
-                          ),
-                          child: const Text('סיימתי!', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 12)),
+                          child: const Text('סיימתי!',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold)),
                         )
                       else
-                      // אם השלב עוד לא הושלם, הצג את כפתור "הבא"
+                        // אם השלב עוד לא הושלם, הצג את כפתור "הבא"
                         IconButton(
                           onPressed: _nextWord,
                           icon: const Icon(Icons.arrow_forward_ios_rounded),
                           iconSize: 40,
                           color: Colors.white,
                           style: IconButton.styleFrom(
-                              backgroundColor: Colors.lightBlue.withOpacity(0.8),
-                              padding: const EdgeInsets.all(15)
-                          ),
+                              backgroundColor:
+                                  Colors.lightBlue.withOpacity(0.8),
+                              padding: const EdgeInsets.all(15)),
                         ),
                     ],
                   )
@@ -864,7 +900,11 @@ class _MyHomePageState extends State<MyHomePage> {
           blastDirectionality: BlastDirectionality.explosive,
           shouldLoop: false,
           colors: const [
-            Colors.green, Colors.blue, Colors.pink, Colors.orange, Colors.purple
+            Colors.green,
+            Colors.blue,
+            Colors.pink,
+            Colors.orange,
+            Colors.purple
           ],
         ),
       ],
@@ -882,10 +922,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     return null;
   }
-
 }
-
-
 
 // Add this helper class at the end of the file
 class BytesAudioSource extends StreamAudioSource {
@@ -918,7 +955,8 @@ class _MissionNudgeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = isClaimable ? Colors.green.shade500 : Colors.indigo.shade400;
+    final Color accent =
+        isClaimable ? Colors.green.shade500 : Colors.indigo.shade400;
     final double progress = mission.completionRatio;
 
     return InkWell(
@@ -958,7 +996,8 @@ class _MissionNudgeCard extends StatelessWidget {
                         ),
                         Text(
                           mission.title,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -991,16 +1030,20 @@ class _MissionNudgeCard extends StatelessWidget {
                   ),
                   if (isClaimable)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.green.shade100,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.monetization_on, size: 16, color: Colors.green),
+                          const Icon(Icons.monetization_on,
+                              size: 16, color: Colors.green),
                           const SizedBox(width: 4),
-                          Text('+${mission.reward}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text('+${mission.reward}',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
                         ],
                       ),
                     )
@@ -1009,7 +1052,8 @@ class _MissionNudgeCard extends StatelessWidget {
                       mission.remaining > 0
                           ? 'עוד ${mission.remaining} כדי לנצח'
                           : 'המשיכו להצליח!',
-                      style: TextStyle(color: accent, fontWeight: FontWeight.w600),
+                      style:
+                          TextStyle(color: accent, fontWeight: FontWeight.w600),
                     ),
                 ],
               ),
