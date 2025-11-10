@@ -88,7 +88,9 @@ class ConversationCoachService {
     final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
     if (proxyEndpoint == null) {
-      throw const ConversationUnavailableException(_geminiUnavailableMessage);
+      return (_) async {
+        throw const ConversationUnavailableException(_geminiUnavailableMessage);
+      };
     }
 
     return (prompt) async {

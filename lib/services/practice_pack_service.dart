@@ -49,7 +49,9 @@ class PracticePackService {
     final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
     if (proxyEndpoint == null) {
-      throw const PracticePackUnavailableException(_geminiUnavailableMessage);
+      return (_) async {
+        throw const PracticePackUnavailableException(_geminiUnavailableMessage);
+      };
     }
 
     return (prompt) async {
