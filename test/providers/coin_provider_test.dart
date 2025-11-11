@@ -81,7 +81,7 @@ void main() {
     test('loadCoins should load coins from SharedPreferences', () async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('totalCoins', 75);
-      
+
       final newProvider = CoinProvider();
       await newProvider.loadCoins();
       expect(newProvider.coins, 75);

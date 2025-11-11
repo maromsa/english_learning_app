@@ -34,7 +34,7 @@ void main() {
       await themeProvider.loadTheme(); // Wait for initial load
       await themeProvider.setThemeMode(ThemeMode.dark);
       expect(themeProvider.themeMode, ThemeMode.dark);
-      
+
       await themeProvider.setThemeMode(ThemeMode.light);
       expect(themeProvider.themeMode, ThemeMode.light);
     });
@@ -42,7 +42,7 @@ void main() {
     test('loadTheme should load theme from SharedPreferences', () async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('is_dark_mode', true);
-      
+
       final newProvider = ThemeProvider();
       await newProvider.loadTheme();
       expect(newProvider.themeMode, ThemeMode.dark);

@@ -32,8 +32,8 @@ class WordData {
       searchHint: normalizedHint != null && normalizedHint.isNotEmpty
           ? normalizedHint
           : normalizedQuery != null && normalizedQuery.isNotEmpty
-              ? normalizedQuery
-              : null,
+          ? normalizedQuery
+          : null,
       publicId: json['publicId'] as String?,
       imageUrl: json['imageUrl'] as String?,
       isCompleted: json['isCompleted'] as bool? ?? false,
@@ -42,11 +42,11 @@ class WordData {
   }
 
   Map<String, dynamic> toJson() => {
-        'word': word,
-        if (searchHint != null && searchHint!.isNotEmpty) 'searchHint': searchHint,
-        if (publicId != null) 'publicId': publicId,
-        if (imageUrl != null) 'imageUrl': imageUrl,
-        'isCompleted': isCompleted,
-        'stickerUnlocked': stickerUnlocked,
-      };
+    'word': word,
+    if (searchHint != null && searchHint!.isNotEmpty) 'searchHint': searchHint,
+    if (publicId != null) 'publicId': publicId,
+    if (imageUrl != null) 'imageUrl': imageUrl,
+    'isCompleted': isCompleted,
+    'stickerUnlocked': stickerUnlocked,
+  };
 }

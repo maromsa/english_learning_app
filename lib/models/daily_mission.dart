@@ -1,10 +1,6 @@
 import 'dart:convert';
 
-enum DailyMissionType {
-  speakPractice,
-  lightningRound,
-  quizPlay,
-}
+enum DailyMissionType { speakPractice, lightningRound, quizPlay }
 
 class DailyMission {
   final String id;
@@ -29,17 +25,16 @@ class DailyMission {
   });
 
   bool get isCompleted => progress >= target;
-  double get completionRatio => target == 0 ? 1 : (progress / target).clamp(0, 1);
+  double get completionRatio =>
+      target == 0 ? 1 : (progress / target).clamp(0, 1);
   int get remaining {
     final remainingValue = target - progress;
     return remainingValue > 0 ? remainingValue : 0;
   }
+
   bool get isClaimable => isCompleted && !rewardClaimed;
 
-  DailyMission copyWith({
-    int? progress,
-    bool? rewardClaimed,
-  }) {
+  DailyMission copyWith({int? progress, bool? rewardClaimed}) {
     return DailyMission(
       id: id,
       title: title,
@@ -53,15 +48,15 @@ class DailyMission {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'title': title,
-        'description': description,
-        'target': target,
-        'reward': reward,
-        'type': type.name,
-        'progress': progress,
-        'rewardClaimed': rewardClaimed,
-      };
+    'id': id,
+    'title': title,
+    'description': description,
+    'target': target,
+    'reward': reward,
+    'type': type.name,
+    'progress': progress,
+    'rewardClaimed': rewardClaimed,
+  };
 
   factory DailyMission.fromMap(Map<String, dynamic> map) {
     return DailyMission(

@@ -37,22 +37,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final telemetry = TelemetryService.maybeOf(context);
     final personalization = _latestPersonalization;
     telemetry?.logOnboardingCompleted(
-      tipIds: personalization?.insights.map((tip) => tip.id).toList() ?? const <String>[],
+      tipIds:
+          personalization?.insights.map((tip) => tip.id).toList() ??
+          const <String>[],
       returningLearner: personalization?.isReturningLearner ?? false,
       appliedRules: personalization?.appliedRules ?? const <String>[],
-      millisecondsToComplete: DateTime.now().difference(_viewStartedAt).inMilliseconds,
+      millisecondsToComplete: DateTime.now()
+          .difference(_viewStartedAt)
+          .inMilliseconds,
     );
 
     if (!mounted) {
       return;
     }
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MapScreen()),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const MapScreen()));
   }
 
-  void _logImpressionOnce(BuildContext context, OnboardingPersonalization personalization) {
+  void _logImpressionOnce(
+    BuildContext context,
+    OnboardingPersonalization personalization,
+  ) {
     if (_loggedTipImpression) {
       return;
     }
@@ -78,14 +85,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-                Text(
-                  'ברוכים הבאים למסע המילים!',
-                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              Text(
+                'ברוכים הבאים למסע המילים!',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                  'אספנו כמה טיפים שיעזרו לכם ללמוד באנגלית בקצב שמתאים לכם.',
+                'אספנו כמה טיפים שיעזרו לכם ללמוד באנגלית בקצב שמתאים לכם.',
                 style: theme.textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),
@@ -107,8 +116,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       if (insights.isNotEmpty) {
                         return ListView.separated(
                           itemCount: insights.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 16),
-                          itemBuilder: (context, index) => _InsightCard(insight: insights[index]),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 16),
+                          itemBuilder: (context, index) =>
+                              _InsightCard(insight: insights[index]),
                         );
                       }
                     }
@@ -122,10 +133,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPressed: _completeOnboarding,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
-                  icon: const Icon(Icons.rocket_launch),
-                  label: const Text('קדימה!'),
+                icon: const Icon(Icons.rocket_launch),
+                label: const Text('קדימה!'),
               ),
             ],
           ),
@@ -147,7 +160,9 @@ class _InsightCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4)),
+        ],
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -156,18 +171,21 @@ class _InsightCard extends StatelessWidget {
           CircleAvatar(
             radius: 24,
             backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-            child: Icon(insight.icon, color: theme.colorScheme.primary, size: 28),
+            child: Icon(
+              insight.icon,
+              color: theme.colorScheme.primary,
+              size: 28,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
             insight.title,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 8),
-          Text(
-            insight.body,
-            style: theme.textTheme.bodyMedium,
-          ),
+          Text(insight.body, style: theme.textTheme.bodyMedium),
         ],
       ),
     );
@@ -179,18 +197,18 @@ class _InsightFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      return ListView(
-        children: const [
-          SizedBox(height: 32),
-          _InsightCard(
-            insight: OnboardingInsight(
-              id: 'fallback_map',
-              icon: Icons.lightbulb,
-              title: 'גלו את המפה',
-              body: 'שחקו בשלב הראשון ותראו איך המשימות והפרסים משתנים בשבילכם.',
-            ),
+    return ListView(
+      children: const [
+        SizedBox(height: 32),
+        _InsightCard(
+          insight: OnboardingInsight(
+            id: 'fallback_map',
+            icon: Icons.lightbulb,
+            title: 'גלו את המפה',
+            body: 'שחקו בשלב הראשון ותראו איך המשימות והפרסים משתנים בשבילכם.',
           ),
-        ],
-      );
+        ),
+      ],
+    );
   }
 }

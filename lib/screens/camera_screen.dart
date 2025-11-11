@@ -40,7 +40,8 @@ class _CameraScreenState extends State<CameraScreen> {
     // If there's more than one camera, switch to the other one
     if (widget.cameras.length > 1) {
       setState(() {
-        _selectedCameraIndex = (_selectedCameraIndex + 1) % widget.cameras.length;
+        _selectedCameraIndex =
+            (_selectedCameraIndex + 1) % widget.cameras.length;
         _initializeCamera(_selectedCameraIndex);
       });
     }
@@ -88,21 +89,25 @@ class _CameraScreenState extends State<CameraScreen> {
                             width: 70,
                             height: 70,
                             decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                                border: Border.all(color: Colors.grey, width: 3)
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                              border: Border.all(color: Colors.grey, width: 3),
                             ),
                           ),
                         ),
                         // Switch camera button
                         IconButton(
                           onPressed: _switchCamera,
-                          icon: const Icon(Icons.flip_camera_ios, color: Colors.white, size: 35),
+                          icon: const Icon(
+                            Icons.flip_camera_ios,
+                            color: Colors.white,
+                            size: 35,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                )
+                ),
               ],
             );
           } else {

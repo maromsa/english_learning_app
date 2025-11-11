@@ -17,7 +17,13 @@ class ScoreDisplay extends StatelessWidget {
             children: [
               Icon(Icons.star, color: Colors.amber, size: 30),
               const SizedBox(width: 8),
-              Text('$coins', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              Text(
+                '$coins',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ],

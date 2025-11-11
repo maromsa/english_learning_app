@@ -8,7 +8,11 @@ import 'package:provider/provider.dart';
 import '../app_config.dart';
 
 class AiAdventureScreen extends StatefulWidget {
-  const AiAdventureScreen({super.key, required this.levels, required this.totalStars});
+  const AiAdventureScreen({
+    super.key,
+    required this.levels,
+    required this.totalStars,
+  });
 
   final List<LevelData> levels;
   final int totalStars;
@@ -49,7 +53,9 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
   }
 
   LevelData _initialLevel() {
-    final unlocked = widget.levels.where((level) => level.isUnlocked).toList(growable: false);
+    final unlocked = widget.levels
+        .where((level) => level.isUnlocked)
+        .toList(growable: false);
     if (unlocked.isNotEmpty) {
       return unlocked.first;
     }
@@ -89,54 +95,67 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
           ),
         ),
         child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 620),
-                  child: Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                    elevation: 8,
-                    color: Colors.white,
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            sparkReady
-                                ? 'ספרק, המנטור הקוסמי, מוכן לטוות הרפתקה מיוחדת בשבילכם!'
-                                : 'הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי לפתוח את מסעות ספרק.',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                          ),
-                        const SizedBox(height: 16),
-                        _buildNameField(),
-                        const SizedBox(height: 16),
-                        _buildLevelPicker(),
-                        const SizedBox(height: 16),
-                        _buildMoodPicker(),
-                        const SizedBox(height: 16),
-                        _buildStatsRow(coins: coins),
-                        const SizedBox(height: 24),
-                        FilledButton.icon(
-                          onPressed: sparkReady && !_isGenerating ? () => _generateAdventure(coins) : null,
-                          icon: const Icon(Icons.auto_awesome),
-                          label: Text(_isGenerating ? 'ספרק בדרך...' : 'צרו לי משימה'),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 620),
+              child: Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                elevation: 8,
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        sparkReady
+                            ? 'ספרק, המנטור הקוסמי, מוכן לטוות הרפתקה מיוחדת בשבילכם!'
+                            : 'הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי לפתוח את מסעות ספרק.',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(height: 16),
-                        if (_isGenerating) const Center(child: CircularProgressIndicator()),
-                        if (_error != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: Text(
-                              _error!,
-                              style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildNameField(),
+                      const SizedBox(height: 16),
+                      _buildLevelPicker(),
+                      const SizedBox(height: 16),
+                      _buildMoodPicker(),
+                      const SizedBox(height: 16),
+                      _buildStatsRow(coins: coins),
+                      const SizedBox(height: 24),
+                      FilledButton.icon(
+                        onPressed: sparkReady && !_isGenerating
+                            ? () => _generateAdventure(coins)
+                            : null,
+                        icon: const Icon(Icons.auto_awesome),
+                        label: Text(
+                          _isGenerating ? 'ספרק בדרך...' : 'צרו לי משימה',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (_isGenerating)
+                        const Center(child: CircularProgressIndicator()),
+                      if (_error != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Text(
+                            _error!,
+                            style: TextStyle(
+                              color: Colors.red.shade700,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        if (_story != null) _StoryView(story: _story!),
-                      ],
-                    ),
+                        ),
+                      if (_story != null) _StoryView(story: _story!),
+                    ],
                   ),
                 ),
+              ),
             ),
           ),
         ),
@@ -176,7 +195,9 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
                   child: Row(
                     children: [
                       Icon(
-                        level.isUnlocked ? Icons.rocket_launch : Icons.lock_outline,
+                        level.isUnlocked
+                            ? Icons.rocket_launch
+                            : Icons.lock_outline,
                         color: level.isUnlocked ? Colors.indigo : Colors.grey,
                       ),
                       const SizedBox(width: 8),
@@ -238,9 +259,21 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _StatChip(icon: Icons.monetization_on, label: 'מטבעות', value: coins.toString()),
-            _StatChip(icon: Icons.star_rate, label: 'סה"כ כוכבים', value: '${widget.totalStars}'),
-            _StatChip(icon: Icons.stars, label: 'כוכבים בשלב', value: '${_selectedLevel.stars}'),
+            _StatChip(
+              icon: Icons.monetization_on,
+              label: 'מטבעות',
+              value: coins.toString(),
+            ),
+            _StatChip(
+              icon: Icons.star_rate,
+              label: 'סה"כ כוכבים',
+              value: '${widget.totalStars}',
+            ),
+            _StatChip(
+              icon: Icons.stars,
+              label: 'כוכבים בשלב',
+              value: '${_selectedLevel.stars}',
+            ),
           ],
         ),
       ),
@@ -256,13 +289,19 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
     final selected = _selectedLevel;
     final context = AdventureStoryContext(
       levelName: selected.name,
-        levelDescription: selected.description ?? 'שלב מפתיע מלא אוצרות למידה מרגשים.',
-      vocabularyWords: selected.words.map((word) => word.word).take(6).toList(growable: false),
+      levelDescription:
+          selected.description ?? 'שלב מפתיע מלא אוצרות למידה מרגשים.',
+      vocabularyWords: selected.words
+          .map((word) => word.word)
+          .take(6)
+          .toList(growable: false),
       levelStars: selected.stars,
       totalStars: widget.totalStars,
       coins: coins,
       mood: _selectedMood,
-      playerName: _nameController.text.trim().isEmpty ? null : _nameController.text.trim(),
+      playerName: _nameController.text.trim().isEmpty
+          ? null
+          : _nameController.text.trim(),
     );
 
     try {
@@ -300,28 +339,25 @@ class _StoryView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-              story.title.isEmpty ? 'המשימה של ספרק' : story.title,
+            story.title.isEmpty ? 'המשימה של ספרק' : story.title,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.deepPurple.shade700,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: Colors.deepPurple.shade700,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 12),
-          Text(
-            story.scene,
-            style: const TextStyle(fontSize: 16, height: 1.5),
-          ),
+          Text(story.scene, style: const TextStyle(fontSize: 16, height: 1.5)),
           const SizedBox(height: 16),
           if (story.challenge.isNotEmpty)
             _StorySection(
               icon: Icons.flash_on,
-                label: 'אתגר',
+              label: 'אתגר',
               text: story.challenge,
             ),
           if (story.encouragement.isNotEmpty)
             _StorySection(
               icon: Icons.favorite,
-                label: 'ספרק אומר',
+              label: 'ספרק אומר',
               text: story.encouragement,
             ),
           if (story.vocabulary.isNotEmpty)
@@ -329,10 +365,12 @@ class _StoryView extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: story.vocabulary
-                  .map((word) => Chip(
-                        label: Text(word),
-                        avatar: const Icon(Icons.menu_book, size: 16),
-                      ))
+                  .map(
+                    (word) => Chip(
+                      label: Text(word),
+                      avatar: const Icon(Icons.menu_book, size: 16),
+                    ),
+                  )
                   .toList(growable: false),
             ),
         ],
@@ -342,7 +380,11 @@ class _StoryView extends StatelessWidget {
 }
 
 class _StorySection extends StatelessWidget {
-  const _StorySection({required this.icon, required this.label, required this.text});
+  const _StorySection({
+    required this.icon,
+    required this.label,
+    required this.text,
+  });
 
   final IconData icon;
   final String label;
@@ -363,7 +405,10 @@ class _StorySection extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(text, style: const TextStyle(fontSize: 15, height: 1.4)),
@@ -377,7 +422,11 @@ class _StorySection extends StatelessWidget {
 }
 
 class _StatChip extends StatelessWidget {
-  const _StatChip({required this.icon, required this.label, required this.value});
+  const _StatChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   final IconData icon;
   final String label;
@@ -392,8 +441,14 @@ class _StatChip extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-            Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
           ],
         ),
       ],

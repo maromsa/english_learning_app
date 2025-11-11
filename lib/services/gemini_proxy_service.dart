@@ -9,10 +9,10 @@ class GeminiProxyService {
     Uri endpoint, {
     http.Client? client,
     Duration timeout = const Duration(seconds: 12),
-  })  : _endpoint = endpoint,
-        _httpClient = client ?? http.Client(),
-        _disposeClientOnClose = client == null,
-        _timeout = timeout;
+  }) : _endpoint = endpoint,
+       _httpClient = client ?? http.Client(),
+       _disposeClientOnClose = client == null,
+       _timeout = timeout;
 
   final Uri _endpoint;
   final http.Client _httpClient;

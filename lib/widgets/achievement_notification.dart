@@ -14,7 +14,8 @@ class AchievementNotification extends StatefulWidget {
   });
 
   @override
-  State<AchievementNotification> createState() => _AchievementNotificationState();
+  State<AchievementNotification> createState() =>
+      _AchievementNotificationState();
 }
 
 class _AchievementNotificationState extends State<AchievementNotification>
@@ -27,8 +28,10 @@ class _AchievementNotificationState extends State<AchievementNotification>
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
-    
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 2),
+    );
+
     _controller = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -37,18 +40,12 @@ class _AchievementNotificationState extends State<AchievementNotification>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -1),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.elasticOut,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
 
     _scaleAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.elasticOut,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
 
     _controller.forward();
     _confettiController.play();
@@ -94,11 +91,7 @@ class _AchievementNotificationState extends State<AchievementNotification>
           ),
           child: Row(
             children: [
-              Icon(
-                widget.achievement.icon,
-                size: 48,
-                color: Colors.white,
-              ),
+              Icon(widget.achievement.icon, size: 48, color: Colors.white),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(

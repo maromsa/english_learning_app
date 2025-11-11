@@ -85,5 +85,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'englishkidsapp-916be.firebasestorage.app',
     measurementId: 'G-GFV3QLCJ5K',
   );
-
 }

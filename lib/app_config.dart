@@ -20,16 +20,20 @@ class AppConfig {
 
   static final String geminiProxyUrl = _readSecret('GEMINI_PROXY_URL');
   static final String pixabayApiKey = _readSecret('PIXABAY_API_KEY');
-  static final String firebaseUserIdForUpload =
-      _readSecret('FIREBASE_USER_ID_FOR_UPLOAD');
-  static final String cloudinaryCloudName =
-      _readSecret('CLOUDINARY_CLOUD_NAME');
+  static final String firebaseUserIdForUpload = _readSecret(
+    'FIREBASE_USER_ID_FOR_UPLOAD',
+  );
+  static final String cloudinaryCloudName = _readSecret(
+    'CLOUDINARY_CLOUD_NAME',
+  );
   static final String cloudinaryApiKey = _readSecret('CLOUDINARY_API_KEY');
-  static final String cloudinaryApiSecret =
-      _readSecret('CLOUDINARY_API_SECRET');
+  static final String cloudinaryApiSecret = _readSecret(
+    'CLOUDINARY_API_SECRET',
+  );
   static final String googleTtsApiKey = _readSecret('GOOGLE_TTS_API_KEY');
-  static final String aiImageValidationUrl =
-      _readSecret('AI_IMAGE_VALIDATION_URL');
+  static final String aiImageValidationUrl = _readSecret(
+    'AI_IMAGE_VALIDATION_URL',
+  );
 
   static bool get hasGeminiProxy => geminiProxyUrl.isNotEmpty;
   static bool get hasPixabay => pixabayApiKey.isNotEmpty;
@@ -57,7 +61,8 @@ class AppConfig {
       return null;
     }
     return Uri.tryParse(
-        'https://us-central1-$projectId.cloudfunctions.net/geminiProxy');
+      'https://us-central1-$projectId.cloudfunctions.net/geminiProxy',
+    );
   }
 
   static Uri requireGeminiProxyEndpoint() {
@@ -72,13 +77,13 @@ class AppConfig {
 
   /// Provides a quick overview for debug logs/tests.
   static Map<String, bool> diagnostics() => {
-        'geminiProxy': hasGeminiProxy,
-        'pixabay': hasPixabay,
-        'cloudinary': hasCloudinary,
-        'googleTts': hasGoogleTts,
-        'firebaseUserId': hasFirebaseUserId,
-        'aiImageValidation': hasAiImageValidation,
-      };
+    'geminiProxy': hasGeminiProxy,
+    'pixabay': hasPixabay,
+    'cloudinary': hasCloudinary,
+    'googleTts': hasGoogleTts,
+    'firebaseUserId': hasFirebaseUserId,
+    'aiImageValidation': hasAiImageValidation,
+  };
 
   /// Logs helpful hints when a required secret is missing.
   static void debugWarnIfMissing(String feature, bool isAvailable) {

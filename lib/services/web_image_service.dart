@@ -16,10 +16,10 @@ class WebImageService implements WebImageProvider {
     required String apiKey,
     AiImageValidator? imageValidator,
     http.Client? httpClient,
-  })  : _apiKey = apiKey,
-        _httpClient = httpClient ?? http.Client(),
-        _ownsClient = httpClient == null,
-        _imageValidator = imageValidator;
+  }) : _apiKey = apiKey,
+       _httpClient = httpClient ?? http.Client(),
+       _ownsClient = httpClient == null,
+       _imageValidator = imageValidator;
 
   static const Duration _requestTimeout = Duration(seconds: 8);
   static const int _maxCandidates = 8;
@@ -30,7 +30,10 @@ class WebImageService implements WebImageProvider {
   final AiImageValidator? _imageValidator;
 
   @override
-  Future<WebImageResult?> fetchImageForWord(String word, {String? searchHint}) async {
+  Future<WebImageResult?> fetchImageForWord(
+    String word, {
+    String? searchHint,
+  }) async {
     if (_apiKey.isEmpty) {
       return null;
     }
@@ -118,7 +121,9 @@ class WebImageService implements WebImageProvider {
 
   Future<_DownloadedImage?> _downloadImage(String url) async {
     try {
-      final response = await _httpClient.get(Uri.parse(url)).timeout(_requestTimeout);
+      final response = await _httpClient
+          .get(Uri.parse(url))
+          .timeout(_requestTimeout);
       if (response.statusCode != 200) {
         return null;
       }
@@ -133,7 +138,8 @@ class WebImageService implements WebImageProvider {
   }
 
   String? _extractImageUrl(Map<String, dynamic> candidate) {
-    final url = candidate['webformatURL'] as String? ??
+    final url =
+        candidate['webformatURL'] as String? ??
         candidate['largeImageURL'] as String? ??
         candidate['previewURL'] as String?;
 
@@ -150,10 +156,10 @@ class WebImageService implements WebImageProvider {
       return null;
     }
 
-    final firstTag = tags.split(',').map((tag) => tag.trim()).firstWhere(
-          (tag) => tag.isNotEmpty,
-          orElse: () => '',
-        );
+    final firstTag = tags
+        .split(',')
+        .map((tag) => tag.trim())
+        .firstWhere((tag) => tag.isNotEmpty, orElse: () => '');
 
     return firstTag.isEmpty ? null : _normalizeLabel(firstTag);
   }
@@ -163,12 +169,13 @@ class WebImageService implements WebImageProvider {
         .split(RegExp(r'[\s_-]+'))
         .where((part) => part.trim().isNotEmpty)
         .map((part) {
-      final lowercase = part.toLowerCase();
-      if (lowercase.length <= 1) {
-        return lowercase.toUpperCase();
-      }
-      return lowercase[0].toUpperCase() + lowercase.substring(1);
-    }).toList();
+          final lowercase = part.toLowerCase();
+          if (lowercase.length <= 1) {
+            return lowercase.toUpperCase();
+          }
+          return lowercase[0].toUpperCase() + lowercase.substring(1);
+        })
+        .toList();
 
     return words.isEmpty ? label : words.join(' ');
   }

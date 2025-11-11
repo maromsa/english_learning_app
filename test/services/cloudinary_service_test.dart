@@ -10,39 +10,51 @@ void main() {
   const tagName = 'english_kids_app';
 
   group('CloudinaryService.fetchWords', () {
-    test('returns parsed words when Cloudinary responds successfully', () async {
-      final mockClient = MockClient((request) async {
-        expect(
-          request.url,
-          Uri.parse('https://res.cloudinary.com/$cloudName/image/list/$tagName.json'),
-        );
+    test(
+      'returns parsed words when Cloudinary responds successfully',
+      () async {
+        final mockClient = MockClient((request) async {
+          expect(
+            request.url,
+            Uri.parse(
+              'https://res.cloudinary.com/$cloudName/image/list/$tagName.json',
+            ),
+          );
 
-        final body = jsonEncode({
-          'resources': [
-            {
-              'tags': [tagName, 'apple'],
-              'secure_url': 'https://res.cloudinary.com/demo/apple.png',
-              'public_id': 'apple_image',
-            },
-          ],
+          final body = jsonEncode({
+            'resources': [
+              {
+                'tags': [tagName, 'apple'],
+                'secure_url': 'https://res.cloudinary.com/demo/apple.png',
+                'public_id': 'apple_image',
+              },
+            ],
+          });
+
+          return http.Response(
+            body,
+            200,
+            headers: {'content-type': 'application/json'},
+          );
         });
 
-        return http.Response(body, 200, headers: {'content-type': 'application/json'});
-      });
+        final service = CloudinaryService(httpClient: mockClient);
 
-      final service = CloudinaryService(httpClient: mockClient);
+        final words = await service.fetchWords(
+          cloudName: cloudName,
+          tagName: tagName,
+          maxResults: 10,
+        );
 
-      final words = await service.fetchWords(
-        cloudName: cloudName,
-        tagName: tagName,
-        maxResults: 10,
-      );
-
-      expect(words, hasLength(1));
-      expect(words.first.word, 'Apple');
-      expect(words.first.imageUrl, 'https://res.cloudinary.com/demo/apple.png');
-      expect(words.first.publicId, 'apple_image');
-    });
+        expect(words, hasLength(1));
+        expect(words.first.word, 'Apple');
+        expect(
+          words.first.imageUrl,
+          'https://res.cloudinary.com/demo/apple.png',
+        );
+        expect(words.first.publicId, 'apple_image');
+      },
+    );
 
     test('falls back to constructed URL when secure_url is missing', () async {
       final mockClient = MockClient((request) async {
@@ -57,7 +69,11 @@ void main() {
           ],
         });
 
-        return http.Response(body, 200, headers: {'content-type': 'application/json'});
+        return http.Response(
+          body,
+          200,
+          headers: {'content-type': 'application/json'},
+        );
       });
 
       final service = CloudinaryService(httpClient: mockClient);
@@ -106,7 +122,11 @@ void main() {
           ],
         });
 
-        return http.Response(body, 200, headers: {'content-type': 'application/json'});
+        return http.Response(
+          body,
+          200,
+          headers: {'content-type': 'application/json'},
+        );
       });
 
       final service = CloudinaryService(httpClient: mockClient);

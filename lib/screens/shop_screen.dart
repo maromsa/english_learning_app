@@ -13,7 +13,7 @@ class ShopScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-          title: const Text('חנות הקסמים'),
+        title: const Text('חנות הקסמים'),
         actions: [
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -33,40 +33,42 @@ class ShopScreen extends StatelessWidget {
             child: ListTile(
               leading: Image.asset(product.assetImagePath, width: 50),
               title: Text(product.name),
-                subtitle: Text('${product.price} מטבעות'),
+              subtitle: Text('${product.price} מטבעות'),
               trailing: isPurchased
                   ? const Icon(Icons.check, color: Colors.green)
-                     : ElevatedButton(
+                  : ElevatedButton(
                       onPressed: canBuy && !isPurchased
                           ? () async {
-                        // Attempt to spend the coins first
-                        final success = await coinProvider.spendCoins(product.price);
+                              // Attempt to spend the coins first
+                              final success = await coinProvider.spendCoins(
+                                product.price,
+                              );
 
-                        if (success) {
-                          // If spending was successful, mark the item as purchased
-                          await shop.purchase(product.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('קנית את ${product.name}'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          }
-                        } else {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('אין לך מספיק מטבעות'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        }
-                      }
-                    : null,
-                child: const Text('קנה'),
-              ),
+                              if (success) {
+                                // If spending was successful, mark the item as purchased
+                                await shop.purchase(product.id);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('קנית את ${product.name}'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                }
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('אין לך מספיק מטבעות'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          : null,
+                      child: const Text('קנה'),
+                    ),
             ),
           );
         },

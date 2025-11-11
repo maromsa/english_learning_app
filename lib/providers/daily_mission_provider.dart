@@ -21,7 +21,9 @@ class DailyMissionProvider with ChangeNotifier {
     final String? storedDate = prefs.getString(_prefDateKey);
 
     if (storedDate == todayKey) {
-      final List<String>? storedMissions = prefs.getStringList(_prefMissionsKey);
+      final List<String>? storedMissions = prefs.getStringList(
+        _prefMissionsKey,
+      );
       if (storedMissions != null && storedMissions.isNotEmpty) {
         _missions = storedMissions
             .map((json) => DailyMission.fromJson(json))
@@ -56,7 +58,10 @@ class DailyMissionProvider with ChangeNotifier {
       return;
     }
 
-    final int newProgress = (mission.progress + amount).clamp(0, mission.target);
+    final int newProgress = (mission.progress + amount).clamp(
+      0,
+      mission.target,
+    );
     if (newProgress == mission.progress) {
       return;
     }
@@ -83,7 +88,10 @@ class DailyMissionProvider with ChangeNotifier {
       return;
     }
 
-    final int newProgress = (mission.progress + amount).clamp(0, mission.target);
+    final int newProgress = (mission.progress + amount).clamp(
+      0,
+      mission.target,
+    );
     if (newProgress == mission.progress) {
       return;
     }
@@ -93,7 +101,10 @@ class DailyMissionProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> claimReward(String missionId, Future<void> Function(int reward) rewardCallback) async {
+  Future<bool> claimReward(
+    String missionId,
+    Future<void> Function(int reward) rewardCallback,
+  ) async {
     if (!_initialized) {
       return false;
     }
@@ -152,11 +163,16 @@ class DailyMissionProvider with ChangeNotifier {
     ];
   }
 
-  Future<void> _persist([SharedPreferences? existingPrefs, String? overrideDate]) async {
+  Future<void> _persist([
+    SharedPreferences? existingPrefs,
+    String? overrideDate,
+  ]) async {
     final prefs = existingPrefs ?? await SharedPreferences.getInstance();
     final String todayKey = overrideDate ?? _todayKey();
 
-    final List<String> serialized = _missions.map((mission) => mission.toJson()).toList(growable: false);
+    final List<String> serialized = _missions
+        .map((mission) => mission.toJson())
+        .toList(growable: false);
     await prefs.setString(_prefDateKey, todayKey);
     await prefs.setStringList(_prefMissionsKey, serialized);
   }

@@ -12,11 +12,12 @@ class AuthProvider extends ChangeNotifier {
     FirebaseAuth? auth,
     GoogleSignIn? googleSignIn,
     AuthService? authService,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _googleSignIn = googleSignIn ?? GoogleSignIn(),
-        _authService = authService ?? AuthService() {
-    _authSubscription =
-        _auth.authStateChanges().listen(_handleAuthStateChanged);
+  }) : _auth = auth ?? FirebaseAuth.instance,
+       _googleSignIn = googleSignIn ?? GoogleSignIn(),
+       _authService = authService ?? AuthService() {
+    _authSubscription = _auth.authStateChanges().listen(
+      _handleAuthStateChanged,
+    );
   }
 
   final FirebaseAuth _auth;

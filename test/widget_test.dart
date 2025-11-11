@@ -10,9 +10,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('App Initialization', () {
-    testWidgets('app should initialize without errors', (WidgetTester tester) async {
+    testWidgets('app should initialize without errors', (
+      WidgetTester tester,
+    ) async {
       SharedPreferences.setMockInitialValues({'onboarding_seen': true});
-      
+
       await tester.pumpWidget(
         MultiProvider(
           providers: [
@@ -21,9 +23,7 @@ void main() {
             ChangeNotifierProvider(create: (_) => AchievementService()),
             ChangeNotifierProvider(create: (_) => ShopProvider()),
           ],
-          child: const MaterialApp(
-            home: Scaffold(body: Text('Test')),
-          ),
+          child: const MaterialApp(home: Scaffold(body: Text('Test'))),
         ),
       );
 

@@ -9,31 +9,37 @@ import 'gemini_proxy_service.dart';
 typedef GeminiTextGenerator = Future<String?> Function(String prompt);
 
 class AdventureStoryService {
-  AdventureStoryService({
-    GeminiTextGenerator? generator,
-    Duration? timeout,
-  })  : _timeout = timeout ?? const Duration(seconds: 12),
-        _generator = generator ?? _inferGenerator();
+  AdventureStoryService({GeminiTextGenerator? generator, Duration? timeout})
+    : _timeout = timeout ?? const Duration(seconds: 12),
+      _generator = generator ?? _inferGenerator();
 
   final GeminiTextGenerator _generator;
   final Duration _timeout;
 
-  Future<AdventureStory> generateAdventure(AdventureStoryContext context) async {
+  Future<AdventureStory> generateAdventure(
+    AdventureStoryContext context,
+  ) async {
     final prompt = _buildPrompt(context);
 
     try {
-        final raw = await _generator(prompt).timeout(_timeout);
+      final raw = await _generator(prompt).timeout(_timeout);
       if (raw == null || raw.trim().isEmpty) {
-        throw const AdventureStoryGenerationException('לא התקבלה תשובה מ-Gemini. נסו שוב בעוד רגע.');
+        throw const AdventureStoryGenerationException(
+          'לא התקבלה תשובה מ-Gemini. נסו שוב בעוד רגע.',
+        );
       }
       return _parseResponse(raw, prompt: prompt);
     } on TimeoutException {
-      throw const AdventureStoryGenerationException('נראה ש-Gemini מתעכב. נסו שוב בעוד רגע.');
+      throw const AdventureStoryGenerationException(
+        'נראה ש-Gemini מתעכב. נסו שוב בעוד רגע.',
+      );
     } on AdventureStoryGenerationException {
       rethrow;
     } catch (error, stackTrace) {
       debugPrint('Adventure story generation failed: $error\n$stackTrace');
-      throw const AdventureStoryGenerationException('לא הצלחנו ליצור סיפור חדש. נסו שוב בעוד רגע.');
+      throw const AdventureStoryGenerationException(
+        'לא הצלחנו ליצור סיפור חדש. נסו שוב בעוד רגע.',
+      );
     }
   }
 
@@ -61,7 +67,9 @@ class AdventureStoryService {
           systemInstruction: _sparkSystemInstruction,
         );
         if (response == null || response.trim().isEmpty) {
-          throw const AdventureStoryUnavailableException(_geminiUnavailableMessage);
+          throw const AdventureStoryUnavailableException(
+            _geminiUnavailableMessage,
+          );
         }
         return response;
       } finally {
@@ -132,13 +140,14 @@ Do not include markdown code fences around the JSON.''';
     if (trimmed.startsWith('```')) {
       final fenceEnd = trimmed.indexOf('```', 3);
       if (fenceEnd != -1) {
-        return trimmed.substring(3, fenceEnd).replaceFirst(RegExp(r'^json\s*'), '');
+        return trimmed
+            .substring(3, fenceEnd)
+            .replaceFirst(RegExp(r'^json\s*'), '');
       }
       return trimmed.substring(3).replaceFirst(RegExp(r'^json\s*'), '');
     }
     return trimmed;
   }
-
 }
 
 class AdventureStoryContext {
@@ -163,16 +172,16 @@ class AdventureStoryContext {
   final String? playerName;
 
   Map<String, dynamic> toMap() => <String, dynamic>{
-        'levelName': levelName,
-        'levelDescription': levelDescription,
-        'vocabularyWords': vocabularyWords,
-        'levelStars': levelStars,
-        'totalStars': totalStars,
-        'coins': coins,
-        'mood': mood,
-        if (playerName != null && playerName!.trim().isNotEmpty)
-          'playerName': playerName!.trim(),
-      };
+    'levelName': levelName,
+    'levelDescription': levelDescription,
+    'vocabularyWords': vocabularyWords,
+    'levelStars': levelStars,
+    'totalStars': totalStars,
+    'coins': coins,
+    'mood': mood,
+    if (playerName != null && playerName!.trim().isNotEmpty)
+      'playerName': playerName!.trim(),
+  };
 }
 
 class AdventureStory {
@@ -187,8 +196,13 @@ class AdventureStory {
     this.parsedFromJson = true,
   });
 
-  factory AdventureStory.fromJson(Map<String, dynamic> json, {required String rawText, required String prompt}) {
-    final vocabulary = (json['vocabulary'] as List?)
+  factory AdventureStory.fromJson(
+    Map<String, dynamic> json, {
+    required String rawText,
+    required String prompt,
+  }) {
+    final vocabulary =
+        (json['vocabulary'] as List?)
             ?.whereType<String>()
             .map((word) => word.trim())
             .where((word) => word.isNotEmpty)
@@ -232,6 +246,7 @@ class AdventureStoryGenerationException implements Exception {
   String toString() => 'AdventureStoryGenerationException: $message';
 }
 
-class AdventureStoryUnavailableException extends AdventureStoryGenerationException {
+class AdventureStoryUnavailableException
+    extends AdventureStoryGenerationException {
   const AdventureStoryUnavailableException(String message) : super(message);
 }

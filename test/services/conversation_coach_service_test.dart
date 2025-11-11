@@ -13,9 +13,7 @@ void main() {
     );
 
     test('throws when the generator does not return a reply', () async {
-      final service = ConversationCoachService(
-        generator: (_) async => null,
-      );
+      final service = ConversationCoachService(generator: (_) async => null);
 
       expect(
         () => service.startConversation(setup),
@@ -42,8 +40,14 @@ void main() {
       );
 
       final history = [
-        const ConversationTurn(speaker: ConversationSpeaker.spark, message: 'היי!'),
-        const ConversationTurn(speaker: ConversationSpeaker.learner, message: 'Hello Spark'),
+        const ConversationTurn(
+          speaker: ConversationSpeaker.spark,
+          message: 'היי!',
+        ),
+        const ConversationTurn(
+          speaker: ConversationSpeaker.learner,
+          message: 'Hello Spark',
+        ),
       ];
 
       final response = await service.continueConversation(

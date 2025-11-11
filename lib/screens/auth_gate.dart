@@ -7,10 +7,7 @@ import 'onboarding_screen.dart';
 import 'sign_in_screen.dart';
 
 class AuthGate extends StatelessWidget {
-  const AuthGate({
-    super.key,
-    required this.hasSeenOnboarding,
-  });
+  const AuthGate({super.key, required this.hasSeenOnboarding});
 
   final bool hasSeenOnboarding;
 

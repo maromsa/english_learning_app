@@ -47,10 +47,12 @@ class LevelData {
       description: json['description'] as String?,
       reward: json['reward'] as int? ?? 0,
       unlockStars: json['unlockStars'] as int? ?? 0,
-      positionX: ((json['position'] as Map<String, dynamic>?)?['x'] as num?)
+      positionX:
+          ((json['position'] as Map<String, dynamic>?)?['x'] as num?)
               ?.toDouble() ??
           0.5,
-      positionY: ((json['position'] as Map<String, dynamic>?)?['y'] as num?)
+      positionY:
+          ((json['position'] as Map<String, dynamic>?)?['y'] as num?)
               ?.toDouble() ??
           0.5,
       words: wordsJson,
@@ -58,14 +60,14 @@ class LevelData {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        if (description != null) 'description': description,
-        'reward': reward,
-        'unlockStars': unlockStars,
-        'position': {'x': positionX, 'y': positionY},
-        'words': words.map((w) => w.toJson()).toList(),
-        'isUnlocked': isUnlocked,
-        'stars': stars,
-      };
+    'id': id,
+    'name': name,
+    if (description != null) 'description': description,
+    'reward': reward,
+    'unlockStars': unlockStars,
+    'position': {'x': positionX, 'y': positionY},
+    'words': words.map((w) => w.toJson()).toList(),
+    'isUnlocked': isUnlocked,
+    'stars': stars,
+  };
 }

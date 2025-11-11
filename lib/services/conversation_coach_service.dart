@@ -12,8 +12,8 @@ class ConversationCoachService {
   ConversationCoachService({
     Duration? timeout,
     _ConversationGenerator? generator,
-  })  : _timeout = timeout ?? const Duration(seconds: 12),
-        _generator = generator ?? _inferGenerator();
+  }) : _timeout = timeout ?? const Duration(seconds: 12),
+       _generator = generator ?? _inferGenerator();
 
   final _ConversationGenerator _generator;
   final Duration _timeout;
@@ -24,7 +24,9 @@ class ConversationCoachService {
     try {
       final raw = await _generator(prompt).timeout(_timeout);
       if (raw == null || raw.trim().isEmpty) {
-        throw const ConversationGenerationException('לא התקבלה תשובה מ-Gemini. נסו שוב בעוד רגע.');
+        throw const ConversationGenerationException(
+          'לא התקבלה תשובה מ-Gemini. נסו שוב בעוד רגע.',
+        );
       }
       return _parseResponse(
         raw,
@@ -34,12 +36,16 @@ class ConversationCoachService {
             'שלום! אני ספרק. היום נשחק ${setup.topicDescription()} ונלמד מילים חדשות באנגלית יחד.',
       );
     } on TimeoutException {
-      throw const ConversationGenerationException('נראה ש-Gemini מתעכב. נסו שוב עוד מעט.');
+      throw const ConversationGenerationException(
+        'נראה ש-Gemini מתעכב. נסו שוב עוד מעט.',
+      );
     } on ConversationGenerationException {
       rethrow;
     } catch (error, stackTrace) {
       debugPrint('Conversation opening failed: $error\n$stackTrace');
-      throw const ConversationGenerationException('לא הצלחנו לפתוח שיחה חדשה. נסו שוב אחר כך.');
+      throw const ConversationGenerationException(
+        'לא הצלחנו לפתוח שיחה חדשה. נסו שוב אחר כך.',
+      );
     }
   }
 
@@ -57,7 +63,9 @@ class ConversationCoachService {
     try {
       final raw = await _generator(prompt).timeout(_timeout);
       if (raw == null || raw.trim().isEmpty) {
-        throw const ConversationGenerationException('ספרק לא הצליח לענות. נסו לשאול שוב.');
+        throw const ConversationGenerationException(
+          'ספרק לא הצליח לענות. נסו לשאול שוב.',
+        );
       }
       return _parseResponse(
         raw,
@@ -66,12 +74,16 @@ class ConversationCoachService {
         fallbackMessage: 'איזו תשובה נהדרת! רוצים לנסות לומר עוד משפט באנגלית?',
       );
     } on TimeoutException {
-      throw const ConversationGenerationException('ספרק עסוק כרגע. נסו שוב בעוד רגע.');
+      throw const ConversationGenerationException(
+        'ספרק עסוק כרגע. נסו שוב בעוד רגע.',
+      );
     } on ConversationGenerationException {
       rethrow;
     } catch (error, stackTrace) {
       debugPrint('Conversation follow-up failed: $error\n$stackTrace');
-      throw const ConversationGenerationException('ספרק נתקע בתשובה. נסו שוב בעוד רגע.');
+      throw const ConversationGenerationException(
+        'ספרק נתקע בתשובה. נסו שוב בעוד רגע.',
+      );
     }
   }
 
@@ -101,7 +113,9 @@ class ConversationCoachService {
           systemInstruction: _sparkSystemInstruction,
         );
         if (response == null || response.trim().isEmpty) {
-          throw const ConversationUnavailableException(_geminiUnavailableMessage);
+          throw const ConversationUnavailableException(
+            _geminiUnavailableMessage,
+          );
         }
         return response;
       } finally {
@@ -135,7 +149,9 @@ Output JSON (no markdown fences) with keys:
     required List<ConversationTurn> history,
     required String learnerMessage,
   }) {
-    final historyMaps = history.map((turn) => turn.toMap()).toList(growable: false);
+    final historyMaps = history
+        .map((turn) => turn.toMap())
+        .toList(growable: false);
     final payload = {
       'context': setup.toMap(),
       'history': historyMaps,
@@ -181,7 +197,9 @@ Output JSON (no markdown fences) with keys:
     if (decoded != null) {
       final messageKey = isOpening ? 'opening' : 'reply';
       final message = _sanitize(decoded[messageKey]);
-      final followUp = isOpening ? _sanitize(decoded['miniChallenge']) : _sanitize(decoded['followUpQuestion']);
+      final followUp = isOpening
+          ? _sanitize(decoded['miniChallenge'])
+          : _sanitize(decoded['followUpQuestion']);
       final celebration = isOpening ? '' : _sanitize(decoded['celebration']);
       final tip = _sanitize(decoded['sparkTip']);
       final vocabulary = _sanitizeList(decoded['vocabularyHighlights']);
@@ -220,7 +238,9 @@ Output JSON (no markdown fences) with keys:
     if (trimmed.startsWith('```')) {
       final fenceEnd = trimmed.indexOf('```', 3);
       if (fenceEnd != -1) {
-        return trimmed.substring(3, fenceEnd).replaceFirst(RegExp(r'^json\\s*'), '');
+        return trimmed
+            .substring(3, fenceEnd)
+            .replaceFirst(RegExp(r'^json\\s*'), '');
       }
       return trimmed.substring(3).replaceFirst(RegExp(r'^json\\s*'), '');
     }
@@ -264,13 +284,14 @@ class ConversationSetup {
   final int? age;
 
   Map<String, dynamic> toMap() => <String, dynamic>{
-        'topic': topic,
-        'skillFocus': skillFocus,
-        'energyLevel': energyLevel,
-        'focusWords': focusWords,
-        if (learnerName != null && learnerName!.trim().isNotEmpty) 'learnerName': learnerName!.trim(),
-        if (age != null) 'age': age,
-      };
+    'topic': topic,
+    'skillFocus': skillFocus,
+    'energyLevel': energyLevel,
+    'focusWords': focusWords,
+    if (learnerName != null && learnerName!.trim().isNotEmpty)
+      'learnerName': learnerName!.trim(),
+    if (age != null) 'age': age,
+  };
 
   String topicDescription() {
     switch (topic) {
@@ -302,18 +323,15 @@ class ConversationSetup {
 }
 
 class ConversationTurn {
-  const ConversationTurn({
-    required this.speaker,
-    required this.message,
-  });
+  const ConversationTurn({required this.speaker, required this.message});
 
   final ConversationSpeaker speaker;
   final String message;
 
   Map<String, String> toMap() => <String, String>{
-        'speaker': speaker == ConversationSpeaker.spark ? 'spark' : 'learner',
-        'message': message,
-      };
+    'speaker': speaker == ConversationSpeaker.spark ? 'spark' : 'learner',
+    'message': message,
+  };
 }
 
 enum ConversationSpeaker { spark, learner }
