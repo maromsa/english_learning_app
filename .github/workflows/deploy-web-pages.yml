@@ -36,7 +36,43 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter web
-        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+        env:
+          GEMINI_PROXY_URL: ${{ secrets.GEMINI_PROXY_URL }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          FIREBASE_USER_ID_FOR_UPLOAD: ${{ secrets.FIREBASE_USER_ID_FOR_UPLOAD }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          GOOGLE_TTS_API_KEY: ${{ secrets.GOOGLE_TTS_API_KEY }}
+          AI_IMAGE_VALIDATION_URL: ${{ secrets.AI_IMAGE_VALIDATION_URL }}
+        run: |
+          set -eo pipefail
+
+          dart_defines=()
+          add_define() {
+            local name="$1"
+            local value="$2"
+            if [ -n "$value" ]; then
+              dart_defines+=("--dart-define=${name}=${value}")
+            fi
+          }
+
+          add_define GEMINI_PROXY_URL "$GEMINI_PROXY_URL"
+          add_define PIXABAY_API_KEY "$PIXABAY_API_KEY"
+          add_define FIREBASE_USER_ID_FOR_UPLOAD "$FIREBASE_USER_ID_FOR_UPLOAD"
+          add_define CLOUDINARY_CLOUD_NAME "$CLOUDINARY_CLOUD_NAME"
+          add_define CLOUDINARY_API_KEY "$CLOUDINARY_API_KEY"
+          add_define CLOUDINARY_API_SECRET "$CLOUDINARY_API_SECRET"
+          add_define GOOGLE_TTS_API_KEY "$GOOGLE_TTS_API_KEY"
+          add_define AI_IMAGE_VALIDATION_URL "$AI_IMAGE_VALIDATION_URL"
+
+          if [ "${#dart_defines[@]}" -gt 0 ]; then
+            echo "Injecting ${#dart_defines[@]} secret(s) via --dart-define."
+          else
+            echo "No secrets provided; building with default config."
+          fi
+
+          flutter build web --release --base-href "/${{ github.event.repository.name }}/" "${dart_defines[@]}"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
