@@ -18,21 +18,70 @@ import 'utils/platform_env_stub.dart'
 class AppConfig {
   const AppConfig._();
 
-  static final String geminiProxyUrl = _readSecret('GEMINI_PROXY_URL');
-  static final String pixabayApiKey = _readSecret('PIXABAY_API_KEY');
+  static const String _defineGeminiProxyUrl = String.fromEnvironment(
+    'GEMINI_PROXY_URL',
+    defaultValue: '',
+  );
+  static const String _definePixabayApiKey = String.fromEnvironment(
+    'PIXABAY_API_KEY',
+    defaultValue: '',
+  );
+  static const String _defineFirebaseUserIdForUpload = String.fromEnvironment(
+    'FIREBASE_USER_ID_FOR_UPLOAD',
+    defaultValue: '',
+  );
+  static const String _defineCloudinaryCloudName = String.fromEnvironment(
+    'CLOUDINARY_CLOUD_NAME',
+    defaultValue: '',
+  );
+  static const String _defineCloudinaryApiKey = String.fromEnvironment(
+    'CLOUDINARY_API_KEY',
+    defaultValue: '',
+  );
+  static const String _defineCloudinaryApiSecret = String.fromEnvironment(
+    'CLOUDINARY_API_SECRET',
+    defaultValue: '',
+  );
+  static const String _defineGoogleTtsApiKey = String.fromEnvironment(
+    'GOOGLE_TTS_API_KEY',
+    defaultValue: '',
+  );
+  static const String _defineAiImageValidationUrl = String.fromEnvironment(
+    'AI_IMAGE_VALIDATION_URL',
+    defaultValue: '',
+  );
+
+  static final String geminiProxyUrl = _readSecret(
+    'GEMINI_PROXY_URL',
+    _defineGeminiProxyUrl,
+  );
+  static final String pixabayApiKey = _readSecret(
+    'PIXABAY_API_KEY',
+    _definePixabayApiKey,
+  );
   static final String firebaseUserIdForUpload = _readSecret(
     'FIREBASE_USER_ID_FOR_UPLOAD',
+    _defineFirebaseUserIdForUpload,
   );
   static final String cloudinaryCloudName = _readSecret(
     'CLOUDINARY_CLOUD_NAME',
+    _defineCloudinaryCloudName,
   );
-  static final String cloudinaryApiKey = _readSecret('CLOUDINARY_API_KEY');
+  static final String cloudinaryApiKey = _readSecret(
+    'CLOUDINARY_API_KEY',
+    _defineCloudinaryApiKey,
+  );
   static final String cloudinaryApiSecret = _readSecret(
     'CLOUDINARY_API_SECRET',
+    _defineCloudinaryApiSecret,
   );
-  static final String googleTtsApiKey = _readSecret('GOOGLE_TTS_API_KEY');
+  static final String googleTtsApiKey = _readSecret(
+    'GOOGLE_TTS_API_KEY',
+    _defineGoogleTtsApiKey,
+  );
   static final String aiImageValidationUrl = _readSecret(
     'AI_IMAGE_VALIDATION_URL',
+    _defineAiImageValidationUrl,
   );
 
   static bool get hasGeminiProxy => geminiProxyUrl.isNotEmpty;
@@ -97,10 +146,9 @@ class AppConfig {
     }());
   }
 
-  static String _readSecret(String key) {
-    final fromDefines = String.fromEnvironment(key, defaultValue: '');
-    if (fromDefines.isNotEmpty) {
-      return fromDefines;
+  static String _readSecret(String key, String defineValue) {
+    if (defineValue.isNotEmpty) {
+      return defineValue;
     }
 
     if (dotenv.isInitialized) {
