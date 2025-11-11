@@ -314,7 +314,16 @@ class _MapScreenState extends State<MapScreen> {
 
   void _navigateToLevel(LevelData level, int levelIndex) async {
     final coinProvider = Provider.of<CoinProvider>(context, listen: false);
+    final backgroundMusic = BackgroundMusicService();
     coinProvider.startLevel();
+
+    try {
+      await backgroundMusic.fadeOut();
+      await backgroundMusic.stop();
+    } catch (error, stackTrace) {
+      debugPrint('Failed to stop map music before entering level: $error');
+      debugPrint('$stackTrace');
+    }
 
     await Navigator.push(
       context,
@@ -328,6 +337,13 @@ class _MapScreenState extends State<MapScreen> {
     );
 
     if (mounted) {
+      try {
+        await backgroundMusic.playMapLoop();
+      } catch (error, stackTrace) {
+        debugPrint('Failed to resume map music after level: $error');
+        debugPrint('$stackTrace');
+      }
+
       final coinsEarnedInLevel = coinProvider.levelCoins;
       final levelData = levels[levelIndex];
       final previousStars = levelData.stars;

@@ -31,13 +31,14 @@ class BackgroundMusicService with WidgetsBindingObserver {
 
   static const _startupChimeAsset = 'assets/audio/startup_chime.wav';
   static const _backgroundLoopAsset = 'assets/audio/the_twinkling_map.mp3';
+  static const double _defaultVolume = 0.4;
 
   Future<void> initialize() async {
     if (_initialized) {
       return;
     }
     try {
-      await _player.setVolume(0.4);
+      await _player.setVolume(_defaultVolume);
       await _player.setLoopMode(LoopMode.off);
       _currentIndexSubscription ??=
           _player.currentIndexStream.listen((int? index) {
@@ -93,6 +94,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
       );
       await _player.setAudioSource(source);
       _currentPlaylist = _BackgroundPlaylist.startupSequence;
+      await _player.setVolume(_defaultVolume);
       await _startPlaybackWithUnlock(
         contextDescription: 'Startup sequence',
       );
@@ -115,6 +117,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
       );
       await _player.setLoopMode(LoopMode.one);
       _currentPlaylist = _BackgroundPlaylist.mapLoop;
+      await _player.setVolume(_defaultVolume);
       await _startPlaybackWithUnlock(
         contextDescription: 'Map loop',
       );
