@@ -46,19 +46,7 @@ class PracticePackService {
       'חבילת האימון של ספרק דורשת חיבור ל-Gemini. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי להפעיל את התכונה.';
 
   static _PracticePackGenerator _inferGenerator() {
-    Uri? proxyEndpoint;
-    try {
-      proxyEndpoint = AppConfig.geminiProxyEndpoint;
-    } catch (Object error, StackTrace stackTrace) {
-      final isDotEnvNotInitialized = error.runtimeType.toString() == 'NotInitializedError';
-      if (!isDotEnvNotInitialized) {
-        Error.throwWithStackTrace(error, stackTrace);
-      }
-      debugPrint(
-        'PracticePackService: Gemini proxy secrets not initialised – falling back to stub generator. ($error)',
-      );
-      proxyEndpoint = null;
-    }
+    final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
     if (proxyEndpoint == null) {
       return (_) async {
