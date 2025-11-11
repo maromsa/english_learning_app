@@ -277,8 +277,19 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _configureTts() async {
-    await flutterTts.setLanguage("en-US");
-    await flutterTts.setSpeechRate(0.5);
+    try {
+      await flutterTts.setLanguage("en-US");
+    } catch (error, stackTrace) {
+      debugPrint('TTS setLanguage failed: $error');
+      debugPrint('$stackTrace');
+    }
+
+    try {
+      await flutterTts.setSpeechRate(0.5);
+    } catch (error, stackTrace) {
+      debugPrint('TTS setSpeechRate failed: $error');
+      debugPrint('$stackTrace');
+    }
   }
 
   Future<void> _takePictureAndIdentify() async {
@@ -493,6 +504,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final recognizedWord = _recognizedWords.trim();
 
     if (recognizedWord.isEmpty) {
+      if (!mounted) return;
       setState(() {
         _feedbackText = "לא שמעתי כלום. בוא ננסה שוב.";
       });
@@ -504,33 +516,38 @@ class _MyHomePageState extends State<MyHomePage> {
       recognizedWord,
     );
 
+    if (!mounted) return;
+
     String feedback;
     if (isCorrect) {
       _streak++;
       const int pointsToAdd = 10;
-      await Provider.of<CoinProvider>(
-        context,
-        listen: false,
-      ).addCoins(pointsToAdd);
+      await context.read<CoinProvider>().addCoins(pointsToAdd);
+      if (!mounted) return;
 
-      Provider.of<AchievementService>(
-        context,
-        listen: false,
-      ).checkForAchievements(streak: _streak);
+      context
+          .read<AchievementService>()
+          .checkForAchievements(streak: _streak);
 
-      context.read<DailyMissionProvider>().incrementByType(
-        DailyMissionType.speakPractice,
-      );
+      await context
+          .read<DailyMissionProvider>()
+          .incrementByType(DailyMissionType.speakPractice);
+      if (!mounted) return;
 
       feedback = "כל הכבוד! +10 מטבעות";
-      setState(() => currentWordObject.isCompleted = true);
-      _confettiController.play();
+      if (mounted) {
+        setState(() => currentWordObject.isCompleted = true);
+        _confettiController.play();
+      }
     } else {
       _streak = 0;
       feedback = "זה נשמע כמו '$recognizedWord'. בוא ננסה שוב.";
     }
 
+    if (!mounted) return;
     setState(() => _feedbackText = feedback);
+
+    if (!mounted) return;
     await _speak(feedback, languageCode: "he-IL");
   }
 
