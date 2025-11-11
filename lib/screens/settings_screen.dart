@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/coin_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/word_repository.dart';
+import '../services/background_music_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -16,6 +17,20 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isBusy = false;
+  bool _musicEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMusicSetting();
+  }
+
+  Future<void> _loadMusicSetting() async {
+    final musicService = BackgroundMusicService();
+    setState(() {
+      _musicEnabled = musicService.isEnabled;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +50,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: isDarkMode,
             onChanged: (value) async {
               await themeProvider.toggleTheme(value);
+            },
+          ),
+          SwitchListTile.adaptive(
+            secondary: const Icon(Icons.music_note),
+            title: const Text('מוזיקת רקע'),
+            subtitle: const Text('הפעל או כבה את מוזיקת הרקע'),
+            value: _musicEnabled,
+            onChanged: (value) async {
+              setState(() {
+                _musicEnabled = value;
+              });
+              await BackgroundMusicService().setEnabled(value);
             },
           ),
           const Divider(),

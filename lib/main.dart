@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/auth_gate.dart';
 import 'services/telemetry_service.dart';
+import 'services/background_music_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,6 +58,9 @@ Future<void> main() async {
   await themeProvider.loadTheme();
   await shopProvider.loadPurchasedItems();
   await dailyMissionProvider.initialize();
+
+  // Initialize background music service
+  await BackgroundMusicService().initialize();
 
   runApp(
     MultiProvider(

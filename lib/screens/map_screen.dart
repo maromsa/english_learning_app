@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/daily_reward_service.dart';
 import '../services/level_repository.dart';
+import '../services/background_music_service.dart';
 import 'ai_adventure_screen.dart';
 import 'daily_missions_screen.dart';
 import 'settings_screen.dart';
@@ -36,6 +37,17 @@ class _MapScreenState extends State<MapScreen> {
     _dailyRewardService = DailyRewardService();
     _levelRepository = LevelRepository();
     _initialize();
+    // Start background music for map screen
+    _startBackgroundMusic();
+  }
+
+  Future<void> _startBackgroundMusic() async {
+    try {
+      await BackgroundMusicService().playMusic('assets/audio/map_background.mp3');
+    } catch (e) {
+      // Music file might not exist yet, fail silently
+      debugPrint('Could not play map background music: $e');
+    }
   }
 
   Future<void> _initialize() async {
