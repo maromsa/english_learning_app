@@ -11,39 +11,41 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
       
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
         
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.27.0'
-        channel: 'stable'
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.0'
+          channel: 'stable'
         
-    - name: Get dependencies
-      run: flutter pub get
+      - name: Get dependencies
+        run: flutter pub get
       
-    - name: Verify formatting
-      run: dart format --output=none --set-exit-if-changed .
-      continue-on-error: true
-      
-    - name: Analyze code
-      run: flutter analyze || true
-      continue-on-error: true
-      
-    - name: Run tests
-      run: flutter test --coverage
-      
-    - name: Upload coverage
-      uses: codecov/codecov-action@v4
-      with:
-        file: coverage/lcov.info
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+        continue-on-error: true
+        
+      - name: Analyze code
+        run: flutter analyze || true
+        continue-on-error: true
+        
+      - name: Run tests
+        env:
+          GEMINI_PROXY_URL: ${{ secrets.GEMINI_PROXY_URL }}
+        run: flutter test --coverage --dart-define=GEMINI_PROXY_URL=$GEMINI_PROXY_URL
+        
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
