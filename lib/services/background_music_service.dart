@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:just_audio/just_audio.dart';
@@ -19,6 +21,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
   bool _initialized = false;
   bool _resumeOnForeground = false;
   _BackgroundPlaylist _currentPlaylist = _BackgroundPlaylist.none;
+  StreamSubscription<int?>? _currentIndexSubscription;
 
   static const _startupChimeAsset = 'assets/audio/startup_chime.wav';
   static const _backgroundLoopAsset = 'assets/audio/background_loop.wav';
@@ -30,6 +33,16 @@ class BackgroundMusicService with WidgetsBindingObserver {
     try {
       await _player.setVolume(0.4);
       await _player.setLoopMode(LoopMode.off);
+      _currentIndexSubscription ??=
+          _player.currentIndexStream.listen((int? index) {
+        if (index == null) {
+          return;
+        }
+        if (_currentPlaylist == _BackgroundPlaylist.startupSequence &&
+            index == 1) {
+          unawaited(_player.setLoopMode(LoopMode.one));
+        }
+      });
       _initialized = true;
     } catch (error, stackTrace) {
       debugPrint('BackgroundMusicService init failed: $error');
@@ -48,12 +61,11 @@ class BackgroundMusicService with WidgetsBindingObserver {
 
     try {
       await _player.stop();
+      await _player.setLoopMode(LoopMode.off);
       final source = ConcatenatingAudioSource(
         children: [
           AudioSource.asset(_startupChimeAsset),
-          LoopingAudioSource(
-            child: AudioSource.asset(_backgroundLoopAsset),
-          ),
+          AudioSource.asset(_backgroundLoopAsset),
         ],
       );
       await _player.setAudioSource(source);
@@ -76,10 +88,9 @@ class BackgroundMusicService with WidgetsBindingObserver {
 
     try {
       await _player.setAudioSource(
-        LoopingAudioSource(
-          child: AudioSource.asset(_backgroundLoopAsset),
-        ),
+        AudioSource.asset(_backgroundLoopAsset),
       );
+      await _player.setLoopMode(LoopMode.one);
       _player.play().catchError((error, stackTrace) {
         debugPrint('Map loop playback error: $error');
         debugPrint('$stackTrace');
@@ -100,6 +111,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
 
   Future<void> stop() async {
     _currentPlaylist = _BackgroundPlaylist.none;
+    await _player.setLoopMode(LoopMode.off);
     try {
       await _player.stop();
     } catch (error, stackTrace) {
@@ -136,6 +148,8 @@ class BackgroundMusicService with WidgetsBindingObserver {
 
   Future<void> dispose() async {
     WidgetsBinding.instance.removeObserver(this);
+    await _currentIndexSubscription?.cancel();
+    _currentIndexSubscription = null;
     await _player.dispose();
   }
 }
