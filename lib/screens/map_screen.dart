@@ -5,6 +5,7 @@ import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/screens/ai_conversation_screen.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/home_page.dart';
+import 'package:english_learning_app/services/background_music_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,6 +37,18 @@ class _MapScreenState extends State<MapScreen> {
     _dailyRewardService = DailyRewardService();
     _levelRepository = LevelRepository();
     _initialize();
+    
+    // Switch to map music when entering the map screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final musicService = Provider.of<BackgroundMusicService>(
+        context,
+        listen: false,
+      );
+      musicService.playMusic(
+        BackgroundMusicService.mapMusic,
+        loop: true,
+      );
+    });
   }
 
   Future<void> _initialize() async {
@@ -407,6 +420,8 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final coinProvider = Provider.of<CoinProvider>(context);
+    final musicService = Provider.of<BackgroundMusicService>(context);
+    
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -421,6 +436,24 @@ class _MapScreenState extends State<MapScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          // Music control button
+          IconButton(
+            icon: Icon(
+              musicService.isMusicEnabled ? Icons.music_note : Icons.music_off,
+              color: musicService.isMusicEnabled ? Colors.amber : Colors.grey,
+            ),
+            tooltip: musicService.isMusicEnabled ? 'השתק מוזיקה' : 'הפעל מוזיקה',
+            onPressed: () async {
+              await musicService.toggleMusic();
+              if (mounted && musicService.isMusicEnabled) {
+                // Restart map music when re-enabling
+                await musicService.playMusic(
+                  BackgroundMusicService.mapMusic,
+                  loop: true,
+                );
+              }
+            },
+          ),
           PopupMenuButton<_QuickAiAction>(
             icon: const Icon(Icons.psychology_alt),
             tooltip: 'כלי AI חדשים',

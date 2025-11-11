@@ -5,6 +5,7 @@ import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/shop_provider.dart';
 import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
+import 'package:english_learning_app/services/background_music_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -51,12 +52,24 @@ Future<void> main() async {
   final shopProvider = ShopProvider();
   final telemetryService = TelemetryService();
   final dailyMissionProvider = DailyMissionProvider();
+  final backgroundMusicService = BackgroundMusicService();
 
   // Load persisted data
   await coinProvider.loadCoins();
   await themeProvider.loadTheme();
   await shopProvider.loadPurchasedItems();
   await dailyMissionProvider.initialize();
+
+  // Start background music on app launch (cheerful startup music)
+  // This will play a fun, welcoming tune as the app starts
+  try {
+    await backgroundMusicService.playMusic(
+      BackgroundMusicService.startupMusic,
+      loop: true,
+    );
+  } catch (e) {
+    debugPrint('Could not play startup music: $e');
+  }
 
   runApp(
     MultiProvider(
@@ -66,6 +79,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: achievementService),
         ChangeNotifierProvider.value(value: shopProvider),
         ChangeNotifierProvider.value(value: dailyMissionProvider),
+        ChangeNotifierProvider.value(value: backgroundMusicService),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         Provider<TelemetryService>.value(value: telemetryService),
       ],
