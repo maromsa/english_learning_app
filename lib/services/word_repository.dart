@@ -139,12 +139,23 @@ class WordRepository {
     List<WordData> words,
     String cacheNamespace,
   ) async {
-    final jsonStr = jsonEncode(words.map((w) => w.toJson()).toList());
-    await prefs.setString(_cacheKey(cacheNamespace), jsonStr);
-    await prefs.setInt(
-      _cacheTimestampKey(cacheNamespace),
-      DateTime.now().millisecondsSinceEpoch,
-    );
+    try {
+      final jsonStr = jsonEncode(words.map((w) => w.toJson()).toList());
+      final bool storedWords =
+          await prefs.setString(_cacheKey(cacheNamespace), jsonStr);
+      final bool storedTimestamp = await prefs.setInt(
+        _cacheTimestampKey(cacheNamespace),
+        DateTime.now().millisecondsSinceEpoch,
+      );
+      if (!storedWords || !storedTimestamp) {
+        debugPrint(
+          'WordRepository: cache persistence skipped (storage unavailable).',
+        );
+      }
+    } catch (error, stackTrace) {
+      debugPrint('WordRepository cache write failed: $error');
+      debugPrint('$stackTrace');
+    }
   }
 
   Future<List<WordData>> _maybeAddWebImages(List<WordData> words) async {
