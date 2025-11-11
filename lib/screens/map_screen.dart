@@ -56,7 +56,8 @@ class _MapScreenState extends State<MapScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'לא ניתן לטעון את המפה מהקובץ. מוצג מסלול ברירת מחדל.';
+          _errorMessage =
+              'לא ניתן לטעון את המפה מהקובץ. מוצג מסלול ברירת מחדל.';
         });
       }
     }
@@ -117,11 +118,19 @@ class _MapScreenState extends State<MapScreen> {
         positionY: 0.46,
         words: [
           createWord('Magic Hat', 'wizard magic hat', 'magic_hat.png'),
-          createWord('Crystal Ball', 'glowing crystal ball magic', 'crystal_ball.png'),
+          createWord(
+            'Crystal Ball',
+            'glowing crystal ball magic',
+            'crystal_ball.png',
+          ),
           createWord('Spell Book', 'ancient spell book', 'spell_book.png'),
           createWord('Magic Wand', 'sparkling magic wand', 'magic_wand.png'),
           createWord('Potion', 'magical potion bottle', 'potion.png'),
-          createWord('Flying Broom', 'witch flying broomstick', 'flying_broom.png'),
+          createWord(
+            'Flying Broom',
+            'witch flying broomstick',
+            'flying_broom.png',
+          ),
         ],
       ),
       LevelData(
@@ -134,10 +143,22 @@ class _MapScreenState extends State<MapScreen> {
         positionY: 0.32,
         words: [
           createWord('Power Sword', 'shining power sword', 'power_sword.png'),
-          createWord('Treasure Map', 'ancient treasure map', 'treasure_map.png'),
+          createWord(
+            'Treasure Map',
+            'ancient treasure map',
+            'treasure_map.png',
+          ),
           createWord('Hero Shield', 'bright hero shield', 'hero_shield.png'),
-          createWord('Energy Gauntlet', 'futuristic energy gauntlet', 'energy_gauntlet.png'),
-          createWord('Magic Amulet', 'glowing magic amulet', 'magic_amulet.png'),
+          createWord(
+            'Energy Gauntlet',
+            'futuristic energy gauntlet',
+            'energy_gauntlet.png',
+          ),
+          createWord(
+            'Magic Amulet',
+            'glowing magic amulet',
+            'magic_amulet.png',
+          ),
           createWord('Dragon Armor', 'dragon scale armor', 'dragon_armor.png'),
         ],
       ),
@@ -153,9 +174,17 @@ class _MapScreenState extends State<MapScreen> {
           createWord('Car', 'red family car road', 'car.png'),
           createWord('Train', 'passenger train railway', 'train.png'),
           createWord('Helicopter', 'helicopter flying sky', 'helicopter.png'),
-          createWord('Submarine', 'yellow submarine underwater', 'submarine.png'),
+          createWord(
+            'Submarine',
+            'yellow submarine underwater',
+            'submarine.png',
+          ),
           createWord('Bicycle', 'kid bicycle ride', 'bicycle.png'),
-          createWord('Hot Air Balloon', 'colorful hot air balloon', 'hot_air_balloon.png'),
+          createWord(
+            'Hot Air Balloon',
+            'colorful hot air balloon',
+            'hot_air_balloon.png',
+          ),
         ],
       ),
       LevelData(
@@ -170,7 +199,11 @@ class _MapScreenState extends State<MapScreen> {
           createWord('Astronaut', 'astronaut space suit', 'astronaut.png'),
           createWord('Rocket', 'rocket launch space', 'rocket.png'),
           createWord('Moon', 'full moon night sky', 'moon.png'),
-          createWord('Space Station', 'international space station', 'space_station.png'),
+          createWord(
+            'Space Station',
+            'international space station',
+            'space_station.png',
+          ),
           createWord('Satellite', 'satellite orbit earth', 'satellite.png'),
           createWord('Mars Rover', 'mars rover exploration', 'mars_rover.png'),
         ],
@@ -186,8 +219,8 @@ class _MapScreenState extends State<MapScreen> {
 
     for (int i = 0; i < levels.length; i++) {
       final level = levels[i];
-      final persistedStars = prefs.getInt(_starsKey(level.id)) ??
-          prefs.getInt(_legacyStarsKey(i));
+      final persistedStars =
+          prefs.getInt(_starsKey(level.id)) ?? prefs.getInt(_legacyStarsKey(i));
       if (persistedStars != null) {
         level.stars = persistedStars;
       }
@@ -242,10 +275,7 @@ class _MapScreenState extends State<MapScreen> {
         ? 'אספו עוד $missingStars כוכבים כדי לפתוח את ${level.name}.'
         : 'סיימו את השלבים הקודמים כדי לפתוח את ${level.name}.';
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.black87,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.black87),
     );
   }
 
@@ -256,10 +286,15 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     if (result.claimed) {
-      await Provider.of<CoinProvider>(context, listen: false).addCoins(result.reward);
+      await Provider.of<CoinProvider>(
+        context,
+        listen: false,
+      ).addCoins(result.reward);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('🎁 קיבלת ${result.reward} מטבעות! רצף יומי: ${result.streak}'),
+          content: Text(
+            '🎁 קיבלת ${result.reward} מטבעות! רצף יומי: ${result.streak}',
+          ),
           backgroundColor: Colors.green.shade600,
         ),
       );
@@ -292,8 +327,8 @@ class _MapScreenState extends State<MapScreen> {
       final coinsEarnedInLevel = coinProvider.levelCoins;
       final levelData = levels[levelIndex];
       final previousStars = levelData.stars;
-      final starsEarned = ((coinsEarnedInLevel / 10).floor())
-          .clamp(0, 3) as int;
+      final starsEarned =
+          ((coinsEarnedInLevel / 10).floor()).clamp(0, 3) as int;
 
       final bool gainedMoreStars = starsEarned > previousStars;
       final bool shouldReward =
@@ -311,7 +346,9 @@ class _MapScreenState extends State<MapScreen> {
         await coinProvider.addCoins(levelData.reward);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('⭐ כל הכבוד! קיבלתם בונוס של ${levelData.reward} מטבעות.'),
+            content: Text(
+              '⭐ כל הכבוד! קיבלתם בונוס של ${levelData.reward} מטבעות.',
+            ),
             backgroundColor: Colors.blueGrey.shade700,
           ),
         );
@@ -332,14 +369,18 @@ class _MapScreenState extends State<MapScreen> {
     if (result == 'lightning') {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('פתחו שלב ובחרו באפשרות "ריצת ברק" כדי להשלים את המשימה!'),
+          content: const Text(
+            'פתחו שלב ובחרו באפשרות "ריצת ברק" כדי להשלים את המשימה!',
+          ),
           backgroundColor: Colors.blueGrey.shade700,
         ),
       );
     } else if (result == 'quiz') {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('היכנסו לשלב ולחצו על אייקון החידון כדי לשחק מיד.'),
+          content: const Text(
+            'היכנסו לשלב ולחצו על אייקון החידון כדי לשחק מיד.',
+          ),
           backgroundColor: Colors.blueGrey.shade700,
         ),
       );
@@ -362,7 +403,6 @@ class _MapScreenState extends State<MapScreen> {
         break;
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -419,14 +459,20 @@ class _MapScreenState extends State<MapScreen> {
                 const SizedBox(width: 4),
                 Text(
                   '${coinProvider.coins}',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 const Icon(Icons.star, color: Colors.amber),
                 const SizedBox(width: 4),
                 Text(
                   '$_totalStars',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -458,7 +504,7 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ],
       ),
-        body: Stack(
+      body: Stack(
         children: [
           Image.asset(
             'assets/images/map/map_background.jpg',
@@ -472,11 +518,16 @@ class _MapScreenState extends State<MapScreen> {
             const Center(
               child: Text(
                 'אין שלבים זמינים כרגע. נסו שוב מאוחר יותר.',
-                style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
             )
-          else ..._buildLevelNodes(context),
+          else
+            ..._buildLevelNodes(context),
           if (_errorMessage != null && !_isLoading)
             Positioned(
               left: 16,
@@ -495,7 +546,10 @@ class _MapScreenState extends State<MapScreen> {
       final level = levels[i];
       nodes.add(
         Align(
-          alignment: Alignment(level.positionX * 2 - 1, level.positionY * 2 - 1),
+          alignment: Alignment(
+            level.positionX * 2 - 1,
+            level.positionY * 2 - 1,
+          ),
           child: _LevelNode(
             level: level,
             levelNumber: i + 1,
@@ -515,7 +569,12 @@ class _LevelNode extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onLockedTap;
 
-  const _LevelNode({required this.level, required this.levelNumber, this.onTap, this.onLockedTap});
+  const _LevelNode({
+    required this.level,
+    required this.levelNumber,
+    this.onTap,
+    this.onLockedTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -536,17 +595,27 @@ class _LevelNode extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: level.isUnlocked ? Colors.amber.shade600 : Colors.grey.shade600,
+                color: level.isUnlocked
+                    ? Colors.amber.shade600
+                    : Colors.grey.shade600,
                 shape: BoxShape.circle,
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 6, spreadRadius: 2),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.5),
+                    blurRadius: 6,
+                    spreadRadius: 2,
+                  ),
                 ],
                 border: Border.all(color: Colors.white, width: 3),
               ),
               child: level.isUnlocked
                   ? Text(
                       levelNumber.toString(),
-                      style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
                     )
                   : const Icon(Icons.lock, color: Colors.white, size: 28),
             ),
@@ -586,7 +655,10 @@ class _InfoBanner extends StatelessWidget {
         child: Text(
           message,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );

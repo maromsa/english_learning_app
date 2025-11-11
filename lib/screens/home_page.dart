@@ -78,8 +78,9 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    _confettiController =
-        ConfettiController(duration: const Duration(seconds: 1));
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 1),
+    );
     _words = widget.wordsForLevel;
     _setupAchievementListener();
     _initializeServices();
@@ -92,8 +93,10 @@ class _MyHomePageState extends State<MyHomePage> {
   void _setupAchievementListener() {
     // Set up achievement notification callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final achievementService =
-          Provider.of<AchievementService>(context, listen: false);
+      final achievementService = Provider.of<AchievementService>(
+        context,
+        listen: false,
+      );
       achievementService.setAchievementUnlockedCallback((achievement) {
         if (mounted) {
           _showAchievementNotification(achievement);
@@ -206,16 +209,18 @@ class _MyHomePageState extends State<MyHomePage> {
 
       final response = await http.post(
         Uri.parse(
-            'https://texttospeech.googleapis.com/v1/text:synthesize?key=${AppConfig.googleTtsApiKey}'),
+          'https://texttospeech.googleapis.com/v1/text:synthesize?key=${AppConfig.googleTtsApiKey}',
+        ),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'input': {'text': text},
           'voice': {
             'languageCode': languageCode,
-            'name':
-                languageCode == 'en-US' ? 'en-US-Wavenet-D' : 'he-IL-Wavenet-A'
+            'name': languageCode == 'en-US'
+                ? 'en-US-Wavenet-D'
+                : 'he-IL-Wavenet-A',
           },
-          'audioConfig': {'audioEncoding': 'MP3'}
+          'audioConfig': {'audioEncoding': 'MP3'},
         }),
       );
 
@@ -281,7 +286,8 @@ class _MyHomePageState extends State<MyHomePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-                'תכונת ה-AI כבויה. הגדירו GEMINI_PROXY_URL של פונקציית הענן כדי להפעיל צילום חכם.'),
+              'תכונת ה-AI כבויה. הגדירו GEMINI_PROXY_URL של פונקציית הענן כדי להפעיל צילום חכם.',
+            ),
           ),
         );
       }
@@ -290,8 +296,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final telemetry = TelemetryService.maybeOf(context);
 
-    final XFile? imageFile =
-        await _picker.pickImage(source: ImageSource.camera);
+    final XFile? imageFile = await _picker.pickImage(
+      source: ImageSource.camera,
+    );
     if (imageFile == null) {
       return;
     }
@@ -333,7 +340,8 @@ class _MyHomePageState extends State<MyHomePage> {
           mimeType: 'image/jpeg',
         );
         debugPrint(
-            'Camera validation for "$identifiedWord": $validationPassed');
+          'Camera validation for "$identifiedWord": $validationPassed',
+        );
 
         if (!validationPassed) {
           if (mounted) {
@@ -355,8 +363,10 @@ class _MyHomePageState extends State<MyHomePage> {
           return;
         }
 
-        final newWord =
-            await _saveImageAndCreateWordData(imageFile, identifiedWord);
+        final newWord = await _saveImageAndCreateWordData(
+          imageFile,
+          identifiedWord,
+        );
         setState(() {
           _words.add(newWord);
           _currentIndex = _words.length - 1;
@@ -367,8 +377,10 @@ class _MyHomePageState extends State<MyHomePage> {
           _words,
           cacheNamespace: widget.levelId,
         );
-        Provider.of<AchievementService>(context, listen: false)
-            .checkForAchievements(streak: _streak, wordAdded: true);
+        Provider.of<AchievementService>(
+          context,
+          listen: false,
+        ).checkForAchievements(streak: _streak, wordAdded: true);
         await _speak('מצוין! אני רואה ${newWord.word}.', languageCode: 'he-IL');
         await flutterTts.setLanguage('en-US');
         await flutterTts.speak(newWord.word);
@@ -392,7 +404,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<WordData> _saveImageAndCreateWordData(
-      XFile imageFile, String word) async {
+    XFile imageFile,
+    String word,
+  ) async {
     final directory = await getApplicationDocumentsDirectory();
     final newPath =
         '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
@@ -427,14 +441,16 @@ class _MyHomePageState extends State<MyHomePage> {
         throw StateError('Gemini proxy is not initialized.');
       }
 
-      final prompt = "You are an English teacher for a 3-6 year old child. "
+      final prompt =
+          "You are an English teacher for a 3-6 year old child. "
           "The child was asked to say the word '$correctWord' and they said '$recognizedWord'. "
           "Considering their age and common pronunciation mistakes (like confusing 'th' and 't' sounds), "
           "should this attempt be considered a good and acceptable try? "
           "Answer with only 'yes' or 'no'.";
 
-      final response =
-          await proxy.generateText(prompt).timeout(const Duration(seconds: 10));
+      final response = await proxy
+          .generateText(prompt)
+          .timeout(const Duration(seconds: 10));
       if (response == null || response.trim().isEmpty) {
         throw StateError('Gemini proxy returned an empty response.');
       }
@@ -461,22 +477,28 @@ class _MyHomePageState extends State<MyHomePage> {
       return;
     }
 
-    final bool isCorrect =
-        await _evaluateSpeechWithGemini(currentWordObject.word, recognizedWord);
+    final bool isCorrect = await _evaluateSpeechWithGemini(
+      currentWordObject.word,
+      recognizedWord,
+    );
 
     String feedback;
     if (isCorrect) {
       _streak++;
       const int pointsToAdd = 10;
-      await Provider.of<CoinProvider>(context, listen: false)
-          .addCoins(pointsToAdd);
+      await Provider.of<CoinProvider>(
+        context,
+        listen: false,
+      ).addCoins(pointsToAdd);
 
-      Provider.of<AchievementService>(context, listen: false)
-          .checkForAchievements(streak: _streak);
+      Provider.of<AchievementService>(
+        context,
+        listen: false,
+      ).checkForAchievements(streak: _streak);
 
       context.read<DailyMissionProvider>().incrementByType(
-            DailyMissionType.speakPractice,
-          );
+        DailyMissionType.speakPractice,
+      );
 
       feedback = "כל הכבוד! +10 מטבעות";
       setState(() => currentWordObject.isCompleted = true);
@@ -612,7 +634,8 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Center(
               child: SingleChildScrollView(
-                  child: const CircularProgressIndicator()),
+                child: const CircularProgressIndicator(),
+              ),
             ),
           ],
         ),
@@ -769,7 +792,9 @@ class _MyHomePageState extends State<MyHomePage> {
                         'תכונות ה-AI כבויות כרגע. השתמשו באפליקציה גם ללא צילום חכם או הוסיפו מפתחות API כדי להפעיל אותן.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w600),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   SingleChildScrollView(
@@ -807,7 +832,8 @@ class _MyHomePageState extends State<MyHomePage> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                          'הוסיפו לפחות שתי מילים כדי להתחיל ריצת ברק!'),
+                                        'הוסיפו לפחות שתי מילים כדי להתחיל ריצת ברק!',
+                                      ),
                                     ),
                                   );
                                 }
@@ -816,8 +842,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => LightningPracticeScreen(
-                                        words:
-                                            List<WordData>.unmodifiable(_words),
+                                        words: List<WordData>.unmodifiable(
+                                          _words,
+                                        ),
                                         levelTitle: widget.title,
                                       ),
                                     ),
@@ -852,8 +879,9 @@ class _MyHomePageState extends State<MyHomePage> {
                         iconSize: 40,
                         color: Colors.white,
                         style: IconButton.styleFrom(
-                            backgroundColor: Colors.lightBlue.withOpacity(0.8),
-                            padding: const EdgeInsets.all(15)),
+                          backgroundColor: Colors.lightBlue.withOpacity(0.8),
+                          padding: const EdgeInsets.all(15),
+                        ),
                       ),
 
                       // כאן מגיע התנאי הלוגי
@@ -865,16 +893,23 @@ class _MyHomePageState extends State<MyHomePage> {
                             Navigator.pop(context);
                           },
                           style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20)),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 24, vertical: 12)),
-                          child: const Text('סיימתי!',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold)),
+                            backgroundColor: Colors.green,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                          ),
+                          child: const Text(
+                            'סיימתי!',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         )
                       else
                         // אם השלב עוד לא הושלם, הצג את כפתור "הבא"
@@ -884,12 +919,12 @@ class _MyHomePageState extends State<MyHomePage> {
                           iconSize: 40,
                           color: Colors.white,
                           style: IconButton.styleFrom(
-                              backgroundColor:
-                                  Colors.lightBlue.withOpacity(0.8),
-                              padding: const EdgeInsets.all(15)),
+                            backgroundColor: Colors.lightBlue.withOpacity(0.8),
+                            padding: const EdgeInsets.all(15),
+                          ),
                         ),
                     ],
-                  )
+                  ),
                 ],
               ),
             ),
@@ -904,7 +939,7 @@ class _MyHomePageState extends State<MyHomePage> {
             Colors.blue,
             Colors.pink,
             Colors.orange,
-            Colors.purple
+            Colors.purple,
           ],
         ),
       ],
@@ -955,8 +990,9 @@ class _MissionNudgeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent =
-        isClaimable ? Colors.green.shade500 : Colors.indigo.shade400;
+    final Color accent = isClaimable
+        ? Colors.green.shade500
+        : Colors.indigo.shade400;
     final double progress = mission.completionRatio;
 
     return InkWell(
@@ -997,7 +1033,9 @@ class _MissionNudgeCard extends StatelessWidget {
                         Text(
                           mission.title,
                           style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -1031,19 +1069,25 @@ class _MissionNudgeCard extends StatelessWidget {
                   if (isClaimable)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.green.shade100,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.monetization_on,
-                              size: 16, color: Colors.green),
+                          const Icon(
+                            Icons.monetization_on,
+                            size: 16,
+                            color: Colors.green,
+                          ),
                           const SizedBox(width: 4),
-                          Text('+${mission.reward}',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            '+${mission.reward}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
                     )
@@ -1052,8 +1096,10 @@ class _MissionNudgeCard extends StatelessWidget {
                       mission.remaining > 0
                           ? 'עוד ${mission.remaining} כדי לנצח'
                           : 'המשיכו להצליח!',
-                      style:
-                          TextStyle(color: accent, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: accent,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                 ],
               ),

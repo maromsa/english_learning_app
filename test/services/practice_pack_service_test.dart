@@ -14,9 +14,7 @@ void main() {
     );
 
     test('throws when the generator does not return a response', () async {
-      final service = PracticePackService(
-        generator: (_) async => null,
-      );
+      final service = PracticePackService(generator: (_) async => null);
 
       expect(
         () => service.generatePack(request),
@@ -55,9 +53,7 @@ void main() {
 }
 ''';
 
-      final service = PracticePackService(
-        generator: (_) async => json,
-      );
+      final service = PracticePackService(generator: (_) async => json);
 
       final pack = await service.generatePack(request);
       expect(pack.pepTalk, equals('בוקר טוב!'));
@@ -66,15 +62,16 @@ void main() {
       expect(pack.activities.first.englishFocus, contains('hello'));
     });
 
-    test('falls back to deterministic content when JSON cannot be parsed', () async {
-      final service = PracticePackService(
-        generator: (_) async => 'oops',
-      );
+    test(
+      'falls back to deterministic content when JSON cannot be parsed',
+      () async {
+        final service = PracticePackService(generator: (_) async => 'oops');
 
-      final pack = await service.generatePack(request);
-      expect(pack.activities, isNotEmpty);
-      expect(pack.parsedFromJson, isFalse);
-    });
+        final pack = await service.generatePack(request);
+        expect(pack.activities, isNotEmpty);
+        expect(pack.parsedFromJson, isFalse);
+      },
+    );
 
     test('throws when generator is unavailable', () async {
       final previousPlatform = debugDefaultTargetPlatformOverride;

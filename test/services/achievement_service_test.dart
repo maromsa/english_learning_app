@@ -37,19 +37,19 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final testService = AchievementService();
       await testService.loadAchievements();
-      
+
       // Verify it's locked initially
       expect(testService.isUnlocked('first_correct'), false);
-      
+
       // Unlock it
       testService.unlockAchievement('first_correct');
-      
+
       // Check the achievement directly (unlockAchievement sets isUnlocked synchronously)
       final achievement = testService.achievements.firstWhere(
         (a) => a.id == 'first_correct',
       );
       expect(achievement.isUnlocked, true);
-      
+
       // Also verify via isUnlocked method
       expect(testService.isUnlocked('first_correct'), true);
     });
@@ -76,9 +76,12 @@ void main() {
       expect(achievementService.isUnlocked('streak_5'), false);
     });
 
-    test('checkForAchievements should unlock add_word when wordAdded is true', () {
-      achievementService.checkForAchievements(streak: 0, wordAdded: true);
-      expect(achievementService.isUnlocked('add_word'), true);
-    });
+    test(
+      'checkForAchievements should unlock add_word when wordAdded is true',
+      () {
+        achievementService.checkForAchievements(streak: 0, wordAdded: true);
+        expect(achievementService.isUnlocked('add_word'), true);
+      },
+    );
   });
 }

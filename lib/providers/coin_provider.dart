@@ -50,7 +50,9 @@ class CoinProvider with ChangeNotifier {
 
   Future<bool> spendCoins(int amount) async {
     if (amount <= 0) {
-      debugPrint('Ignored attempt to spend a non-positive coin amount: $amount');
+      debugPrint(
+        'Ignored attempt to spend a non-positive coin amount: $amount',
+      );
       return false;
     }
 

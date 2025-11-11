@@ -23,9 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('הגדרות'),
-      ),
+      appBar: AppBar(title: const Text('הגדרות')),
       body: ListView(
         children: [
           _buildProfileHeader(context),
@@ -90,12 +88,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return ListTile(
       leading: CircleAvatar(
         radius: 28,
-        backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+        backgroundColor: Theme.of(
+          context,
+        ).colorScheme.primary.withOpacity(0.15),
         backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
         child: photoUrl == null
             ? Text(
                 email.isNotEmpty ? email[0].toUpperCase() : '?',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               )
             : null,
       ),
@@ -117,7 +120,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) {
         return AlertDialog(
           title: const Text('לאפס את המסע?'),
-          content: const Text('הפעולה תאפס את הכוכבים שנצברו והמטבעות שהושגו בשלבים.'),
+          content: const Text(
+            'הפעולה תאפס את הכוכבים שנצברו והמטבעות שהושגו בשלבים.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -151,11 +156,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (!mounted) return;
     setState(() => _isBusy = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('ההתקדמות אופסה בהצלחה.'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('ההתקדמות אופסה בהצלחה.')));
   }
 
   Future<void> _clearWordCache(BuildContext context) async {

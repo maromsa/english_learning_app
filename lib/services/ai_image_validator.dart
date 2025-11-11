@@ -13,7 +13,11 @@ class PassthroughAiImageValidator implements AiImageValidator {
   const PassthroughAiImageValidator();
 
   @override
-  Future<bool> validate(Uint8List imageBytes, String word, {String? mimeType}) async => true;
+  Future<bool> validate(
+    Uint8List imageBytes,
+    String word, {
+    String? mimeType,
+  }) async => true;
 }
 
 /// Calls an HTTP endpoint (e.g., Cloud Function) to validate image-word matches.
@@ -23,12 +27,14 @@ class HttpFunctionAiImageValidator implements AiImageValidator {
     http.Client? client,
     Duration timeout = const Duration(seconds: 8),
     double minimumConfidence = 0.5,
-  })  : assert(minimumConfidence >= 0 && minimumConfidence <= 1,
-          'minimumConfidence must be between 0 and 1.'),
-          _httpClient = client ?? http.Client(),
-          _disposeClientOnClose = client == null,
-          _requestTimeout = timeout,
-          _minimumConfidence = minimumConfidence;
+  }) : assert(
+         minimumConfidence >= 0 && minimumConfidence <= 1,
+         'minimumConfidence must be between 0 and 1.',
+       ),
+       _httpClient = client ?? http.Client(),
+       _disposeClientOnClose = client == null,
+       _requestTimeout = timeout,
+       _minimumConfidence = minimumConfidence;
 
   final Uri _validationEndpoint;
   final http.Client _httpClient;
@@ -42,13 +48,17 @@ class HttpFunctionAiImageValidator implements AiImageValidator {
   bool? get lastApproval => _lastApproval;
 
   @override
-  Future<bool> validate(Uint8List imageBytes, String word, {String? mimeType}) async {
+  Future<bool> validate(
+    Uint8List imageBytes,
+    String word, {
+    String? mimeType,
+  }) async {
     try {
       _lastConfidence = null;
       _lastApproval = null;
       final response = await _httpClient
           .post(
-              _validationEndpoint,
+            _validationEndpoint,
             headers: const {'Content-Type': 'application/json'},
             body: jsonEncode({
               'word': word,
@@ -56,7 +66,7 @@ class HttpFunctionAiImageValidator implements AiImageValidator {
               'imageBase64': base64Encode(imageBytes),
             }),
           )
-            .timeout(_requestTimeout);
+          .timeout(_requestTimeout);
 
       if (response.statusCode != 200) {
         return false;

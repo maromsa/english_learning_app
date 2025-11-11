@@ -13,7 +13,11 @@ void main() {
   test('quiz items use image assets that exist', () async {
     for (final item in quizItems) {
       final data = await rootBundle.load(item.imageAsset);
-      expect(data.lengthInBytes, greaterThan(0), reason: 'Asset ${item.imageAsset} should not be empty');
+      expect(
+        data.lengthInBytes,
+        greaterThan(0),
+        reason: 'Asset ${item.imageAsset} should not be empty',
+      );
     }
   });
 
@@ -25,16 +29,16 @@ void main() {
     }
   });
 
-  testWidgets('awards coins and updates score after a correct answer', (tester) async {
+  testWidgets('awards coins and updates score after a correct answer', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     final coinProvider = CoinProvider();
 
     await tester.pumpWidget(
       ChangeNotifierProvider<CoinProvider>.value(
         value: coinProvider,
-        child: const MaterialApp(
-          home: ImageQuizGame(),
-        ),
+        child: const MaterialApp(home: ImageQuizGame()),
       ),
     );
 
@@ -50,7 +54,10 @@ void main() {
     expect(coinProvider.coins, greaterThanOrEqualTo(10));
     expect(find.textContaining('Great job!'), findsOneWidget);
 
-    final nextButtonFinder = find.widgetWithText(ElevatedButton, 'Next question');
+    final nextButtonFinder = find.widgetWithText(
+      ElevatedButton,
+      'Next question',
+    );
     expect(nextButtonFinder, findsOneWidget);
     await tester.ensureVisible(nextButtonFinder);
     final ElevatedButton nextButton = tester.widget(nextButtonFinder);
@@ -64,9 +71,7 @@ void main() {
     await tester.pumpWidget(
       ChangeNotifierProvider<CoinProvider>.value(
         value: coinProvider,
-        child: const MaterialApp(
-          home: ImageQuizGame(),
-        ),
+        child: const MaterialApp(home: ImageQuizGame()),
       ),
     );
 

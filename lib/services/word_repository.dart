@@ -13,11 +13,12 @@ class WordRepository {
     CloudinaryService? cloudinaryService,
     WebImageProvider? webImageProvider,
     Duration cacheDuration = const Duration(hours: 12),
-  })  : _prefsFuture =
-                prefs != null ? Future.value(prefs) : SharedPreferences.getInstance(),
-            _cloudinaryService = cloudinaryService ?? CloudinaryService(),
-            _webImageProvider = webImageProvider,
-            _cacheDuration = cacheDuration;
+  }) : _prefsFuture = prefs != null
+           ? Future.value(prefs)
+           : SharedPreferences.getInstance(),
+       _cloudinaryService = cloudinaryService ?? CloudinaryService(),
+       _webImageProvider = webImageProvider,
+       _cacheDuration = cacheDuration;
 
   static const String cacheKey = 'word_repository.cache.words.v2';
   static const String cacheTimestampKey = 'word_repository.cache.timestamp.v2';
@@ -70,7 +71,10 @@ class WordRepository {
       );
 
       if (remoteWords.isNotEmpty) {
-        final hydratedRemote = _hydrateWithFallbackImages(remoteWords, fallbackWords);
+        final hydratedRemote = _hydrateWithFallbackImages(
+          remoteWords,
+          fallbackWords,
+        );
         await _saveCache(prefs, hydratedRemote, cacheNamespace);
         return hydratedRemote;
       }
@@ -170,7 +174,9 @@ class WordRepository {
 
         results.add(
           WordData(
-            word: result.inferredWord.isNotEmpty ? result.inferredWord : word.word,
+            word: result.inferredWord.isNotEmpty
+                ? result.inferredWord
+                : word.word,
             searchHint: word.searchHint ?? word.word,
             publicId: word.publicId,
             imageUrl: result.imageUrl,
@@ -194,8 +200,7 @@ class WordRepository {
     }
 
     final fallbackByWord = {
-      for (final word in fallback)
-        word.word.toLowerCase(): word,
+      for (final word in fallback) word.word.toLowerCase(): word,
     };
 
     bool changed = false;

@@ -24,7 +24,8 @@ class LightningPracticeScreen extends StatefulWidget {
   final String? levelTitle;
 
   @override
-  State<LightningPracticeScreen> createState() => _LightningPracticeScreenState();
+  State<LightningPracticeScreen> createState() =>
+      _LightningPracticeScreenState();
 }
 
 class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
@@ -84,24 +85,29 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
   @override
   void dispose() {
     _timer?.cancel();
-    _telemetry?.endScreenSession('lightning', extra: {
-      'score': _score,
-      'correct': _correctAnswers,
-      'incorrect': _incorrectAnswers,
-      'best_streak': _bestStreak,
-      'questions': _questionCount,
-    });
+    _telemetry?.endScreenSession(
+      'lightning',
+      extra: {
+        'score': _score,
+        'correct': _correctAnswers,
+        'incorrect': _incorrectAnswers,
+        'best_streak': _bestStreak,
+        'questions': _questionCount,
+      },
+    );
     super.dispose();
   }
 
   List<WordData> _buildWordPool() {
     final List<WordData> cleaned = widget.words
         .where((word) => word.word.trim().isNotEmpty)
-        .map((word) => WordData(
-              word: word.word.trim(),
-              searchHint: word.searchHint,
-              imageUrl: word.imageUrl,
-            ))
+        .map(
+          (word) => WordData(
+            word: word.word.trim(),
+            searchHint: word.searchHint,
+            imageUrl: word.imageUrl,
+          ),
+        )
         .toList(growable: true);
 
     if (cleaned.length >= 4) {
@@ -111,7 +117,9 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     for (final entry in _fallbackWordEntries) {
       final word = entry['word']!;
       final hint = entry['hint'];
-      if (cleaned.any((existing) => existing.word.toLowerCase() == word.toLowerCase())) {
+      if (cleaned.any(
+        (existing) => existing.word.toLowerCase() == word.toLowerCase(),
+      )) {
         continue;
       }
       cleaned.add(WordData(word: word, searchHint: hint));
@@ -128,7 +136,8 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       setState(() {
         _sessionActive = false;
         _sessionEnded = true;
-        _feedback = 'אין מספיק מילים כדי להתחיל ריצת ברק. הוסיפו עוד מילים בשלב!';
+        _feedback =
+            'אין מספיק מילים כדי להתחיל ריצת ברק. הוסיפו עוד מילים בשלב!';
       });
       return;
     }
@@ -175,7 +184,9 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     final List<WordData> candidates = _wordPool
         .where((word) => !_recentWords.contains(word.word))
         .toList(growable: false);
-    final List<WordData> source = candidates.isNotEmpty ? candidates : _wordPool;
+    final List<WordData> source = candidates.isNotEmpty
+        ? candidates
+        : _wordPool;
     final WordData nextWord = source[_random.nextInt(source.length)];
 
     _recentWords.addLast(nextWord.word);
@@ -206,7 +217,10 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     }
 
     while (options.length < 4) {
-      final fallback = _fallbackWordEntries[_random.nextInt(_fallbackWordEntries.length)]['word']!;
+      final fallback =
+          _fallbackWordEntries[_random.nextInt(
+            _fallbackWordEntries.length,
+          )]['word']!;
       if (!options.contains(fallback)) {
         options.add(fallback);
       }
@@ -218,7 +232,10 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
   }
 
   Future<void> _handleAnswer(String option) async {
-    if (!_sessionActive || _sessionEnded || _awaitingNext || _currentWord == null) {
+    if (!_sessionActive ||
+        _sessionEnded ||
+        _awaitingNext ||
+        _currentWord == null) {
       return;
     }
 
@@ -298,8 +315,8 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     });
 
     context.read<DailyMissionProvider>().incrementByType(
-          DailyMissionType.lightningRound,
-        );
+      DailyMissionType.lightningRound,
+    );
 
     _telemetry?.logLightningSession(
       score: _score,
@@ -321,7 +338,11 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     final bool insufficientWords = _wordPool.length < 2;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.levelTitle == null ? 'ריצת ברק' : 'ריצת ברק - ${widget.levelTitle}'),
+        title: Text(
+          widget.levelTitle == null
+              ? 'ריצת ברק'
+              : 'ריצת ברק - ${widget.levelTitle}',
+        ),
         backgroundColor: Colors.deepOrange.shade400,
       ),
       body: SafeArea(
@@ -352,7 +373,9 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
   }
 
   Widget _buildStatusRow() {
-    final double accuracy = _questionCount == 0 ? 0 : (_correctAnswers / _questionCount) * 100;
+    final double accuracy = _questionCount == 0
+        ? 0
+        : (_correctAnswers / _questionCount) * 100;
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -411,9 +434,9 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
             Text(
               'רמז קסם:',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.deepOrange.shade700,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: Colors.deepOrange.shade700,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -432,16 +455,18 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
               child: SingleChildScrollView(
                 child: Column(
                   children: _currentOptions
-                      .map((option) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _LightningOptionButton(
-                              option: option,
-                              isSelected: _selectedAnswer == option,
-                              isCorrectAnswer: word.word == option,
-                              awaitingNext: _awaitingNext,
-                              onTap: () => _handleAnswer(option),
-                            ),
-                          ))
+                      .map(
+                        (option) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _LightningOptionButton(
+                            option: option,
+                            isSelected: _selectedAnswer == option,
+                            isCorrectAnswer: word.word == option,
+                            awaitingNext: _awaitingNext,
+                            onTap: () => _handleAnswer(option),
+                          ),
+                        ),
+                      )
                       .toList(growable: false),
                 ),
               ),
@@ -485,9 +510,9 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
               'סיכום ריצת הברק',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.deepOrange.shade600,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: Colors.deepOrange.shade600,
+              ),
             ),
             const SizedBox(height: 20),
             Wrap(
@@ -495,10 +520,30 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
               spacing: 16,
               runSpacing: 16,
               children: [
-                _SummaryStat(label: 'ניקוד', value: '$_score', icon: Icons.flash_on, color: Colors.deepOrange),
-                _SummaryStat(label: 'תשובות נכונות', value: '$_correctAnswers', icon: Icons.check_circle, color: Colors.green),
-                _SummaryStat(label: 'טעויות', value: '$_incorrectAnswers', icon: Icons.close_rounded, color: Colors.redAccent),
-                _SummaryStat(label: 'רצף שיא', value: '$_bestStreak', icon: Icons.whatshot, color: Colors.purple),
+                _SummaryStat(
+                  label: 'ניקוד',
+                  value: '$_score',
+                  icon: Icons.flash_on,
+                  color: Colors.deepOrange,
+                ),
+                _SummaryStat(
+                  label: 'תשובות נכונות',
+                  value: '$_correctAnswers',
+                  icon: Icons.check_circle,
+                  color: Colors.green,
+                ),
+                _SummaryStat(
+                  label: 'טעויות',
+                  value: '$_incorrectAnswers',
+                  icon: Icons.close_rounded,
+                  color: Colors.redAccent,
+                ),
+                _SummaryStat(
+                  label: 'רצף שיא',
+                  value: '$_bestStreak',
+                  icon: Icons.whatshot,
+                  color: Colors.purple,
+                ),
               ],
             ),
             const SizedBox(height: 28),
@@ -532,7 +577,9 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
           label: const Text('סיימו מוקדם'),
         ),
         TextButton.icon(
-          onPressed: _awaitingNext || _sessionEnded ? null : () => _prepareNextQuestion(),
+          onPressed: _awaitingNext || _sessionEnded
+              ? null
+              : () => _prepareNextQuestion(),
           icon: const Icon(Icons.shuffle),
           label: const Text('דלגו לרמז חדש'),
         ),
@@ -550,7 +597,11 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.psychology, size: 64, color: Colors.deepOrange.shade300),
+              Icon(
+                Icons.psychology,
+                size: 64,
+                color: Colors.deepOrange.shade300,
+              ),
               const SizedBox(height: 16),
               const Text(
                 'זקוקים לעוד מילים כדי להתחיל את ריצת הברק!',
@@ -731,8 +782,17 @@ class _SummaryStat extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54)),
-              Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ],

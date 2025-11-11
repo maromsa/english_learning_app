@@ -8,7 +8,9 @@ import 'package:http/testing.dart';
 
 void main() {
   group('HttpFunctionAiImageValidator', () {
-    final sampleBytes = Uint8List.fromList(List<int>.generate(6, (index) => index));
+    final sampleBytes = Uint8List.fromList(
+      List<int>.generate(6, (index) => index),
+    );
     final endpoint = Uri.parse('https://example.com/validate');
 
     test('returns approval when backend responds with approved flag', () async {
@@ -17,11 +19,18 @@ void main() {
         endpoint,
         client: MockClient((request) async {
           capturedRequest = request;
-          return http.Response(jsonEncode({'approved': true, 'confidence': 0.92}), 200);
+          return http.Response(
+            jsonEncode({'approved': true, 'confidence': 0.92}),
+            200,
+          );
         }),
       );
 
-      final approved = await validator.validate(sampleBytes, 'Apple', mimeType: 'image/png');
+      final approved = await validator.validate(
+        sampleBytes,
+        'Apple',
+        mimeType: 'image/png',
+      );
 
       expect(approved, isTrue);
       expect(validator.lastConfidence, closeTo(0.92, 1e-6));
@@ -35,22 +44,25 @@ void main() {
       validator.dispose();
     });
 
-    test('falls back to confidence threshold when approval flag missing', () async {
-      final validator = HttpFunctionAiImageValidator(
-        endpoint,
-        client: MockClient((_) async {
-          return http.Response(jsonEncode({'confidence': '0.73'}), 200);
-        }),
-      );
+    test(
+      'falls back to confidence threshold when approval flag missing',
+      () async {
+        final validator = HttpFunctionAiImageValidator(
+          endpoint,
+          client: MockClient((_) async {
+            return http.Response(jsonEncode({'confidence': '0.73'}), 200);
+          }),
+        );
 
-      final approved = await validator.validate(sampleBytes, 'Banana');
+        final approved = await validator.validate(sampleBytes, 'Banana');
 
-      expect(approved, isTrue);
-      expect(validator.lastApproval, isTrue);
-      expect(validator.lastConfidence, closeTo(0.73, 1e-6));
+        expect(approved, isTrue);
+        expect(validator.lastApproval, isTrue);
+        expect(validator.lastConfidence, closeTo(0.73, 1e-6));
 
-      validator.dispose();
-    });
+        validator.dispose();
+      },
+    );
 
     test('respects custom minimumConfidence threshold', () async {
       final validator = HttpFunctionAiImageValidator(
@@ -83,7 +95,11 @@ void main() {
         }),
       );
 
-      final firstAttempt = await validator.validate(sampleBytes, 'Durian', mimeType: 'image/jpeg');
+      final firstAttempt = await validator.validate(
+        sampleBytes,
+        'Durian',
+        mimeType: 'image/jpeg',
+      );
       expect(firstAttempt, isFalse);
       expect(validator.lastApproval, isNull);
       expect(validator.lastConfidence, isNull);

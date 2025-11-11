@@ -15,7 +15,11 @@ class _FakeAiValidator implements AiImageValidator {
   int validationCount = 0;
 
   @override
-  Future<bool> validate(Uint8List imageBytes, String word, {String? mimeType}) async {
+  Future<bool> validate(
+    Uint8List imageBytes,
+    String word, {
+    String? mimeType,
+  }) async {
     validationCount += 1;
     validatedWords.add(word);
     return _answers.isEmpty ? true : _answers.removeFirst();
@@ -107,7 +111,9 @@ void main() {
   });
 
   test('returns null when api key is missing', () async {
-    final client = MockClient((request) async => http.Response('should not be called', 500));
+    final client = MockClient(
+      (request) async => http.Response('should not be called', 500),
+    );
     final validator = _FakeAiValidator(<bool>[]);
     final service = WebImageService(
       apiKey: '',

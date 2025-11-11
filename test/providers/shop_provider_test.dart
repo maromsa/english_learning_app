@@ -53,8 +53,11 @@ void main() {
 
     test('loadPurchasedItems should load from SharedPreferences', () async {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('purchased_items', ['magic_hat', 'super_shoes']);
-      
+      await prefs.setStringList('purchased_items', [
+        'magic_hat',
+        'super_shoes',
+      ]);
+
       final newProvider = ShopProvider();
       await newProvider.loadPurchasedItems();
       expect(newProvider.isPurchased('magic_hat'), true);

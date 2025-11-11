@@ -8,10 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 class AiConversationScreen extends StatefulWidget {
-  const AiConversationScreen({
-    super.key,
-    this.focusWords = const <String>[],
-  });
+  const AiConversationScreen({super.key, this.focusWords = const <String>[]});
 
   final List<String> focusWords;
 
@@ -160,20 +157,32 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
             Row(
               children: [
                 Expanded(
-                    child: _buildDropdown(_topics, _selectedTopic,
-                        (value) => setState(() => _selectedTopic = value))),
+                  child: _buildDropdown(
+                    _topics,
+                    _selectedTopic,
+                    (value) => setState(() => _selectedTopic = value),
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
-                    child: _buildDropdown(_skills, _selectedSkill,
-                        (value) => setState(() => _selectedSkill = value))),
+                  child: _buildDropdown(
+                    _skills,
+                    _selectedSkill,
+                    (value) => setState(() => _selectedSkill = value),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
-                    child: _buildDropdown(_energies, _selectedEnergy,
-                        (value) => setState(() => _selectedEnergy = value))),
+                  child: _buildDropdown(
+                    _energies,
+                    _selectedEnergy,
+                    (value) => setState(() => _selectedEnergy = value),
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(child: _buildFocusWordsPreview()),
               ],
@@ -183,7 +192,8 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
               onPressed: _isBusy ? null : _startConversation,
               icon: const Icon(Icons.auto_awesome),
               label: Text(
-                  _sessionStarted ? 'התחילו שיחה חדשה' : 'צאו לשיחה קסומה'),
+                _sessionStarted ? 'התחילו שיחה חדשה' : 'צאו לשיחה קסומה',
+              ),
             ),
           ],
         ),
@@ -192,12 +202,13 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
   }
 
   Widget _buildDropdown(
-      List<_Option> options, String selected, ValueChanged<String> onChanged) {
+    List<_Option> options,
+    String selected,
+    ValueChanged<String> onChanged,
+  ) {
     return DropdownButtonFormField<String>(
       value: selected,
-      decoration: const InputDecoration(
-        border: OutlineInputBorder(),
-      ),
+      decoration: const InputDecoration(border: OutlineInputBorder()),
       items: options
           .map(
             (option) => DropdownMenuItem<String>(
@@ -258,15 +269,19 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.chat_bubble_outline,
-                size: 64, color: Colors.white.withOpacity(0.85)),
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 64,
+              color: Colors.white.withOpacity(0.85),
+            ),
             const SizedBox(height: 12),
             const Text(
               'התחילו שיחה עם ספרק כדי לראות את הקסם קורה!',
               style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600),
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -288,7 +303,8 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
               setState(() {
                 _messageController.text = suggestion;
                 _messageController.selection = TextSelection.fromPosition(
-                    TextPosition(offset: suggestion.length));
+                  TextPosition(offset: suggestion.length),
+                );
               });
             },
           );
@@ -322,8 +338,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
                 ),
               ),
               IconButton(
-                icon:
-                    Icon(_isListening ? Icons.hearing_disabled : Icons.hearing),
+                icon: Icon(
+                  _isListening ? Icons.hearing_disabled : Icons.hearing,
+                ),
                 tooltip: _speechReady ? 'אמרו משפט בקול' : 'הפעלת דיבור',
                 onPressed: !_speechReady || _isBusy ? null : _toggleListening,
               ),
@@ -363,16 +380,19 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
       if (!mounted) return;
 
       _appendSparkResponse(response);
-      _history.add(ConversationTurn(
-          speaker: ConversationSpeaker.spark, message: response.message));
+      _history.add(
+        ConversationTurn(
+          speaker: ConversationSpeaker.spark,
+          message: response.message,
+        ),
+      );
       _sessionStarted = true;
 
       await _speakSpark(response.message);
-      TelemetryService.maybeOf(context)
-          ?.logCustomEvent('ai_conversation_started', {
-        'topic': _selectedTopic,
-        'skill': _selectedSkill,
-      });
+      TelemetryService.maybeOf(context)?.logCustomEvent(
+        'ai_conversation_started',
+        {'topic': _selectedTopic, 'skill': _selectedSkill},
+      );
     } on ConversationGenerationException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -406,12 +426,15 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     }
 
     setState(() {
-      _entries.add(_ChatEntry(
-        speaker: ConversationSpeaker.learner,
-        message: message,
-      ));
-      _history.add(ConversationTurn(
-          speaker: ConversationSpeaker.learner, message: message));
+      _entries.add(
+        _ChatEntry(speaker: ConversationSpeaker.learner, message: message),
+      );
+      _history.add(
+        ConversationTurn(
+          speaker: ConversationSpeaker.learner,
+          message: message,
+        ),
+      );
       _isBusy = true;
       _errorMessage = null;
       _messageController.clear();
@@ -438,16 +461,19 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
       if (!mounted) return;
 
       _appendSparkResponse(response);
-      _history.add(ConversationTurn(
-          speaker: ConversationSpeaker.spark, message: response.message));
+      _history.add(
+        ConversationTurn(
+          speaker: ConversationSpeaker.spark,
+          message: response.message,
+        ),
+      );
 
       await _speakSpark(response.message);
       await _rewardLearner();
-      TelemetryService.maybeOf(context)
-          ?.logCustomEvent('ai_conversation_turn', {
-        'topic': _selectedTopic,
-        'skill': _selectedSkill,
-      });
+      TelemetryService.maybeOf(context)?.logCustomEvent(
+        'ai_conversation_turn',
+        {'topic': _selectedTopic, 'skill': _selectedSkill},
+      );
     } on ConversationGenerationException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -527,7 +553,8 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
           setState(() {
             _messageController.text = result.recognizedWords;
             _messageController.selection = TextSelection.fromPosition(
-                TextPosition(offset: _messageController.text.length));
+              TextPosition(offset: _messageController.text.length),
+            );
             if (result.finalResult) {
               _isListening = false;
             }
@@ -571,11 +598,7 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
 }
 
 class _ChatEntry {
-  _ChatEntry({
-    required this.speaker,
-    required this.message,
-    this.responseMeta,
-  });
+  _ChatEntry({required this.speaker, required this.message, this.responseMeta});
 
   final ConversationSpeaker speaker;
   final String message;
@@ -640,8 +663,9 @@ class _SparkBubble extends StatelessWidget {
                 if (response?.vocabularyHighlights.isNotEmpty == true) ...[
                   Text(
                     'מילים באנגלית מהשיחה:',
-                    style: theme.textTheme.labelLarge
-                        ?.copyWith(color: Colors.deepPurple.shade600),
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: Colors.deepPurple.shade600,
+                    ),
                     textDirection: TextDirection.rtl,
                   ),
                   const SizedBox(height: 8),
@@ -649,10 +673,12 @@ class _SparkBubble extends StatelessWidget {
                     spacing: 6,
                     runSpacing: 6,
                     children: response!.vocabularyHighlights
-                        .map((word) => Chip(
-                              avatar: const Icon(Icons.translate, size: 16),
-                              label: Text(word),
-                            ))
+                        .map(
+                          (word) => Chip(
+                            avatar: const Icon(Icons.translate, size: 16),
+                            label: Text(word),
+                          ),
+                        )
                         .toList(growable: false),
                   ),
                   const SizedBox(height: 12),
@@ -686,8 +712,9 @@ class _SparkBubble extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     'רעיונות לתשובה:',
-                    style: theme.textTheme.labelLarge
-                        ?.copyWith(color: Colors.deepPurple.shade600),
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: Colors.deepPurple.shade600,
+                    ),
                     textDirection: TextDirection.rtl,
                   ),
                   const SizedBox(height: 6),
@@ -697,8 +724,10 @@ class _SparkBubble extends StatelessWidget {
                     children: response!.suggestedLearnerReplies
                         .map(
                           (suggestion) => ActionChip(
-                            avatar:
-                                const Icon(Icons.record_voice_over, size: 18),
+                            avatar: const Icon(
+                              Icons.record_voice_over,
+                              size: 18,
+                            ),
                             label: Text(suggestion),
                             onPressed: onSuggestionTap == null
                                 ? null
@@ -761,8 +790,11 @@ class _LearnerBubble extends StatelessWidget {
 }
 
 class _InfoChip extends StatelessWidget {
-  const _InfoChip(
-      {required this.icon, required this.label, required this.text});
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    required this.text,
+  });
 
   final IconData icon;
   final String label;
@@ -787,13 +819,18 @@ class _InfoChip extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: theme.textTheme.labelLarge
-                        ?.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  label,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(text,
-                    style: theme.textTheme.bodyMedium,
-                    textDirection: TextDirection.rtl),
+                Text(
+                  text,
+                  style: theme.textTheme.bodyMedium,
+                  textDirection: TextDirection.rtl,
+                ),
               ],
             ),
           ),
@@ -826,7 +863,9 @@ class _ErrorBanner extends StatelessWidget {
             child: Text(
               message,
               style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w600),
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
               textDirection: TextDirection.rtl,
             ),
           ),

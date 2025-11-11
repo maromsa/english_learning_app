@@ -5,10 +5,30 @@ import '../models/achievement.dart';
 
 class AchievementService with ChangeNotifier {
   List<Achievement> achievements = [
-    Achievement(id: 'first_correct', name: 'צעד ראשון', description: 'ענית נכון על המילה הראשונה שלך!', icon: Icons.flag),
-    Achievement(id: 'streak_5', name: 'ברצף!', description: 'הגעת לרצף של 5 תשובות נכונות', icon: Icons.whatshot),
-    Achievement(id: 'level_1_complete', name: 'בוגר שלב 1', description: 'סיימת את כל המילים בשלב הראשון', icon: Icons.school),
-    Achievement(id: 'add_word', name: 'יוצר קטן', description: 'הוספת מילה חדשה בעצמך!', icon: Icons.camera_alt),
+    Achievement(
+      id: 'first_correct',
+      name: 'צעד ראשון',
+      description: 'ענית נכון על המילה הראשונה שלך!',
+      icon: Icons.flag,
+    ),
+    Achievement(
+      id: 'streak_5',
+      name: 'ברצף!',
+      description: 'הגעת לרצף של 5 תשובות נכונות',
+      icon: Icons.whatshot,
+    ),
+    Achievement(
+      id: 'level_1_complete',
+      name: 'בוגר שלב 1',
+      description: 'סיימת את כל המילים בשלב הראשון',
+      icon: Icons.school,
+    ),
+    Achievement(
+      id: 'add_word',
+      name: 'יוצר קטן',
+      description: 'הוספת מילה חדשה בעצמך!',
+      icon: Icons.camera_alt,
+    ),
   ];
 
   AchievementService() {
@@ -16,7 +36,11 @@ class AchievementService with ChangeNotifier {
   }
 
   // פונקציה שבודקת אם צריך לפתוח הישגים חדשים
-  void checkForAchievements({required int streak, bool wordAdded = false, String? levelName}) {
+  void checkForAchievements({
+    required int streak,
+    bool wordAdded = false,
+    String? levelName,
+  }) {
     // בדוק הישג על תשובה ראשונה
     if (!isUnlocked('first_correct')) {
       unlockAchievement('first_correct');
@@ -72,7 +96,7 @@ class AchievementService with ChangeNotifier {
 
   // Callback for UI to show achievement notifications
   Function(Achievement)? _achievementUnlockedCallback;
-  
+
   void setAchievementUnlockedCallback(Function(Achievement) callback) {
     _achievementUnlockedCallback = callback;
   }
@@ -86,7 +110,8 @@ class AchievementService with ChangeNotifier {
   Future<void> loadAchievements() async {
     final prefs = await SharedPreferences.getInstance();
     for (var achievement in achievements) {
-      achievement.isUnlocked = prefs.getBool('achievement_${achievement.id}') ?? false;
+      achievement.isUnlocked =
+          prefs.getBool('achievement_${achievement.id}') ?? false;
     }
     notifyListeners();
   }

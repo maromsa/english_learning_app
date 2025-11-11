@@ -9,11 +9,9 @@ import 'gemini_proxy_service.dart';
 typedef _PracticePackGenerator = Future<String?> Function(String prompt);
 
 class PracticePackService {
-  PracticePackService({
-    Duration? timeout,
-    _PracticePackGenerator? generator,
-  })  : _timeout = timeout ?? const Duration(seconds: 12),
-        _generator = generator ?? _inferGenerator();
+  PracticePackService({Duration? timeout, _PracticePackGenerator? generator})
+    : _timeout = timeout ?? const Duration(seconds: 12),
+      _generator = generator ?? _inferGenerator();
 
   final _PracticePackGenerator _generator;
   final Duration _timeout;
@@ -24,16 +22,26 @@ class PracticePackService {
     try {
       final raw = await _generator(prompt).timeout(_timeout);
       if (raw == null || raw.trim().isEmpty) {
-        throw const PracticePackGenerationException('לא התקבלה תשובה מ-Gemini. נסו שוב עוד רגע.');
+        throw const PracticePackGenerationException(
+          'לא התקבלה תשובה מ-Gemini. נסו שוב עוד רגע.',
+        );
       }
-      return _parseResponse(raw, prompt: prompt, fallback: _stubFallback(request));
+      return _parseResponse(
+        raw,
+        prompt: prompt,
+        fallback: _stubFallback(request),
+      );
     } on TimeoutException {
-      throw const PracticePackGenerationException('נראה ש-Gemini מתעכב. נסו שוב עוד רגע.');
+      throw const PracticePackGenerationException(
+        'נראה ש-Gemini מתעכב. נסו שוב עוד רגע.',
+      );
     } on PracticePackGenerationException {
       rethrow;
     } catch (error, stackTrace) {
       debugPrint('Practice pack generation failed: $error\n$stackTrace');
-      throw const PracticePackGenerationException('ספרק לא הצליח לבנות פעילות חדשה. נסו שוב עוד מעט.');
+      throw const PracticePackGenerationException(
+        'ספרק לא הצליח לבנות פעילות חדשה. נסו שוב עוד מעט.',
+      );
     }
   }
 
@@ -62,7 +70,9 @@ class PracticePackService {
           systemInstruction: _sparkSystemInstruction,
         );
         if (response == null || response.trim().isEmpty) {
-          throw const PracticePackUnavailableException(_geminiUnavailableMessage);
+          throw const PracticePackUnavailableException(
+            _geminiUnavailableMessage,
+          );
         }
         return response;
       } finally {
@@ -124,8 +134,12 @@ Ensure exactly three activities are returned.''';
 
     if (decoded != null) {
       try {
-        final activities = (decoded['activities'] as List?)
-                ?.map((item) => PracticeActivity.fromJson(item as Map<String, dynamic>))
+        final activities =
+            (decoded['activities'] as List?)
+                ?.map(
+                  (item) =>
+                      PracticeActivity.fromJson(item as Map<String, dynamic>),
+                )
                 .where((activity) => activity.steps.isNotEmpty)
                 .take(3)
                 .toList(growable: false) ??
@@ -163,7 +177,9 @@ Ensure exactly three activities are returned.''';
   }
 
   PracticePack _stubPack(PracticePackRequest request, {String raw = 'stub'}) {
-    final focusWords = request.focusWords.isEmpty ? ['hello', 'friends', 'magic'] : request.focusWords.take(3).toList();
+    final focusWords = request.focusWords.isEmpty
+        ? ['hello', 'friends', 'magic']
+        : request.focusWords.take(3).toList();
     final energy = request.energyLevelDescription();
     final pepTalk =
         'היי! ספרק כאן. היום נעשה אימון ${request.skillFocusDescription()} עם מצב רוח $energy. ביחד נאמר ${focusWords.join(', ')} באנגלית עם חיוך!';
@@ -217,7 +233,9 @@ Ensure exactly three activities are returned.''';
     if (trimmed.startsWith('```')) {
       final fenceEnd = trimmed.indexOf('```', 3);
       if (fenceEnd != -1) {
-        return trimmed.substring(3, fenceEnd).replaceFirst(RegExp(r'^json\s*'), '');
+        return trimmed
+            .substring(3, fenceEnd)
+            .replaceFirst(RegExp(r'^json\s*'), '');
       }
       return trimmed.substring(3).replaceFirst(RegExp(r'^json\s*'), '');
     }
@@ -250,13 +268,14 @@ class PracticePackRequest {
   final String? learnerName;
 
   Map<String, dynamic> toMap() => <String, dynamic>{
-        'skillFocus': skillFocus,
-        'timeAvailable': timeAvailable,
-        'energyLevel': energyLevel,
-        'playMode': playMode,
-        'focusWords': focusWords,
-        if (learnerName != null && learnerName!.trim().isNotEmpty) 'learnerName': learnerName!.trim(),
-      };
+    'skillFocus': skillFocus,
+    'timeAvailable': timeAvailable,
+    'energyLevel': energyLevel,
+    'playMode': playMode,
+    'focusWords': focusWords,
+    if (learnerName != null && learnerName!.trim().isNotEmpty)
+      'learnerName': learnerName!.trim(),
+  };
 
   String skillFocusDescription() {
     switch (skillFocus) {
@@ -327,7 +346,6 @@ String _sanitize(dynamic value) {
   return '';
 }
 
-
 class PracticeActivity {
   PracticeActivity({
     required this.title,
@@ -341,13 +359,15 @@ class PracticeActivity {
     return PracticeActivity(
       title: _sanitize(json['title']),
       goal: _sanitize(json['goal']),
-      steps: (json['steps'] as List?)
+      steps:
+          (json['steps'] as List?)
               ?.whereType<String>()
               .map((step) => step.trim())
               .where((step) => step.isNotEmpty)
               .toList(growable: false) ??
           const <String>[],
-      englishFocus: (json['englishFocus'] as List?)
+      englishFocus:
+          (json['englishFocus'] as List?)
               ?.whereType<String>()
               .map((word) => word.trim())
               .where((word) => word.isNotEmpty)

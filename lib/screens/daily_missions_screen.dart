@@ -26,7 +26,9 @@ class DailyMissionsScreen extends StatelessWidget {
             return _EmptyState(onRefresh: missionsProvider.refreshMissions);
           }
 
-          final completedCount = missions.where((mission) => mission.isCompleted).length;
+          final completedCount = missions
+              .where((mission) => mission.isCompleted)
+              .length;
           final claimableRewards = missions
               .where((mission) => mission.isClaimable)
               .fold<int>(0, (sum, mission) => sum + mission.reward);
@@ -42,7 +44,9 @@ class DailyMissionsScreen extends StatelessWidget {
                   claimableRewards: claimableRewards,
                 ),
                 const SizedBox(height: 16),
-                ...missions.map((mission) => _MissionCard(mission: mission)).toList(growable: false),
+                ...missions
+                    .map((mission) => _MissionCard(mission: mission))
+                    .toList(growable: false),
                 const SizedBox(height: 24),
                 _TipsSection(),
               ],
@@ -84,16 +88,20 @@ class _SummaryHeader extends StatelessWidget {
                     color: Colors.indigo.shade500,
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(Icons.flag_rounded, color: Colors.white, size: 28),
+                  child: const Icon(
+                    Icons.flag_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'המסע של היום',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: Colors.indigo.shade700,
-                        ),
+                      fontWeight: FontWeight.w800,
+                      color: Colors.indigo.shade700,
+                    ),
                   ),
                 ),
               ],
@@ -187,12 +195,16 @@ class _MissionCard extends StatelessWidget {
                     children: [
                       Text(
                         mission.title,
-                        style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                        style: textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         mission.description,
-                        style: textTheme.bodyMedium?.copyWith(color: Colors.black87),
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
@@ -215,7 +227,9 @@ class _MissionCard extends StatelessWidget {
               children: [
                 Text(
                   '${mission.progress}/${mission.target}',
-                  style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Row(
                   children: [
@@ -235,7 +249,8 @@ class _MissionCard extends StatelessWidget {
                     ? FilledButton.icon(
                         key: const ValueKey('claimable'),
                         onPressed: () async {
-                          final missionsProvider = context.read<DailyMissionProvider>();
+                          final missionsProvider = context
+                              .read<DailyMissionProvider>();
                           final coinProvider = context.read<CoinProvider>();
                           final success = await missionsProvider.claimReward(
                             mission.id,
@@ -244,7 +259,9 @@ class _MissionCard extends StatelessWidget {
                           if (success && context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('🎉 משימה הושלמה! קיבלתם $coins מטבעות.'),
+                                content: Text(
+                                  '🎉 משימה הושלמה! קיבלתם $coins מטבעות.',
+                                ),
                                 backgroundColor: Colors.green.shade600,
                               ),
                             );
@@ -256,7 +273,8 @@ class _MissionCard extends StatelessWidget {
                     : OutlinedButton.icon(
                         key: const ValueKey('keep-going'),
                         icon: const Icon(Icons.play_arrow_rounded),
-                        onPressed: () => _navigateToMission(context, mission.type),
+                        onPressed: () =>
+                            _navigateToMission(context, mission.type),
                         label: const Text('קדימה לתרגול'),
                       ),
               ),
@@ -310,10 +328,16 @@ class _SummaryChip extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
               Text(
                 value,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -358,7 +382,9 @@ class _TipsSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('• ', style: TextStyle(fontSize: 16)),
-                    Expanded(child: Text(tip, style: const TextStyle(fontSize: 15))),
+                    Expanded(
+                      child: Text(tip, style: const TextStyle(fontSize: 15)),
+                    ),
                   ],
                 ),
               ),

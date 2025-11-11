@@ -10,7 +10,9 @@ class LevelRepository {
 
   final AssetBundle _bundle;
 
-  Future<List<LevelData>> loadLevels({String assetPath = 'assets/data/levels.json'}) async {
+  Future<List<LevelData>> loadLevels({
+    String assetPath = 'assets/data/levels.json',
+  }) async {
     try {
       final raw = await _bundle.loadString(assetPath);
       final decoded = jsonDecode(raw) as Map<String, dynamic>;

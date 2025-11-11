@@ -6,7 +6,7 @@ import '../models/word_data.dart';
 
 class CloudinaryService {
   CloudinaryService({http.Client? httpClient})
-      : _httpClient = httpClient ?? http.Client();
+    : _httpClient = httpClient ?? http.Client();
 
   final http.Client _httpClient;
 

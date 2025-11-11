@@ -20,7 +20,8 @@ class WordDisplayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String? imageUrl = wordData.imageUrl;
-    final bool isAssetImage = imageUrl != null && imageUrl.startsWith('assets/');
+    final bool isAssetImage =
+        imageUrl != null && imageUrl.startsWith('assets/');
     final bool isLocalFile =
         imageUrl != null && !imageUrl.startsWith('http') && !isAssetImage;
 
@@ -91,25 +92,25 @@ class WordDisplayCard extends StatelessWidget {
       child: isAssetImage
           ? _buildAssetImage(imageUrl)
           : isLocalFile
-              ? Image.file(
-                  File(imageUrl),
-                  key: ValueKey(imageUrl),
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    debugPrint('Failed to load local image "$imageUrl": $error');
-                    return _errorBuilder(context, error, stackTrace);
-                  },
-                )
-              : Image.network(
-                  imageUrl,
-                  key: ValueKey(imageUrl),
-                  fit: BoxFit.cover,
-                  loadingBuilder: _loadingBuilder,
-                  errorBuilder: (context, error, stackTrace) {
-                    debugPrint('Failed to load network image "$imageUrl": $error');
-                    return _errorBuilder(context, error, stackTrace);
-                  },
-                ),
+          ? Image.file(
+              File(imageUrl),
+              key: ValueKey(imageUrl),
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                debugPrint('Failed to load local image "$imageUrl": $error');
+                return _errorBuilder(context, error, stackTrace);
+              },
+            )
+          : Image.network(
+              imageUrl,
+              key: ValueKey(imageUrl),
+              fit: BoxFit.cover,
+              loadingBuilder: _loadingBuilder,
+              errorBuilder: (context, error, stackTrace) {
+                debugPrint('Failed to load network image "$imageUrl": $error');
+                return _errorBuilder(context, error, stackTrace);
+              },
+            ),
     );
   }
 
@@ -147,7 +148,9 @@ class WordDisplayCard extends StatelessWidget {
   }
 
   String _resolveWebAssetUrl(String assetPath) {
-    final normalized = assetPath.startsWith('/') ? assetPath.substring(1) : assetPath;
+    final normalized = assetPath.startsWith('/')
+        ? assetPath.substring(1)
+        : assetPath;
     return Uri.base.resolve('assets/$normalized').toString();
   }
 
@@ -165,10 +168,10 @@ class WordDisplayCard extends StatelessWidget {
   );
 
   Widget _loadingBuilder(
-      BuildContext context,
-      Widget child,
-      ImageChunkEvent? loadingProgress,
-      ) {
+    BuildContext context,
+    Widget child,
+    ImageChunkEvent? loadingProgress,
+  ) {
     if (loadingProgress == null) return child;
 
     return Container(
@@ -180,16 +183,15 @@ class WordDisplayCard extends StatelessWidget {
   }
 
   Widget _errorBuilder(
-      BuildContext context,
-      Object error,
-      StackTrace? stackTrace,
-      ) =>
-      Container(
-        width: 250,
-        height: 250,
-        color: Colors.grey.shade200,
-        child: const Center(
-          child: Icon(Icons.broken_image, size: 80, color: Colors.grey),
-        ),
-      );
+    BuildContext context,
+    Object error,
+    StackTrace? stackTrace,
+  ) => Container(
+    width: 250,
+    height: 250,
+    color: Colors.grey.shade200,
+    child: const Center(
+      child: Icon(Icons.broken_image, size: 80, color: Colors.grey),
+    ),
+  );
 }

@@ -7,27 +7,33 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:english_learning_app/firebase_options.dart';
 import 'package:english_learning_app/app_config.dart';
 
-
 // --- רשימת המילים שברצונך להוסיף ---
 const List<String> wordsToUpload = [
-  'Apple', 'Banana', 'Car', 'Dog', 'Cat', 'House', 'Tree', 'Sun', 'Moon', 'Star'
+  'Apple',
+  'Banana',
+  'Car',
+  'Dog',
+  'Cat',
+  'House',
+  'Tree',
+  'Sun',
+  'Moon',
+  'Star',
 ];
-
 
 // ---- הפונקציה הראשית ----
 void main() async {
-
   // אתחול שירותי Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   final firestore = FirebaseFirestore.instance;
   final storage = FirebaseStorage.instance;
   final batch = firestore.batch();
 
   if (!AppConfig.hasFirebaseUserId) {
-    print('❌ Missing FIREBASE_USER_ID_FOR_UPLOAD. Provide it via --dart-define.');
+    print(
+      '❌ Missing FIREBASE_USER_ID_FOR_UPLOAD. Provide it via --dart-define.',
+    );
     return;
   }
   if (!AppConfig.hasPixabay) {
@@ -47,7 +53,10 @@ void main() async {
       print("\nProcessing word: '$word'");
 
       // 1. חפש תמונה ב-Pixabay
-      final imageUrl = await searchImageOnPixabay(word, AppConfig.pixabayApiKey);
+      final imageUrl = await searchImageOnPixabay(
+        word,
+        AppConfig.pixabayApiKey,
+      );
       if (imageUrl == null) {
         print("  - Could not find image for '$word'. Skipping.");
         continue;
@@ -60,7 +69,11 @@ void main() async {
 
       // 3. העלה את התמונה ל-Firebase Storage
       final storagePath = 'word_images/${word.toLowerCase()}.jpg';
-      final finalImageUrl = await uploadImageToStorage(storage, imageBytes, storagePath);
+      final finalImageUrl = await uploadImageToStorage(
+        storage,
+        imageBytes,
+        storagePath,
+      );
       print("  - Uploaded to Firebase Storage at: $finalImageUrl");
 
       // 4. הוסף את המידע ל-Firestore Batch
@@ -71,7 +84,6 @@ void main() async {
         'isCompleted': false,
       });
       print("  - Added '$word' to the batch for Firestore.");
-
     } catch (e) {
       print("  - An error occurred while processing '$word': $e");
     }
@@ -83,12 +95,13 @@ void main() async {
   print("✅ Done! All words have been uploaded successfully.");
 }
 
-
 // ---- פונקציות עזר ----
 
 // פונקציה לחיפוש תמונה ב-Pixabay
 Future<String?> searchImageOnPixabay(String query, String apiKey) async {
-    final url = Uri.parse('https://pixabay.com/api/?key=$apiKey&q=${Uri.encodeComponent(query)}&image_type=illustration&orientation=horizontal&per_page=3');
+  final url = Uri.parse(
+    'https://pixabay.com/api/?key=$apiKey&q=${Uri.encodeComponent(query)}&image_type=illustration&orientation=horizontal&per_page=3',
+  );
   final response = await http.get(url);
 
   if (response.statusCode == 200) {
@@ -108,7 +121,9 @@ Future<String?> searchImageOnPixabay(String query, String apiKey) async {
     }
   } else {
     // --- נוסיף הדפסה למקרה של שגיאה ---
-    print("  - Pixabay request failed with status code: ${response.statusCode}");
+    print(
+      "  - Pixabay request failed with status code: ${response.statusCode}",
+    );
     print("  - Response body: ${response.body}");
     return null;
   }
@@ -124,7 +139,11 @@ Future<List<int>> downloadImage(String url) async {
 }
 
 // פונקציה להעלאת התמונה ל-Firebase Storage וקבלת הקישור הסופי
-Future<String> uploadImageToStorage(FirebaseStorage storage, List<int> imageBytes, String path) async {
+Future<String> uploadImageToStorage(
+  FirebaseStorage storage,
+  List<int> imageBytes,
+  String path,
+) async {
   final ref = storage.ref().child(path);
   final uploadTask = ref.putData(Uint8List.fromList(imageBytes));
   final snapshot = await uploadTask.whenComplete(() => {});

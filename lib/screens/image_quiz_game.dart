@@ -92,22 +92,22 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       _feedbackMessage = feedback;
     });
 
-      telemetry?.logQuizAnswered(
-        word: quizItem.correctAnswer,
-        correct: isCorrect,
-        reward: reward,
-        streak: newStreak,
-        questionIndex: _currentIndex,
-        hintUsed: _hintUsed,
-      );
+    telemetry?.logQuizAnswered(
+      word: quizItem.correctAnswer,
+      correct: isCorrect,
+      reward: reward,
+      streak: newStreak,
+      questionIndex: _currentIndex,
+      hintUsed: _hintUsed,
+    );
 
-      try {
-        context.read<DailyMissionProvider>().incrementByType(
-              DailyMissionType.quizPlay,
-            );
-      } on ProviderNotFoundException {
-        // Tests or standalone screens might not provide DailyMissionProvider; ignore silently.
-      }
+    try {
+      context.read<DailyMissionProvider>().incrementByType(
+        DailyMissionType.quizPlay,
+      );
+    } on ProviderNotFoundException {
+      // Tests or standalone screens might not provide DailyMissionProvider; ignore silently.
+    }
   }
 
   void _nextQuestion() {
@@ -118,7 +118,9 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
   }
 
   void _prepareNextQuestion() {
-    _currentOptions = quizItems[_currentIndex].getShuffledAnswers(random: _random);
+    _currentOptions = quizItems[_currentIndex].getShuffledAnswers(
+      random: _random,
+    );
     _answered = false;
     _selectedAnswer = null;
     _hintUsed = false;
@@ -131,7 +133,9 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
     }
 
     final quizItem = quizItems[_currentIndex];
-    final wrongAnswers = _currentOptions.where((answer) => answer != quizItem.correctAnswer).toList();
+    final wrongAnswers = _currentOptions
+        .where((answer) => answer != quizItem.correctAnswer)
+        .toList();
     if (wrongAnswers.isEmpty) {
       return;
     }
@@ -141,7 +145,8 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
     final remainingOptions = _currentOptions.length - 1;
 
     setState(() {
-      _currentOptions = List<String>.from(_currentOptions)..remove(answerToRemove);
+      _currentOptions = List<String>.from(_currentOptions)
+        ..remove(answerToRemove);
       _hintUsed = true;
       _feedbackMessage = 'I removed one incorrect option 😉';
     });
@@ -168,9 +173,21 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
           runSpacing: 12,
           children: [
             _StatBadge(label: 'Score', value: _score, icon: Icons.emoji_events),
-            _StatBadge(label: 'Streak', value: _streak, icon: Icons.local_fire_department),
-            _StatBadge(label: 'Best Streak', value: _bestStreak, icon: Icons.military_tech),
-            _StatBadge(label: 'Coins', value: totalCoins, icon: Icons.attach_money),
+            _StatBadge(
+              label: 'Streak',
+              value: _streak,
+              icon: Icons.local_fire_department,
+            ),
+            _StatBadge(
+              label: 'Best Streak',
+              value: _bestStreak,
+              icon: Icons.military_tech,
+            ),
+            _StatBadge(
+              label: 'Coins',
+              value: totalCoins,
+              icon: Icons.attach_money,
+            ),
           ],
         ),
       ),
@@ -198,7 +215,13 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))],
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
                 clipBehavior: Clip.hardEdge,
                 child: Image.asset(
@@ -211,7 +234,10 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: OutlinedButton.icon(
-                  onPressed: (!_answered && !_hintUsed && _currentOptions.length > 2) ? _useHint : null,
+                  onPressed:
+                      (!_answered && !_hintUsed && _currentOptions.length > 2)
+                      ? _useHint
+                      : null,
                   icon: const Icon(Icons.lightbulb_outline),
                   label: Text(_hintUsed ? 'Hint used' : 'Get a hint'),
                 ),
@@ -240,12 +266,22 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
-                          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3))],
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 6,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
                         ),
                         child: Text(
                           _feedbackMessage!,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.purple),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.purple,
+                          ),
                         ),
                       ),
               ),
@@ -254,15 +290,24 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _answered ? Colors.green.shade700 : Colors.grey.shade400,
+                    backgroundColor: _answered
+                        ? Colors.green.shade700
+                        : Colors.grey.shade400,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     elevation: 6,
                   ),
                   onPressed: _answered ? _nextQuestion : null,
                   child: Text(
-                    _answered ? 'Next question' : 'Choose an answer to continue',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    _answered
+                        ? 'Next question'
+                        : 'Choose an answer to continue',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -279,7 +324,11 @@ class _StatBadge extends StatelessWidget {
   final int value;
   final IconData icon;
 
-  const _StatBadge({required this.label, required this.value, required this.icon});
+  const _StatBadge({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -6,10 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class AiPracticePackScreen extends StatefulWidget {
-  const AiPracticePackScreen({
-    super.key,
-    this.focusWords = const <String>[],
-  });
+  const AiPracticePackScreen({super.key, this.focusWords = const <String>[]});
 
   final List<String> focusWords;
 
@@ -85,9 +82,7 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
                     onClose: () => setState(() => _errorMessage = null),
                   ),
                 ),
-              Expanded(
-                child: _buildPackView(),
-              ),
+              Expanded(child: _buildPackView()),
             ],
           ),
         ),
@@ -122,17 +117,41 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _buildDropdown(_skills, _selectedSkill, (value) => setState(() => _selectedSkill = value))),
+                Expanded(
+                  child: _buildDropdown(
+                    _skills,
+                    _selectedSkill,
+                    (value) => setState(() => _selectedSkill = value),
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _buildDropdown(_durations, _selectedTime, (value) => setState(() => _selectedTime = value))),
+                Expanded(
+                  child: _buildDropdown(
+                    _durations,
+                    _selectedTime,
+                    (value) => setState(() => _selectedTime = value),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _buildDropdown(_energies, _selectedEnergy, (value) => setState(() => _selectedEnergy = value))),
+                Expanded(
+                  child: _buildDropdown(
+                    _energies,
+                    _selectedEnergy,
+                    (value) => setState(() => _selectedEnergy = value),
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _buildDropdown(_modes, _selectedMode, (value) => setState(() => _selectedMode = value))),
+                Expanded(
+                  child: _buildDropdown(
+                    _modes,
+                    _selectedMode,
+                    (value) => setState(() => _selectedMode = value),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -159,12 +178,14 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
     );
   }
 
-  Widget _buildDropdown(List<_Option> options, String selected, ValueChanged<String> onChanged) {
+  Widget _buildDropdown(
+    List<_Option> options,
+    String selected,
+    ValueChanged<String> onChanged,
+  ) {
     return DropdownButtonFormField<String>(
       value: selected,
-      decoration: const InputDecoration(
-        border: OutlineInputBorder(),
-      ),
+      decoration: const InputDecoration(border: OutlineInputBorder()),
       items: options
           .map(
             (option) => DropdownMenuItem<String>(
@@ -193,11 +214,19 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.local_fire_department, size: 72, color: Colors.white.withOpacity(0.8)),
+              Icon(
+                Icons.local_fire_department,
+                size: 72,
+                color: Colors.white.withOpacity(0.8),
+              ),
               const SizedBox(height: 12),
               const Text(
                 'ספרק מחכה שתבנו את חבילת האימון הראשונה!',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -237,7 +266,11 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
           children: [
             Text(
               pack.pepTalk,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, height: 1.4),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
               textDirection: TextDirection.rtl,
             ),
             const SizedBox(height: 12),
@@ -279,7 +312,9 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
       timeAvailable: _selectedTime,
       energyLevel: _selectedEnergy,
       playMode: _selectedMode,
-      learnerName: _nameController.text.trim().isEmpty ? null : _nameController.text.trim(),
+      learnerName: _nameController.text.trim().isEmpty
+          ? null
+          : _nameController.text.trim(),
       focusWords: _resolvedFocusWords(),
     );
 
@@ -290,11 +325,14 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
         _pack = pack;
         _completed = List<bool>.filled(pack.activities.length, false);
       });
-      TelemetryService.maybeOf(context)?.logCustomEvent('ai_practice_pack_generated', {
-        'skill': _selectedSkill,
-        'time': _selectedTime,
-        'energy': _selectedEnergy,
-      });
+      TelemetryService.maybeOf(context)?.logCustomEvent(
+        'ai_practice_pack_generated',
+        {
+          'skill': _selectedSkill,
+          'time': _selectedTime,
+          'energy': _selectedEnergy,
+        },
+      );
     } on PracticePackGenerationException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -335,10 +373,10 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
         behavior: SnackBarBehavior.floating,
       ),
     );
-    TelemetryService.maybeOf(context)?.logCustomEvent('ai_practice_activity_completed', {
-      'skill': _selectedSkill,
-      'activity_index': index,
-    });
+    TelemetryService.maybeOf(context)?.logCustomEvent(
+      'ai_practice_activity_completed',
+      {'skill': _selectedSkill, 'activity_index': index},
+    );
   }
 
   List<String> _resolvedFocusWords() {
@@ -349,7 +387,9 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
         .toList(growable: false);
 
     final combined = <String>{
-      ...widget.focusWords.map((word) => word.trim()).where((word) => word.isNotEmpty),
+      ...widget.focusWords
+          .map((word) => word.trim())
+          .where((word) => word.isNotEmpty),
       ...extraWords,
     }.toList(growable: false);
 
@@ -396,7 +436,9 @@ class _ActivityCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     activity.title,
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                     textDirection: TextDirection.rtl,
                   ),
                 ),
@@ -405,7 +447,9 @@ class _ActivityCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               activity.goal,
-              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade700),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.grey.shade700,
+              ),
               textDirection: TextDirection.rtl,
             ),
             const SizedBox(height: 12),
@@ -571,7 +615,10 @@ class _ErrorBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
               textDirection: TextDirection.rtl,
             ),
           ),

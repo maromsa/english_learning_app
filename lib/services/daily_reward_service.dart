@@ -17,8 +17,8 @@ class DailyRewardResult {
 
 class DailyRewardService {
   DailyRewardService({DateTime Function()? now, math.Random? random})
-      : _now = now ?? DateTime.now,
-        _random = random ?? math.Random();
+    : _now = now ?? DateTime.now,
+      _random = random ?? math.Random();
 
   static const String _lastClaimKey = 'daily_reward_last_claim';
   static const String _streakKey = 'daily_reward_streak';

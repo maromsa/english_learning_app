@@ -7,11 +7,7 @@ void main() {
   group('ScoreDisplay', () {
     testWidgets('should display coins correctly', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ScoreDisplay(coins: 100),
-          ),
-        ),
+        MaterialApp(home: Scaffold(body: ScoreDisplay(coins: 100))),
       );
 
       expect(find.text('100'), findsOneWidget);
@@ -19,11 +15,7 @@ void main() {
 
     testWidgets('should display zero coins', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ScoreDisplay(coins: 0),
-          ),
-        ),
+        MaterialApp(home: Scaffold(body: ScoreDisplay(coins: 0))),
       );
 
       expect(find.text('0'), findsOneWidget);
@@ -48,9 +40,7 @@ void main() {
       coins = 150;
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: ScoreDisplay(coins: coins),
-          ),
+          home: Scaffold(body: ScoreDisplay(coins: coins)),
         ),
       );
 

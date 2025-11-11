@@ -77,10 +77,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'מסע המילים באנגלית',
       locale: const Locale('he', 'IL'),
-      supportedLocales: const [
-        Locale('he', 'IL'),
-        Locale('en', 'US'),
-      ],
+      supportedLocales: const [Locale('he', 'IL'), Locale('en', 'US')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

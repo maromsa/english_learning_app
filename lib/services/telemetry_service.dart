@@ -6,9 +6,10 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 class TelemetryService {
-  TelemetryService(
-      {FirebaseAnalytics? analytics, this.enableDebugLogging = kDebugMode})
-      : _analytics = analytics ?? _tryGetAnalytics();
+  TelemetryService({
+    FirebaseAnalytics? analytics,
+    this.enableDebugLogging = kDebugMode,
+  }) : _analytics = analytics ?? _tryGetAnalytics();
 
   final FirebaseAnalytics? _analytics;
   final bool enableDebugLogging;
@@ -22,8 +23,10 @@ class TelemetryService {
     }
   }
 
-  static TelemetryService? maybeOf(BuildContext context,
-      {bool listen = false}) {
+  static TelemetryService? maybeOf(
+    BuildContext context, {
+    bool listen = false,
+  }) {
     try {
       return Provider.of<TelemetryService>(context, listen: listen);
     } on ProviderNotFoundException {
@@ -143,8 +146,10 @@ class TelemetryService {
     _activeSessions[screenName] = DateTime.now();
   }
 
-  Future<void> endScreenSession(String screenName,
-      {Map<String, Object?> extra = const {}}) {
+  Future<void> endScreenSession(
+    String screenName, {
+    Map<String, Object?> extra = const {},
+  }) {
     final start = _activeSessions.remove(screenName);
     if (start == null) {
       return Future<void>.value();

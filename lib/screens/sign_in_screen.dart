@@ -28,10 +28,9 @@ class SignInScreen extends StatelessWidget {
                   Text(
                     'Sign in to continue',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -44,10 +43,9 @@ class SignInScreen extends StatelessWidget {
                     Text(
                       error,
                       textAlign: TextAlign.center,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: Theme.of(context).colorScheme.error),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -55,7 +53,9 @@ class SignInScreen extends StatelessWidget {
                     onPressed: isBusy
                         ? null
                         : () async {
-                            await context.read<AuthProvider>().signInWithGoogle();
+                            await context
+                                .read<AuthProvider>()
+                                .signInWithGoogle();
                           },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -71,7 +71,9 @@ class SignInScreen extends StatelessWidget {
                               SizedBox(
                                 height: 16,
                                 width: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               ),
                               SizedBox(width: 12),
                               Text('Signing in...'),
@@ -83,10 +85,9 @@ class SignInScreen extends StatelessWidget {
                   Text(
                     'We use your Gmail only to authenticate and keep your learning journey safe.',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
