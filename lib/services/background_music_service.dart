@@ -147,14 +147,22 @@ class BackgroundMusicService with WidgetsBindingObserver {
       return false;
     }
     if (error is PlayerException) {
-      final code = error.code.toLowerCase();
-      final message = (error.message ?? '').toLowerCase();
+      final code = _lowercase(error.code);
+      final message = _lowercase(error.message);
       if (code.contains('notallowed') || message.contains('notallowed')) {
         return true;
       }
     }
-    final errorString = error.toString().toLowerCase();
+    final errorString = _lowercase(error);
     return errorString.contains('notallowed');
+  }
+
+  String _lowercase(Object? value) {
+    if (value == null) {
+      return '';
+    }
+    final normalized = value is String ? value : value.toString();
+    return normalized.toLowerCase();
   }
 
   Future<void> fadeOut({Duration duration = const Duration(milliseconds: 600)}) {
