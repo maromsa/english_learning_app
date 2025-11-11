@@ -56,7 +56,11 @@ class AdventureStoryService {
     final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
     if (proxyEndpoint == null) {
-      throw const AdventureStoryUnavailableException(_geminiUnavailableMessage);
+      return (_) async {
+        throw const AdventureStoryUnavailableException(
+          _geminiUnavailableMessage,
+        );
+      };
     }
 
     return (prompt) async {
