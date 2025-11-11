@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/auth_gate.dart';
+import 'services/background_music_service.dart';
 import 'services/telemetry_service.dart';
 
 Future<void> main() async {
@@ -52,53 +53,74 @@ Future<void> main() async {
   final telemetryService = TelemetryService();
   final dailyMissionProvider = DailyMissionProvider();
 
-  // Load persisted data
-  await coinProvider.loadCoins();
-  await themeProvider.loadTheme();
-  await shopProvider.loadPurchasedItems();
-  await dailyMissionProvider.initialize();
+    // Load persisted data
+    await coinProvider.loadCoins();
+    await themeProvider.loadTheme();
+    await shopProvider.loadPurchasedItems();
+    await dailyMissionProvider.initialize();
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: coinProvider),
-        ChangeNotifierProvider.value(value: themeProvider),
-        ChangeNotifierProvider.value(value: achievementService),
-        ChangeNotifierProvider.value(value: shopProvider),
-        ChangeNotifierProvider.value(value: dailyMissionProvider),
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        Provider<TelemetryService>.value(value: telemetryService),
-      ],
-      child: MyApp(hasSeenOnboarding: hasSeenOnboarding),
-    ),
-  );
-}
-
-class MyApp extends StatelessWidget {
-  final bool hasSeenOnboarding;
-  const MyApp({super.key, required this.hasSeenOnboarding});
-
-  @override
-  Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    return MaterialApp(
-      title: 'מסע המילים באנגלית',
-      locale: const Locale('he', 'IL'),
-      supportedLocales: const [Locale('he', 'IL'), Locale('en', 'US')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue.shade100),
-        useMaterial3: true,
-        textTheme: GoogleFonts.assistantTextTheme(Theme.of(context).textTheme),
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: coinProvider),
+          ChangeNotifierProvider.value(value: themeProvider),
+          ChangeNotifierProvider.value(value: achievementService),
+          ChangeNotifierProvider.value(value: shopProvider),
+          ChangeNotifierProvider.value(value: dailyMissionProvider),
+          ChangeNotifierProvider(create: (_) => BackgroundMusicService()),
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          Provider<TelemetryService>.value(value: telemetryService),
+        ],
+        child: MyApp(hasSeenOnboarding: hasSeenOnboarding),
       ),
-      darkTheme: ThemeData.dark(),
-      themeMode: themeProvider.themeMode,
-      debugShowCheckedModeBanner: false,
-      home: AuthGate(hasSeenOnboarding: hasSeenOnboarding),
     );
-  }
 }
+ 
+ class MyApp extends StatefulWidget {
+   final bool hasSeenOnboarding;
+   const MyApp({super.key, required this.hasSeenOnboarding});
+ 
+   @override
+   State<MyApp> createState() => _MyAppState();
+ }
+ 
+ class _MyAppState extends State<MyApp> {
+   bool _introStarted = false;
+ 
+   @override
+   void initState() {
+     super.initState();
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+       if (!mounted || _introStarted) {
+         return;
+       }
+       _introStarted = true;
+       final musicService = context.read<BackgroundMusicService>();
+       musicService.playIntro();
+     });
+   }
+ 
+   @override
+   Widget build(BuildContext context) {
+     final themeProvider = Provider.of<ThemeProvider>(context);
+     return MaterialApp(
+       title: 'מסע המילים באנגלית',
+       locale: const Locale('he', 'IL'),
+       supportedLocales: const [Locale('he', 'IL'), Locale('en', 'US')],
+       localizationsDelegates: const [
+         GlobalMaterialLocalizations.delegate,
+         GlobalWidgetsLocalizations.delegate,
+         GlobalCupertinoLocalizations.delegate,
+       ],
+       theme: ThemeData(
+         colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue.shade100),
+         useMaterial3: true,
+         textTheme: GoogleFonts.assistantTextTheme(Theme.of(context).textTheme),
+       ),
+       darkTheme: ThemeData.dark(),
+       themeMode: themeProvider.themeMode,
+       debugShowCheckedModeBanner: false,
+       home: AuthGate(hasSeenOnboarding: widget.hasSeenOnboarding),
+     );
+   }
+ }

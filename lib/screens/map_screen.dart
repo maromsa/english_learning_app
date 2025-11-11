@@ -5,6 +5,7 @@ import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/screens/ai_conversation_screen.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/home_page.dart';
+import 'package:english_learning_app/services/background_music_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,6 +37,12 @@ class _MapScreenState extends State<MapScreen> {
     _dailyRewardService = DailyRewardService();
     _levelRepository = LevelRepository();
     _initialize();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final musicService =
+          Provider.maybeOf<BackgroundMusicService>(context, listen: false);
+      musicService?.fadeToTrack(BackgroundTrack.mapLoop);
+    });
   }
 
   Future<void> _initialize() async {
@@ -310,7 +317,10 @@ class _MapScreenState extends State<MapScreen> {
 
   void _navigateToLevel(LevelData level, int levelIndex) async {
     final coinProvider = Provider.of<CoinProvider>(context, listen: false);
+    final musicService =
+        Provider.maybeOf<BackgroundMusicService>(context, listen: false);
     coinProvider.startLevel();
+    await musicService?.pause();
 
     await Navigator.push(
       context,
@@ -324,6 +334,7 @@ class _MapScreenState extends State<MapScreen> {
     );
 
     if (mounted) {
+      await musicService?.playMapLoop();
       final coinsEarnedInLevel = coinProvider.levelCoins;
       final levelData = levels[levelIndex];
       final previousStars = levelData.stars;
