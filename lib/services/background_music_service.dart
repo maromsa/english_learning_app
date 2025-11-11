@@ -22,6 +22,9 @@ class BackgroundMusicService with WidgetsBindingObserver {
   bool _resumeOnForeground = false;
   _BackgroundPlaylist _currentPlaylist = _BackgroundPlaylist.none;
   bool _awaitingUserInteractionUnlock = false;
+  bool _userInteractionReceived = !kIsWeb;
+  ConcatenatingAudioSource? _startupSequenceSource;
+  bool _startupChimeRemoved = false;
   StreamSubscription<int?>? _currentIndexSubscription;
 
   static const _startupChimeAsset = 'assets/audio/startup_chime.wav';
@@ -39,9 +42,16 @@ class BackgroundMusicService with WidgetsBindingObserver {
         if (index == null) {
           return;
         }
-        if (_currentPlaylist == _BackgroundPlaylist.startupSequence &&
-            index == 1) {
-          unawaited(_player.setLoopMode(LoopMode.one));
+          if (_currentPlaylist == _BackgroundPlaylist.startupSequence &&
+              index == 1) {
+            if (!_startupChimeRemoved) {
+              _startupChimeRemoved = true;
+              final source = _startupSequenceSource;
+              if (source != null) {
+                unawaited(source.removeAt(0));
+              }
+            }
+            unawaited(_player.setLoopMode(_loopModeForSingleTrack()));
         }
       });
       _initialized = true;
@@ -65,13 +75,15 @@ class BackgroundMusicService with WidgetsBindingObserver {
     try {
       await _player.stop();
       await _player.setLoopMode(LoopMode.off);
-      final source = ConcatenatingAudioSource(
-        children: [
-          AudioSource.asset(_startupChimeAsset),
-          AudioSource.asset(_backgroundLoopAsset),
-        ],
-      );
-      await _player.setAudioSource(source);
+        _startupSequenceSource = ConcatenatingAudioSource(
+          useLazyPreparation: true,
+          children: [
+            AudioSource.asset(_startupChimeAsset),
+            AudioSource.asset(_backgroundLoopAsset),
+          ],
+        );
+        _startupChimeRemoved = false;
+        await _player.setAudioSource(_startupSequenceSource!);
       _currentPlaylist = _BackgroundPlaylist.startupSequence;
       await _startPlaybackWithUnlock(
         contextDescription: 'Startup sequence',
@@ -79,6 +91,8 @@ class BackgroundMusicService with WidgetsBindingObserver {
     } catch (error, stackTrace) {
       debugPrint('Failed to play startup sequence: $error');
       debugPrint('$stackTrace');
+        _startupSequenceSource = null;
+        _startupChimeRemoved = false;
     }
   }
 
@@ -89,10 +103,12 @@ class BackgroundMusicService with WidgetsBindingObserver {
     }
 
     try {
-      await _player.setAudioSource(
+        _startupSequenceSource = null;
+        _startupChimeRemoved = false;
+        await _player.setAudioSource(
         AudioSource.asset(_backgroundLoopAsset),
       );
-      await _player.setLoopMode(LoopMode.one);
+        await _player.setLoopMode(_loopModeForSingleTrack());
       _currentPlaylist = _BackgroundPlaylist.mapLoop;
       await _startPlaybackWithUnlock(
         contextDescription: 'Map loop',
@@ -104,9 +120,10 @@ class BackgroundMusicService with WidgetsBindingObserver {
   }
 
   Future<void> handleUserInteraction() async {
-    if (!_awaitingUserInteractionUnlock) {
-      return;
-    }
+      _userInteractionReceived = true;
+      if (!_awaitingUserInteractionUnlock) {
+        return;
+      }
     if (_currentPlaylist == _BackgroundPlaylist.none) {
       _awaitingUserInteractionUnlock = false;
       return;
@@ -121,6 +138,15 @@ class BackgroundMusicService with WidgetsBindingObserver {
   Future<void> _startPlaybackWithUnlock({
     required String contextDescription,
   }) async {
+      if (kIsWeb && !_userInteractionReceived) {
+        if (!_awaitingUserInteractionUnlock) {
+          debugPrint(
+            '$contextDescription playback deferred until user interaction.',
+          );
+        }
+        _awaitingUserInteractionUnlock = true;
+        return;
+      }
     try {
       await _player.play();
       if (_awaitingUserInteractionUnlock) {
@@ -175,6 +201,8 @@ class BackgroundMusicService with WidgetsBindingObserver {
   Future<void> stop() async {
     _currentPlaylist = _BackgroundPlaylist.none;
     _awaitingUserInteractionUnlock = false;
+      _startupSequenceSource = null;
+      _startupChimeRemoved = false;
     await _player.setLoopMode(LoopMode.off);
     try {
       await _player.stop();
@@ -215,6 +243,12 @@ class BackgroundMusicService with WidgetsBindingObserver {
     await _currentIndexSubscription?.cancel();
     _currentIndexSubscription = null;
     _awaitingUserInteractionUnlock = false;
+      _startupSequenceSource = null;
+      _startupChimeRemoved = false;
     await _player.dispose();
   }
+
+    LoopMode _loopModeForSingleTrack() {
+      return kIsWeb ? LoopMode.all : LoopMode.one;
+    }
 }
