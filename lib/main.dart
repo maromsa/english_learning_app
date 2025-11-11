@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/auth_gate.dart';
+import 'services/background_music_service.dart';
 import 'services/telemetry_service.dart';
 
 Future<void> main() async {
@@ -51,12 +52,14 @@ Future<void> main() async {
   final shopProvider = ShopProvider();
   final telemetryService = TelemetryService();
   final dailyMissionProvider = DailyMissionProvider();
+  final backgroundMusicService = BackgroundMusicService();
 
   // Load persisted data
   await coinProvider.loadCoins();
   await themeProvider.loadTheme();
   await shopProvider.loadPurchasedItems();
   await dailyMissionProvider.initialize();
+  await backgroundMusicService.playStartupSequence();
 
   runApp(
     MultiProvider(
