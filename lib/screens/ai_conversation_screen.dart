@@ -81,7 +81,6 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     _nameController.dispose();
     _scrollController.dispose();
     _tts.stop();
-    _tts.dispose();
     _speechToText.stop();
     _speechToText.cancel();
     super.dispose();
@@ -160,15 +159,21 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _buildDropdown(_topics, _selectedTopic, (value) => setState(() => _selectedTopic = value))),
+                Expanded(
+                    child: _buildDropdown(_topics, _selectedTopic,
+                        (value) => setState(() => _selectedTopic = value))),
                 const SizedBox(width: 12),
-                Expanded(child: _buildDropdown(_skills, _selectedSkill, (value) => setState(() => _selectedSkill = value))),
+                Expanded(
+                    child: _buildDropdown(_skills, _selectedSkill,
+                        (value) => setState(() => _selectedSkill = value))),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _buildDropdown(_energies, _selectedEnergy, (value) => setState(() => _selectedEnergy = value))),
+                Expanded(
+                    child: _buildDropdown(_energies, _selectedEnergy,
+                        (value) => setState(() => _selectedEnergy = value))),
                 const SizedBox(width: 12),
                 Expanded(child: _buildFocusWordsPreview()),
               ],
@@ -177,7 +182,8 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
             FilledButton.icon(
               onPressed: _isBusy ? null : _startConversation,
               icon: const Icon(Icons.auto_awesome),
-              label: Text(_sessionStarted ? 'התחילו שיחה חדשה' : 'צאו לשיחה קסומה'),
+              label: Text(
+                  _sessionStarted ? 'התחילו שיחה חדשה' : 'צאו לשיחה קסומה'),
             ),
           ],
         ),
@@ -185,7 +191,8 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     );
   }
 
-  Widget _buildDropdown(List<_Option> options, String selected, ValueChanged<String> onChanged) {
+  Widget _buildDropdown(
+      List<_Option> options, String selected, ValueChanged<String> onChanged) {
     return DropdownButtonFormField<String>(
       value: selected,
       decoration: const InputDecoration(
@@ -251,11 +258,15 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.white.withOpacity(0.85)),
+            Icon(Icons.chat_bubble_outline,
+                size: 64, color: Colors.white.withOpacity(0.85)),
             const SizedBox(height: 12),
             const Text(
               'התחילו שיחה עם ספרק כדי לראות את הקסם קורה!',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
             ),
           ],
@@ -276,7 +287,8 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
             onSuggestionTap: (suggestion) {
               setState(() {
                 _messageController.text = suggestion;
-                _messageController.selection = TextSelection.fromPosition(TextPosition(offset: suggestion.length));
+                _messageController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: suggestion.length));
               });
             },
           );
@@ -310,7 +322,8 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
                 ),
               ),
               IconButton(
-                icon: Icon(_isListening ? Icons.hearing_disabled : Icons.hearing),
+                icon:
+                    Icon(_isListening ? Icons.hearing_disabled : Icons.hearing),
                 tooltip: _speechReady ? 'אמרו משפט בקול' : 'הפעלת דיבור',
                 onPressed: !_speechReady || _isBusy ? null : _toggleListening,
               ),
@@ -339,7 +352,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
       topic: _selectedTopic,
       skillFocus: _selectedSkill,
       energyLevel: _selectedEnergy,
-      learnerName: _nameController.text.trim().isEmpty ? null : _nameController.text.trim(),
+      learnerName: _nameController.text.trim().isEmpty
+          ? null
+          : _nameController.text.trim(),
       focusWords: _resolveFocusWords(),
     );
 
@@ -348,11 +363,13 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
       if (!mounted) return;
 
       _appendSparkResponse(response);
-      _history.add(ConversationTurn(speaker: ConversationSpeaker.spark, message: response.message));
+      _history.add(ConversationTurn(
+          speaker: ConversationSpeaker.spark, message: response.message));
       _sessionStarted = true;
 
       await _speakSpark(response.message);
-      TelemetryService.maybeOf(context)?.logCustomEvent('ai_conversation_started', {
+      TelemetryService.maybeOf(context)
+          ?.logCustomEvent('ai_conversation_started', {
         'topic': _selectedTopic,
         'skill': _selectedSkill,
       });
@@ -393,7 +410,8 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
         speaker: ConversationSpeaker.learner,
         message: message,
       ));
-      _history.add(ConversationTurn(speaker: ConversationSpeaker.learner, message: message));
+      _history.add(ConversationTurn(
+          speaker: ConversationSpeaker.learner, message: message));
       _isBusy = true;
       _errorMessage = null;
       _messageController.clear();
@@ -401,13 +419,17 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     _scrollToBottom();
 
     try {
-      final trimmedHistory = _history.length > 12 ? _history.sublist(_history.length - 12) : List<ConversationTurn>.from(_history);
+      final trimmedHistory = _history.length > 12
+          ? _history.sublist(_history.length - 12)
+          : List<ConversationTurn>.from(_history);
       final response = await _service.continueConversation(
         setup: ConversationSetup(
           topic: _selectedTopic,
           skillFocus: _selectedSkill,
           energyLevel: _selectedEnergy,
-          learnerName: _nameController.text.trim().isEmpty ? null : _nameController.text.trim(),
+          learnerName: _nameController.text.trim().isEmpty
+              ? null
+              : _nameController.text.trim(),
           focusWords: _resolveFocusWords(),
         ),
         history: trimmedHistory,
@@ -416,11 +438,13 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
       if (!mounted) return;
 
       _appendSparkResponse(response);
-      _history.add(ConversationTurn(speaker: ConversationSpeaker.spark, message: response.message));
+      _history.add(ConversationTurn(
+          speaker: ConversationSpeaker.spark, message: response.message));
 
       await _speakSpark(response.message);
       await _rewardLearner();
-      TelemetryService.maybeOf(context)?.logCustomEvent('ai_conversation_turn', {
+      TelemetryService.maybeOf(context)
+          ?.logCustomEvent('ai_conversation_turn', {
         'topic': _selectedTopic,
         'skill': _selectedSkill,
       });
@@ -502,8 +526,8 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
           if (!mounted) return;
           setState(() {
             _messageController.text = result.recognizedWords;
-            _messageController.selection =
-                TextSelection.fromPosition(TextPosition(offset: _messageController.text.length));
+            _messageController.selection = TextSelection.fromPosition(
+                TextPosition(offset: _messageController.text.length));
             if (result.finalResult) {
               _isListening = false;
             }
@@ -604,7 +628,8 @@ class _SparkBubble extends StatelessWidget {
                   textDirection: TextDirection.rtl,
                 ),
                 const SizedBox(height: 12),
-                if (response?.sparkTip != null && response!.sparkTip!.isNotEmpty) ...[
+                if (response?.sparkTip != null &&
+                    response!.sparkTip!.isNotEmpty) ...[
                   _InfoChip(
                     icon: Icons.lightbulb_outline,
                     label: 'טיפ של ספרק',
@@ -615,7 +640,8 @@ class _SparkBubble extends StatelessWidget {
                 if (response?.vocabularyHighlights.isNotEmpty == true) ...[
                   Text(
                     'מילים באנגלית מהשיחה:',
-                    style: theme.textTheme.labelLarge?.copyWith(color: Colors.deepPurple.shade600),
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(color: Colors.deepPurple.shade600),
                     textDirection: TextDirection.rtl,
                   ),
                   const SizedBox(height: 8),
@@ -631,7 +657,8 @@ class _SparkBubble extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                 ],
-                if (response?.miniChallenge != null && response!.miniChallenge!.isNotEmpty) ...[
+                if (response?.miniChallenge != null &&
+                    response!.miniChallenge!.isNotEmpty) ...[
                   _InfoChip(
                     icon: Icons.sports_gymnastics,
                     label: 'אתגר מהיר',
@@ -639,7 +666,8 @@ class _SparkBubble extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                 ],
-                if (response?.followUp != null && response!.followUp!.isNotEmpty) ...[
+                if (response?.followUp != null &&
+                    response!.followUp!.isNotEmpty) ...[
                   _InfoChip(
                     icon: Icons.question_answer,
                     label: 'שאלת המשך',
@@ -647,7 +675,8 @@ class _SparkBubble extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                 ],
-                if (response?.celebration != null && response!.celebration!.isNotEmpty)
+                if (response?.celebration != null &&
+                    response!.celebration!.isNotEmpty)
                   Text(
                     response!.celebration!,
                     style: const TextStyle(fontSize: 24),
@@ -657,7 +686,8 @@ class _SparkBubble extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     'רעיונות לתשובה:',
-                    style: theme.textTheme.labelLarge?.copyWith(color: Colors.deepPurple.shade600),
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(color: Colors.deepPurple.shade600),
                     textDirection: TextDirection.rtl,
                   ),
                   const SizedBox(height: 6),
@@ -667,9 +697,12 @@ class _SparkBubble extends StatelessWidget {
                     children: response!.suggestedLearnerReplies
                         .map(
                           (suggestion) => ActionChip(
-                            avatar: const Icon(Icons.record_voice_over, size: 18),
+                            avatar:
+                                const Icon(Icons.record_voice_over, size: 18),
                             label: Text(suggestion),
-                            onPressed: onSuggestionTap == null ? null : () => onSuggestionTap!(suggestion),
+                            onPressed: onSuggestionTap == null
+                                ? null
+                                : () => onSuggestionTap!(suggestion),
                           ),
                         )
                         .toList(growable: false),
@@ -728,7 +761,8 @@ class _LearnerBubble extends StatelessWidget {
 }
 
 class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.icon, required this.label, required this.text});
+  const _InfoChip(
+      {required this.icon, required this.label, required this.text});
 
   final IconData icon;
   final String label;
@@ -753,9 +787,13 @@ class _InfoChip extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold)),
+                Text(label,
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text(text, style: theme.textTheme.bodyMedium, textDirection: TextDirection.rtl),
+                Text(text,
+                    style: theme.textTheme.bodyMedium,
+                    textDirection: TextDirection.rtl),
               ],
             ),
           ),
@@ -787,7 +825,8 @@ class _ErrorBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w600),
               textDirection: TextDirection.rtl,
             ),
           ),
