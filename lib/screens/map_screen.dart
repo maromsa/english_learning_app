@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/background_music_service.dart';
 import '../services/daily_reward_service.dart';
 import '../services/level_repository.dart';
 import 'ai_adventure_screen.dart';
@@ -35,6 +36,9 @@ class _MapScreenState extends State<MapScreen> {
     super.initState();
     _dailyRewardService = DailyRewardService();
     _levelRepository = LevelRepository();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      BackgroundMusicService().playMapLoop();
+    });
     _initialize();
   }
 
