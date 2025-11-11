@@ -30,7 +30,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
   bool _hasRegisteredPointerRoute = false;
 
   static const _startupChimeAsset = 'assets/audio/startup_chime.wav';
-  static const _backgroundLoopAsset = 'assets/audio/background_loop.wav';
+  static const _backgroundLoopAsset = 'assets/audio/the_twinkling_map.mp3';
 
   Future<void> initialize() async {
     if (_initialized) {
