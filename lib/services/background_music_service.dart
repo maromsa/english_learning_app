@@ -22,7 +22,9 @@ class BackgroundMusicService with WidgetsBindingObserver {
   bool _resumeOnForeground = false;
   _BackgroundPlaylist _currentPlaylist = _BackgroundPlaylist.none;
   bool _awaitingUserInteractionUnlock = false;
+  bool _userInteractionReceived = !kIsWeb;
   StreamSubscription<int?>? _currentIndexSubscription;
+  bool _webStartupLoopPrepared = false;
 
   static const _startupChimeAsset = 'assets/audio/startup_chime.wav';
   static const _backgroundLoopAsset = 'assets/audio/background_loop.wav';
@@ -41,7 +43,14 @@ class BackgroundMusicService with WidgetsBindingObserver {
         }
         if (_currentPlaylist == _BackgroundPlaylist.startupSequence &&
             index == 1) {
-          unawaited(_player.setLoopMode(LoopMode.one));
+          if (kIsWeb) {
+            if (!_webStartupLoopPrepared) {
+              _webStartupLoopPrepared = true;
+              unawaited(_prepareBackgroundLoopForWebAfterStartup());
+            }
+          } else {
+            unawaited(_player.setLoopMode(LoopMode.one));
+          }
         }
       });
       _initialized = true;
@@ -63,6 +72,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
     }
 
     try {
+      _webStartupLoopPrepared = false;
       await _player.stop();
       await _player.setLoopMode(LoopMode.off);
       final source = ConcatenatingAudioSource(
@@ -89,6 +99,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
     }
 
     try {
+      _webStartupLoopPrepared = false;
       await _player.setAudioSource(
         AudioSource.asset(_backgroundLoopAsset),
       );
@@ -104,6 +115,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
   }
 
   Future<void> handleUserInteraction() async {
+    _userInteractionReceived = true;
     if (!_awaitingUserInteractionUnlock) {
       return;
     }
@@ -121,6 +133,15 @@ class BackgroundMusicService with WidgetsBindingObserver {
   Future<void> _startPlaybackWithUnlock({
     required String contextDescription,
   }) async {
+    if (kIsWeb && !_userInteractionReceived) {
+      if (!_awaitingUserInteractionUnlock) {
+        debugPrint(
+          '$contextDescription playback deferred until user interaction.',
+        );
+      }
+      _awaitingUserInteractionUnlock = true;
+      return;
+    }
     try {
       await _player.play();
       if (_awaitingUserInteractionUnlock) {
@@ -175,6 +196,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
   Future<void> stop() async {
     _currentPlaylist = _BackgroundPlaylist.none;
     _awaitingUserInteractionUnlock = false;
+    _webStartupLoopPrepared = false;
     await _player.setLoopMode(LoopMode.off);
     try {
       await _player.stop();
@@ -215,6 +237,26 @@ class BackgroundMusicService with WidgetsBindingObserver {
     await _currentIndexSubscription?.cancel();
     _currentIndexSubscription = null;
     _awaitingUserInteractionUnlock = false;
+    _webStartupLoopPrepared = false;
     await _player.dispose();
+  }
+
+  Future<void> _prepareBackgroundLoopForWebAfterStartup() async {
+    try {
+      final wasPlaying = _player.playing;
+      await _player.setLoopMode(LoopMode.off);
+      await _player.setAudioSource(
+        AudioSource.asset(_backgroundLoopAsset),
+      );
+      await _player.setLoopMode(LoopMode.one);
+      if (wasPlaying) {
+        await _player.play();
+      }
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Failed to reconfigure background loop for web: $error',
+      );
+      debugPrint('$stackTrace');
+    }
   }
 }
