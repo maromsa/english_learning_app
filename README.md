@@ -31,6 +31,12 @@ Sensitive keys are never checked into the repository. Supply them at runtime via
 `--dart-define` when launching the app or running scripts. The `lib/app_config.dart`
 helper exposes the values at runtime.
 
+At startup the app looks for secrets in this order:
+
+1. Explicit `--dart-define` flags (works on every platform, including web/CI).
+2. A local `.env` file loaded via `flutter_dotenv` (only on mobile/desktop builds).
+3. Environment variables exposed by the underlying platform.
+
 | Dart define | Feature | Notes |
 | --- | --- | --- |
 | `GEMINI_PROXY_URL` | Hosted Gemini proxy endpoint (Firebase Functions / Cloud Run) | Required. All AI features go through this endpoint; if it is unreachable, the app surfaces an error instead of falling back. |
@@ -49,9 +55,9 @@ flutter run \
   --dart-define=CLOUDINARY_API_SECRET=your_secret
 ```
 
-#### Automatic local injection
+#### Local .env helper
 
-To avoid repeating the flags, copy `.env.example` to `.env`, fill in your secrets, and use the provided wrapper:
+To avoid repeating the flags in local builds, copy `.env.example` to `.env`, fill in your secrets, and use the provided wrapper script:
 
 ```bash
 cp .env.example .env
@@ -60,7 +66,7 @@ echo "GEMINI_PROXY_URL=https://<region>-<project>.cloudfunctions.net/geminiProxy
 ./scripts/flutterw run -d chrome
 ```
 
-The script sources `.env`, injects the necessary `--dart-define` flags when missing, and falls back to any existing environment variables. It works with other Flutter subcommands too (e.g. `./scripts/flutterw build web`). In CI you can keep using plain `flutter` with explicit `--dart-define` flags so secrets stay in your secret manager.
+The script sources `.env`, injects the necessary `--dart-define` flags when missing, and falls back to any existing environment variables. On mobile/desktop builds the runtime also loads `.env` directly, so both approaches work. For Flutter web, the `.env` file is never bundled—use `./scripts/flutterw` locally or pass the defines explicitly. In CI you can keep using plain `flutter` with explicit `--dart-define` flags so secrets stay in your secret manager.
 
 #### Server-side Gemini proxy (Firebase Functions / Cloud Run)
 
@@ -113,7 +119,7 @@ To turn it on:
 - In the repository settings, open **Pages** and select **GitHub Actions** as the deployment source (this creates the `github-pages` environment the workflow targets).
 - Merge to `main` or run the workflow manually via the **Run workflow** button. The deploy job comment includes the public URL once publishing completes.
 
-No additional secrets are required for the GitHub Pages deployment.
+If you want the published build to include AI features, store the relevant values as repository or organization secrets (e.g. `GEMINI_PROXY_URL`, `CLOUDINARY_*`, `GOOGLE_TTS_API_KEY`). The workflow automatically forwards any non-empty secret to the build via `--dart-define`. Missing secrets simply disable the corresponding feature in the web bundle.
 
 ### Optional: Appetize uploads
 
