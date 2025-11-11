@@ -25,6 +25,7 @@ import 'package:english_learning_app/widgets/score_display.dart';
 import 'package:english_learning_app/widgets/word_display_card.dart';
 import 'package:english_learning_app/widgets/words_progress_bar.dart';
 import 'package:confetti/confetti.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:http/http.dart' as http;
@@ -407,16 +408,37 @@ class _MyHomePageState extends State<MyHomePage> {
     XFile imageFile,
     String word,
   ) async {
-    final directory = await getApplicationDocumentsDirectory();
-    final newPath =
-        '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final savedImageFile = await File(imageFile.path).copy(newPath);
+    String? imagePath;
 
-    debugPrint("Saved new image to: ${savedImageFile.path}");
+    if (kIsWeb) {
+      imagePath = imageFile.path;
+
+      if (imagePath.isEmpty) {
+        try {
+          final bytes = await imageFile.readAsBytes();
+          if (bytes.isNotEmpty) {
+            imagePath = Uri.dataFromBytes(
+              bytes,
+              mimeType: 'image/jpeg',
+            ).toString();
+          }
+        } catch (error) {
+          debugPrint('Failed to read picked web image bytes: $error');
+          imagePath = null;
+        }
+      }
+    } else {
+      final directory = await getApplicationDocumentsDirectory();
+      final newPath =
+          '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final savedImageFile = await File(imageFile.path).copy(newPath);
+      imagePath = savedImageFile.path;
+      debugPrint("Saved new image to: ${savedImageFile.path}");
+    }
 
     return WordData(
       word: word,
-      imageUrl: savedImageFile.path, // The URL is now a local file path
+      imageUrl: imagePath,
       isCompleted: false,
     );
   }

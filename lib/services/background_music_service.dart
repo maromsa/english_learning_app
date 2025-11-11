@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -9,6 +10,7 @@ enum _BackgroundPlaylist { none, startupSequence, mapLoop }
 class BackgroundMusicService with WidgetsBindingObserver {
   BackgroundMusicService._internal() {
     WidgetsBinding.instance.addObserver(this);
+    _registerGlobalPointerRoute();
   }
 
   static final BackgroundMusicService _instance =
@@ -25,6 +27,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
   bool _userInteractionReceived = !kIsWeb;
   StreamSubscription<int?>? _currentIndexSubscription;
   bool _webStartupLoopPrepared = false;
+  bool _hasRegisteredPointerRoute = false;
 
   static const _startupChimeAsset = 'assets/audio/startup_chime.wav';
   static const _backgroundLoopAsset = 'assets/audio/background_loop.wav';
@@ -238,6 +241,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
     _currentIndexSubscription = null;
     _awaitingUserInteractionUnlock = false;
     _webStartupLoopPrepared = false;
+    _unregisterGlobalPointerRoute();
     await _player.dispose();
   }
 
@@ -257,6 +261,30 @@ class BackgroundMusicService with WidgetsBindingObserver {
         'Failed to reconfigure background loop for web: $error',
       );
       debugPrint('$stackTrace');
+    }
+  }
+
+  void _registerGlobalPointerRoute() {
+    if (_hasRegisteredPointerRoute) {
+      return;
+    }
+    final binding = GestureBinding.instance;
+    binding.pointerRouter.addGlobalRoute(_handleGlobalPointerEvent);
+    _hasRegisteredPointerRoute = true;
+  }
+
+  void _unregisterGlobalPointerRoute() {
+    if (!_hasRegisteredPointerRoute) {
+      return;
+    }
+    final binding = GestureBinding.instance;
+    binding.pointerRouter.removeGlobalRoute(_handleGlobalPointerEvent);
+    _hasRegisteredPointerRoute = false;
+  }
+
+  void _handleGlobalPointerEvent(PointerEvent event) {
+    if (event is PointerDownEvent) {
+      unawaited(handleUserInteraction());
     }
   }
 }

@@ -20,10 +20,15 @@ class WordDisplayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String? imageUrl = wordData.imageUrl;
-    final bool isAssetImage =
-        imageUrl != null && imageUrl.startsWith('assets/');
-    final bool isLocalFile =
-        imageUrl != null && !imageUrl.startsWith('http') && !isAssetImage;
+    final String normalizedUrl = imageUrl ?? '';
+    final bool hasImageUrl = normalizedUrl.isNotEmpty;
+    final bool isAssetImage = hasImageUrl && normalizedUrl.startsWith('assets/');
+    final bool isLocalFile = !kIsWeb &&
+        hasImageUrl &&
+        !normalizedUrl.startsWith('http') &&
+        !normalizedUrl.startsWith('blob:') &&
+        !normalizedUrl.startsWith('data:') &&
+        !isAssetImage;
 
     return Card(
       elevation: 10,
