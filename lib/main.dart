@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:english_learning_app/firebase_options.dart';
 import 'package:english_learning_app/providers/auth_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
@@ -7,6 +9,7 @@ import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -84,24 +87,32 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    return MaterialApp(
-      title: 'מסע המילים באנגלית',
-      locale: const Locale('he', 'IL'),
-      supportedLocales: const [Locale('he', 'IL'), Locale('en', 'US')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue.shade100),
-        useMaterial3: true,
-        textTheme: GoogleFonts.assistantTextTheme(Theme.of(context).textTheme),
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) {
+        unawaited(BackgroundMusicService().handleUserInteraction());
+      },
+      child: MaterialApp(
+        title: 'מסע המילים באנגלית',
+        locale: const Locale('he', 'IL'),
+        supportedLocales: const [Locale('he', 'IL'), Locale('en', 'US')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        theme: ThemeData(
+          colorScheme:
+              ColorScheme.fromSeed(seedColor: Colors.lightBlue.shade100),
+          useMaterial3: true,
+          textTheme:
+              GoogleFonts.assistantTextTheme(Theme.of(context).textTheme),
+        ),
+        darkTheme: ThemeData.dark(),
+        themeMode: themeProvider.themeMode,
+        debugShowCheckedModeBanner: false,
+        home: AuthGate(hasSeenOnboarding: hasSeenOnboarding),
       ),
-      darkTheme: ThemeData.dark(),
-      themeMode: themeProvider.themeMode,
-      debugShowCheckedModeBanner: false,
-      home: AuthGate(hasSeenOnboarding: hasSeenOnboarding),
     );
   }
 }
