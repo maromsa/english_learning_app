@@ -23,9 +23,8 @@ class BackgroundMusicService with WidgetsBindingObserver {
   _BackgroundPlaylist _currentPlaylist = _BackgroundPlaylist.none;
   bool _awaitingUserInteractionUnlock = false;
   bool _userInteractionReceived = !kIsWeb;
-  ConcatenatingAudioSource? _startupSequenceSource;
-  bool _startupChimeRemoved = false;
   StreamSubscription<int?>? _currentIndexSubscription;
+  bool _webStartupLoopPrepared = false;
 
   static const _startupChimeAsset = 'assets/audio/startup_chime.wav';
   static const _backgroundLoopAsset = 'assets/audio/background_loop.wav';
@@ -42,16 +41,16 @@ class BackgroundMusicService with WidgetsBindingObserver {
         if (index == null) {
           return;
         }
-          if (_currentPlaylist == _BackgroundPlaylist.startupSequence &&
-              index == 1) {
-            if (!_startupChimeRemoved) {
-              _startupChimeRemoved = true;
-              final source = _startupSequenceSource;
-              if (source != null) {
-                unawaited(source.removeAt(0));
-              }
+        if (_currentPlaylist == _BackgroundPlaylist.startupSequence &&
+            index == 1) {
+          if (kIsWeb) {
+            if (!_webStartupLoopPrepared) {
+              _webStartupLoopPrepared = true;
+              unawaited(_prepareBackgroundLoopForWebAfterStartup());
             }
-            unawaited(_player.setLoopMode(_loopModeForSingleTrack()));
+          } else {
+            unawaited(_player.setLoopMode(LoopMode.one));
+          }
         }
       });
       _initialized = true;
@@ -73,17 +72,16 @@ class BackgroundMusicService with WidgetsBindingObserver {
     }
 
     try {
+      _webStartupLoopPrepared = false;
       await _player.stop();
       await _player.setLoopMode(LoopMode.off);
-        _startupSequenceSource = ConcatenatingAudioSource(
-          useLazyPreparation: true,
-          children: [
-            AudioSource.asset(_startupChimeAsset),
-            AudioSource.asset(_backgroundLoopAsset),
-          ],
-        );
-        _startupChimeRemoved = false;
-        await _player.setAudioSource(_startupSequenceSource!);
+      final source = ConcatenatingAudioSource(
+        children: [
+          AudioSource.asset(_startupChimeAsset),
+          AudioSource.asset(_backgroundLoopAsset),
+        ],
+      );
+      await _player.setAudioSource(source);
       _currentPlaylist = _BackgroundPlaylist.startupSequence;
       await _startPlaybackWithUnlock(
         contextDescription: 'Startup sequence',
@@ -91,8 +89,6 @@ class BackgroundMusicService with WidgetsBindingObserver {
     } catch (error, stackTrace) {
       debugPrint('Failed to play startup sequence: $error');
       debugPrint('$stackTrace');
-        _startupSequenceSource = null;
-        _startupChimeRemoved = false;
     }
   }
 
@@ -103,12 +99,11 @@ class BackgroundMusicService with WidgetsBindingObserver {
     }
 
     try {
-        _startupSequenceSource = null;
-        _startupChimeRemoved = false;
-        await _player.setAudioSource(
+      _webStartupLoopPrepared = false;
+      await _player.setAudioSource(
         AudioSource.asset(_backgroundLoopAsset),
       );
-        await _player.setLoopMode(_loopModeForSingleTrack());
+      await _player.setLoopMode(LoopMode.one);
       _currentPlaylist = _BackgroundPlaylist.mapLoop;
       await _startPlaybackWithUnlock(
         contextDescription: 'Map loop',
@@ -120,10 +115,10 @@ class BackgroundMusicService with WidgetsBindingObserver {
   }
 
   Future<void> handleUserInteraction() async {
-      _userInteractionReceived = true;
-      if (!_awaitingUserInteractionUnlock) {
-        return;
-      }
+    _userInteractionReceived = true;
+    if (!_awaitingUserInteractionUnlock) {
+      return;
+    }
     if (_currentPlaylist == _BackgroundPlaylist.none) {
       _awaitingUserInteractionUnlock = false;
       return;
@@ -138,15 +133,15 @@ class BackgroundMusicService with WidgetsBindingObserver {
   Future<void> _startPlaybackWithUnlock({
     required String contextDescription,
   }) async {
-      if (kIsWeb && !_userInteractionReceived) {
-        if (!_awaitingUserInteractionUnlock) {
-          debugPrint(
-            '$contextDescription playback deferred until user interaction.',
-          );
-        }
-        _awaitingUserInteractionUnlock = true;
-        return;
+    if (kIsWeb && !_userInteractionReceived) {
+      if (!_awaitingUserInteractionUnlock) {
+        debugPrint(
+          '$contextDescription playback deferred until user interaction.',
+        );
       }
+      _awaitingUserInteractionUnlock = true;
+      return;
+    }
     try {
       await _player.play();
       if (_awaitingUserInteractionUnlock) {
@@ -201,8 +196,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
   Future<void> stop() async {
     _currentPlaylist = _BackgroundPlaylist.none;
     _awaitingUserInteractionUnlock = false;
-      _startupSequenceSource = null;
-      _startupChimeRemoved = false;
+    _webStartupLoopPrepared = false;
     await _player.setLoopMode(LoopMode.off);
     try {
       await _player.stop();
@@ -243,12 +237,26 @@ class BackgroundMusicService with WidgetsBindingObserver {
     await _currentIndexSubscription?.cancel();
     _currentIndexSubscription = null;
     _awaitingUserInteractionUnlock = false;
-      _startupSequenceSource = null;
-      _startupChimeRemoved = false;
+    _webStartupLoopPrepared = false;
     await _player.dispose();
   }
 
-    LoopMode _loopModeForSingleTrack() {
-      return kIsWeb ? LoopMode.all : LoopMode.one;
+  Future<void> _prepareBackgroundLoopForWebAfterStartup() async {
+    try {
+      final wasPlaying = _player.playing;
+      await _player.setLoopMode(LoopMode.off);
+      await _player.setAudioSource(
+        AudioSource.asset(_backgroundLoopAsset),
+      );
+      await _player.setLoopMode(LoopMode.one);
+      if (wasPlaying) {
+        await _player.play();
+      }
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Failed to reconfigure background loop for web: $error',
+      );
+      debugPrint('$stackTrace');
     }
+  }
 }
