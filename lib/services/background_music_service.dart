@@ -65,6 +65,13 @@ class BackgroundMusicService with WidgetsBindingObserver {
 
   Future<void> playStartupSequence() async {
     await initialize();
+    if (kIsWeb) {
+      debugPrint(
+        'Skipping startup sequence on web – preparing map loop instead.',
+      );
+      await playMapLoop();
+      return;
+    }
     if (_currentPlaylist == _BackgroundPlaylist.startupSequence) {
       if (!_player.playing) {
         await _startPlaybackWithUnlock(
