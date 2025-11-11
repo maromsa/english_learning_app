@@ -62,7 +62,14 @@ Future<void> main() async {
   await themeProvider.loadTheme();
   await shopProvider.loadPurchasedItems();
   await dailyMissionProvider.initialize();
-  await backgroundMusicService.playStartupSequence();
+    if (kIsWeb) {
+      await backgroundMusicService.initialize();
+      debugPrint(
+        'Startup chime disabled on web; map music will begin after first interaction.',
+      );
+    } else {
+      await backgroundMusicService.playStartupSequence();
+    }
 
   runApp(
     MultiProvider(
