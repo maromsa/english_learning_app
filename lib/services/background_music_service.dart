@@ -21,6 +21,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
   bool _initialized = false;
   bool _resumeOnForeground = false;
   _BackgroundPlaylist _currentPlaylist = _BackgroundPlaylist.none;
+  bool _awaitingUserInteractionUnlock = false;
   StreamSubscription<int?>? _currentIndexSubscription;
 
   static const _startupChimeAsset = 'assets/audio/startup_chime.wav';
@@ -54,7 +55,9 @@ class BackgroundMusicService with WidgetsBindingObserver {
     await initialize();
     if (_currentPlaylist == _BackgroundPlaylist.startupSequence) {
       if (!_player.playing) {
-        await _player.play();
+        await _startPlaybackWithUnlock(
+          contextDescription: 'Startup sequence',
+        );
       }
       return;
     }
@@ -69,11 +72,10 @@ class BackgroundMusicService with WidgetsBindingObserver {
         ],
       );
       await _player.setAudioSource(source);
-      _player.play().catchError((error, stackTrace) {
-        debugPrint('Startup playback error: $error');
-        debugPrint('$stackTrace');
-      });
       _currentPlaylist = _BackgroundPlaylist.startupSequence;
+      await _startPlaybackWithUnlock(
+        contextDescription: 'Startup sequence',
+      );
     } catch (error, stackTrace) {
       debugPrint('Failed to play startup sequence: $error');
       debugPrint('$stackTrace');
@@ -91,15 +93,68 @@ class BackgroundMusicService with WidgetsBindingObserver {
         AudioSource.asset(_backgroundLoopAsset),
       );
       await _player.setLoopMode(LoopMode.one);
-      _player.play().catchError((error, stackTrace) {
-        debugPrint('Map loop playback error: $error');
-        debugPrint('$stackTrace');
-      });
       _currentPlaylist = _BackgroundPlaylist.mapLoop;
+      await _startPlaybackWithUnlock(
+        contextDescription: 'Map loop',
+      );
     } catch (error, stackTrace) {
       debugPrint('Failed to play map loop: $error');
       debugPrint('$stackTrace');
     }
+  }
+
+  Future<void> handleUserInteraction() async {
+    if (!_awaitingUserInteractionUnlock) {
+      return;
+    }
+    if (_currentPlaylist == _BackgroundPlaylist.none) {
+      _awaitingUserInteractionUnlock = false;
+      return;
+    }
+    await _startPlaybackWithUnlock(
+      contextDescription: _currentPlaylist == _BackgroundPlaylist.mapLoop
+          ? 'Map loop'
+          : 'Startup sequence',
+    );
+  }
+
+  Future<void> _startPlaybackWithUnlock({
+    required String contextDescription,
+  }) async {
+    try {
+      await _player.play();
+      if (_awaitingUserInteractionUnlock) {
+        debugPrint(
+          '$contextDescription playback resumed after user interaction.',
+        );
+      }
+      _awaitingUserInteractionUnlock = false;
+    } catch (error, stackTrace) {
+      if (_requiresUserInteractionUnlock(error)) {
+        _awaitingUserInteractionUnlock = true;
+        debugPrint(
+          '$contextDescription playback deferred until user interaction: $error',
+        );
+      } else {
+        debugPrint('$contextDescription playback error: $error');
+        debugPrint('$stackTrace');
+      }
+    }
+  }
+
+  bool _requiresUserInteractionUnlock(Object error) {
+    if (!kIsWeb) {
+      return false;
+    }
+    if (error is PlayerException) {
+      final code = error.code.toLowerCase();
+      final message = (error.message ?? '').toLowerCase();
+      if (code.contains('notallowed') || message.contains('notallowed')) {
+        return true;
+      }
+    }
+    final errorString = error.toString().toLowerCase();
+    return errorString.contains('notallowed');
   }
 
   Future<void> fadeOut({Duration duration = const Duration(milliseconds: 600)}) {
@@ -111,6 +166,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
 
   Future<void> stop() async {
     _currentPlaylist = _BackgroundPlaylist.none;
+    _awaitingUserInteractionUnlock = false;
     await _player.setLoopMode(LoopMode.off);
     try {
       await _player.stop();
@@ -150,6 +206,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     await _currentIndexSubscription?.cancel();
     _currentIndexSubscription = null;
+    _awaitingUserInteractionUnlock = false;
     await _player.dispose();
   }
 }
