@@ -98,9 +98,15 @@ class AppConfig {
       return fromDefines;
     }
 
-    final fromDotEnv = dotenv.maybeGet(key);
-    if (fromDotEnv != null && fromDotEnv.isNotEmpty) {
-      return fromDotEnv;
+    if (dotenv.isInitialized) {
+      try {
+        final fromDotEnv = dotenv.maybeGet(key);
+        if (fromDotEnv != null && fromDotEnv.isNotEmpty) {
+          return fromDotEnv;
+        }
+      } catch (_) {
+        // Ignore dotenv errors when not configured.
+      }
     }
 
     final fromPlatform = readPlatformEnvironment(key);
