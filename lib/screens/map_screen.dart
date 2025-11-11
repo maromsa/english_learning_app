@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/background_music_service.dart';
 import '../services/daily_reward_service.dart';
 import '../services/level_repository.dart';
 import 'ai_adventure_screen.dart';
@@ -27,6 +28,7 @@ class _MapScreenState extends State<MapScreen> {
   List<LevelData> levels = [];
   late final DailyRewardService _dailyRewardService;
   late final LevelRepository _levelRepository;
+  late final BackgroundMusicService _musicService;
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -35,6 +37,8 @@ class _MapScreenState extends State<MapScreen> {
     super.initState();
     _dailyRewardService = DailyRewardService();
     _levelRepository = LevelRepository();
+    _musicService = BackgroundMusicService();
+    Future.microtask(() => _musicService.playMapTheme());
     _initialize();
   }
 
@@ -257,10 +261,29 @@ class _MapScreenState extends State<MapScreen> {
 
   int get _totalStars => levels.fold<int>(0, (sum, level) => sum + level.stars);
 
+  Future<T?> _pauseMapMusicDuring<T>(Future<T?> Function() action) async {
+    await _musicService.stop();
+    try {
+      return await action();
+    } finally {
+      if (mounted) {
+        await _musicService.playMapTheme();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _musicService.playStartupTheme();
+    super.dispose();
+  }
+
   Future<void> _openSettings() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    await _pauseMapMusicDuring(
+      () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+      ),
     );
     if (!mounted) return;
     await _loadProgress();
@@ -312,13 +335,15 @@ class _MapScreenState extends State<MapScreen> {
     final coinProvider = Provider.of<CoinProvider>(context, listen: false);
     coinProvider.startLevel();
 
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MyHomePage(
-          title: level.name,
-          levelId: level.id,
-          wordsForLevel: level.words,
+    await _pauseMapMusicDuring(
+      () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MyHomePage(
+            title: level.name,
+            levelId: level.id,
+            wordsForLevel: level.words,
+          ),
         ),
       ),
     );
@@ -357,9 +382,11 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _openDailyMissions() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const DailyMissionsScreen()),
+    final result = await _pauseMapMusicDuring(
+      () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const DailyMissionsScreen()),
+      ),
     );
 
     if (!mounted) {
@@ -387,18 +414,22 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  void _handleAiShortcut(_QuickAiAction action) {
+  Future<void> _handleAiShortcut(_QuickAiAction action) async {
     switch (action) {
       case _QuickAiAction.chatBuddy:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AiConversationScreen()),
+        await _pauseMapMusicDuring(
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AiConversationScreen()),
+          ),
         );
         break;
       case _QuickAiAction.practicePack:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AiPracticePackScreen()),
+        await _pauseMapMusicDuring(
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AiPracticePackScreen()),
+          ),
         );
         break;
     }
@@ -439,13 +470,15 @@ class _MapScreenState extends State<MapScreen> {
           IconButton(
             icon: const Icon(Icons.auto_awesome),
             tooltip: 'מסע קסם עם Spark',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AiAdventureScreen(
-                    levels: List<LevelData>.unmodifiable(levels),
-                    totalStars: _totalStars,
+            onPressed: () async {
+              await _pauseMapMusicDuring(
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AiAdventureScreen(
+                      levels: List<LevelData>.unmodifiable(levels),
+                      totalStars: _totalStars,
+                    ),
                   ),
                 ),
               );
@@ -490,10 +523,12 @@ class _MapScreenState extends State<MapScreen> {
           IconButton(
             icon: const Icon(Icons.store),
             tooltip: 'חנות',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ShopScreen()),
+            onPressed: () async {
+              await _pauseMapMusicDuring(
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ShopScreen()),
+                ),
               );
             },
           ),

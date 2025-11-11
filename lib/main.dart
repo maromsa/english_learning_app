@@ -1,10 +1,4 @@
 import 'package:english_learning_app/firebase_options.dart';
-import 'package:english_learning_app/providers/auth_provider.dart';
-import 'package:english_learning_app/providers/coin_provider.dart';
-import 'package:english_learning_app/providers/daily_mission_provider.dart';
-import 'package:english_learning_app/providers/shop_provider.dart';
-import 'package:english_learning_app/providers/theme_provider.dart';
-import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +8,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'providers/auth_provider.dart';
+import 'providers/coin_provider.dart';
+import 'providers/daily_mission_provider.dart';
+import 'providers/shop_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/auth_gate.dart';
+import 'services/achievement_service.dart';
+import 'services/background_music_service.dart';
 import 'services/telemetry_service.dart';
 
 Future<void> main() async {
@@ -51,12 +52,15 @@ Future<void> main() async {
   final shopProvider = ShopProvider();
   final telemetryService = TelemetryService();
   final dailyMissionProvider = DailyMissionProvider();
+  final backgroundMusicService = BackgroundMusicService();
 
   // Load persisted data
   await coinProvider.loadCoins();
   await themeProvider.loadTheme();
   await shopProvider.loadPurchasedItems();
   await dailyMissionProvider.initialize();
+  await backgroundMusicService.initialize();
+  await backgroundMusicService.playStartupTheme();
 
   runApp(
     MultiProvider(
@@ -68,6 +72,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: dailyMissionProvider),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         Provider<TelemetryService>.value(value: telemetryService),
+        Provider<BackgroundMusicService>.value(value: backgroundMusicService),
       ],
       child: MyApp(hasSeenOnboarding: hasSeenOnboarding),
     ),
