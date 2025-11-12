@@ -27,6 +27,41 @@ final List<QuizItem> quizItems = [
     correctAnswer: 'Power Sword',
     wrongAnswers: ['Magic Hat', 'Super Shoes', 'Magic Wand'],
   ),
+  QuizItem(
+    imageAsset: 'assets/images/words/hero_shield.png',
+    correctAnswer: 'Hero Shield',
+    wrongAnswers: ['Treasure Map', 'Dragon Armor', 'Energy Gauntlet'],
+  ),
+  QuizItem(
+    imageAsset: 'assets/images/words/hot_air_balloon.png',
+    correctAnswer: 'Hot Air Balloon',
+    wrongAnswers: ['Helicopter', 'Submarine', 'Train'],
+  ),
+  QuizItem(
+    imageAsset: 'assets/images/words/apple.png',
+    correctAnswer: 'Apple',
+    wrongAnswers: ['Banana', 'Orange', 'Strawberry'],
+  ),
+  QuizItem(
+    imageAsset: 'assets/images/words/pineapple.png',
+    correctAnswer: 'Pineapple',
+    wrongAnswers: ['Banana', 'Grapes', 'Apple'],
+  ),
+  QuizItem(
+    imageAsset: 'assets/images/words/lion.png',
+    correctAnswer: 'Lion',
+    wrongAnswers: ['Monkey', 'Elephant', 'Dog'],
+  ),
+  QuizItem(
+    imageAsset: 'assets/images/words/penguin.png',
+    correctAnswer: 'Penguin',
+    wrongAnswers: ['Lion', 'Cat', 'Dog'],
+  ),
+  QuizItem(
+    imageAsset: 'assets/images/words/astronaut.png',
+    correctAnswer: 'Astronaut',
+    wrongAnswers: ['Rocket', 'Satellite', 'Space Station'],
+  ),
 ];
 
 class ImageQuizGame extends StatefulWidget {

@@ -62,10 +62,74 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     {'word': 'Pirate', 'hint': 'שודד ים עם כובע וטלאי עין'},
     {'word': 'Robot', 'hint': 'מכונה חכמה שמדברת ומזיזה ידיים'},
     {'word': 'Castle', 'hint': 'בית גדול של מלך ומלכה'},
-    {'word': 'Rocket', 'hint': 'טיל שטס אל החלל'},
+    {
+      'word': 'Rocket',
+      'hint': 'טיל שטס אל החלל',
+      'asset': 'assets/images/words/rocket.png',
+    },
     {'word': 'Puppy', 'hint': 'כלבלב קטן וחמוד'},
     {'word': 'Galaxy', 'hint': 'אוסף ענק של כוכבים וחלליות'},
     {'word': 'Treasure', 'hint': 'תיבת מטבעות ואבני חן נוצצות'},
+    {
+      'word': 'Magic Hat',
+      'hint': 'כובע קסם שמסתיר הפתעות.',
+      'asset': 'assets/images/words/magic_hat.png',
+    },
+    {
+      'word': 'Magic Wand',
+      'hint': 'מצית ניצוצות קסם ביד של קוסם.',
+      'asset': 'assets/images/words/magic_wand.png',
+    },
+    {
+      'word': 'Dragon Armor',
+      'hint': 'שריון נוצץ מקשקשי דרקון.',
+      'asset': 'assets/images/words/dragon_armor.png',
+    },
+    {
+      'word': 'Energy Gauntlet',
+      'hint': 'כפפה זוהרת שמטעינה כוח מיוחד.',
+      'asset': 'assets/images/words/energy_gauntlet.png',
+    },
+    {
+      'word': 'Flying Broom',
+      'hint': 'כלי תחבורה קסום שממריא לשמיים.',
+      'asset': 'assets/images/words/flying_broom.png',
+    },
+    {
+      'word': 'Hero Shield',
+      'hint': 'מגן נוצץ שמגן על גיבורים אמיצים.',
+      'asset': 'assets/images/words/hero_shield.png',
+    },
+    {
+      'word': 'Hot Air Balloon',
+      'hint': 'בלון צבעוני שעולה גבוה מעל העננים.',
+      'asset': 'assets/images/words/hot_air_balloon.png',
+    },
+    {
+      'word': 'Submarine',
+      'hint': 'סירה שצוללת ושטה עמוק בים.',
+      'asset': 'assets/images/words/submarine.png',
+    },
+    {
+      'word': 'Astronaut',
+      'hint': 'חוקר אמיץ שמרחף בחלל.',
+      'asset': 'assets/images/words/astronaut.png',
+    },
+    {
+      'word': 'Penguin',
+      'hint': 'ציפור שמעדיפה לרקוד על הקרח.',
+      'asset': 'assets/images/words/penguin.png',
+    },
+    {
+      'word': 'Banana',
+      'hint': 'פרי צהוב ומתוק שמתקלף בקלות.',
+      'asset': 'assets/images/words/banana.png',
+    },
+    {
+      'word': 'Strawberry',
+      'hint': 'פרי אדום עם המון נקודות קטנות.',
+      'asset': 'assets/images/words/strawberry.png',
+    },
   ];
 
   @override
@@ -117,12 +181,19 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     for (final entry in _fallbackWordEntries) {
       final word = entry['word']!;
       final hint = entry['hint'];
+      final asset = entry['asset'];
       if (cleaned.any(
         (existing) => existing.word.toLowerCase() == word.toLowerCase(),
       )) {
         continue;
       }
-      cleaned.add(WordData(word: word, searchHint: hint));
+      cleaned.add(
+        WordData(
+          word: word,
+          searchHint: hint,
+          imageUrl: asset,
+        ),
+      );
       if (cleaned.length >= 8) {
         break;
       }
