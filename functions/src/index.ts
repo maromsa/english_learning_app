@@ -59,16 +59,18 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   });
   
   const client = new GoogleGenerativeAI(apiKey);
-  const modelConfig: {
-    model: string;
-    safetySettings: typeof safetySettings;
-  } = {
+  
+  // Build model config with ONLY snake_case system_instruction (never camelCase)
+  // Explicitly construct the object to avoid any camelCase properties
+  const modelConfig: any = {
     model: modelId,
     safetySettings,
   };
+  
+  // Only add system_instruction if provided and non-empty
+  // CRITICAL: Use snake_case only - API rejects camelCase "systemInstruction"
   if (systemInstruction && systemInstruction.trim().length > 0) {
-    // Use snake_case directly to match API spec - SDK doesn't convert camelCase for model config
-    (modelConfig as any).system_instruction = systemInstruction;
+    modelConfig.system_instruction = systemInstruction;
     logger.info("Added system_instruction to modelConfig", {
       systemInstructionLength: systemInstruction.length,
       modelConfigKeys: Object.keys(modelConfig),
@@ -79,12 +81,23 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
       trimmedLength: systemInstruction?.trim()?.length,
     });
   }
+  
+  // Verify no camelCase systemInstruction exists (safety check)
+  if (modelConfig.systemInstruction !== undefined) {
+    logger.error("ERROR: Found camelCase systemInstruction in modelConfig - removing it!", {
+      modelConfigKeys: Object.keys(modelConfig),
+    });
+    delete modelConfig.systemInstruction;
+  }
+  
   // Log the model config to verify the payload before API call
   logger.info("Model config before getGenerativeModel", {
     modelConfig: JSON.stringify(modelConfig),
     modelConfigKeys: Object.keys(modelConfig),
-    hasSystemInstruction: (modelConfig as any).system_instruction !== undefined,
+    hasSystemInstruction: modelConfig.system_instruction !== undefined,
+    hasSystemInstructionCamelCase: modelConfig.systemInstruction !== undefined,
   });
+  
   // Use v1beta API version - the SDK defaults to v1beta but explicitly setting it ensures consistency
   const model = client.getGenerativeModel(modelConfig, {apiVersion: "v1beta"});
   logger.info("Model created successfully");
