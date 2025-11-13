@@ -54,10 +54,9 @@ describe("systemInstruction handling", () => {
     const constructorCall = GoogleGenerativeAIClass.mock.calls[0];
     expect(constructorCall[0]).toBe(mockApiKey);
     
-    // Verify getGenerativeModel was called without options
-    // (Custom fetch handles v1beta to v1 URL rewriting)
+    // Verify getGenerativeModel was called with the v1 API version
     const requestOptions = getGenerativeModelCall?.mock.calls[0]?.[1];
-    expect(requestOptions).toBeUndefined();
+    expect(requestOptions).toEqual(expect.objectContaining({apiVersion: "v1"}));
   });
 
   test("getModel should include system_instruction when provided", () => {
@@ -82,10 +81,9 @@ describe("systemInstruction handling", () => {
     const constructorCall = GoogleGenerativeAIClass.mock.calls[0];
     expect(constructorCall[0]).toBe(mockApiKey);
     
-    // Verify getGenerativeModel was called without options
-    // (Custom fetch handles v1beta to v1 URL rewriting)
+    // Verify getGenerativeModel was called with the v1 API version
     const requestOptions = getGenerativeModelCall?.mock.calls[0]?.[1];
-    expect(requestOptions).toBeUndefined();
+    expect(requestOptions).toEqual(expect.objectContaining({apiVersion: "v1"}));
   });
 
   test("handleText should pass systemInstruction to getModel when provided", async () => {
@@ -157,10 +155,9 @@ describe("systemInstruction handling", () => {
     const constructorCall = GoogleGenerativeAIClass.mock.calls[0];
     expect(constructorCall[0]).toBe(mockApiKey);
     
-    // Verify getGenerativeModel was called without options
-    // (Custom fetch handles v1beta to v1 URL rewriting)
+    // Verify getGenerativeModel was called with the v1 API version
     const requestOptions = getGenerativeModelCall?.mock.calls[0]?.[1];
-    expect(requestOptions).toBeUndefined();
+    expect(requestOptions).toEqual(expect.objectContaining({apiVersion: "v1"}));
 
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
     const generateContentCall = mockGenerateContent.mock.calls[0]?.[0];
