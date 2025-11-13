@@ -98,8 +98,8 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
     hasSystemInstructionCamelCase: modelConfig.systemInstruction !== undefined,
   });
   
-  // Use v1beta API version - the SDK defaults to v1beta but explicitly setting it ensures consistency
-  const model = client.getGenerativeModel(modelConfig, {apiVersion: "v1beta"});
+  // Use default API version (v1) - v1beta is not supported for gemini-1.5-flash
+  const model = client.getGenerativeModel(modelConfig);
   logger.info("Model created successfully");
   return model;
 }
@@ -180,7 +180,6 @@ Answer strictly with "yes" or "no" and provide a confidence score between 0 and 
 async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
   // Pass systemInstruction to getModel so it's set at the model level
   // We use snake_case "system_instruction" directly in getModel to match the API spec
-  // We explicitly use v1beta API version to ensure proper handling
   logger.info("handleText called", {
     systemInstruction: payload.systemInstruction,
     systemInstructionType: typeof payload.systemInstruction,
