@@ -47,7 +47,7 @@ describe("systemInstruction handling", () => {
     const modelConfig = getGenerativeModelCall?.mock.calls[0]?.[0];
     expect(modelConfig).not.toHaveProperty("systemInstruction");
     expect(modelConfig).not.toHaveProperty("system_instruction");
-    expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash"); // Updated to gemini-1.5-flash
+    expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash-latest"); // Updated to gemini-1.5-flash-latest for v1 API
     expect(modelConfig).toHaveProperty("safetySettings");
     
     // Verify GoogleGenerativeAI was initialized with the API key
@@ -75,7 +75,7 @@ describe("systemInstruction handling", () => {
     const modelConfig = getGenerativeModelCall?.mock.calls[0]?.[0];
     expect(modelConfig).toHaveProperty("system_instruction", "Test system instruction");
     expect(modelConfig).not.toHaveProperty("systemInstruction");
-    expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash"); // Updated to gemini-1.5-flash
+    expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash-latest"); // Updated to gemini-1.5-flash-latest for v1 API
     expect(modelConfig).toHaveProperty("safetySettings");
     
     // Verify GoogleGenerativeAI was initialized with the API key
