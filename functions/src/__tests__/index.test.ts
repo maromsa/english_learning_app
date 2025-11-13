@@ -34,7 +34,7 @@ describe("systemInstruction handling", () => {
   });
 
   test("getModel should not include system_instruction when not provided", () => {
-    getModel("gemini-1.5-flash", mockApiKey);
+    getModel("gemini-1.5-flash-latest", mockApiKey);
 
     const GoogleGenerativeAIClass = GoogleGenerativeAI as jest.MockedClass<typeof GoogleGenerativeAI>;
     const mockClientInstance = GoogleGenerativeAIClass.mock.results[0]?.value;
@@ -47,12 +47,12 @@ describe("systemInstruction handling", () => {
     const modelConfig = getGenerativeModelCall?.mock.calls[0]?.[0];
     expect(modelConfig).not.toHaveProperty("systemInstruction");
     expect(modelConfig).not.toHaveProperty("system_instruction");
-    expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash");
+    expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash-latest");
     expect(modelConfig).toHaveProperty("safetySettings");
   });
 
   test("getModel should include system_instruction when provided", () => {
-    getModel("gemini-1.5-flash", mockApiKey, "Test system instruction");
+    getModel("gemini-1.5-flash-latest", mockApiKey, "Test system instruction");
 
     const GoogleGenerativeAIClass = GoogleGenerativeAI as jest.MockedClass<typeof GoogleGenerativeAI>;
     const mockClientInstance = GoogleGenerativeAIClass.mock.results[0]?.value;
@@ -66,7 +66,7 @@ describe("systemInstruction handling", () => {
     const modelConfig = getGenerativeModelCall?.mock.calls[0]?.[0];
     expect(modelConfig).toHaveProperty("system_instruction", "Test system instruction");
     expect(modelConfig).not.toHaveProperty("systemInstruction");
-    expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash");
+    expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash-latest");
     expect(modelConfig).toHaveProperty("safetySettings");
   });
 
