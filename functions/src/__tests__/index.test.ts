@@ -50,7 +50,7 @@ describe("systemInstruction handling", () => {
     expect(modelConfig).toHaveProperty("safetySettings");
   });
 
-  test("handleText should prepend systemInstruction to prompt when provided", async () => {
+  test("handleText should pass systemInstruction as separate field when provided", async () => {
     const payload = {
       mode: "text" as const,
       prompt: "Test prompt",
@@ -70,12 +70,15 @@ describe("systemInstruction handling", () => {
     // Verify generateContent was called
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
 
-    // Verify systemInstruction was prepended to the prompt
+    // Verify systemInstruction was passed as a separate field
     const generateContentCall = mockGenerateContent.mock.calls[0]?.[0];
-    expect(generateContentCall).not.toHaveProperty("systemInstruction");
+    expect(generateContentCall).toHaveProperty("systemInstruction");
+    expect(generateContentCall.systemInstruction).toEqual({
+      parts: [{text: "Test system instruction"}],
+    });
     expect(generateContentCall).toHaveProperty("contents");
     expect(generateContentCall.contents).toHaveLength(1);
-    expect(generateContentCall.contents[0].parts[0].text).toBe("Test system instruction\n\nTest prompt");
+    expect(generateContentCall.contents[0].parts[0].text).toBe("Test prompt");
   });
 
   test("handleText should work without systemInstruction", async () => {
@@ -115,8 +118,11 @@ describe("systemInstruction handling", () => {
 
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
     const generateContentCall = mockGenerateContent.mock.calls[0]?.[0];
-    expect(generateContentCall).not.toHaveProperty("systemInstruction");
-    expect(generateContentCall.contents[0].parts[0].text).toBe("You are a creative storyteller\n\nCreate a story");
+    expect(generateContentCall).toHaveProperty("systemInstruction");
+    expect(generateContentCall.systemInstruction).toEqual({
+      parts: [{text: "You are a creative storyteller"}],
+    });
+    expect(generateContentCall.contents[0].parts[0].text).toBe("Create a story");
   });
 
   test("should return text response correctly", async () => {
