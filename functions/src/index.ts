@@ -49,12 +49,11 @@ const safetySettings = [
   {category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
 ];
 
-function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
+function getModel(modelId: string, apiKey: string) {
   const client = new GoogleGenerativeAI(apiKey);
   return client.getGenerativeModel({
     model: modelId,
     safetySettings,
-    ...(systemInstruction ? {systemInstruction} : {}),
   });
 }
 
@@ -132,18 +131,28 @@ Answer strictly with "yes" or "no" and provide a confidence score between 0 and 
 }
 
 async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
-  const model = getModel("gemini-1.5-flash", apiKey, payload.systemInstruction);
-  const result = await model.generateContent({
+  const model = getModel("gemini-1.5-flash", apiKey);
+  const generateContentOptions: {
+    contents: Array<{role: string; parts: Array<{text: string}>}>;
+    systemInstruction?: string;
+  } = {
     contents: [{
       role: "user",
       parts: [
         {text: payload.prompt},
       ],
     }],
-  });
+  };
+  if (payload.systemInstruction) {
+    generateContentOptions.systemInstruction = payload.systemInstruction;
+  }
+  const result = await model.generateContent(generateContentOptions);
   const text = result.response.text()?.trim() ?? "";
   return {text};
 }
+
+// Export for testing
+export {handleText, getModel};
 
 export const geminiProxy = functions.onRequest(
     {cors: true, secrets: ["GEMINI_API_KEY"]},
