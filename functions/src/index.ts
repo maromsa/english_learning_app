@@ -50,22 +50,58 @@ const safetySettings = [
 ];
 
 function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
+  logger.info("getModel called", {
+    modelId,
+    hasSystemInstruction: systemInstruction !== undefined,
+    systemInstructionType: typeof systemInstruction,
+    systemInstructionLength: systemInstruction?.length,
+    systemInstructionValue: systemInstruction,
+  });
+  
   const client = new GoogleGenerativeAI(apiKey);
-  const modelConfig: {
-    model: string;
-    safetySettings: typeof safetySettings;
-  } = {
+  
+  // Build model config with ONLY snake_case system_instruction (never camelCase)
+  // Explicitly construct the object to avoid any camelCase properties
+  const modelConfig: any = {
     model: modelId,
     safetySettings,
   };
+  
+  // Only add system_instruction if provided and non-empty
+  // CRITICAL: Use snake_case only - API rejects camelCase "systemInstruction"
   if (systemInstruction && systemInstruction.trim().length > 0) {
-    // Use snake_case directly to match API spec - SDK doesn't convert camelCase for model config
-    (modelConfig as any).system_instruction = systemInstruction;
+    modelConfig.system_instruction = systemInstruction;
+    logger.info("Added system_instruction to modelConfig", {
+      systemInstructionLength: systemInstruction.length,
+      modelConfigKeys: Object.keys(modelConfig),
+    });
+  } else {
+    logger.info("No systemInstruction provided or empty", {
+      systemInstruction,
+      trimmedLength: systemInstruction?.trim()?.length,
+    });
   }
+  
+  // Verify no camelCase systemInstruction exists (safety check)
+  if (modelConfig.systemInstruction !== undefined) {
+    logger.error("ERROR: Found camelCase systemInstruction in modelConfig - removing it!", {
+      modelConfigKeys: Object.keys(modelConfig),
+    });
+    delete modelConfig.systemInstruction;
+  }
+  
   // Log the model config to verify the payload before API call
-  logger.info("Model config before getGenerativeModel", {modelConfig: JSON.stringify(modelConfig)});
+  logger.info("Model config before getGenerativeModel", {
+    modelConfig: JSON.stringify(modelConfig),
+    modelConfigKeys: Object.keys(modelConfig),
+    hasSystemInstruction: modelConfig.system_instruction !== undefined,
+    hasSystemInstructionCamelCase: modelConfig.systemInstruction !== undefined,
+  });
+  
   // Use v1beta API version - the SDK defaults to v1beta but explicitly setting it ensures consistency
-  return client.getGenerativeModel(modelConfig, {apiVersion: "v1beta"});
+  const model = client.getGenerativeModel(modelConfig, {apiVersion: "v1beta"});
+  logger.info("Model created successfully");
+  return model;
 }
 
 async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
@@ -145,16 +181,29 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
   // Pass systemInstruction to getModel so it's set at the model level
   // We use snake_case "system_instruction" directly in getModel to match the API spec
   // We explicitly use v1beta API version to ensure proper handling
+  logger.info("handleText called", {
+    systemInstruction: payload.systemInstruction,
+    systemInstructionType: typeof payload.systemInstruction,
+    systemInstructionLength: payload.systemInstruction?.length,
+  });
+  
   const model = getModel("gemini-1.5-flash", apiKey, payload.systemInstruction);
   
-  const result = await model.generateContent({
+  const generateContentPayload = {
     contents: [{
       role: "user",
       parts: [
         {text: payload.prompt},
       ],
     }],
+  };
+  
+  logger.info("Calling generateContent", {
+    payload: JSON.stringify(generateContentPayload),
+    payloadKeys: Object.keys(generateContentPayload),
   });
+  
+  const result = await model.generateContent(generateContentPayload);
   const text = result.response.text()?.trim() ?? "";
   return {text};
 }
@@ -179,6 +228,14 @@ export const geminiProxy = functions.onRequest(
         }
 
         try {
+          logger.info("geminiProxy received request", {
+            method: req.method,
+            body: JSON.stringify(req.body),
+            bodyKeys: Object.keys(req.body || {}),
+            hasSystemInstruction: req.body?.systemInstruction !== undefined,
+            systemInstructionType: typeof req.body?.systemInstruction,
+          });
+
           if (req.body?.mode === "identify") {
             const payload = identifySchema.parse(req.body);
             const response = await handleIdentify(payload, apiKey);
@@ -188,6 +245,13 @@ export const geminiProxy = functions.onRequest(
 
           if (req.body?.mode === "story" || req.body?.mode === "text") {
             const payload = (req.body.mode === "story" ? storySchema : textSchema).parse(req.body);
+            logger.info("Parsed payload for text/story mode", {
+              mode: payload.mode,
+              promptLength: payload.prompt.length,
+              hasSystemInstruction: payload.systemInstruction !== undefined,
+              systemInstructionLength: payload.systemInstruction?.length,
+              systemInstructionPreview: payload.systemInstruction?.substring(0, 100),
+            });
             const response = await handleText(payload, apiKey);
             res.json(response);
             return;

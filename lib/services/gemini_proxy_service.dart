@@ -44,11 +44,18 @@ class GeminiProxyService {
     String prompt, {
     String? systemInstruction,
   }) async {
-    final response = await _postJson({
+    final payload = {
       'mode': 'text',
       'prompt': prompt,
       if (systemInstruction != null) 'systemInstruction': systemInstruction,
-    });
+    };
+    print('[GeminiProxyService] Sending payload: ${jsonEncode(payload)}');
+    print('[GeminiProxyService] systemInstruction present: ${systemInstruction != null}');
+    if (systemInstruction != null) {
+      print('[GeminiProxyService] systemInstruction length: ${systemInstruction.length}');
+      print('[GeminiProxyService] systemInstruction preview: ${systemInstruction.substring(0, systemInstruction.length > 100 ? 100 : systemInstruction.length)}...');
+    }
+    final response = await _postJson(payload);
 
     if (response == null) return null;
 
@@ -62,14 +69,21 @@ class GeminiProxyService {
 
   Future<Map<String, dynamic>?> _postJson(Map<String, dynamic> payload) async {
     try {
+      final jsonBody = jsonEncode(payload);
+      print('[GeminiProxyService] POST to $_endpoint');
+      print('[GeminiProxyService] Request body: $jsonBody');
+      
       final response = await _httpClient
           .post(
             _endpoint,
             headers: const {'Content-Type': 'application/json'},
-            body: jsonEncode(payload),
+            body: jsonBody,
           )
           .timeout(_timeout);
 
+      print('[GeminiProxyService] Response status: ${response.statusCode}');
+      print('[GeminiProxyService] Response body: ${response.body}');
+      
       if (response.statusCode != 200) {
         return null;
       }
