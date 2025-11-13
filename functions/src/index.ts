@@ -105,7 +105,7 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
 }
 
 async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
-  const model = getModel("gemini-1.5-flash", apiKey);
+  const model = getModel("gemini-1.5-flash-latest", apiKey);
   const result = await model.generateContent({
     contents: [{
       role: "user",
@@ -125,7 +125,7 @@ async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
 }
 
 async function handleValidate(payload: ValidatePayload, apiKey: string) {
-  const model = getModel("gemini-1.5-flash", apiKey);
+  const model = getModel("gemini-1.5-flash-latest", apiKey);
   const prompt = `You are helping a child learn English words.
 Does this picture clearly show the object "${payload.word}" as the main focus?
 Answer strictly with "yes" or "no" and provide a confidence score between 0 and 1. Return JSON: {"approved": boolean, "confidence": number}.`;
@@ -187,7 +187,7 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
     systemInstructionLength: payload.systemInstruction?.length,
   });
   
-  const model = getModel("gemini-1.5-flash", apiKey, payload.systemInstruction);
+  const model = getModel("gemini-1.5-flash-latest", apiKey, payload.systemInstruction);
   
   const generateContentPayload = {
     contents: [{
