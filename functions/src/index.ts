@@ -54,16 +54,16 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   const modelConfig: {
     model: string;
     safetySettings: typeof safetySettings;
-    systemInstruction?: string;
   } = {
     model: modelId,
     safetySettings,
   };
   if (systemInstruction && systemInstruction.trim().length > 0) {
-    // SDK should convert systemInstruction (camelCase) to system_instruction (snake_case) automatically
-    // Explicitly use v1beta API version which may handle camelCase better than v1
-    modelConfig.systemInstruction = systemInstruction;
+    // Use snake_case directly to match API spec - SDK doesn't convert camelCase for model config
+    (modelConfig as any).system_instruction = systemInstruction;
   }
+  // Log the model config to verify the payload before API call
+  logger.info("Model config before getGenerativeModel", {modelConfig: JSON.stringify(modelConfig)});
   // Use v1beta API version - the SDK defaults to v1beta but explicitly setting it ensures consistency
   return client.getGenerativeModel(modelConfig, {apiVersion: "v1beta"});
 }
@@ -143,7 +143,7 @@ Answer strictly with "yes" or "no" and provide a confidence score between 0 and 
 
 async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
   // Pass systemInstruction to getModel so it's set at the model level
-  // The SDK should automatically convert camelCase "systemInstruction" to snake_case "system_instruction" for the API
+  // We use snake_case "system_instruction" directly in getModel to match the API spec
   // We explicitly use v1beta API version to ensure proper handling
   const model = getModel("gemini-1.5-flash", apiKey, payload.systemInstruction);
   
