@@ -99,10 +99,19 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   });
   
   // Explicitly set API version to v1 (not v1beta) - v1beta is not supported for gemini-1.5-flash
-  const model = client.getGenerativeModel(modelConfig, {
-    apiVersion: 'v1',
+  // The apiVersion option should force v1 API usage
+  const options = {
+    apiVersion: 'v1' as const,
+  };
+  logger.info("Calling getGenerativeModel with options", {
+    options: JSON.stringify(options),
+    modelId,
   });
-  logger.info("Model created successfully");
+  const model = client.getGenerativeModel(modelConfig, options);
+  logger.info("Model created successfully", {
+    modelId,
+    apiVersion: options.apiVersion,
+  });
   return model;
 }
 
