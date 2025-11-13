@@ -15,11 +15,13 @@ const customFetch = async (url: string | Request | URL, init?: RequestInit): Pro
   // Also handle v1beta2, v1beta3, etc. variations
   if (urlString.includes("generativelanguage.googleapis.com")) {
     const originalUrl = urlString;
+    const hadV1beta = /\/v1beta\d*\//.test(urlString);
+    
     // Log all Gemini API calls for debugging
     logger.info("🔍 [Module-level] Gemini API call intercepted", {
       originalUrl,
       method: init?.method || "GET",
-      hasV1beta: /\/v1beta\d*\//.test(urlString),
+      hasV1beta: hadV1beta,
       hasV1: urlString.includes("/v1/"),
     });
     
@@ -32,20 +34,40 @@ const customFetch = async (url: string | Request | URL, init?: RequestInit): Pro
       });
     }
     
+    // Construct the new request with rewritten URL
+    // The SDK typically uses string URLs, but handle all cases
+    let newRequest: string | Request | URL;
+    if (typeof url === "string") {
+      newRequest = urlString;
+    } else if (url instanceof URL) {
+      newRequest = new URL(urlString);
+    } else {
+      // For Request objects, create a new Request with rewritten URL
+      // Use the original request as the init to preserve all properties including body
+      newRequest = new Request(urlString, url);
+    }
+    
     // Log response after the request
-    const response = await originalFetch(
-      typeof url === "string" ? urlString : 
-      url instanceof URL ? new URL(urlString) : 
-      new Request(urlString, url),
-      init
-    );
+    const response = await originalFetch(newRequest, init);
     
     logger.info("✅ [Module-level] Gemini API response received", {
       url: urlString,
       status: response.status,
       statusText: response.statusText,
       ok: response.ok,
+      wasRewritten: originalUrl !== urlString,
     });
+    
+    // Log error details if request failed
+    if (!response.ok && response.status === 404) {
+      logger.error("🚨 [Module-level] 404 error on Gemini API call", {
+        originalUrl,
+        rewrittenUrl: urlString,
+        status: response.status,
+        statusText: response.statusText,
+        note: "This may indicate API version or model name issue",
+      });
+    }
     
     return response;
   }
@@ -129,10 +151,10 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   
   // Build model config with ONLY snake_case system_instruction (never camelCase)
   // Explicitly construct the object to avoid any camelCase properties
-  // Use gemini-1.5-flash (without -latest) - this is the correct model name for v1 API
+  // Use gemini-1.5-flash-latest - this is the correct model name for v1 API
   // The fetch override will rewrite any v1beta URLs to v1
   const modelConfig: any = {
-    model: modelId === "gemini-1.5" ? "gemini-1.5-flash" : modelId,
+    model: modelId === "gemini-1.5" ? "gemini-1.5-flash-latest" : modelId,
     safetySettings,
   };
   
@@ -185,7 +207,6 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
 
 async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
   logger.info("🔍 handleIdentify called");
-  // Use gemini-1.5-flash-latest - correct model name for v1 API
   const model = getModel("gemini-1.5", apiKey);
   logger.info("📤 Calling generateContent for identify");
   const result = await model.generateContent({
@@ -209,7 +230,6 @@ async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
 
 async function handleValidate(payload: ValidatePayload, apiKey: string) {
   logger.info("🔍 handleValidate called");
-  // Use gemini-1.5-flash-latest - correct model name for v1 API
   const model = getModel("gemini-1.5", apiKey);
   const prompt = `You are helping a child learn English words.
 Does this picture clearly show the object "${payload.word}" as the main focus?
@@ -273,7 +293,6 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
     systemInstructionLength: payload.systemInstruction?.length,
   });
   
-  // Use gemini-1.5-flash-latest - correct model name for v1 API
   const model = getModel("gemini-1.5", apiKey, payload.systemInstruction);
   
   const generateContentPayload = {
@@ -373,6 +392,20 @@ export const geminiProxy = functions.onRequest(
                          req.body?.mode === "validate" ? "gemini-1.5" :
                          req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5" : "unknown",
                 note: "This should not happen if fetch override is working correctly",
+                fetchOverrideActive: typeof (global as any).fetch === "function",
+                recommendation: "Check if SDK is bypassing global fetch override. Consider using gemini-1.5-flash-latest model name.",
+              });
+            }
+            
+            // Log repeated gemini-1.5-flash not found errors specifically
+            if (errorMessage.includes("gemini-1.5-flash") && errorMessage.includes("not found")) {
+              logger.error("🚨 Repeated gemini-1.5-flash not found error detected", {
+                errorMessage,
+                modelId: req.body?.mode === "identify" ? "gemini-1.5" : 
+                         req.body?.mode === "validate" ? "gemini-1.5" :
+                         req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5" : "unknown",
+                apiVersion: errorMessage.includes("v1beta") ? "v1beta" : "unknown",
+                recommendation: "Model name may need to be gemini-1.5-flash-latest for v1 API, or API version needs to be v1 instead of v1beta",
               });
             }
             res.status(500).json({error: error.message});
