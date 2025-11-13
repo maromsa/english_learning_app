@@ -49,12 +49,39 @@ const safetySettings = [
   {category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
 ];
 
-function getModel(modelId: string, apiKey: string) {
+// Workaround: The SDK sends systemInstruction (camelCase) but the API expects system_instruction (snake_case)
+// We intercept fetch calls to convert the field name in the request body
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async function(input: any, init?: any): Promise<Response> {
+  if (init?.body && typeof init.body === "string") {
+    try {
+      const body = JSON.parse(init.body);
+      if (body.systemInstruction && !body.system_instruction) {
+        body.system_instruction = body.systemInstruction;
+        delete body.systemInstruction;
+        init.body = JSON.stringify(body);
+      }
+    } catch {
+      // If body is not JSON, leave it as-is
+    }
+  }
+  return originalFetch(input, init);
+};
+
+function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   const client = new GoogleGenerativeAI(apiKey);
-  const modelConfig = {
+  const modelConfig: {
+    model: string;
+    safetySettings: typeof safetySettings;
+    systemInstruction?: string;
+  } = {
     model: modelId,
     safetySettings,
   };
+  if (systemInstruction && systemInstruction.trim().length > 0) {
+    // Pass systemInstruction (camelCase) so SDK recognizes it, fetch interceptor will convert to snake_case
+    modelConfig.systemInstruction = systemInstruction;
+  }
   return client.getGenerativeModel(modelConfig);
 }
 
@@ -132,30 +159,18 @@ Answer strictly with "yes" or "no" and provide a confidence score between 0 and 
 }
 
 async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
-  const model = getModel("gemini-1.5-flash", apiKey);
+  // Pass systemInstruction to getModel so it's set at the model level
+  // The SDK will convert camelCase "systemInstruction" to snake_case "system_instruction" for the API
+  const model = getModel("gemini-1.5-flash", apiKey, payload.systemInstruction);
   
-  // Build the generateContent options with system_instruction if provided
-  // Note: The API expects snake_case "system_instruction", not camelCase "systemInstruction"
-  const generateContentOptions: {
-    system_instruction?: {parts: Array<{text: string}>};
-    contents: Array<{role: string; parts: Array<{text: string}>}>;
-  } = {
+  const result = await model.generateContent({
     contents: [{
       role: "user",
       parts: [
         {text: payload.prompt},
       ],
     }],
-  };
-  
-  // Add system_instruction if provided (using snake_case as required by the API)
-  if (payload.systemInstruction && payload.systemInstruction.trim().length > 0) {
-    generateContentOptions.system_instruction = {
-      parts: [{text: payload.systemInstruction}],
-    };
-  }
-  
-  const result = await model.generateContent(generateContentOptions as any);
+  });
   const text = result.response.text()?.trim() ?? "";
   return {text};
 }
