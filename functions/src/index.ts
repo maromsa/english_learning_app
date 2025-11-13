@@ -5,6 +5,59 @@ import cors from "cors";
 import {GoogleGenerativeAI, HarmBlockThreshold, HarmCategory} from "@google/generative-ai";
 import {z} from "zod";
 
+// Setup fetch override at module level to ensure it's active before SDK initialization
+// This ensures all Gemini API calls use v1 API instead of v1beta
+const originalFetch = global.fetch;
+const customFetch = async (url: string | Request | URL, init?: RequestInit): Promise<Response> => {
+  let urlString = typeof url === "string" ? url : url instanceof URL ? url.toString() : (url as Request).url;
+  
+  // CRITICAL: Rewrite v1beta URLs to v1 for Gemini API calls
+  // Also handle v1beta2, v1beta3, etc. variations
+  if (urlString.includes("generativelanguage.googleapis.com")) {
+    const originalUrl = urlString;
+    // Log all Gemini API calls for debugging
+    logger.info("🔍 [Module-level] Gemini API call intercepted", {
+      originalUrl,
+      method: init?.method || "GET",
+      hasV1beta: /\/v1beta\d*\//.test(urlString),
+      hasV1: urlString.includes("/v1/"),
+    });
+    
+    // Replace any v1beta, v1beta2, v1beta3, etc. with v1
+    urlString = urlString.replace(/\/v1beta\d*\//g, "/v1/");
+    if (originalUrl !== urlString) {
+      logger.warn("⚠️ [Module-level] Rewriting Gemini API URL from v1beta to v1", {
+        originalUrl,
+        newUrl: urlString,
+      });
+    }
+    
+    // Log response after the request
+    const response = await originalFetch(
+      typeof url === "string" ? urlString : 
+      url instanceof URL ? new URL(urlString) : 
+      new Request(urlString, url),
+      init
+    );
+    
+    logger.info("✅ [Module-level] Gemini API response received", {
+      url: urlString,
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+    });
+    
+    return response;
+  }
+  
+  // For non-Gemini URLs, use original fetch
+  return originalFetch(url, init);
+};
+
+// Override global fetch at module level
+(global as any).fetch = customFetch;
+logger.info("🌐 [Module-level] Global fetch overridden with custom fetch for v1 API");
+
 setGlobalOptions({
   region: "us-central1",
   maxInstances: 10,
@@ -76,7 +129,8 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   
   // Build model config with ONLY snake_case system_instruction (never camelCase)
   // Explicitly construct the object to avoid any camelCase properties
-  // Use gemini-1.5-flash explicitly to ensure v1 API usage (not v1beta)
+  // Use gemini-1.5-flash (without -latest) - this is the correct model name for v1 API
+  // The fetch override will rewrite any v1beta URLs to v1
   const modelConfig: any = {
     model: modelId === "gemini-1.5" ? "gemini-1.5-flash" : modelId,
     safetySettings,
@@ -131,7 +185,7 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
 
 async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
   logger.info("🔍 handleIdentify called");
-  // Use gemini-1.5 (not gemini-1.5-flash) - correct model name for v1 API
+  // Use gemini-1.5-flash-latest - correct model name for v1 API
   const model = getModel("gemini-1.5", apiKey);
   logger.info("📤 Calling generateContent for identify");
   const result = await model.generateContent({
@@ -155,7 +209,7 @@ async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
 
 async function handleValidate(payload: ValidatePayload, apiKey: string) {
   logger.info("🔍 handleValidate called");
-  // Use gemini-1.5 (not gemini-1.5-flash) - correct model name for v1 API
+  // Use gemini-1.5-flash-latest - correct model name for v1 API
   const model = getModel("gemini-1.5", apiKey);
   const prompt = `You are helping a child learn English words.
 Does this picture clearly show the object "${payload.word}" as the main focus?
@@ -219,7 +273,7 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
     systemInstructionLength: payload.systemInstruction?.length,
   });
   
-  // Use gemini-1.5 (not gemini-1.5-flash) - correct model name for v1 API
+  // Use gemini-1.5-flash-latest - correct model name for v1 API
   const model = getModel("gemini-1.5", apiKey, payload.systemInstruction);
   
   const generateContentPayload = {
@@ -245,83 +299,14 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
 // Export for testing
 export {handleText, getModel};
 
-// Setup custom fetch to force v1 API (not v1beta)
-// This will be called at the start of each request
-function setupFetchOverride() {
-  const originalFetch = global.fetch;
-  
-  const customFetch = async (url: string | Request | URL, init?: RequestInit): Promise<Response> => {
-    let urlString = typeof url === "string" ? url : url instanceof URL ? url.toString() : (url as Request).url;
-    
-    // Log all Gemini API calls for debugging
-    if (urlString.includes("generativelanguage.googleapis.com")) {
-      logger.info("🔍 Gemini API call intercepted", {
-        originalUrl: urlString,
-        method: init?.method || "GET",
-        hasV1beta: urlString.includes("/v1beta/"),
-        hasV1: urlString.includes("/v1/"),
-      });
-    }
-    
-    // CRITICAL: Rewrite v1beta URLs to v1 for Gemini API calls
-    if (urlString.includes("generativelanguage.googleapis.com") && urlString.includes("/v1beta/")) {
-      urlString = urlString.replace("/v1beta/", "/v1/");
-      logger.warn("⚠️ Rewriting Gemini API URL from v1beta to v1", {
-        originalUrl: typeof url === "string" ? url : url instanceof URL ? url.toString() : (url as Request).url,
-        newUrl: urlString,
-      });
-    }
-    
-    // Use the rewritten URL
-    let finalUrl: string | Request | URL;
-    if (typeof url === "string") {
-      finalUrl = urlString;
-    } else if (url instanceof URL) {
-      finalUrl = new URL(urlString);
-    } else {
-      finalUrl = new Request(urlString, url);
-    }
-    
-    const response = await originalFetch(finalUrl, init);
-    
-    // Log response status for Gemini API calls
-    if (urlString.includes("generativelanguage.googleapis.com")) {
-      logger.info("✅ Gemini API response received", {
-        url: urlString,
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries()),
-      });
-      
-      // Log error response details (without consuming the body)
-      if (!response.ok) {
-        logger.error("❌ Gemini API error response", {
-          url: urlString,
-          status: response.status,
-          statusText: response.statusText,
-          note: "Error body will be logged by SDK error handler",
-        });
-      }
-    }
-    
-    return response;
-  };
-  
-  // Override global fetch
-  (global as any).fetch = customFetch;
-  logger.info("🌐 Global fetch overridden with custom fetch for v1 API");
-  
-  return originalFetch;
-}
+// Note: Fetch override is now set up at module level (see top of file)
+// This ensures it's active before any SDK calls are made
 
 export const geminiProxy = functions.onRequest(
     {cors: true, secrets: ["GEMINI_API_KEY"]},
     (req, res) => {
       corsHandler(req, res, async () => {
-        // Override fetch at the start of request handling
-        const originalFetch = setupFetchOverride();
-        
+        // Fetch override is already active at module level
         try {
           if (req.method !== "POST") {
             res.set("Allow", "POST");
@@ -394,10 +379,6 @@ export const geminiProxy = functions.onRequest(
           } else {
             res.status(500).json({error: "Unknown error"});
           }
-        } finally {
-          // Restore original fetch at the end of request
-          (global as any).fetch = originalFetch;
-          logger.info("🔄 Restored original fetch");
         }
       });
     },
