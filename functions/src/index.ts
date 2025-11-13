@@ -31,7 +31,7 @@ const storySchema = z.object({
   system_instruction: z.string().optional(),
 }).transform((data) => ({
   ...data,
-  systemInstruction: data.system_instruction, // Map to camelCase for internal use
+  ...(data.system_instruction !== undefined && {systemInstruction: data.system_instruction}), // Map to camelCase for internal use (optional)
 }));
 
 const textSchema = z.object({
@@ -40,7 +40,7 @@ const textSchema = z.object({
   system_instruction: z.string().optional(),
 }).transform((data) => ({
   ...data,
-  systemInstruction: data.system_instruction, // Map to camelCase for internal use
+  ...(data.system_instruction !== undefined && {systemInstruction: data.system_instruction}), // Map to camelCase for internal use (optional)
 }));
 
 type IdentifyPayload = z.infer<typeof identifySchema>;
@@ -69,8 +69,9 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   
   // Build model config with ONLY snake_case system_instruction (never camelCase)
   // Explicitly construct the object to avoid any camelCase properties
+  // Use gemini-1.5-flash explicitly to ensure v1 API usage (not v1beta)
   const modelConfig: any = {
-    model: modelId,
+    model: modelId === "gemini-1.5" ? "gemini-1.5-flash" : modelId,
     safetySettings,
   };
   
@@ -103,15 +104,21 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
     modelConfigKeys: Object.keys(modelConfig),
     hasSystemInstruction: modelConfig.system_instruction !== undefined,
     hasSystemInstructionCamelCase: modelConfig.systemInstruction !== undefined,
+    finalModelId: modelConfig.model,
   });
   
-  // Use getGenerativeModel - gemini-1.5 model name ensures v1 API usage (not v1beta)
+  // Use getGenerativeModel with explicit v1 API version (not v1beta)
+  // The SDK defaults to v1beta, but gemini-1.5-flash requires v1 API
   logger.info("Calling getGenerativeModel", {
     modelId,
+    finalModelId: modelConfig.model,
+    apiVersion: "v1",
   });
-  const model = client.getGenerativeModel(modelConfig);
+  const model = client.getGenerativeModel(modelConfig, {apiVersion: "v1"});
   logger.info("Model created successfully", {
     modelId,
+    finalModelId: modelConfig.model,
+    apiVersion: "v1",
   });
   return model;
 }
