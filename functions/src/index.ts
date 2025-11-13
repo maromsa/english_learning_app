@@ -54,7 +54,7 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   return client.getGenerativeModel({
     model: modelId,
     safetySettings,
-    ...(systemInstruction ? {systemInstruction: {role: "system", parts: [{text: systemInstruction}]}} : {}),
+    ...(systemInstruction ? {systemInstruction} : {}),
   });
 }
 
