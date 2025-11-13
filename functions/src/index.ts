@@ -64,8 +64,43 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
     systemInstructionValue: systemInstruction,
   });
   
-  // Initialize client - SDK v0.24.1 should use v1 API by default for gemini-1.5 models
-  const client = new GoogleGenerativeAI(apiKey);
+  // Initialize client with custom fetch to force v1 API (not v1beta)
+  // The SDK defaults to v1beta, but gemini-1.5-flash requires v1 API
+  // We'll intercept fetch calls and rewrite v1beta URLs to v1
+  const originalFetch = global.fetch;
+  const customFetch = async (url: string | Request | URL, init?: RequestInit): Promise<Response> => {
+    let urlString = typeof url === "string" ? url : url instanceof URL ? url.toString() : (url as Request).url;
+    // Only rewrite URLs for Gemini API calls
+    if (urlString.includes("generativelanguage.googleapis.com") && urlString.includes("/v1beta/")) {
+      urlString = urlString.replace("/v1beta/", "/v1/");
+      logger.info("Rewriting Gemini API URL from v1beta to v1", {
+        originalUrl: typeof url === "string" ? url : url instanceof URL ? url.toString() : (url as Request).url,
+        newUrl: urlString,
+      });
+    }
+    // Use the rewritten URL
+    if (typeof url === "string") {
+      return originalFetch(urlString, init);
+    } else if (url instanceof URL) {
+      return originalFetch(new URL(urlString), init);
+    } else {
+      return originalFetch(new Request(urlString, url), init);
+    }
+  };
+  
+  // Temporarily override global fetch to rewrite v1beta URLs to v1
+  // The SDK will capture this fetch reference during client creation
+  (global as any).fetch = customFetch;
+  
+  let client: any;
+  try {
+    // Create client - it will capture our custom fetch
+    client = new GoogleGenerativeAI(apiKey);
+  } finally {
+    // Restore original fetch after client creation
+    // The SDK stores the fetch reference, so this is safe
+    (global as any).fetch = originalFetch;
+  }
   
   // Build model config with ONLY snake_case system_instruction (never camelCase)
   // Explicitly construct the object to avoid any camelCase properties
@@ -107,18 +142,17 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
     finalModelId: modelConfig.model,
   });
   
-  // Use getGenerativeModel with explicit v1 API version (not v1beta)
-  // The SDK defaults to v1beta, but gemini-1.5-flash requires v1 API
+  // Use getGenerativeModel - custom fetch will rewrite v1beta URLs to v1
   logger.info("Calling getGenerativeModel", {
     modelId,
     finalModelId: modelConfig.model,
-    apiVersion: "v1",
+    note: "Using custom fetch to rewrite v1beta URLs to v1",
   });
-  const model = client.getGenerativeModel(modelConfig, {apiVersion: "v1"});
+  const model = client.getGenerativeModel(modelConfig);
   logger.info("Model created successfully", {
     modelId,
     finalModelId: modelConfig.model,
-    apiVersion: "v1",
+    baseUrl: "https://generativelanguage.googleapis.com/v1",
   });
   return model;
 }

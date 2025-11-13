@@ -50,9 +50,14 @@ describe("systemInstruction handling", () => {
     expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash"); // Updated to gemini-1.5-flash
     expect(modelConfig).toHaveProperty("safetySettings");
     
-    // Verify apiVersion is set to v1
+    // Verify GoogleGenerativeAI was initialized with the API key
+    const constructorCall = GoogleGenerativeAIClass.mock.calls[0];
+    expect(constructorCall[0]).toBe(mockApiKey);
+    
+    // Verify getGenerativeModel was called without options
+    // (Custom fetch handles v1beta to v1 URL rewriting)
     const requestOptions = getGenerativeModelCall?.mock.calls[0]?.[1];
-    expect(requestOptions).toHaveProperty("apiVersion", "v1");
+    expect(requestOptions).toBeUndefined();
   });
 
   test("getModel should include system_instruction when provided", () => {
@@ -73,9 +78,14 @@ describe("systemInstruction handling", () => {
     expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash"); // Updated to gemini-1.5-flash
     expect(modelConfig).toHaveProperty("safetySettings");
     
-    // Verify apiVersion is set to v1
+    // Verify GoogleGenerativeAI was initialized with the API key
+    const constructorCall = GoogleGenerativeAIClass.mock.calls[0];
+    expect(constructorCall[0]).toBe(mockApiKey);
+    
+    // Verify getGenerativeModel was called without options
+    // (Custom fetch handles v1beta to v1 URL rewriting)
     const requestOptions = getGenerativeModelCall?.mock.calls[0]?.[1];
-    expect(requestOptions).toHaveProperty("apiVersion", "v1");
+    expect(requestOptions).toBeUndefined();
   });
 
   test("handleText should pass systemInstruction to getModel when provided", async () => {
@@ -143,9 +153,14 @@ describe("systemInstruction handling", () => {
     expect(modelConfig).toHaveProperty("system_instruction", "You are a creative storyteller");
     expect(modelConfig).not.toHaveProperty("systemInstruction");
     
-    // Verify apiVersion is set to v1
+    // Verify GoogleGenerativeAI was initialized with the API key
+    const constructorCall = GoogleGenerativeAIClass.mock.calls[0];
+    expect(constructorCall[0]).toBe(mockApiKey);
+    
+    // Verify getGenerativeModel was called without options
+    // (Custom fetch handles v1beta to v1 URL rewriting)
     const requestOptions = getGenerativeModelCall?.mock.calls[0]?.[1];
-    expect(requestOptions).toHaveProperty("apiVersion", "v1");
+    expect(requestOptions).toBeUndefined();
 
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
     const generateContentCall = mockGenerateContent.mock.calls[0]?.[0];
