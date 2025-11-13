@@ -64,43 +64,15 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
     systemInstructionValue: systemInstruction,
   });
   
-  // Initialize client with custom fetch to force v1 API (not v1beta)
-  // The SDK defaults to v1beta, but gemini-1.5-flash requires v1 API
-  // We'll intercept fetch calls and rewrite v1beta URLs to v1
-  const originalFetch = global.fetch;
-  const customFetch = async (url: string | Request | URL, init?: RequestInit): Promise<Response> => {
-    let urlString = typeof url === "string" ? url : url instanceof URL ? url.toString() : (url as Request).url;
-    // Only rewrite URLs for Gemini API calls
-    if (urlString.includes("generativelanguage.googleapis.com") && urlString.includes("/v1beta/")) {
-      urlString = urlString.replace("/v1beta/", "/v1/");
-      logger.info("Rewriting Gemini API URL from v1beta to v1", {
-        originalUrl: typeof url === "string" ? url : url instanceof URL ? url.toString() : (url as Request).url,
-        newUrl: urlString,
-      });
-    }
-    // Use the rewritten URL
-    if (typeof url === "string") {
-      return originalFetch(urlString, init);
-    } else if (url instanceof URL) {
-      return originalFetch(new URL(urlString), init);
-    } else {
-      return originalFetch(new Request(urlString, url), init);
-    }
-  };
+  // Create client - it will use the fetch override set at handler level
+  logger.info("Creating GoogleGenerativeAI client", {
+    apiKeyPresent: !!apiKey,
+    apiKeyLength: apiKey?.length,
+    currentFetchType: typeof (global as any).fetch,
+  });
   
-  // Temporarily override global fetch to rewrite v1beta URLs to v1
-  // The SDK will capture this fetch reference during client creation
-  (global as any).fetch = customFetch;
-  
-  let client: any;
-  try {
-    // Create client - it will capture our custom fetch
-    client = new GoogleGenerativeAI(apiKey);
-  } finally {
-    // Restore original fetch after client creation
-    // The SDK stores the fetch reference, so this is safe
-    (global as any).fetch = originalFetch;
-  }
+  const client = new GoogleGenerativeAI(apiKey);
+  logger.info("GoogleGenerativeAI client created successfully");
   
   // Build model config with ONLY snake_case system_instruction (never camelCase)
   // Explicitly construct the object to avoid any camelCase properties
@@ -158,8 +130,10 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
 }
 
 async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
+  logger.info("🔍 handleIdentify called");
   // Use gemini-1.5 (not gemini-1.5-flash) - correct model name for v1 API
   const model = getModel("gemini-1.5", apiKey);
+  logger.info("📤 Calling generateContent for identify");
   const result = await model.generateContent({
     contents: [{
       role: "user",
@@ -174,17 +148,20 @@ async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
       ],
     }],
   });
+  logger.info("✅ generateContent completed for identify");
   const text = result.response.text()?.trim() ?? "";
   return {text};
 }
 
 async function handleValidate(payload: ValidatePayload, apiKey: string) {
+  logger.info("🔍 handleValidate called");
   // Use gemini-1.5 (not gemini-1.5-flash) - correct model name for v1 API
   const model = getModel("gemini-1.5", apiKey);
   const prompt = `You are helping a child learn English words.
 Does this picture clearly show the object "${payload.word}" as the main focus?
 Answer strictly with "yes" or "no" and provide a confidence score between 0 and 1. Return JSON: {"approved": boolean, "confidence": number}.`;
 
+  logger.info("📤 Calling generateContent for validate");
   const result = await model.generateContent({
     contents: [{
       role: "user",
@@ -199,6 +176,7 @@ Answer strictly with "yes" or "no" and provide a confidence score between 0 and 
       ],
     }],
   });
+  logger.info("✅ generateContent completed for validate");
 
   const text = result.response.text()?.trim() ?? "";
   let approved = false;
@@ -253,12 +231,13 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
     }],
   };
   
-  logger.info("Calling generateContent", {
+  logger.info("📤 Calling generateContent for text/story", {
     payload: JSON.stringify(generateContentPayload),
     payloadKeys: Object.keys(generateContentPayload),
   });
   
   const result = await model.generateContent(generateContentPayload);
+  logger.info("✅ generateContent completed for text/story");
   const text = result.response.text()?.trim() ?? "";
   return {text};
 }
@@ -266,24 +245,97 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
 // Export for testing
 export {handleText, getModel};
 
+// Setup custom fetch to force v1 API (not v1beta)
+// This will be called at the start of each request
+function setupFetchOverride() {
+  const originalFetch = global.fetch;
+  
+  const customFetch = async (url: string | Request | URL, init?: RequestInit): Promise<Response> => {
+    let urlString = typeof url === "string" ? url : url instanceof URL ? url.toString() : (url as Request).url;
+    
+    // Log all Gemini API calls for debugging
+    if (urlString.includes("generativelanguage.googleapis.com")) {
+      logger.info("🔍 Gemini API call intercepted", {
+        originalUrl: urlString,
+        method: init?.method || "GET",
+        hasV1beta: urlString.includes("/v1beta/"),
+        hasV1: urlString.includes("/v1/"),
+      });
+    }
+    
+    // CRITICAL: Rewrite v1beta URLs to v1 for Gemini API calls
+    if (urlString.includes("generativelanguage.googleapis.com") && urlString.includes("/v1beta/")) {
+      urlString = urlString.replace("/v1beta/", "/v1/");
+      logger.warn("⚠️ Rewriting Gemini API URL from v1beta to v1", {
+        originalUrl: typeof url === "string" ? url : url instanceof URL ? url.toString() : (url as Request).url,
+        newUrl: urlString,
+      });
+    }
+    
+    // Use the rewritten URL
+    let finalUrl: string | Request | URL;
+    if (typeof url === "string") {
+      finalUrl = urlString;
+    } else if (url instanceof URL) {
+      finalUrl = new URL(urlString);
+    } else {
+      finalUrl = new Request(urlString, url);
+    }
+    
+    const response = await originalFetch(finalUrl, init);
+    
+    // Log response status for Gemini API calls
+    if (urlString.includes("generativelanguage.googleapis.com")) {
+      logger.info("✅ Gemini API response received", {
+        url: urlString,
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
+      
+      // Log error response details (without consuming the body)
+      if (!response.ok) {
+        logger.error("❌ Gemini API error response", {
+          url: urlString,
+          status: response.status,
+          statusText: response.statusText,
+          note: "Error body will be logged by SDK error handler",
+        });
+      }
+    }
+    
+    return response;
+  };
+  
+  // Override global fetch
+  (global as any).fetch = customFetch;
+  logger.info("🌐 Global fetch overridden with custom fetch for v1 API");
+  
+  return originalFetch;
+}
+
 export const geminiProxy = functions.onRequest(
     {cors: true, secrets: ["GEMINI_API_KEY"]},
     (req, res) => {
       corsHandler(req, res, async () => {
-        if (req.method !== "POST") {
-          res.set("Allow", "POST");
-          res.status(405).json({error: "Method Not Allowed"});
-          return;
-        }
-
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) {
-          res.status(500).json({error: "GEMINI_API_KEY is not configured"});
-          return;
-        }
-
+        // Override fetch at the start of request handling
+        const originalFetch = setupFetchOverride();
+        
         try {
-          logger.info("geminiProxy received request", {
+          if (req.method !== "POST") {
+            res.set("Allow", "POST");
+            res.status(405).json({error: "Method Not Allowed"});
+            return;
+          }
+
+          const apiKey = process.env.GEMINI_API_KEY;
+          if (!apiKey) {
+            res.status(500).json({error: "GEMINI_API_KEY is not configured"});
+            return;
+          }
+
+          logger.info("📥 geminiProxy received request", {
             method: req.method,
             body: JSON.stringify(req.body),
             bodyKeys: Object.keys(req.body || {}),
@@ -300,7 +352,7 @@ export const geminiProxy = functions.onRequest(
 
           if (req.body?.mode === "story" || req.body?.mode === "text") {
             const payload = (req.body.mode === "story" ? storySchema : textSchema).parse(req.body);
-            logger.info("Parsed payload for text/story mode", {
+            logger.info("📝 Parsed payload for text/story mode", {
               mode: payload.mode,
               promptLength: payload.prompt.length,
               hasSystemInstruction: payload.systemInstruction !== undefined,
@@ -317,24 +369,35 @@ export const geminiProxy = functions.onRequest(
           const response = await handleValidate(payload, apiKey);
           res.json(response);
         } catch (error) {
-          logger.error("geminiProxy failed", error);
+          logger.error("💥 geminiProxy failed", error);
           if (error instanceof z.ZodError) {
             res.status(400).json({error: "Invalid payload", details: error.errors});
           } else if (error instanceof Error) {
             // Check if error is related to v1beta API version issue
             const errorMessage = error.message;
+            logger.error("🔴 Error details", {
+              errorMessage,
+              errorStack: error.stack,
+              errorName: error.name,
+            });
+            
             if (errorMessage.includes("v1beta") && errorMessage.includes("not found")) {
-              logger.error("API version mismatch detected - SDK is using v1beta but model requires v1 API", {
+              logger.error("🚨 API version mismatch detected - SDK is using v1beta but model requires v1 API", {
                 errorMessage,
                 modelId: req.body?.mode === "identify" ? "gemini-1.5" : 
                          req.body?.mode === "validate" ? "gemini-1.5" :
                          req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5" : "unknown",
+                note: "This should not happen if fetch override is working correctly",
               });
             }
             res.status(500).json({error: error.message});
           } else {
             res.status(500).json({error: "Unknown error"});
           }
+        } finally {
+          // Restore original fetch at the end of request
+          (global as any).fetch = originalFetch;
+          logger.info("🔄 Restored original fetch");
         }
       });
     },
