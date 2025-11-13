@@ -28,14 +28,20 @@ const validateSchema = z.object({
 const storySchema = z.object({
   mode: z.literal("story"),
   prompt: z.string().min(1),
-  systemInstruction: z.string().optional(),
-});
+  system_instruction: z.string().optional(),
+}).transform((data) => ({
+  ...data,
+  systemInstruction: data.system_instruction, // Map to camelCase for internal use
+}));
 
 const textSchema = z.object({
   mode: z.literal("text"),
   prompt: z.string().min(1),
-  systemInstruction: z.string().optional(),
-});
+  system_instruction: z.string().optional(),
+}).transform((data) => ({
+  ...data,
+  systemInstruction: data.system_instruction, // Map to camelCase for internal use
+}));
 
 type IdentifyPayload = z.infer<typeof identifySchema>;
 type ValidatePayload = z.infer<typeof validateSchema>;
@@ -99,8 +105,7 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
     hasSystemInstructionCamelCase: modelConfig.systemInstruction !== undefined,
   });
   
-  // Use getGenerativeModel - gemini-1.5-flash models require v1 API (not v1beta)
-  // Using specific version like "gemini-1.5-flash-001" helps ensure v1 API usage
+  // Use getGenerativeModel - gemini-1.5 model name ensures v1 API usage (not v1beta)
   logger.info("Calling getGenerativeModel", {
     modelId,
   });
@@ -112,8 +117,8 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
 }
 
 async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
-  // Use gemini-1.5-flash-001 to ensure v1 API usage (v1beta doesn't support gemini-1.5-flash models)
-  const model = getModel("gemini-1.5-flash-001", apiKey);
+  // Use gemini-1.5 (not gemini-1.5-flash) - correct model name for v1 API
+  const model = getModel("gemini-1.5", apiKey);
   const result = await model.generateContent({
     contents: [{
       role: "user",
@@ -133,8 +138,8 @@ async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
 }
 
 async function handleValidate(payload: ValidatePayload, apiKey: string) {
-  // Use gemini-1.5-flash-001 to ensure v1 API usage (v1beta doesn't support gemini-1.5-flash models)
-  const model = getModel("gemini-1.5-flash-001", apiKey);
+  // Use gemini-1.5 (not gemini-1.5-flash) - correct model name for v1 API
+  const model = getModel("gemini-1.5", apiKey);
   const prompt = `You are helping a child learn English words.
 Does this picture clearly show the object "${payload.word}" as the main focus?
 Answer strictly with "yes" or "no" and provide a confidence score between 0 and 1. Return JSON: {"approved": boolean, "confidence": number}.`;
@@ -195,8 +200,8 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
     systemInstructionLength: payload.systemInstruction?.length,
   });
   
-  // Use gemini-1.5-flash-001 to ensure v1 API usage (v1beta doesn't support gemini-1.5-flash models)
-  const model = getModel("gemini-1.5-flash-001", apiKey, payload.systemInstruction);
+  // Use gemini-1.5 (not gemini-1.5-flash) - correct model name for v1 API
+  const model = getModel("gemini-1.5", apiKey, payload.systemInstruction);
   
   const generateContentPayload = {
     contents: [{
@@ -241,8 +246,8 @@ export const geminiProxy = functions.onRequest(
             method: req.method,
             body: JSON.stringify(req.body),
             bodyKeys: Object.keys(req.body || {}),
-            hasSystemInstruction: req.body?.systemInstruction !== undefined,
-            systemInstructionType: typeof req.body?.systemInstruction,
+            hasSystemInstruction: req.body?.system_instruction !== undefined || req.body?.systemInstruction !== undefined,
+            systemInstructionType: typeof (req.body?.system_instruction ?? req.body?.systemInstruction),
           });
 
           if (req.body?.mode === "identify") {
@@ -280,9 +285,9 @@ export const geminiProxy = functions.onRequest(
             if (errorMessage.includes("v1beta") && errorMessage.includes("not found")) {
               logger.error("API version mismatch detected - SDK is using v1beta but model requires v1 API", {
                 errorMessage,
-                modelId: req.body?.mode === "identify" ? "gemini-1.5-flash-001" : 
-                         req.body?.mode === "validate" ? "gemini-1.5-flash-001" :
-                         req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5-flash-001" : "unknown",
+                modelId: req.body?.mode === "identify" ? "gemini-1.5" : 
+                         req.body?.mode === "validate" ? "gemini-1.5" :
+                         req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5" : "unknown",
               });
             }
             res.status(500).json({error: error.message});
