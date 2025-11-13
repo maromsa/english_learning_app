@@ -47,7 +47,7 @@ class GeminiProxyService {
     final payload = {
       'mode': 'text',
       'prompt': prompt,
-      if (systemInstruction != null) 'systemInstruction': systemInstruction,
+      if (systemInstruction != null) 'system_instruction': systemInstruction,
     };
     print('[GeminiProxyService] Sending payload: ${jsonEncode(payload)}');
     print('[GeminiProxyService] systemInstruction present: ${systemInstruction != null}');
