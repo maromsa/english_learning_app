@@ -97,13 +97,7 @@ class ConversationCoachService {
       'תכונת שיחת ה-AI של ספרק מושבתת. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי לאפשר שיחות חיות.';
 
   static _ConversationGenerator _inferGenerator() {
-    final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
-
-    if (proxyEndpoint == null) {
-      return (_) async {
-        throw const ConversationUnavailableException(_geminiUnavailableMessage);
-      };
-    }
+    final Uri proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
     return (prompt) async {
       final service = GeminiProxyService(proxyEndpoint);

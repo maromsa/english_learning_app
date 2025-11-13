@@ -73,8 +73,8 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _speechEnabled = false;
   int _streak = 0;
   OverlayEntry? _achievementOverlay;
-  bool _aiFeaturesEnabled = false;
-  Uri? get proxyEndpoint => AppConfig.geminiProxyEndpoint;
+  // AI features are always enabled since geminiProxyEndpoint always returns a valid endpoint
+  Uri get proxyEndpoint => AppConfig.geminiProxyEndpoint;
 
   @override
   void initState() {
@@ -159,15 +159,11 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _initializeServices() async {
-    final bool geminiProxyAvailable = AppConfig.hasGeminiProxy;
     final bool cloudinaryAvailable = AppConfig.hasCloudinary;
     final bool pixabayAvailable = AppConfig.hasPixabay;
 
-    if (geminiProxyAvailable && proxyEndpoint != null) {
-      _geminiProxy = GeminiProxyService(proxyEndpoint!);
-    } else {
-      AppConfig.debugWarnIfMissing('Gemini AI features', false);
-    }
+    // Always initialize Gemini proxy - it's always available
+    _geminiProxy = GeminiProxyService(proxyEndpoint);
 
     if (pixabayAvailable) {
       _webImageService = WebImageService(
@@ -193,7 +189,6 @@ class _MyHomePageState extends State<MyHomePage> {
     if (mounted) {
       setState(() {
         _isLoading = false;
-        _aiFeaturesEnabled = geminiProxyAvailable && proxyEndpoint != null;
       });
     }
   }
@@ -293,12 +288,12 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _takePictureAndIdentify() async {
-    if (!_aiFeaturesEnabled || _geminiProxy == null) {
+    if (_geminiProxy == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'תכונת ה-AI כבויה. הגדירו GEMINI_PROXY_URL של פונקציית הענן כדי להפעיל צילום חכם.',
+              'שגיאה באתחול שירות ה-AI. אנא נסו שוב.',
             ),
           ),
         );
@@ -740,7 +735,7 @@ class _MyHomePageState extends State<MyHomePage> {
               IconButton(
                 icon: const Icon(Icons.camera_alt),
                 tooltip: 'הוסף מילה',
-                onPressed: _aiFeaturesEnabled ? _takePictureAndIdentify : null,
+                onPressed: _takePictureAndIdentify,
               ),
               IconButton(
                 icon: const Icon(Icons.store),
@@ -755,7 +750,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ],
           ),
           floatingActionButton: FloatingActionButton.extended(
-            onPressed: _aiFeaturesEnabled ? _takePictureAndIdentify : null,
+            onPressed: _takePictureAndIdentify,
             label: const Text('הוסף מילה'),
             icon: const Icon(Icons.camera_alt),
           ),
@@ -818,24 +813,6 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     ),
                   const SizedBox(height: 40),
-                  if (!_aiFeaturesEnabled)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade100,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.orange.shade300),
-                      ),
-                      child: const Text(
-                        'תכונות ה-AI כבויות כרגע. השתמשו באפליקציה גם ללא צילום חכם או הוסיפו מפתחות API כדי להפעיל אותן.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(

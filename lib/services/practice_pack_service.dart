@@ -54,13 +54,7 @@ class PracticePackService {
       'חבילת האימון של ספרק דורשת חיבור ל-Gemini. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי להפעיל את התכונה.';
 
   static _PracticePackGenerator _inferGenerator() {
-    final Uri? proxyEndpoint = AppConfig.geminiProxyEndpoint;
-
-    if (proxyEndpoint == null) {
-      return (_) async {
-        throw const PracticePackUnavailableException(_geminiUnavailableMessage);
-      };
-    }
+    final Uri proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
     return (prompt) async {
       final service = GeminiProxyService(proxyEndpoint);
