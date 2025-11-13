@@ -9,6 +9,18 @@ const GEMINI_API_VERSION = "v1";
 const DEFAULT_MODEL_MAP: Record<string, string> = {
   "gemini-1.5": "gemini-1.5-flash-latest",
 };
+const GEMINI_MODEL_OVERRIDE = process.env.GEMINI_MODEL_OVERRIDE?.trim();
+
+interface GetModelOptions {
+  apiVersion?: string;
+  directModelId?: string;
+}
+
+interface ModelAttempt {
+  apiVersion: string;
+  directModelId?: string;
+  label: string;
+}
 
 setGlobalOptions({
   region: "us-central1",
@@ -60,13 +72,20 @@ const safetySettings = [
   {category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
 ];
 
-function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
+function getModel(
+    modelId: string,
+    apiKey: string,
+    systemInstruction?: string,
+    options: GetModelOptions = {},
+) {
   logger.info("getModel called", {
     modelId,
     hasSystemInstruction: systemInstruction !== undefined,
     systemInstructionType: typeof systemInstruction,
     systemInstructionLength: systemInstruction?.length,
     systemInstructionValue: systemInstruction,
+    directModelOverride: options.directModelId,
+    requestedApiVersion: options.apiVersion ?? GEMINI_API_VERSION,
   });
 
   // Create client - it will use the configured API version via request options
@@ -81,8 +100,9 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   // Build model config with ONLY snake_case system_instruction (never camelCase)
   // Explicitly construct the object to avoid any camelCase properties
   // Use gemini-1.5-flash-latest - this is the correct model name for v1 API
+  const resolvedModelId = options.directModelId ?? DEFAULT_MODEL_MAP[modelId] ?? modelId;
   const modelConfig: any = {
-    model: DEFAULT_MODEL_MAP[modelId] ?? modelId,
+    model: resolvedModelId,
     safetySettings,
   };
   
@@ -110,24 +130,26 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   }
   
   // Log the model config to verify the payload before API call
+  const apiVersion = options.apiVersion ?? GEMINI_API_VERSION;
   logger.info("Model config before getGenerativeModel", {
     modelConfig: JSON.stringify(modelConfig),
     modelConfigKeys: Object.keys(modelConfig),
     hasSystemInstruction: modelConfig.system_instruction !== undefined,
     hasSystemInstructionCamelCase: modelConfig.systemInstruction !== undefined,
     finalModelId: modelConfig.model,
-    apiVersion: GEMINI_API_VERSION,
+    apiVersion,
   });
   
   // Use getGenerativeModel with explicit v1 API version
   const requestOptions = {
-    apiVersion: GEMINI_API_VERSION,
+    apiVersion,
   };
 
   logger.info("Calling getGenerativeModel", {
     modelId,
     finalModelId: modelConfig.model,
     apiVersion: requestOptions.apiVersion,
+    directModelOverride: options.directModelId,
   });
   const model = client.getGenerativeModel(modelConfig, requestOptions);
   logger.info("Model created successfully", {
@@ -135,27 +157,213 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
     finalModelId: modelConfig.model,
     baseUrl: "https://generativelanguage.googleapis.com",
     apiVersion: requestOptions.apiVersion,
+    directModelOverride: options.directModelId,
   });
   return model;
 }
 
+function normalizeModelId(modelId?: string | null): string | undefined {
+  if (!modelId) {
+    return undefined;
+  }
+  return modelId.startsWith("models/") ? modelId.slice("models/".length) : modelId;
+}
+
+function stripLatestSuffix(modelId?: string | null): string | undefined {
+  const normalized = normalizeModelId(modelId);
+  if (!normalized) {
+    return undefined;
+  }
+  return normalized.replace(/-latest$/i, "");
+}
+
+function uniqueStrings(values: Array<string | undefined>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    if (!value) {
+      continue;
+    }
+    if (seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    result.push(value);
+  }
+  return result;
+}
+
+function uniqueModelOverrides(values: Array<string | undefined>): (string | undefined)[] {
+  const seen = new Set<string>();
+  const result: (string | undefined)[] = [];
+  let defaultAdded = false;
+
+  for (const value of values) {
+    if (!value) {
+      if (!defaultAdded) {
+        result.push(undefined);
+        defaultAdded = true;
+      }
+      continue;
+    }
+
+    if (seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    result.push(value);
+  }
+
+  return result;
+}
+
+function buildModelAttempts(): ModelAttempt[] {
+  const versionOrder = uniqueStrings([
+    GEMINI_API_VERSION,
+    "v1",
+    "v1beta",
+  ]);
+
+  const primaryModel = DEFAULT_MODEL_MAP["gemini-1.5"] ?? "gemini-1.5";
+  const normalizedPrimary = normalizeModelId(primaryModel);
+  const overrideNormalized = normalizeModelId(GEMINI_MODEL_OVERRIDE);
+
+  const modelOrder = uniqueModelOverrides([
+    GEMINI_MODEL_OVERRIDE,
+    overrideNormalized,
+    undefined,
+    primaryModel,
+    normalizedPrimary,
+    stripLatestSuffix(primaryModel),
+    stripLatestSuffix(normalizedPrimary),
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-flash",
+    "gemini-1.5",
+  ]);
+
+  const attempts: ModelAttempt[] = [];
+  const seen = new Set<string>();
+
+  versionOrder.forEach((apiVersion) => {
+    for (const directModelId of modelOrder) {
+      const key = `${apiVersion}|${directModelId ?? "DEFAULT"}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      attempts.push({
+        apiVersion,
+        directModelId,
+        label: `apiVersion=${apiVersion}${directModelId ? `, model=${directModelId}` : ", model=DEFAULT"}`,
+      });
+    }
+  });
+
+  return attempts;
+}
+
+function isModelNotFoundError(error: unknown): error is Error {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const message = error.message ?? "";
+  const lower = message.toLowerCase();
+  return lower.includes("404 not found") ||
+    lower.includes("is not found") ||
+    (lower.includes("model") && lower.includes("not found")) ||
+    lower.includes("not supported for generatecontent");
+}
+
+async function runWithModelFallback<T>({
+  apiKey,
+  systemInstruction,
+  mode,
+  action,
+}: {
+  apiKey: string;
+  systemInstruction?: string;
+  mode: string;
+  action: (model: ReturnType<typeof getModel>) => Promise<T>;
+}): Promise<T> {
+  const attempts = buildModelAttempts();
+  let lastModelError: unknown;
+
+  for (let index = 0; index < attempts.length; index++) {
+    const attempt = attempts[index];
+    logger.info("Gemini model attempt starting", {
+      mode,
+      attemptIndex: index + 1,
+      attemptTotal: attempts.length,
+      attemptLabel: attempt.label,
+    });
+
+    const model = getModel("gemini-1.5", apiKey, systemInstruction, {
+      apiVersion: attempt.apiVersion,
+      directModelId: attempt.directModelId,
+    });
+
+    try {
+      const result = await action(model);
+      logger.info("Gemini model attempt succeeded", {
+        mode,
+        attemptIndex: index + 1,
+        attemptTotal: attempts.length,
+        attemptLabel: attempt.label,
+      });
+      return result;
+    } catch (error) {
+      if (!isModelNotFoundError(error)) {
+        throw error;
+      }
+      lastModelError = error;
+      logger.warn("Gemini model attempt failed - trying fallback", {
+        mode,
+        attemptIndex: index + 1,
+        attemptTotal: attempts.length,
+        attemptLabel: attempt.label,
+        errorMessage: error.message,
+      });
+    }
+  }
+
+  logger.error("All Gemini model attempts failed", {
+    mode,
+    attempts: attempts.map((attempt) => attempt.label),
+    modelOverride: GEMINI_MODEL_OVERRIDE,
+    lastErrorMessage: lastModelError instanceof Error ? lastModelError.message : lastModelError,
+  });
+
+  if (lastModelError instanceof Error) {
+    throw new Error(
+        `Gemini model not available after trying ${attempts.length} attempt(s): ${lastModelError.message}`,
+    );
+  }
+
+  throw new Error(`Gemini model not available after trying ${attempts.length} attempt(s).`);
+}
+
 async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
   logger.info("🔍 handleIdentify called");
-  const model = getModel("gemini-1.5", apiKey);
-  logger.info("📤 Calling generateContent for identify");
-  const result = await model.generateContent({
-    contents: [{
-      role: "user",
-      parts: [
-        {text: payload.prompt},
-        {
-          inlineData: {
-            data: payload.imageBase64,
-            mimeType: payload.mimeType,
-          },
-        },
-      ],
-    }],
+  const result = await runWithModelFallback({
+    apiKey,
+    mode: "identify",
+    action: async (model) => {
+      logger.info("📤 Calling generateContent for identify");
+      return model.generateContent({
+        contents: [{
+          role: "user",
+          parts: [
+            {text: payload.prompt},
+            {
+              inlineData: {
+                data: payload.imageBase64,
+                mimeType: payload.mimeType,
+              },
+            },
+          ],
+        }],
+      });
+    },
   });
   logger.info("✅ generateContent completed for identify");
   const text = result.response.text()?.trim() ?? "";
@@ -164,25 +372,30 @@ async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
 
 async function handleValidate(payload: ValidatePayload, apiKey: string) {
   logger.info("🔍 handleValidate called");
-  const model = getModel("gemini-1.5", apiKey);
   const prompt = `You are helping a child learn English words.
 Does this picture clearly show the object "${payload.word}" as the main focus?
 Answer strictly with "yes" or "no" and provide a confidence score between 0 and 1. Return JSON: {"approved": boolean, "confidence": number}.`;
 
-  logger.info("📤 Calling generateContent for validate");
-  const result = await model.generateContent({
-    contents: [{
-      role: "user",
-      parts: [
-        {text: prompt},
-        {
-          inlineData: {
-            data: payload.imageBase64,
-            mimeType: payload.mimeType,
-          },
-        },
-      ],
-    }],
+  const result = await runWithModelFallback({
+    apiKey,
+    mode: "validate",
+    action: async (model) => {
+      logger.info("📤 Calling generateContent for validate");
+      return model.generateContent({
+        contents: [{
+          role: "user",
+          parts: [
+            {text: prompt},
+            {
+              inlineData: {
+                data: payload.imageBase64,
+                mimeType: payload.mimeType,
+              },
+            },
+          ],
+        }],
+      });
+    },
   });
   logger.info("✅ generateContent completed for validate");
 
@@ -227,8 +440,6 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
     systemInstructionLength: payload.systemInstruction?.length,
   });
   
-  const model = getModel("gemini-1.5", apiKey, payload.systemInstruction);
-  
   const generateContentPayload = {
     contents: [{
       role: "user",
@@ -238,12 +449,18 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
     }],
   };
   
-  logger.info("📤 Calling generateContent for text/story", {
-    payload: JSON.stringify(generateContentPayload),
-    payloadKeys: Object.keys(generateContentPayload),
+  const result = await runWithModelFallback({
+    apiKey,
+    systemInstruction: payload.systemInstruction,
+    mode: payload.mode,
+    action: async (model) => {
+      logger.info("📤 Calling generateContent for text/story", {
+        payload: JSON.stringify(generateContentPayload),
+        payloadKeys: Object.keys(generateContentPayload),
+      });
+      return model.generateContent(generateContentPayload);
+    },
   });
-  
-  const result = await model.generateContent(generateContentPayload);
   logger.info("✅ generateContent completed for text/story");
   const text = result.response.text()?.trim() ?? "";
   return {text};
