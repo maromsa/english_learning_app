@@ -134,10 +134,10 @@ Answer strictly with "yes" or "no" and provide a confidence score between 0 and 
 async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
   const model = getModel("gemini-1.5-flash", apiKey);
   
-  // Build the generateContent options with system_instruction if provided
-  // Note: The API expects snake_case "system_instruction", not camelCase "systemInstruction"
+  // Build the generateContent options with systemInstruction if provided
+  // Note: The TypeScript SDK expects camelCase "systemInstruction" and accepts it as a string
   const generateContentOptions: {
-    system_instruction?: {parts: Array<{text: string}>};
+    systemInstruction?: string;
     contents: Array<{role: string; parts: Array<{text: string}>}>;
   } = {
     contents: [{
@@ -148,14 +148,12 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
     }],
   };
   
-  // Add system_instruction if provided (using snake_case as required by the API)
+  // Add systemInstruction if provided (as a string, which the SDK accepts)
   if (payload.systemInstruction && payload.systemInstruction.trim().length > 0) {
-    generateContentOptions.system_instruction = {
-      parts: [{text: payload.systemInstruction}],
-    };
+    generateContentOptions.systemInstruction = payload.systemInstruction;
   }
   
-  const result = await model.generateContent(generateContentOptions as any);
+  const result = await model.generateContent(generateContentOptions);
   const text = result.response.text()?.trim() ?? "";
   return {text};
 }
