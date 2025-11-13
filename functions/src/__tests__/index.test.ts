@@ -50,7 +50,7 @@ describe("systemInstruction fix verification", () => {
     expect(modelConfig).toHaveProperty("safetySettings");
   });
 
-  test("handleText should pass systemInstruction to generateContent when provided", async () => {
+  test("handleText should pass systemInstruction to getGenerativeModel when provided", async () => {
     const payload = {
       mode: "text" as const,
       prompt: "Test prompt",
@@ -59,13 +59,20 @@ describe("systemInstruction fix verification", () => {
 
     await handleText(payload, mockApiKey);
 
+    // Verify getGenerativeModel was called with systemInstruction
+    const GoogleGenerativeAIClass = GoogleGenerativeAI as jest.MockedClass<typeof GoogleGenerativeAI>;
+    const mockClientInstance = GoogleGenerativeAIClass.mock.results[0]?.value;
+    const getGenerativeModelCall = mockClientInstance?.getGenerativeModel;
+    expect(getGenerativeModelCall).toHaveBeenCalled();
+    const modelConfig = getGenerativeModelCall?.mock.calls[0]?.[0];
+    expect(modelConfig).toHaveProperty("systemInstruction", "Test system instruction");
+
     // Verify generateContent was called
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
 
-    // Verify systemInstruction was passed to generateContent
+    // Verify systemInstruction was NOT passed to generateContent (it's on the model instead)
     const generateContentCall = mockGenerateContent.mock.calls[0]?.[0];
-    expect(generateContentCall).toHaveProperty("systemInstruction");
-    expect(generateContentCall.systemInstruction).toBe("Test system instruction");
+    expect(generateContentCall).not.toHaveProperty("systemInstruction");
     expect(generateContentCall).toHaveProperty("contents");
     expect(generateContentCall.contents).toHaveLength(1);
     expect(generateContentCall.contents[0].parts[0].text).toBe("Test prompt");
@@ -98,10 +105,17 @@ describe("systemInstruction fix verification", () => {
 
     await handleText(payload, mockApiKey);
 
+    // Verify getGenerativeModel was called with systemInstruction
+    const GoogleGenerativeAIClass = GoogleGenerativeAI as jest.MockedClass<typeof GoogleGenerativeAI>;
+    const mockClientInstance = GoogleGenerativeAIClass.mock.results[0]?.value;
+    const getGenerativeModelCall = mockClientInstance?.getGenerativeModel;
+    expect(getGenerativeModelCall).toHaveBeenCalled();
+    const modelConfig = getGenerativeModelCall?.mock.calls[0]?.[0];
+    expect(modelConfig).toHaveProperty("systemInstruction", "You are a creative storyteller");
+
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
     const generateContentCall = mockGenerateContent.mock.calls[0]?.[0];
-    expect(generateContentCall).toHaveProperty("systemInstruction");
-    expect(generateContentCall.systemInstruction).toBe("You are a creative storyteller");
+    expect(generateContentCall).not.toHaveProperty("systemInstruction");
   });
 
   test("should return text response correctly", async () => {
