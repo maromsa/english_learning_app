@@ -49,19 +49,12 @@ const safetySettings = [
   {category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
 ];
 
-function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
+function getModel(modelId: string, apiKey: string) {
   const client = new GoogleGenerativeAI(apiKey);
-  const modelConfig: {
-    model: string;
-    safetySettings: typeof safetySettings;
-    systemInstruction?: string;
-  } = {
+  const modelConfig = {
     model: modelId,
     safetySettings,
   };
-  if (systemInstruction) {
-    modelConfig.systemInstruction = systemInstruction;
-  }
   return client.getGenerativeModel(modelConfig);
 }
 
@@ -139,12 +132,17 @@ Answer strictly with "yes" or "no" and provide a confidence score between 0 and 
 }
 
 async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
-  const model = getModel("gemini-1.5-flash", apiKey, payload.systemInstruction);
+  const model = getModel("gemini-1.5-flash", apiKey);
+  // Prepend systemInstruction to prompt since the API doesn't support
+  // systemInstruction as a separate field for gemini-1.5-flash
+  const fullPrompt = payload.systemInstruction
+    ? `${payload.systemInstruction}\n\n${payload.prompt}`
+    : payload.prompt;
   const result = await model.generateContent({
     contents: [{
       role: "user",
       parts: [
-        {text: payload.prompt},
+        {text: fullPrompt},
       ],
     }],
   });
