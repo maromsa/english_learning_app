@@ -7,7 +7,7 @@ import {z} from "zod";
 
 const GEMINI_API_VERSION = "v1";
 const DEFAULT_MODEL_MAP: Record<string, string> = {
-  "gemini-1.5": "gemini-1.5-flash-latest",
+  "gemini-1.5": "gemini-2.0-flash",
 };
 const GEMINI_MODEL_OVERRIDE = process.env.GEMINI_MODEL_OVERRIDE?.trim();
 
@@ -99,8 +99,7 @@ function getModel(
   
   // Build model config with ONLY snake_case system_instruction (never camelCase)
   // Explicitly construct the object to avoid any camelCase properties
-  // Use gemini-1.5-flash-latest - this is the correct model name for v1 API
-  const resolvedModelId = options.directModelId ?? DEFAULT_MODEL_MAP[modelId] ?? modelId;
+  // Use gemini-2.0-flash - this is a stable model version that works with v1 API
   const modelConfig: any = {
     model: resolvedModelId,
     safetySettings,
@@ -141,8 +140,9 @@ function getModel(
   });
   
   // Use getGenerativeModel with explicit v1 API version
+  // Using gemini-2.0-flash which is compatible with v1 API
   const requestOptions = {
-    apiVersion,
+    apiVersion: GEMINI_API_VERSION as "v1",
   };
 
   logger.info("Calling getGenerativeModel", {
@@ -462,7 +462,30 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
     },
   });
   logger.info("✅ generateContent completed for text/story");
-  const text = result.response.text()?.trim() ?? "";
+  let text = result.response.text()?.trim() ?? "";
+  
+  // Strip markdown code fences if present (handles various formats)
+  // Examples: ```json\n...\n```, ```\n...\n```, ```json...```, etc.
+  // This ensures clean JSON output even if the model wraps it in markdown
+  const markdownFencePattern = /^```(?:json|JSON)?\s*\n?/i;
+  const closingFencePattern = /\n?```\s*$/i;
+  
+  if (markdownFencePattern.test(text) || closingFencePattern.test(text)) {
+    const originalText = text;
+    text = text.replace(markdownFencePattern, '').replace(closingFencePattern, '').trim();
+    logger.info("📝 Stripped markdown fences", {
+      hadMarkdown: true,
+      originalLength: originalText.length,
+      cleanedLength: text.length,
+    });
+  }
+  
+  logger.info("📝 Final response text", {
+    length: text.length,
+    startsWithJson: text.startsWith('{'),
+    startsWithBracket: text.startsWith('['),
+  });
+  
   return {text};
 }
 
@@ -543,7 +566,7 @@ export const geminiProxy = functions.onRequest(
                          req.body?.mode === "validate" ? "gemini-1.5" :
                          req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5" : "unknown",
                 note: "This should not happen when using the v1 API",
-                recommendation: "Verify the Cloud Function is deployed with apiVersion set to v1 and using gemini-1.5-flash-latest.",
+                recommendation: "Verify the Cloud Function is deployed with apiVersion set to v1 and using gemini-2.0-flash.",
               });
             }
               
@@ -555,7 +578,7 @@ export const geminiProxy = functions.onRequest(
                          req.body?.mode === "validate" ? "gemini-1.5" :
                          req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5" : "unknown",
                 apiVersion: errorMessage.includes("v1beta") ? "v1beta" : "unknown",
-                recommendation: "Model name may need to be gemini-1.5-flash-latest for v1 API, or API version needs to be v1 instead of v1beta",
+                recommendation: "Model name may need to be gemini-2.0-flash for v1 API, or API version needs to be v1 instead of v1beta",
               });
             }
             res.status(500).json({error: error.message});
