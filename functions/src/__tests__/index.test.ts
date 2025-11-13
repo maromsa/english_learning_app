@@ -47,8 +47,12 @@ describe("systemInstruction handling", () => {
     const modelConfig = getGenerativeModelCall?.mock.calls[0]?.[0];
     expect(modelConfig).not.toHaveProperty("systemInstruction");
     expect(modelConfig).not.toHaveProperty("system_instruction");
-    expect(modelConfig).toHaveProperty("model", "gemini-1.5");
+    expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash"); // Updated to gemini-1.5-flash
     expect(modelConfig).toHaveProperty("safetySettings");
+    
+    // Verify apiVersion is set to v1
+    const requestOptions = getGenerativeModelCall?.mock.calls[0]?.[1];
+    expect(requestOptions).toHaveProperty("apiVersion", "v1");
   });
 
   test("getModel should include system_instruction when provided", () => {
@@ -66,8 +70,12 @@ describe("systemInstruction handling", () => {
     const modelConfig = getGenerativeModelCall?.mock.calls[0]?.[0];
     expect(modelConfig).toHaveProperty("system_instruction", "Test system instruction");
     expect(modelConfig).not.toHaveProperty("systemInstruction");
-    expect(modelConfig).toHaveProperty("model", "gemini-1.5");
+    expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash"); // Updated to gemini-1.5-flash
     expect(modelConfig).toHaveProperty("safetySettings");
+    
+    // Verify apiVersion is set to v1
+    const requestOptions = getGenerativeModelCall?.mock.calls[0]?.[1];
+    expect(requestOptions).toHaveProperty("apiVersion", "v1");
   });
 
   test("handleText should pass systemInstruction to getModel when provided", async () => {
@@ -134,6 +142,10 @@ describe("systemInstruction handling", () => {
     const modelConfig = getGenerativeModelCall?.mock.calls[0]?.[0];
     expect(modelConfig).toHaveProperty("system_instruction", "You are a creative storyteller");
     expect(modelConfig).not.toHaveProperty("systemInstruction");
+    
+    // Verify apiVersion is set to v1
+    const requestOptions = getGenerativeModelCall?.mock.calls[0]?.[1];
+    expect(requestOptions).toHaveProperty("apiVersion", "v1");
 
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
     const generateContentCall = mockGenerateContent.mock.calls[0]?.[0];
