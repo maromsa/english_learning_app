@@ -60,7 +60,8 @@ describe("systemInstruction handling", () => {
     // Verify getGenerativeModel was called
     expect(getGenerativeModelCall).toHaveBeenCalled();
 
-    // Verify the model config DOES contain systemInstruction when provided
+    // Verify the model config DOES contain systemInstruction (camelCase) when provided
+    // The fetch interceptor will convert it to system_instruction in the request body
     const modelConfig = getGenerativeModelCall?.mock.calls[0]?.[0];
     expect(modelConfig).toHaveProperty("systemInstruction", "Test system instruction");
     expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash");
@@ -76,7 +77,8 @@ describe("systemInstruction handling", () => {
 
     await handleText(payload, mockApiKey);
 
-    // Verify getGenerativeModel was called WITH systemInstruction
+    // Verify getGenerativeModel was called WITH systemInstruction (camelCase)
+    // The fetch interceptor will convert it to system_instruction in the request body
     const GoogleGenerativeAIClass = GoogleGenerativeAI as jest.MockedClass<typeof GoogleGenerativeAI>;
     const mockClientInstance = GoogleGenerativeAIClass.mock.results[0]?.value;
     const getGenerativeModelCall = mockClientInstance?.getGenerativeModel;
@@ -120,7 +122,8 @@ describe("systemInstruction handling", () => {
 
     await handleText(payload, mockApiKey);
 
-    // Verify getGenerativeModel was called WITH systemInstruction
+    // Verify getGenerativeModel was called WITH systemInstruction (camelCase)
+    // The fetch interceptor will convert it to system_instruction in the request body
     const GoogleGenerativeAIClass = GoogleGenerativeAI as jest.MockedClass<typeof GoogleGenerativeAI>;
     const mockClientInstance = GoogleGenerativeAIClass.mock.results[0]?.value;
     const getGenerativeModelCall = mockClientInstance?.getGenerativeModel;

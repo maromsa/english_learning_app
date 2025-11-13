@@ -49,6 +49,25 @@ const safetySettings = [
   {category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
 ];
 
+// Workaround: The SDK sends systemInstruction (camelCase) but the API expects system_instruction (snake_case)
+// We intercept fetch calls to convert the field name in the request body
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async function(input: any, init?: any): Promise<Response> {
+  if (init?.body && typeof init.body === "string") {
+    try {
+      const body = JSON.parse(init.body);
+      if (body.systemInstruction && !body.system_instruction) {
+        body.system_instruction = body.systemInstruction;
+        delete body.systemInstruction;
+        init.body = JSON.stringify(body);
+      }
+    } catch {
+      // If body is not JSON, leave it as-is
+    }
+  }
+  return originalFetch(input, init);
+};
+
 function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   const client = new GoogleGenerativeAI(apiKey);
   const modelConfig: {
@@ -60,6 +79,7 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
     safetySettings,
   };
   if (systemInstruction && systemInstruction.trim().length > 0) {
+    // Pass systemInstruction (camelCase) so SDK recognizes it, fetch interceptor will convert to snake_case
     modelConfig.systemInstruction = systemInstruction;
   }
   return client.getGenerativeModel(modelConfig);
