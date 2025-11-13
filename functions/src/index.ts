@@ -49,25 +49,6 @@ const safetySettings = [
   {category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
 ];
 
-// Workaround: The SDK sends systemInstruction (camelCase) but the API expects system_instruction (snake_case)
-// We intercept fetch calls to convert the field name in the request body
-const originalFetch = globalThis.fetch;
-globalThis.fetch = async function(input: any, init?: any): Promise<Response> {
-  if (init?.body && typeof init.body === "string") {
-    try {
-      const body = JSON.parse(init.body);
-      if (body.systemInstruction && !body.system_instruction) {
-        body.system_instruction = body.systemInstruction;
-        delete body.systemInstruction;
-        init.body = JSON.stringify(body);
-      }
-    } catch {
-      // If body is not JSON, leave it as-is
-    }
-  }
-  return originalFetch(input, init);
-};
-
 function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   const client = new GoogleGenerativeAI(apiKey);
   const modelConfig: {
@@ -79,10 +60,12 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
     safetySettings,
   };
   if (systemInstruction && systemInstruction.trim().length > 0) {
-    // Pass systemInstruction (camelCase) so SDK recognizes it, fetch interceptor will convert to snake_case
+    // SDK should convert systemInstruction (camelCase) to system_instruction (snake_case) automatically
+    // Explicitly use v1beta API version which may handle camelCase better than v1
     modelConfig.systemInstruction = systemInstruction;
   }
-  return client.getGenerativeModel(modelConfig);
+  // Use v1beta API version - the SDK defaults to v1beta but explicitly setting it ensures consistency
+  return client.getGenerativeModel(modelConfig, {apiVersion: "v1beta"});
 }
 
 async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
@@ -160,7 +143,8 @@ Answer strictly with "yes" or "no" and provide a confidence score between 0 and 
 
 async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
   // Pass systemInstruction to getModel so it's set at the model level
-  // The SDK will convert camelCase "systemInstruction" to snake_case "system_instruction" for the API
+  // The SDK should automatically convert camelCase "systemInstruction" to snake_case "system_instruction" for the API
+  // We explicitly use v1beta API version to ensure proper handling
   const model = getModel("gemini-1.5-flash", apiKey, payload.systemInstruction);
   
   const result = await model.generateContent({
