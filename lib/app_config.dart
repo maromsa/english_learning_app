@@ -84,7 +84,18 @@ class AppConfig {
     _defineAiImageValidationUrl,
   );
 
-  static bool get hasGeminiProxy => geminiProxyUrl.isNotEmpty;
+  static bool get hasGeminiProxy {
+    if (geminiProxyUrl.isNotEmpty) {
+      return true;
+    }
+    // Also check if we can construct an endpoint from Firebase project ID
+    try {
+      final projectId = _firebaseProjectId;
+      return projectId != null && projectId.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
   static bool get hasPixabay => pixabayApiKey.isNotEmpty;
   static bool get hasCloudinary =>
       cloudinaryCloudName.isNotEmpty &&
@@ -103,15 +114,29 @@ class AppConfig {
 
   static Uri? get geminiProxyEndpoint {
     if (geminiProxyUrl.isNotEmpty) {
-      return Uri.tryParse(geminiProxyUrl);
-    }
-    final projectId = _firebaseProjectId;
-    if (projectId == null || projectId.isEmpty) {
+      final uri = Uri.tryParse(geminiProxyUrl);
+      if (uri != null && uri.hasScheme && uri.hasAuthority) {
+        return uri;
+      }
+      // Invalid URL format, return null
       return null;
     }
-    return Uri.tryParse(
-      'https://us-central1-$projectId.cloudfunctions.net/geminiProxy',
-    );
+    try {
+      final projectId = _firebaseProjectId;
+      if (projectId == null || projectId.isEmpty) {
+        return null;
+      }
+      final uri = Uri.tryParse(
+        'https://us-central1-$projectId.cloudfunctions.net/geminiProxy',
+      );
+      if (uri != null && uri.hasScheme && uri.hasAuthority) {
+        return uri;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error constructing geminiProxyEndpoint: $e');
+      return null;
+    }
   }
 
   static Uri requireGeminiProxyEndpoint() {

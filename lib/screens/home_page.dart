@@ -74,7 +74,14 @@ class _MyHomePageState extends State<MyHomePage> {
   int _streak = 0;
   OverlayEntry? _achievementOverlay;
   bool _aiFeaturesEnabled = false;
-  Uri? get proxyEndpoint => AppConfig.geminiProxyEndpoint;
+  Uri? get proxyEndpoint {
+    try {
+      return AppConfig.geminiProxyEndpoint;
+    } catch (e) {
+      debugPrint('Error getting proxy endpoint: $e');
+      return null;
+    }
+  }
 
   @override
   void initState() {
@@ -163,9 +170,15 @@ class _MyHomePageState extends State<MyHomePage> {
     final bool cloudinaryAvailable = AppConfig.hasCloudinary;
     final bool pixabayAvailable = AppConfig.hasPixabay;
 
-    if (geminiProxyAvailable && proxyEndpoint != null) {
-      _geminiProxy = GeminiProxyService(proxyEndpoint!);
-    } else {
+    try {
+      final endpoint = proxyEndpoint;
+      if (geminiProxyAvailable && endpoint != null) {
+        _geminiProxy = GeminiProxyService(endpoint);
+      } else {
+        AppConfig.debugWarnIfMissing('Gemini AI features', false);
+      }
+    } catch (e) {
+      debugPrint('Error initializing Gemini proxy service: $e');
       AppConfig.debugWarnIfMissing('Gemini AI features', false);
     }
 
