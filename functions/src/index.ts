@@ -135,8 +135,8 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
   const model = getModel("gemini-1.5-flash", apiKey);
   
   // Build the prompt - prepend systemInstruction if provided
-  // Note: The SDK version may not support systemInstruction as a separate field,
-  // so we include it in the prompt content instead
+  // The SDK version 0.24.1 may not support systemInstruction as a separate field,
+  // so we include it in the prompt content to avoid API errors
   let promptText = payload.prompt;
   if (payload.systemInstruction && payload.systemInstruction.trim().length > 0) {
     promptText = `${payload.systemInstruction}\n\n${payload.prompt}`;
