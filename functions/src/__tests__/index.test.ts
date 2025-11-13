@@ -8,6 +8,8 @@ describe("systemInstruction handling", () => {
   const mockApiKey = "test-api-key";
   const mockGenerateContent = jest.fn();
   const mockText = jest.fn();
+  let mockModel: {generateContent: jest.Mock};
+  let mockClient: {getGenerativeModel: jest.Mock};
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -19,12 +21,11 @@ describe("systemInstruction handling", () => {
         text: mockText,
       },
     });
-
-    const mockModel = {
+    mockModel = {
       generateContent: mockGenerateContent,
     };
 
-    const mockClient = {
+    mockClient = {
       getGenerativeModel: jest.fn().mockReturnValue(mockModel),
     };
 
@@ -177,5 +178,41 @@ describe("systemInstruction handling", () => {
 
     expect(result).toEqual({text: "response text"});
     expect(mockText).toHaveBeenCalled();
+  });
+
+  test("handleText retries with fallback when a model not found error occurs", async () => {
+    const notFoundError = new Error("[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent: [404 Not Found] models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent.");
+    mockGenerateContent.mockRejectedValueOnce(notFoundError);
+    mockText.mockReturnValue("fallback response");
+    mockGenerateContent.mockResolvedValueOnce({
+      response: {
+        text: mockText,
+      },
+    });
+
+    const payload = {
+      mode: "text" as const,
+      prompt: "Test prompt",
+    };
+
+    const result = await handleText(payload, mockApiKey);
+
+    expect(result).toEqual({text: "fallback response"});
+    expect(mockClient.getGenerativeModel).toHaveBeenCalledTimes(2);
+    expect(mockGenerateContent).toHaveBeenCalledTimes(2);
+  });
+
+  test("handleText surfaces non-model-not-found errors without retrying", async () => {
+    const unexpectedError = new Error("Network down");
+    mockGenerateContent.mockRejectedValueOnce(unexpectedError);
+
+    const payload = {
+      mode: "text" as const,
+      prompt: "Test prompt",
+    };
+
+    await expect(handleText(payload, mockApiKey)).rejects.toThrow("Network down");
+    expect(mockClient.getGenerativeModel).toHaveBeenCalledTimes(1);
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
   });
 });
