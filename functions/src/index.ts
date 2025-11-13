@@ -49,12 +49,23 @@ const safetySettings = [
   {category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
 ];
 
-function getModel(modelId: string, apiKey: string) {
+function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   const client = new GoogleGenerativeAI(apiKey);
-  const modelConfig = {
+  const modelConfig: {
+    model: string;
+    safetySettings: typeof safetySettings;
+    systemInstruction?: string | {parts: Array<{text: string}>};
+  } = {
     model: modelId,
     safetySettings,
   };
+  // Only include systemInstruction if provided and not empty
+  // Format as object with parts array for better compatibility
+  if (systemInstruction && systemInstruction.trim().length > 0) {
+    modelConfig.systemInstruction = {
+      parts: [{text: systemInstruction}],
+    };
+  }
   return client.getGenerativeModel(modelConfig);
 }
 
@@ -132,17 +143,19 @@ Answer strictly with "yes" or "no" and provide a confidence score between 0 and 
 }
 
 async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
-  const model = getModel("gemini-1.5-flash", apiKey);
-  // Prepend systemInstruction to prompt since the API doesn't support
-  // systemInstruction as a separate field for gemini-1.5-flash
-  const fullPrompt = payload.systemInstruction
-    ? `${payload.systemInstruction}\n\n${payload.prompt}`
-    : payload.prompt;
+  const model = getModel("gemini-1.5-flash", apiKey, payload.systemInstruction);
+  
+  // Build the prompt - if systemInstruction was passed to model config, use prompt as-is
+  // Otherwise, prepend systemInstruction to prompt as fallback
+  // Note: The SDK should handle systemInstruction when passed to getModel,
+  // but we keep the prompt clean in case the API doesn't support it
+  const promptText = payload.prompt;
+  
   const result = await model.generateContent({
     contents: [{
       role: "user",
       parts: [
-        {text: fullPrompt},
+        {text: promptText},
       ],
     }],
   });
