@@ -41,6 +41,17 @@ jobs:
         env:
           GEMINI_PROXY_URL: ${{ secrets.GEMINI_PROXY_URL }}
         run: flutter test --coverage --dart-define=GEMINI_PROXY_URL=$GEMINI_PROXY_URL
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Cloud Functions dependencies
+        run: npm ci --prefix functions
+
+      - name: Run Cloud Functions tests
+        run: npm test --prefix functions
         
       - name: Upload coverage
         uses: codecov/codecov-action@v4
