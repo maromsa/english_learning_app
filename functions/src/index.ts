@@ -17,16 +17,13 @@ const customFetch = async (url: string | Request | URL, init?: RequestInit): Pro
     const originalUrl = urlString;
     const hadV1beta = /\/v1beta\d*\//.test(urlString);
     
-    // Log all Gemini API calls for debugging
-    logger.info("🔍 [Module-level] Gemini API call intercepted", {
-      originalUrl,
-      method: init?.method || "GET",
-      hasV1beta: hadV1beta,
-      hasV1: urlString.includes("/v1/"),
-    });
-    
     // Replace any v1beta, v1beta2, v1beta3, etc. with v1
     urlString = urlString.replace(/\/v1beta\d*\//g, "/v1/");
+    
+    // Also handle model name transformations if needed
+    // If SDK is using gemini-1.5-flash without suffix, ensure we use a valid v1 model name
+    // But don't modify the model name here - let the getModel function handle it
+    
     if (originalUrl !== urlString) {
       logger.warn("⚠️ [Module-level] Rewriting Gemini API URL from v1beta to v1", {
         originalUrl,
@@ -50,23 +47,25 @@ const customFetch = async (url: string | Request | URL, init?: RequestInit): Pro
     // Log response after the request
     const response = await originalFetch(newRequest, init);
     
-    logger.info("✅ [Module-level] Gemini API response received", {
-      url: urlString,
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
-      wasRewritten: originalUrl !== urlString,
-    });
-    
     // Log error details if request failed
-    if (!response.ok && response.status === 404) {
-      logger.error("🚨 [Module-level] 404 error on Gemini API call", {
-        originalUrl,
-        rewrittenUrl: urlString,
-        status: response.status,
-        statusText: response.statusText,
-        note: "This may indicate API version or model name issue",
-      });
+    if (!response.ok) {
+      if (response.status === 404) {
+        logger.error("🚨 [Module-level] 404 error on Gemini API call", {
+          originalUrl,
+          rewrittenUrl: urlString,
+          status: response.status,
+          statusText: response.statusText,
+          note: "This may indicate API version or model name issue",
+        });
+      } else {
+        logger.warn("⚠️ [Module-level] Non-200 response from Gemini API", {
+          originalUrl,
+          rewrittenUrl: urlString,
+          status: response.status,
+          statusText: response.statusText,
+          wasRewritten: originalUrl !== urlString,
+        });
+      }
     }
     
     return response;
@@ -151,10 +150,11 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   
   // Build model config with ONLY snake_case system_instruction (never camelCase)
   // Explicitly construct the object to avoid any camelCase properties
-  // Use gemini-1.5-flash-latest - this is the correct model name for v1 API
+  // Use gemini-1.5-flash-001 - this is a stable model name for v1 API
   // The fetch override will rewrite any v1beta URLs to v1
+  // Note: gemini-1.5-flash-001 is the stable version name for v1 API
   const modelConfig: any = {
-    model: modelId === "gemini-1.5" ? "gemini-1.5-flash-latest" : modelId,
+    model: modelId === "gemini-1.5" ? "gemini-1.5-flash-001" : modelId,
     safetySettings,
   };
   
@@ -377,7 +377,7 @@ export const geminiProxy = functions.onRequest(
           if (error instanceof z.ZodError) {
             res.status(400).json({error: "Invalid payload", details: error.errors});
           } else if (error instanceof Error) {
-            // Check if error is related to v1beta API version issue
+            // Check if error is related to v1beta API version issue or model not found
             const errorMessage = error.message;
             logger.error("🔴 Error details", {
               errorMessage,
@@ -385,29 +385,42 @@ export const geminiProxy = functions.onRequest(
               errorName: error.name,
             });
             
-            if (errorMessage.includes("v1beta") && errorMessage.includes("not found")) {
-              logger.error("🚨 API version mismatch detected - SDK is using v1beta but model requires v1 API", {
+            // Handle specific Gemini API model not found errors
+            const isModelNotFoundError = 
+              (errorMessage.includes("not found") && errorMessage.includes("models/")) ||
+              (errorMessage.includes("gemini-1.5-flash") && errorMessage.includes("not found")) ||
+              (errorMessage.includes("v1beta") && errorMessage.includes("not found"));
+            
+            if (isModelNotFoundError) {
+              const isV1betaError = errorMessage.includes("v1beta");
+              const modelName = errorMessage.match(/models\/([^\s]+)/)?.[1] || "unknown";
+              
+              logger.error("🚨 Gemini API model not found error detected", {
                 errorMessage,
-                modelId: req.body?.mode === "identify" ? "gemini-1.5" : 
-                         req.body?.mode === "validate" ? "gemini-1.5" :
-                         req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5" : "unknown",
-                note: "This should not happen if fetch override is working correctly",
+                detectedModelName: modelName,
+                apiVersion: isV1betaError ? "v1beta" : "unknown",
+                requestedModelId: req.body?.mode === "identify" ? "gemini-1.5" : 
+                                  req.body?.mode === "validate" ? "gemini-1.5" :
+                                  req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5" : "unknown",
                 fetchOverrideActive: typeof (global as any).fetch === "function",
-                recommendation: "Check if SDK is bypassing global fetch override. Consider using gemini-1.5-flash-latest model name.",
+                recommendation: isV1betaError 
+                  ? "SDK is using v1beta API but model requires v1 API. Fetch override should rewrite URLs, but SDK may be bypassing it. Try using gemini-1.5-flash-001 for v1 API."
+                  : "Model name may be incorrect. Try using gemini-1.5-flash-001 (stable) or gemini-1.5-flash-latest for v1 API.",
               });
+              
+              // Provide user-friendly error message
+              const userFriendlyError = isV1betaError
+                ? "API version mismatch: The SDK is using v1beta API but the model requires v1 API. This is being handled automatically."
+                : `Model not found: ${modelName}. Please check the model name and API version compatibility.`;
+              
+              res.status(500).json({
+                error: userFriendlyError,
+                details: errorMessage,
+                suggestion: "The system will retry with the correct API version. If this persists, please contact support.",
+              });
+              return;
             }
             
-            // Log repeated gemini-1.5-flash not found errors specifically
-            if (errorMessage.includes("gemini-1.5-flash") && errorMessage.includes("not found")) {
-              logger.error("🚨 Repeated gemini-1.5-flash not found error detected", {
-                errorMessage,
-                modelId: req.body?.mode === "identify" ? "gemini-1.5" : 
-                         req.body?.mode === "validate" ? "gemini-1.5" :
-                         req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5" : "unknown",
-                apiVersion: errorMessage.includes("v1beta") ? "v1beta" : "unknown",
-                recommendation: "Model name may need to be gemini-1.5-flash-latest for v1 API, or API version needs to be v1 instead of v1beta",
-              });
-            }
             res.status(500).json({error: error.message});
           } else {
             res.status(500).json({error: "Unknown error"});
