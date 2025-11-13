@@ -134,22 +134,27 @@ Answer strictly with "yes" or "no" and provide a confidence score between 0 and 
 async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
   const model = getModel("gemini-1.5-flash", apiKey);
   
-  // Build the prompt - prepend systemInstruction if provided
-  // The SDK version 0.24.1 may not support systemInstruction as a separate field,
-  // so we include it in the prompt content to avoid API errors
-  let promptText = payload.prompt;
-  if (payload.systemInstruction && payload.systemInstruction.trim().length > 0) {
-    promptText = `${payload.systemInstruction}\n\n${payload.prompt}`;
-  }
-  
-  const result = await model.generateContent({
+  // Build the generateContent options with systemInstruction if provided
+  const generateContentOptions: {
+    systemInstruction?: {parts: Array<{text: string}>};
+    contents: Array<{role: string; parts: Array<{text: string}>}>;
+  } = {
     contents: [{
       role: "user",
       parts: [
-        {text: promptText},
+        {text: payload.prompt},
       ],
     }],
-  });
+  };
+  
+  // Add systemInstruction if provided - the SDK will convert it to system_instruction for the API
+  if (payload.systemInstruction && payload.systemInstruction.trim().length > 0) {
+    generateContentOptions.systemInstruction = {
+      parts: [{text: payload.systemInstruction}],
+    };
+  }
+  
+  const result = await model.generateContent(generateContentOptions);
   const text = result.response.text()?.trim() ?? "";
   return {text};
 }
