@@ -70,10 +70,10 @@ describe("systemInstruction handling", () => {
     // Verify generateContent was called
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
 
-    // Verify systemInstruction was passed as a separate field
+    // Verify system_instruction was passed as a separate field (snake_case as required by API)
     const generateContentCall = mockGenerateContent.mock.calls[0]?.[0];
-    expect(generateContentCall).toHaveProperty("systemInstruction");
-    expect(generateContentCall.systemInstruction).toEqual({
+    expect(generateContentCall).toHaveProperty("system_instruction");
+    expect(generateContentCall.system_instruction).toEqual({
       parts: [{text: "Test system instruction"}],
     });
     expect(generateContentCall).toHaveProperty("contents");
@@ -93,9 +93,9 @@ describe("systemInstruction handling", () => {
     // Verify generateContent was called
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
 
-    // Verify systemInstruction was NOT passed when not provided
+    // Verify system_instruction was NOT passed when not provided
     const generateContentCall = mockGenerateContent.mock.calls[0]?.[0];
-    expect(generateContentCall).not.toHaveProperty("systemInstruction");
+    expect(generateContentCall).not.toHaveProperty("system_instruction");
     expect(generateContentCall).toHaveProperty("contents");
   });
 
@@ -118,8 +118,8 @@ describe("systemInstruction handling", () => {
 
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
     const generateContentCall = mockGenerateContent.mock.calls[0]?.[0];
-    expect(generateContentCall).toHaveProperty("systemInstruction");
-    expect(generateContentCall.systemInstruction).toEqual({
+    expect(generateContentCall).toHaveProperty("system_instruction");
+    expect(generateContentCall.system_instruction).toEqual({
       parts: [{text: "You are a creative storyteller"}],
     });
     expect(generateContentCall.contents[0].parts[0].text).toBe("Create a story");
