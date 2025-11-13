@@ -49,23 +49,12 @@ const safetySettings = [
   {category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
 ];
 
-function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
+function getModel(modelId: string, apiKey: string) {
   const client = new GoogleGenerativeAI(apiKey);
-  const modelConfig: {
-    model: string;
-    safetySettings: typeof safetySettings;
-    systemInstruction?: string | {parts: Array<{text: string}>};
-  } = {
+  const modelConfig = {
     model: modelId,
     safetySettings,
   };
-  // Only include systemInstruction if provided and not empty
-  // Format as object with parts array for better compatibility
-  if (systemInstruction && systemInstruction.trim().length > 0) {
-    modelConfig.systemInstruction = {
-      parts: [{text: systemInstruction}],
-    };
-  }
   return client.getGenerativeModel(modelConfig);
 }
 
@@ -143,13 +132,15 @@ Answer strictly with "yes" or "no" and provide a confidence score between 0 and 
 }
 
 async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
-  const model = getModel("gemini-1.5-flash", apiKey, payload.systemInstruction);
+  const model = getModel("gemini-1.5-flash", apiKey);
   
-  // Build the prompt - if systemInstruction was passed to model config, use prompt as-is
-  // Otherwise, prepend systemInstruction to prompt as fallback
-  // Note: The SDK should handle systemInstruction when passed to getModel,
-  // but we keep the prompt clean in case the API doesn't support it
-  const promptText = payload.prompt;
+  // Build the prompt - prepend systemInstruction if provided
+  // The SDK version 0.24.1 may not support systemInstruction as a separate field,
+  // so we include it in the prompt content to avoid API errors
+  let promptText = payload.prompt;
+  if (payload.systemInstruction && payload.systemInstruction.trim().length > 0) {
+    promptText = `${payload.systemInstruction}\n\n${payload.prompt}`;
+  }
   
   const result = await model.generateContent({
     contents: [{
