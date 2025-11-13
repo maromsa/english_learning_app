@@ -49,12 +49,19 @@ const safetySettings = [
   {category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
 ];
 
-function getModel(modelId: string, apiKey: string) {
+function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   const client = new GoogleGenerativeAI(apiKey);
-  const modelConfig = {
+  const modelConfig: {
+    model: string;
+    safetySettings: typeof safetySettings;
+    systemInstruction?: string;
+  } = {
     model: modelId,
     safetySettings,
   };
+  if (systemInstruction && systemInstruction.trim().length > 0) {
+    modelConfig.systemInstruction = systemInstruction;
+  }
   return client.getGenerativeModel(modelConfig);
 }
 
@@ -132,28 +139,18 @@ Answer strictly with "yes" or "no" and provide a confidence score between 0 and 
 }
 
 async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
-  const model = getModel("gemini-1.5-flash", apiKey);
+  // Pass systemInstruction to getModel so it's set at the model level
+  // The SDK will convert camelCase "systemInstruction" to snake_case "system_instruction" for the API
+  const model = getModel("gemini-1.5-flash", apiKey, payload.systemInstruction);
   
-  // Build the generateContent options with systemInstruction if provided
-  // Note: The TypeScript SDK expects camelCase "systemInstruction" and accepts it as a string
-  const generateContentOptions: {
-    systemInstruction?: string;
-    contents: Array<{role: string; parts: Array<{text: string}>}>;
-  } = {
+  const result = await model.generateContent({
     contents: [{
       role: "user",
       parts: [
         {text: payload.prompt},
       ],
     }],
-  };
-  
-  // Add systemInstruction if provided (as a string, which the SDK accepts)
-  if (payload.systemInstruction && payload.systemInstruction.trim().length > 0) {
-    generateContentOptions.systemInstruction = payload.systemInstruction;
-  }
-  
-  const result = await model.generateContent(generateContentOptions);
+  });
   const text = result.response.text()?.trim() ?? "";
   return {text};
 }
