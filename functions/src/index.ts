@@ -98,8 +98,10 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
     hasSystemInstructionCamelCase: modelConfig.systemInstruction !== undefined,
   });
   
-  // Use default API version (v1) - v1beta is not supported for gemini-1.5-flash
-  const model = client.getGenerativeModel(modelConfig);
+  // Explicitly set API version to v1 (not v1beta) - v1beta is not supported for gemini-1.5-flash
+  const model = client.getGenerativeModel(modelConfig, {
+    apiVersion: 'v1',
+  });
   logger.info("Model created successfully");
   return model;
 }
