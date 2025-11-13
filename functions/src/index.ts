@@ -51,7 +51,12 @@ const safetySettings = [
 
 function getModel(modelId: string, apiKey: string) {
   const client = new GoogleGenerativeAI(apiKey);
-  const modelConfig = {
+  // Explicitly exclude systemInstruction from model config
+  // The API endpoint doesn't support it as a separate field
+  const modelConfig: {
+    model: string;
+    safetySettings: typeof safetySettings;
+  } = {
     model: modelId,
     safetySettings,
   };
@@ -135,13 +140,15 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
   const model = getModel("gemini-1.5-flash", apiKey);
   
   // Build the prompt - prepend systemInstruction if provided
-  // The SDK version 0.24.1 may not support systemInstruction as a separate field,
+  // The API endpoint doesn't support systemInstruction as a separate field,
   // so we include it in the prompt content to avoid API errors
   let promptText = payload.prompt;
   if (payload.systemInstruction && payload.systemInstruction.trim().length > 0) {
     promptText = `${payload.systemInstruction}\n\n${payload.prompt}`;
   }
   
+  // Explicitly exclude systemInstruction from generateContent call
+  // to ensure it's never passed as a separate field
   const result = await model.generateContent({
     contents: [{
       role: "user",
