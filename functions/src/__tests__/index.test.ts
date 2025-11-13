@@ -50,7 +50,7 @@ describe("systemInstruction handling", () => {
     expect(modelConfig).toHaveProperty("safetySettings");
   });
 
-  test("handleText should pass systemInstruction to generateContent when provided", async () => {
+  test("handleText should prepend systemInstruction to prompt when provided", async () => {
     const payload = {
       mode: "text" as const,
       prompt: "Test prompt",
@@ -70,13 +70,12 @@ describe("systemInstruction handling", () => {
     // Verify generateContent was called
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
 
-    // Verify systemInstruction was passed to generateContent
+    // Verify systemInstruction was prepended to the prompt
     const generateContentCall = mockGenerateContent.mock.calls[0]?.[0];
-    expect(generateContentCall).toHaveProperty("systemInstruction");
-    expect(generateContentCall.systemInstruction).toBe("Test system instruction");
+    expect(generateContentCall).not.toHaveProperty("systemInstruction");
     expect(generateContentCall).toHaveProperty("contents");
     expect(generateContentCall.contents).toHaveLength(1);
-    expect(generateContentCall.contents[0].parts[0].text).toBe("Test prompt");
+    expect(generateContentCall.contents[0].parts[0].text).toBe("Test system instruction\n\nTest prompt");
   });
 
   test("handleText should work without systemInstruction", async () => {
@@ -116,9 +115,8 @@ describe("systemInstruction handling", () => {
 
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
     const generateContentCall = mockGenerateContent.mock.calls[0]?.[0];
-    expect(generateContentCall).toHaveProperty("systemInstruction");
-    expect(generateContentCall.systemInstruction).toBe("You are a creative storyteller");
-    expect(generateContentCall.contents[0].parts[0].text).toBe("Create a story");
+    expect(generateContentCall).not.toHaveProperty("systemInstruction");
+    expect(generateContentCall.contents[0].parts[0].text).toBe("You are a creative storyteller\n\nCreate a story");
   });
 
   test("should return text response correctly", async () => {
