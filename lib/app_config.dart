@@ -84,18 +84,7 @@ class AppConfig {
     _defineAiImageValidationUrl,
   );
 
-  static bool get hasGeminiProxy {
-    if (geminiProxyUrl.isNotEmpty) {
-      return true;
-    }
-    // Also check if we can construct an endpoint from Firebase project ID
-    try {
-      final projectId = _firebaseProjectId;
-      return projectId != null && projectId.isNotEmpty;
-    } catch (_) {
-      return false;
-    }
-  }
+  static bool get hasGeminiProxy => true; // Always available via geminiProxyEndpoint
   static bool get hasPixabay => pixabayApiKey.isNotEmpty;
   static bool get hasCloudinary =>
       cloudinaryCloudName.isNotEmpty &&
@@ -112,41 +101,40 @@ class AppConfig {
   static Uri? get aiImageValidationEndpoint =>
       hasAiImageValidation ? Uri.tryParse(aiImageValidationUrl) : null;
 
-  static Uri? get geminiProxyEndpoint {
+  static Uri get geminiProxyEndpoint {
+    // If explicit URL is provided, use it
     if (geminiProxyUrl.isNotEmpty) {
       final uri = Uri.tryParse(geminiProxyUrl);
       if (uri != null && uri.hasScheme && uri.hasAuthority) {
         return uri;
       }
-      // Invalid URL format, return null
-      return null;
+      // If invalid, fall through to construct from project ID
     }
+    
+    // Always construct from Firebase project ID
+    String projectId;
     try {
-      final projectId = _firebaseProjectId;
-      if (projectId == null || projectId.isEmpty) {
-        return null;
-      }
-      final uri = Uri.tryParse(
-        'https://us-central1-$projectId.cloudfunctions.net/geminiProxy',
-      );
-      if (uri != null && uri.hasScheme && uri.hasAuthority) {
-        return uri;
-      }
-      return null;
+      projectId = _firebaseProjectId ?? '';
     } catch (e) {
-      debugPrint('Error constructing geminiProxyEndpoint: $e');
-      return null;
+      debugPrint('Error getting Firebase project ID: $e');
+      projectId = '';
     }
+    
+    // Fallback to hardcoded project ID if needed
+    if (projectId.isEmpty) {
+      projectId = 'englishkidsapp-916be';
+      debugPrint('Using fallback project ID: $projectId');
+    }
+    
+    // Always return a valid URI - this should never fail
+    return Uri.parse(
+      'https://us-central1-$projectId.cloudfunctions.net/geminiProxy',
+    );
   }
 
   static Uri requireGeminiProxyEndpoint() {
-    final endpoint = geminiProxyEndpoint;
-    if (endpoint == null) {
-      throw StateError(
-        'Gemini proxy endpoint is not configured. Ensure your Firebase project ID is available or set GEMINI_PROXY_URL explicitly.',
-      );
-    }
-    return endpoint;
+    // Always returns a valid endpoint, so this is just an alias
+    return geminiProxyEndpoint;
   }
 
   /// Provides a quick overview for debug logs/tests.
