@@ -28,14 +28,20 @@ const validateSchema = z.object({
 const storySchema = z.object({
   mode: z.literal("story"),
   prompt: z.string().min(1),
-  systemInstruction: z.string().optional(),
-});
+  system_instruction: z.string().optional(),
+}).transform((data) => ({
+  ...data,
+  systemInstruction: data.system_instruction, // Map to camelCase for internal use
+}));
 
 const textSchema = z.object({
   mode: z.literal("text"),
   prompt: z.string().min(1),
-  systemInstruction: z.string().optional(),
-});
+  system_instruction: z.string().optional(),
+}).transform((data) => ({
+  ...data,
+  systemInstruction: data.system_instruction, // Map to camelCase for internal use
+}));
 
 type IdentifyPayload = z.infer<typeof identifySchema>;
 type ValidatePayload = z.infer<typeof validateSchema>;
@@ -58,6 +64,7 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
     systemInstructionValue: systemInstruction,
   });
   
+  // Initialize client - SDK v0.24.1 should use v1 API by default for gemini-1.5 models
   const client = new GoogleGenerativeAI(apiKey);
   
   // Build model config with ONLY snake_case system_instruction (never camelCase)
@@ -98,25 +105,20 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
     hasSystemInstructionCamelCase: modelConfig.systemInstruction !== undefined,
   });
   
-  // Explicitly set API version to v1 (not v1beta) - v1beta is not supported for gemini-1.5-flash
-  // The apiVersion option should force v1 API usage
-  const options = {
-    apiVersion: 'v1' as const,
-  };
-  logger.info("Calling getGenerativeModel with options", {
-    options: JSON.stringify(options),
+  // Use getGenerativeModel - gemini-1.5 model name ensures v1 API usage (not v1beta)
+  logger.info("Calling getGenerativeModel", {
     modelId,
   });
-  const model = client.getGenerativeModel(modelConfig, options);
+  const model = client.getGenerativeModel(modelConfig);
   logger.info("Model created successfully", {
     modelId,
-    apiVersion: options.apiVersion,
   });
   return model;
 }
 
 async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
-  const model = getModel("gemini-1.5-flash-latest", apiKey);
+  // Use gemini-1.5 (not gemini-1.5-flash) - correct model name for v1 API
+  const model = getModel("gemini-1.5", apiKey);
   const result = await model.generateContent({
     contents: [{
       role: "user",
@@ -136,7 +138,8 @@ async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
 }
 
 async function handleValidate(payload: ValidatePayload, apiKey: string) {
-  const model = getModel("gemini-1.5-flash-latest", apiKey);
+  // Use gemini-1.5 (not gemini-1.5-flash) - correct model name for v1 API
+  const model = getModel("gemini-1.5", apiKey);
   const prompt = `You are helping a child learn English words.
 Does this picture clearly show the object "${payload.word}" as the main focus?
 Answer strictly with "yes" or "no" and provide a confidence score between 0 and 1. Return JSON: {"approved": boolean, "confidence": number}.`;
@@ -197,7 +200,8 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
     systemInstructionLength: payload.systemInstruction?.length,
   });
   
-  const model = getModel("gemini-1.5-flash-latest", apiKey, payload.systemInstruction);
+  // Use gemini-1.5 (not gemini-1.5-flash) - correct model name for v1 API
+  const model = getModel("gemini-1.5", apiKey, payload.systemInstruction);
   
   const generateContentPayload = {
     contents: [{
@@ -242,8 +246,8 @@ export const geminiProxy = functions.onRequest(
             method: req.method,
             body: JSON.stringify(req.body),
             bodyKeys: Object.keys(req.body || {}),
-            hasSystemInstruction: req.body?.systemInstruction !== undefined,
-            systemInstructionType: typeof req.body?.systemInstruction,
+            hasSystemInstruction: req.body?.system_instruction !== undefined || req.body?.systemInstruction !== undefined,
+            systemInstructionType: typeof (req.body?.system_instruction ?? req.body?.systemInstruction),
           });
 
           if (req.body?.mode === "identify") {
@@ -276,6 +280,16 @@ export const geminiProxy = functions.onRequest(
           if (error instanceof z.ZodError) {
             res.status(400).json({error: "Invalid payload", details: error.errors});
           } else if (error instanceof Error) {
+            // Check if error is related to v1beta API version issue
+            const errorMessage = error.message;
+            if (errorMessage.includes("v1beta") && errorMessage.includes("not found")) {
+              logger.error("API version mismatch detected - SDK is using v1beta but model requires v1 API", {
+                errorMessage,
+                modelId: req.body?.mode === "identify" ? "gemini-1.5" : 
+                         req.body?.mode === "validate" ? "gemini-1.5" :
+                         req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5" : "unknown",
+              });
+            }
             res.status(500).json({error: error.message});
           } else {
             res.status(500).json({error: "Unknown error"});
