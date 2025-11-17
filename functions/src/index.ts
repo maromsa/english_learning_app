@@ -97,9 +97,12 @@ function getModel(
   const client = new GoogleGenerativeAI(apiKey);
   logger.info("GoogleGenerativeAI client created successfully");
   
+  // Resolve the model ID: use directModelId if provided, otherwise use default
+  // Use gemini-2.0-flash - this is a stable model version that works with v1 API
+  const resolvedModelId = options.directModelId ?? DEFAULT_MODEL_MAP["gemini-1.5"] ?? "gemini-2.0-flash";
+  
   // Build model config with ONLY snake_case system_instruction (never camelCase)
   // Explicitly construct the object to avoid any camelCase properties
-  // Use gemini-2.0-flash - this is a stable model version that works with v1 API
   const modelConfig: any = {
     model: resolvedModelId,
     safetySettings,

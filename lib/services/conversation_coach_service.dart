@@ -97,6 +97,14 @@ class ConversationCoachService {
       'תכונת שיחת ה-AI של ספרק מושבתת. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי לאפשר שיחות חיות.';
 
   static _ConversationGenerator _inferGenerator() {
+    // Check if Firebase is properly configured
+    if (!AppConfig.isFirebaseConfigured) {
+      // Firebase not configured, return a generator that throws immediately
+      return (_) async {
+        throw const ConversationUnavailableException(_geminiUnavailableMessage);
+      };
+    }
+
     final Uri proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
     return (prompt) async {
@@ -112,6 +120,13 @@ class ConversationCoachService {
           );
         }
         return response;
+      } on ConversationUnavailableException {
+        rethrow;
+      } catch (e) {
+        // If any error occurs (network, timeout, etc.), treat as unavailable
+        throw const ConversationUnavailableException(
+          _geminiUnavailableMessage,
+        );
       } finally {
         service.dispose();
       }

@@ -9,7 +9,6 @@ import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -62,14 +61,14 @@ Future<void> main() async {
   await themeProvider.loadTheme();
   await shopProvider.loadPurchasedItems();
   await dailyMissionProvider.initialize();
-    if (kIsWeb) {
-      await backgroundMusicService.initialize();
-      debugPrint(
-        'Startup chime disabled on web; map music will begin after first interaction.',
-      );
-    } else {
-      await backgroundMusicService.playStartupSequence();
-    }
+  if (kIsWeb) {
+    await backgroundMusicService.initialize();
+    debugPrint(
+      'Startup chime disabled on web; map music will begin after first interaction.',
+    );
+  } else {
+    await backgroundMusicService.playStartupSequence();
+  }
 
   runApp(
     MultiProvider(

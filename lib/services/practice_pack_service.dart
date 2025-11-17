@@ -54,6 +54,14 @@ class PracticePackService {
       'חבילת האימון של ספרק דורשת חיבור ל-Gemini. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי להפעיל את התכונה.';
 
   static _PracticePackGenerator _inferGenerator() {
+    // Check if Firebase is properly configured
+    if (!AppConfig.isFirebaseConfigured) {
+      // Firebase not configured, return a generator that throws immediately
+      return (_) async {
+        throw const PracticePackUnavailableException(_geminiUnavailableMessage);
+      };
+    }
+
     final Uri proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
     return (prompt) async {
@@ -69,6 +77,13 @@ class PracticePackService {
           );
         }
         return response;
+      } on PracticePackUnavailableException {
+        rethrow;
+      } catch (e) {
+        // If any error occurs (network, timeout, etc.), treat as unavailable
+        throw const PracticePackUnavailableException(
+          _geminiUnavailableMessage,
+        );
       } finally {
         service.dispose();
       }
