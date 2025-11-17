@@ -8,6 +8,8 @@ import 'package:english_learning_app/providers/shop_provider.dart';
 import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'dart:ui';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -57,19 +59,84 @@ Future<void> main() async {
   final dailyMissionProvider = DailyMissionProvider();
   final backgroundMusicService = BackgroundMusicService();
 
-  // Load persisted data
-  await coinProvider.loadCoins();
-  await themeProvider.loadTheme();
-  await shopProvider.loadPurchasedItems();
-  await dailyMissionProvider.initialize();
-    if (kIsWeb) {
-      await backgroundMusicService.initialize();
-      debugPrint(
-        'Startup chime disabled on web; map music will begin after first interaction.',
-      );
-    } else {
-      await backgroundMusicService.playStartupSequence();
-    }
+  // Load persisted data with timeouts to prevent hanging
+  try {
+    await coinProvider.loadCoins().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        debugPrint('Coin loading timed out, continuing with default value');
+      },
+    );
+  } catch (e) {
+    debugPrint('Error loading coins: $e');
+  }
+
+  try {
+    await themeProvider.loadTheme().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        debugPrint('Theme loading timed out, continuing with default theme');
+      },
+    );
+  } catch (e) {
+    debugPrint('Error loading theme: $e');
+  }
+
+  try {
+    await shopProvider.loadPurchasedItems().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        debugPrint('Shop items loading timed out, continuing with empty list');
+      },
+    );
+  } catch (e) {
+    debugPrint('Error loading shop items: $e');
+  }
+
+  try {
+    await dailyMissionProvider.initialize().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        debugPrint('Daily missions initialization timed out, continuing anyway');
+      },
+    );
+  } catch (e) {
+    debugPrint('Error initializing daily missions: $e');
+  }
+  
+  // Initialize background music service asynchronously without blocking UI
+  if (kIsWeb) {
+    backgroundMusicService.initialize().catchError((error) {
+      debugPrint('Background music initialization failed: $error');
+    });
+    debugPrint(
+      'Startup chime disabled on web; map music will begin after first interaction.',
+    );
+  } else {
+    // Don't await - let it run in background so UI can render immediately
+    backgroundMusicService.playStartupSequence().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        debugPrint('Background music startup timed out, continuing anyway');
+      },
+    ).catchError((error) {
+      debugPrint('Background music startup failed: $error');
+    });
+  }
+
+  // Set up global error handling
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('Flutter error: ${details.exception}');
+    debugPrint('Stack trace: ${details.stack}');
+  };
+
+  // Handle platform errors
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('Platform error: $error');
+    debugPrint('Stack trace: $stack');
+    return true;
+  };
 
   runApp(
     MultiProvider(
@@ -118,6 +185,13 @@ class MyApp extends StatelessWidget {
         darkTheme: ThemeData.dark(),
         themeMode: themeProvider.themeMode,
         debugShowCheckedModeBanner: false,
+        builder: (context, child) {
+          // Wrap entire app in error boundary
+          return MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(1.0)),
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
         home: AuthGate(hasSeenOnboarding: hasSeenOnboarding),
       ),
     );

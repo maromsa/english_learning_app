@@ -15,9 +15,38 @@ class AuthProvider extends ChangeNotifier {
   }) : _auth = auth ?? FirebaseAuth.instance,
        _googleSignIn = googleSignIn ?? GoogleSignIn(),
        _authService = authService ?? AuthService() {
+    // Check current auth state immediately
+    final currentUser = _auth.currentUser;
+    if (currentUser != null) {
+      _firebaseUser = currentUser;
+      // Load user profile asynchronously with timeout
+      _authService.getUser(currentUser.uid)
+          .timeout(const Duration(seconds: 3))
+          .then((user) {
+        _appUser = user;
+        _initializing = false;
+        notifyListeners();
+      }).catchError((e) {
+        debugPrint('Error loading user profile: $e');
+        _initializing = false;
+        notifyListeners();
+      });
+    } else {
+      _initializing = false;
+      notifyListeners();
+    }
+    
     _authSubscription = _auth.authStateChanges().listen(
       _handleAuthStateChanged,
     );
+    
+    // Set a timeout to prevent infinite loading
+    Future.delayed(const Duration(seconds: 3), () {
+      if (_initializing) {
+        _initializing = false;
+        notifyListeners();
+      }
+    });
   }
 
   final FirebaseAuth _auth;
@@ -115,8 +144,23 @@ class AuthProvider extends ChangeNotifier {
     }
 
     try {
-      _appUser = await _authService.upsertUser(user);
+      // Add timeout to prevent hanging on user sync
+      _appUser = await _authService.upsertUser(user).timeout(
+        const Duration(seconds: 5),
+      );
+    } on TimeoutException {
+      debugPrint('User sync timed out, continuing without sync');
+      // If timeout occurs, try to get existing user or leave _appUser as null
+      try {
+        _appUser = await _authService.getUser(user.uid).timeout(
+          const Duration(seconds: 2),
+        );
+      } catch (e) {
+        debugPrint('Failed to get existing user: $e');
+        // Leave _appUser as null if we can't get it
+      }
     } catch (e) {
+      debugPrint('Failed to sync user profile: $e');
       _errorMessage = 'Failed to sync user profile: $e';
     }
 
