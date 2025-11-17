@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class GeminiProxyService {
@@ -49,11 +50,11 @@ class GeminiProxyService {
       'prompt': prompt,
       if (systemInstruction != null) 'system_instruction': systemInstruction,
     };
-    print('[GeminiProxyService] Sending payload: ${jsonEncode(payload)}');
-    print('[GeminiProxyService] systemInstruction present: ${systemInstruction != null}');
+    debugPrint('[GeminiProxyService] Sending payload: ${jsonEncode(payload)}');
+    debugPrint('[GeminiProxyService] systemInstruction present: ${systemInstruction != null}');
     if (systemInstruction != null) {
-      print('[GeminiProxyService] systemInstruction length: ${systemInstruction.length}');
-      print('[GeminiProxyService] systemInstruction preview: ${systemInstruction.substring(0, systemInstruction.length > 100 ? 100 : systemInstruction.length)}...');
+      debugPrint('[GeminiProxyService] systemInstruction length: ${systemInstruction.length}');
+      debugPrint('[GeminiProxyService] systemInstruction preview: ${systemInstruction.substring(0, systemInstruction.length > 100 ? 100 : systemInstruction.length)}...');
     }
     final response = await _postJson(payload);
 
@@ -70,8 +71,8 @@ class GeminiProxyService {
   Future<Map<String, dynamic>?> _postJson(Map<String, dynamic> payload) async {
     try {
       final jsonBody = jsonEncode(payload);
-      print('[GeminiProxyService] POST to $_endpoint');
-      print('[GeminiProxyService] Request body: $jsonBody');
+      debugPrint('[GeminiProxyService] POST to $_endpoint');
+      debugPrint('[GeminiProxyService] Request body: $jsonBody');
       
       final response = await _httpClient
           .post(
@@ -81,8 +82,8 @@ class GeminiProxyService {
           )
           .timeout(_timeout);
 
-      print('[GeminiProxyService] Response status: ${response.statusCode}');
-      print('[GeminiProxyService] Response body: ${response.body}');
+      debugPrint('[GeminiProxyService] Response status: ${response.statusCode}');
+      debugPrint('[GeminiProxyService] Response body: ${response.body}');
       
       if (response.statusCode != 200) {
         return null;

@@ -55,7 +55,7 @@ class _CameraScreenState extends State<CameraScreen> {
       // Return the path of the new image to the previous screen
       Navigator.pop(context, image.path);
     } catch (e) {
-      print(e);
+      debugPrint('Camera error: $e');
     }
   }
 
