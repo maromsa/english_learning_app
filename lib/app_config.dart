@@ -94,6 +94,16 @@ class AppConfig {
   static bool get hasFirebaseUserId => firebaseUserIdForUpload.isNotEmpty;
   static bool get hasAiImageValidation => aiImageValidationUrl.isNotEmpty;
 
+  /// Checks if Firebase is properly configured and accessible
+  static bool get isFirebaseConfigured {
+    try {
+      final projectId = _firebaseProjectId;
+      return projectId != null && projectId.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static String? get cloudinaryUrl => hasCloudinary
       ? 'cloudinary://$cloudinaryApiKey:$cloudinaryApiSecret@$cloudinaryCloudName'
       : null;

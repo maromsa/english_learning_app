@@ -30,6 +30,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: "3.27.0"
           channel: ${{ env.FLUTTER_CHANNEL }}
 
       - name: Install dependencies
@@ -57,6 +58,11 @@ jobs:
             fi
           }
 
+          DEFAULT_GEMINI_PROXY_URL="https://us-central1-englishkidsapp-916be.cloudfunctions.net/geminiProxy"
+          if [ -z "$GEMINI_PROXY_URL" ]; then
+            GEMINI_PROXY_URL="$DEFAULT_GEMINI_PROXY_URL"
+            echo "GEMINI_PROXY_URL not provided; defaulting to $GEMINI_PROXY_URL"
+          fi
           add_define GEMINI_PROXY_URL "$GEMINI_PROXY_URL"
           add_define PIXABAY_API_KEY "$PIXABAY_API_KEY"
           add_define FIREBASE_USER_ID_FOR_UPLOAD "$FIREBASE_USER_ID_FOR_UPLOAD"

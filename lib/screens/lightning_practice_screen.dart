@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:characters/characters.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -703,9 +704,11 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     if (path.startsWith('http')) {
       return Image.network(path, fit: BoxFit.cover);
     }
-    final file = File(path);
-    if (file.existsSync()) {
-      return Image.file(file, fit: BoxFit.cover);
+    if (!kIsWeb) {
+      final file = File(path);
+      if (file.existsSync()) {
+        return Image.file(file, fit: BoxFit.cover);
+      }
     }
     return null;
   }

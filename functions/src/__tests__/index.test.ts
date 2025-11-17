@@ -8,6 +8,8 @@ describe("systemInstruction handling", () => {
   const mockApiKey = "test-api-key";
   const mockGenerateContent = jest.fn();
   const mockText = jest.fn();
+  let mockModel: {generateContent: jest.Mock};
+  let mockClient: {getGenerativeModel: jest.Mock};
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -19,12 +21,11 @@ describe("systemInstruction handling", () => {
         text: mockText,
       },
     });
-
-    const mockModel = {
+    mockModel = {
       generateContent: mockGenerateContent,
     };
 
-    const mockClient = {
+    mockClient = {
       getGenerativeModel: jest.fn().mockReturnValue(mockModel),
     };
 
@@ -47,17 +48,16 @@ describe("systemInstruction handling", () => {
     const modelConfig = getGenerativeModelCall?.mock.calls[0]?.[0];
     expect(modelConfig).not.toHaveProperty("systemInstruction");
     expect(modelConfig).not.toHaveProperty("system_instruction");
-    expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash-latest"); // Updated to gemini-1.5-flash-latest for v1 API
+    expect(modelConfig).toHaveProperty("model", "gemini-2.0-flash"); // Updated to gemini-2.0-flash for v1 API
     expect(modelConfig).toHaveProperty("safetySettings");
     
     // Verify GoogleGenerativeAI was initialized with the API key
     const constructorCall = GoogleGenerativeAIClass.mock.calls[0];
     expect(constructorCall[0]).toBe(mockApiKey);
     
-    // Verify getGenerativeModel was called without options
-    // (Custom fetch handles v1beta to v1 URL rewriting)
+    // Verify getGenerativeModel was called with the v1 API version
     const requestOptions = getGenerativeModelCall?.mock.calls[0]?.[1];
-    expect(requestOptions).toBeUndefined();
+    expect(requestOptions).toEqual(expect.objectContaining({apiVersion: "v1"}));
   });
 
   test("getModel should include system_instruction when provided", () => {
@@ -75,17 +75,16 @@ describe("systemInstruction handling", () => {
     const modelConfig = getGenerativeModelCall?.mock.calls[0]?.[0];
     expect(modelConfig).toHaveProperty("system_instruction", "Test system instruction");
     expect(modelConfig).not.toHaveProperty("systemInstruction");
-    expect(modelConfig).toHaveProperty("model", "gemini-1.5-flash-latest"); // Updated to gemini-1.5-flash-latest for v1 API
+    expect(modelConfig).toHaveProperty("model", "gemini-2.0-flash"); // Updated to gemini-2.0-flash for v1 API
     expect(modelConfig).toHaveProperty("safetySettings");
     
     // Verify GoogleGenerativeAI was initialized with the API key
     const constructorCall = GoogleGenerativeAIClass.mock.calls[0];
     expect(constructorCall[0]).toBe(mockApiKey);
     
-    // Verify getGenerativeModel was called without options
-    // (Custom fetch handles v1beta to v1 URL rewriting)
+    // Verify getGenerativeModel was called with the v1 API version
     const requestOptions = getGenerativeModelCall?.mock.calls[0]?.[1];
-    expect(requestOptions).toBeUndefined();
+    expect(requestOptions).toEqual(expect.objectContaining({apiVersion: "v1"}));
   });
 
   test("handleText should pass systemInstruction to getModel when provided", async () => {
@@ -157,10 +156,9 @@ describe("systemInstruction handling", () => {
     const constructorCall = GoogleGenerativeAIClass.mock.calls[0];
     expect(constructorCall[0]).toBe(mockApiKey);
     
-    // Verify getGenerativeModel was called without options
-    // (Custom fetch handles v1beta to v1 URL rewriting)
+    // Verify getGenerativeModel was called with the v1 API version
     const requestOptions = getGenerativeModelCall?.mock.calls[0]?.[1];
-    expect(requestOptions).toBeUndefined();
+    expect(requestOptions).toEqual(expect.objectContaining({apiVersion: "v1"}));
 
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
     const generateContentCall = mockGenerateContent.mock.calls[0]?.[0];
@@ -180,5 +178,41 @@ describe("systemInstruction handling", () => {
 
     expect(result).toEqual({text: "response text"});
     expect(mockText).toHaveBeenCalled();
+  });
+
+  test("handleText retries with fallback when a model not found error occurs", async () => {
+    const notFoundError = new Error("[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent: [404 Not Found] models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent.");
+    mockGenerateContent.mockRejectedValueOnce(notFoundError);
+    mockText.mockReturnValue("fallback response");
+    mockGenerateContent.mockResolvedValueOnce({
+      response: {
+        text: mockText,
+      },
+    });
+
+    const payload = {
+      mode: "text" as const,
+      prompt: "Test prompt",
+    };
+
+    const result = await handleText(payload, mockApiKey);
+
+    expect(result).toEqual({text: "fallback response"});
+    expect(mockClient.getGenerativeModel).toHaveBeenCalledTimes(2);
+    expect(mockGenerateContent).toHaveBeenCalledTimes(2);
+  });
+
+  test("handleText surfaces non-model-not-found errors without retrying", async () => {
+    const unexpectedError = new Error("Network down");
+    mockGenerateContent.mockRejectedValueOnce(unexpectedError);
+
+    const payload = {
+      mode: "text" as const,
+      prompt: "Test prompt",
+    };
+
+    await expect(handleText(payload, mockApiKey)).rejects.toThrow("Network down");
+    expect(mockClient.getGenerativeModel).toHaveBeenCalledTimes(1);
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
   });
 });

@@ -5,80 +5,22 @@ import cors from "cors";
 import {GoogleGenerativeAI, HarmBlockThreshold, HarmCategory} from "@google/generative-ai";
 import {z} from "zod";
 
-// Setup fetch override at module level to ensure it's active before SDK initialization
-// This ensures all Gemini API calls use v1 API instead of v1beta
-const originalFetch = global.fetch;
-const customFetch = async (url: string | Request | URL, init?: RequestInit): Promise<Response> => {
-  let urlString = typeof url === "string" ? url : url instanceof URL ? url.toString() : (url as Request).url;
-  
-  // CRITICAL: Rewrite v1beta URLs to v1 for Gemini API calls
-  // Also handle v1beta2, v1beta3, etc. variations
-  if (urlString.includes("generativelanguage.googleapis.com")) {
-    const originalUrl = urlString;
-    const hadV1beta = /\/v1beta\d*\//.test(urlString);
-    
-    // Log all Gemini API calls for debugging
-    logger.info("🔍 [Module-level] Gemini API call intercepted", {
-      originalUrl,
-      method: init?.method || "GET",
-      hasV1beta: hadV1beta,
-      hasV1: urlString.includes("/v1/"),
-    });
-    
-    // Replace any v1beta, v1beta2, v1beta3, etc. with v1
-    urlString = urlString.replace(/\/v1beta\d*\//g, "/v1/");
-    if (originalUrl !== urlString) {
-      logger.warn("⚠️ [Module-level] Rewriting Gemini API URL from v1beta to v1", {
-        originalUrl,
-        newUrl: urlString,
-      });
-    }
-    
-    // Construct the new request with rewritten URL
-    // The SDK typically uses string URLs, but handle all cases
-    let newRequest: string | Request | URL;
-    if (typeof url === "string") {
-      newRequest = urlString;
-    } else if (url instanceof URL) {
-      newRequest = new URL(urlString);
-    } else {
-      // For Request objects, create a new Request with rewritten URL
-      // Use the original request as the init to preserve all properties including body
-      newRequest = new Request(urlString, url);
-    }
-    
-    // Log response after the request
-    const response = await originalFetch(newRequest, init);
-    
-    logger.info("✅ [Module-level] Gemini API response received", {
-      url: urlString,
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
-      wasRewritten: originalUrl !== urlString,
-    });
-    
-    // Log error details if request failed
-    if (!response.ok && response.status === 404) {
-      logger.error("🚨 [Module-level] 404 error on Gemini API call", {
-        originalUrl,
-        rewrittenUrl: urlString,
-        status: response.status,
-        statusText: response.statusText,
-        note: "This may indicate API version or model name issue",
-      });
-    }
-    
-    return response;
-  }
-  
-  // For non-Gemini URLs, use original fetch
-  return originalFetch(url, init);
+const GEMINI_API_VERSION = "v1";
+const DEFAULT_MODEL_MAP: Record<string, string> = {
+  "gemini-1.5": "gemini-2.0-flash",
 };
+const GEMINI_MODEL_OVERRIDE = process.env.GEMINI_MODEL_OVERRIDE?.trim();
 
-// Override global fetch at module level
-(global as any).fetch = customFetch;
-logger.info("🌐 [Module-level] Global fetch overridden with custom fetch for v1 API");
+interface GetModelOptions {
+  apiVersion?: string;
+  directModelId?: string;
+}
+
+interface ModelAttempt {
+  apiVersion: string;
+  directModelId?: string;
+  label: string;
+}
 
 setGlobalOptions({
   region: "us-central1",
@@ -130,31 +72,39 @@ const safetySettings = [
   {category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
 ];
 
-function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
+function getModel(
+    modelId: string,
+    apiKey: string,
+    systemInstruction?: string,
+    options: GetModelOptions = {},
+) {
   logger.info("getModel called", {
     modelId,
     hasSystemInstruction: systemInstruction !== undefined,
     systemInstructionType: typeof systemInstruction,
     systemInstructionLength: systemInstruction?.length,
     systemInstructionValue: systemInstruction,
+    directModelOverride: options.directModelId,
+    requestedApiVersion: options.apiVersion ?? GEMINI_API_VERSION,
   });
-  
-  // Create client - it will use the fetch override set at handler level
+
+  // Create client - it will use the configured API version via request options
   logger.info("Creating GoogleGenerativeAI client", {
     apiKeyPresent: !!apiKey,
     apiKeyLength: apiKey?.length,
-    currentFetchType: typeof (global as any).fetch,
   });
   
   const client = new GoogleGenerativeAI(apiKey);
   logger.info("GoogleGenerativeAI client created successfully");
   
+  // Resolve the model ID: use directModelId if provided, otherwise use default
+  // Use gemini-2.0-flash - this is a stable model version that works with v1 API
+  const resolvedModelId = options.directModelId ?? DEFAULT_MODEL_MAP["gemini-1.5"] ?? "gemini-2.0-flash";
+  
   // Build model config with ONLY snake_case system_instruction (never camelCase)
   // Explicitly construct the object to avoid any camelCase properties
-  // Use gemini-1.5-flash-latest - this is the correct model name for v1 API
-  // The fetch override will rewrite any v1beta URLs to v1
   const modelConfig: any = {
-    model: modelId === "gemini-1.5" ? "gemini-1.5-flash-latest" : modelId,
+    model: resolvedModelId,
     safetySettings,
   };
   
@@ -182,46 +132,241 @@ function getModel(modelId: string, apiKey: string, systemInstruction?: string) {
   }
   
   // Log the model config to verify the payload before API call
+  const apiVersion = options.apiVersion ?? GEMINI_API_VERSION;
   logger.info("Model config before getGenerativeModel", {
     modelConfig: JSON.stringify(modelConfig),
     modelConfigKeys: Object.keys(modelConfig),
     hasSystemInstruction: modelConfig.system_instruction !== undefined,
     hasSystemInstructionCamelCase: modelConfig.systemInstruction !== undefined,
     finalModelId: modelConfig.model,
+    apiVersion,
   });
   
-  // Use getGenerativeModel - custom fetch will rewrite v1beta URLs to v1
+  // Use getGenerativeModel with explicit v1 API version
+  // Using gemini-2.0-flash which is compatible with v1 API
+  const requestOptions = {
+    apiVersion: GEMINI_API_VERSION as "v1",
+  };
+
   logger.info("Calling getGenerativeModel", {
     modelId,
     finalModelId: modelConfig.model,
-    note: "Using custom fetch to rewrite v1beta URLs to v1",
+    apiVersion: requestOptions.apiVersion,
+    directModelOverride: options.directModelId,
   });
-  const model = client.getGenerativeModel(modelConfig);
+  const model = client.getGenerativeModel(modelConfig, requestOptions);
   logger.info("Model created successfully", {
     modelId,
     finalModelId: modelConfig.model,
-    baseUrl: "https://generativelanguage.googleapis.com/v1",
+    baseUrl: "https://generativelanguage.googleapis.com",
+    apiVersion: requestOptions.apiVersion,
+    directModelOverride: options.directModelId,
   });
   return model;
 }
 
+function normalizeModelId(modelId?: string | null): string | undefined {
+  if (!modelId) {
+    return undefined;
+  }
+  return modelId.startsWith("models/") ? modelId.slice("models/".length) : modelId;
+}
+
+function stripLatestSuffix(modelId?: string | null): string | undefined {
+  const normalized = normalizeModelId(modelId);
+  if (!normalized) {
+    return undefined;
+  }
+  return normalized.replace(/-latest$/i, "");
+}
+
+function uniqueStrings(values: Array<string | undefined>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    if (!value) {
+      continue;
+    }
+    if (seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    result.push(value);
+  }
+  return result;
+}
+
+function uniqueModelOverrides(values: Array<string | undefined>): (string | undefined)[] {
+  const seen = new Set<string>();
+  const result: (string | undefined)[] = [];
+  let defaultAdded = false;
+
+  for (const value of values) {
+    if (!value) {
+      if (!defaultAdded) {
+        result.push(undefined);
+        defaultAdded = true;
+      }
+      continue;
+    }
+
+    if (seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    result.push(value);
+  }
+
+  return result;
+}
+
+function buildModelAttempts(): ModelAttempt[] {
+  const versionOrder = uniqueStrings([
+    GEMINI_API_VERSION,
+    "v1",
+    "v1beta",
+  ]);
+
+  const primaryModel = DEFAULT_MODEL_MAP["gemini-1.5"] ?? "gemini-1.5";
+  const normalizedPrimary = normalizeModelId(primaryModel);
+  const overrideNormalized = normalizeModelId(GEMINI_MODEL_OVERRIDE);
+
+  const modelOrder = uniqueModelOverrides([
+    GEMINI_MODEL_OVERRIDE,
+    overrideNormalized,
+    undefined,
+    primaryModel,
+    normalizedPrimary,
+    stripLatestSuffix(primaryModel),
+    stripLatestSuffix(normalizedPrimary),
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-flash",
+    "gemini-1.5",
+  ]);
+
+  const attempts: ModelAttempt[] = [];
+  const seen = new Set<string>();
+
+  versionOrder.forEach((apiVersion) => {
+    for (const directModelId of modelOrder) {
+      const key = `${apiVersion}|${directModelId ?? "DEFAULT"}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      attempts.push({
+        apiVersion,
+        directModelId,
+        label: `apiVersion=${apiVersion}${directModelId ? `, model=${directModelId}` : ", model=DEFAULT"}`,
+      });
+    }
+  });
+
+  return attempts;
+}
+
+function isModelNotFoundError(error: unknown): error is Error {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const message = error.message ?? "";
+  const lower = message.toLowerCase();
+  return lower.includes("404 not found") ||
+    lower.includes("is not found") ||
+    (lower.includes("model") && lower.includes("not found")) ||
+    lower.includes("not supported for generatecontent");
+}
+
+async function runWithModelFallback<T>({
+  apiKey,
+  systemInstruction,
+  mode,
+  action,
+}: {
+  apiKey: string;
+  systemInstruction?: string;
+  mode: string;
+  action: (model: ReturnType<typeof getModel>) => Promise<T>;
+}): Promise<T> {
+  const attempts = buildModelAttempts();
+  let lastModelError: unknown;
+
+  for (let index = 0; index < attempts.length; index++) {
+    const attempt = attempts[index];
+    logger.info("Gemini model attempt starting", {
+      mode,
+      attemptIndex: index + 1,
+      attemptTotal: attempts.length,
+      attemptLabel: attempt.label,
+    });
+
+    const model = getModel("gemini-1.5", apiKey, systemInstruction, {
+      apiVersion: attempt.apiVersion,
+      directModelId: attempt.directModelId,
+    });
+
+    try {
+      const result = await action(model);
+      logger.info("Gemini model attempt succeeded", {
+        mode,
+        attemptIndex: index + 1,
+        attemptTotal: attempts.length,
+        attemptLabel: attempt.label,
+      });
+      return result;
+    } catch (error) {
+      if (!isModelNotFoundError(error)) {
+        throw error;
+      }
+      lastModelError = error;
+      logger.warn("Gemini model attempt failed - trying fallback", {
+        mode,
+        attemptIndex: index + 1,
+        attemptTotal: attempts.length,
+        attemptLabel: attempt.label,
+        errorMessage: error.message,
+      });
+    }
+  }
+
+  logger.error("All Gemini model attempts failed", {
+    mode,
+    attempts: attempts.map((attempt) => attempt.label),
+    modelOverride: GEMINI_MODEL_OVERRIDE,
+    lastErrorMessage: lastModelError instanceof Error ? lastModelError.message : lastModelError,
+  });
+
+  if (lastModelError instanceof Error) {
+    throw new Error(
+        `Gemini model not available after trying ${attempts.length} attempt(s): ${lastModelError.message}`,
+    );
+  }
+
+  throw new Error(`Gemini model not available after trying ${attempts.length} attempt(s).`);
+}
+
 async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
   logger.info("🔍 handleIdentify called");
-  const model = getModel("gemini-1.5", apiKey);
-  logger.info("📤 Calling generateContent for identify");
-  const result = await model.generateContent({
-    contents: [{
-      role: "user",
-      parts: [
-        {text: payload.prompt},
-        {
-          inlineData: {
-            data: payload.imageBase64,
-            mimeType: payload.mimeType,
-          },
-        },
-      ],
-    }],
+  const result = await runWithModelFallback({
+    apiKey,
+    mode: "identify",
+    action: async (model) => {
+      logger.info("📤 Calling generateContent for identify");
+      return model.generateContent({
+        contents: [{
+          role: "user",
+          parts: [
+            {text: payload.prompt},
+            {
+              inlineData: {
+                data: payload.imageBase64,
+                mimeType: payload.mimeType,
+              },
+            },
+          ],
+        }],
+      });
+    },
   });
   logger.info("✅ generateContent completed for identify");
   const text = result.response.text()?.trim() ?? "";
@@ -230,25 +375,30 @@ async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
 
 async function handleValidate(payload: ValidatePayload, apiKey: string) {
   logger.info("🔍 handleValidate called");
-  const model = getModel("gemini-1.5", apiKey);
   const prompt = `You are helping a child learn English words.
 Does this picture clearly show the object "${payload.word}" as the main focus?
 Answer strictly with "yes" or "no" and provide a confidence score between 0 and 1. Return JSON: {"approved": boolean, "confidence": number}.`;
 
-  logger.info("📤 Calling generateContent for validate");
-  const result = await model.generateContent({
-    contents: [{
-      role: "user",
-      parts: [
-        {text: prompt},
-        {
-          inlineData: {
-            data: payload.imageBase64,
-            mimeType: payload.mimeType,
-          },
-        },
-      ],
-    }],
+  const result = await runWithModelFallback({
+    apiKey,
+    mode: "validate",
+    action: async (model) => {
+      logger.info("📤 Calling generateContent for validate");
+      return model.generateContent({
+        contents: [{
+          role: "user",
+          parts: [
+            {text: prompt},
+            {
+              inlineData: {
+                data: payload.imageBase64,
+                mimeType: payload.mimeType,
+              },
+            },
+          ],
+        }],
+      });
+    },
   });
   logger.info("✅ generateContent completed for validate");
 
@@ -293,8 +443,6 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
     systemInstructionLength: payload.systemInstruction?.length,
   });
   
-  const model = getModel("gemini-1.5", apiKey, payload.systemInstruction);
-  
   const generateContentPayload = {
     contents: [{
       role: "user",
@@ -304,14 +452,43 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
     }],
   };
   
-  logger.info("📤 Calling generateContent for text/story", {
-    payload: JSON.stringify(generateContentPayload),
-    payloadKeys: Object.keys(generateContentPayload),
+  const result = await runWithModelFallback({
+    apiKey,
+    systemInstruction: payload.systemInstruction,
+    mode: payload.mode,
+    action: async (model) => {
+      logger.info("📤 Calling generateContent for text/story", {
+        payload: JSON.stringify(generateContentPayload),
+        payloadKeys: Object.keys(generateContentPayload),
+      });
+      return model.generateContent(generateContentPayload);
+    },
+  });
+  logger.info("✅ generateContent completed for text/story");
+  let text = result.response.text()?.trim() ?? "";
+  
+  // Strip markdown code fences if present (handles various formats)
+  // Examples: ```json\n...\n```, ```\n...\n```, ```json...```, etc.
+  // This ensures clean JSON output even if the model wraps it in markdown
+  const markdownFencePattern = /^```(?:json|JSON)?\s*\n?/i;
+  const closingFencePattern = /\n?```\s*$/i;
+  
+  if (markdownFencePattern.test(text) || closingFencePattern.test(text)) {
+    const originalText = text;
+    text = text.replace(markdownFencePattern, '').replace(closingFencePattern, '').trim();
+    logger.info("📝 Stripped markdown fences", {
+      hadMarkdown: true,
+      originalLength: originalText.length,
+      cleanedLength: text.length,
+    });
+  }
+  
+  logger.info("📝 Final response text", {
+    length: text.length,
+    startsWithJson: text.startsWith('{'),
+    startsWithBracket: text.startsWith('['),
   });
   
-  const result = await model.generateContent(generateContentPayload);
-  logger.info("✅ generateContent completed for text/story");
-  const text = result.response.text()?.trim() ?? "";
   return {text};
 }
 
@@ -384,19 +561,18 @@ export const geminiProxy = functions.onRequest(
               errorStack: error.stack,
               errorName: error.name,
             });
-            
+
             if (errorMessage.includes("v1beta") && errorMessage.includes("not found")) {
               logger.error("🚨 API version mismatch detected - SDK is using v1beta but model requires v1 API", {
                 errorMessage,
-                modelId: req.body?.mode === "identify" ? "gemini-1.5" : 
+                modelId: req.body?.mode === "identify" ? "gemini-1.5" :
                          req.body?.mode === "validate" ? "gemini-1.5" :
                          req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5" : "unknown",
-                note: "This should not happen if fetch override is working correctly",
-                fetchOverrideActive: typeof (global as any).fetch === "function",
-                recommendation: "Check if SDK is bypassing global fetch override. Consider using gemini-1.5-flash-latest model name.",
+                note: "This should not happen when using the v1 API",
+                recommendation: "Verify the Cloud Function is deployed with apiVersion set to v1 and using gemini-2.0-flash.",
               });
             }
-            
+              
             // Log repeated gemini-1.5-flash not found errors specifically
             if (errorMessage.includes("gemini-1.5-flash") && errorMessage.includes("not found")) {
               logger.error("🚨 Repeated gemini-1.5-flash not found error detected", {
@@ -405,7 +581,7 @@ export const geminiProxy = functions.onRequest(
                          req.body?.mode === "validate" ? "gemini-1.5" :
                          req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5" : "unknown",
                 apiVersion: errorMessage.includes("v1beta") ? "v1beta" : "unknown",
-                recommendation: "Model name may need to be gemini-1.5-flash-latest for v1 API, or API version needs to be v1 instead of v1beta",
+                recommendation: "Model name may need to be gemini-2.0-flash for v1 API, or API version needs to be v1 instead of v1beta",
               });
             }
             res.status(500).json({error: error.message});
