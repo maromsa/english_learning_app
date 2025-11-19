@@ -300,7 +300,7 @@ class _AuthGateState extends State<AuthGate> {
             ),
           );
         }
-             },
-           );
-         }
-       }
+      },
+    );
+  }
+}
