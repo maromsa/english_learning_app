@@ -22,6 +22,7 @@ import 'package:english_learning_app/services/word_repository.dart';
 import 'package:english_learning_app/widgets/action_button.dart';
 import 'package:english_learning_app/widgets/achievement_notification.dart';
 import 'package:english_learning_app/widgets/score_display.dart';
+import 'package:english_learning_app/utils/page_transitions.dart';
 import 'package:english_learning_app/widgets/word_display_card.dart';
 import 'package:english_learning_app/widgets/words_progress_bar.dart';
 import 'package:confetti/confetti.dart';
@@ -522,7 +523,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _openDailyMissionsFromHome() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const DailyMissionsScreen()),
+      PageTransitions.slideFromRight(const DailyMissionsScreen()),
     );
   }
 
@@ -810,9 +811,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       .toList(growable: false);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          AiConversationScreen(focusWords: focusWords),
+                    PageTransitions.slideFromRight(
+                      AiConversationScreen(focusWords: focusWords),
                     ),
                   );
                 },
@@ -827,9 +827,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       .toList(growable: false);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          AiPracticePackScreen(focusWords: focusWords),
+                    PageTransitions.slideFromRight(
+                      AiPracticePackScreen(focusWords: focusWords),
                     ),
                   );
                 },
@@ -840,7 +839,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: _isListening ? null : () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => ImageQuizGame()),
+                    PageTransitions.fadeScale(ImageQuizGame()),
                   );
                 },
               ),
@@ -855,7 +854,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: _isListening ? null : () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => ShopScreen()),
+                    PageTransitions.slideFromRight(const ShopScreen()),
                   );
                 },
               ),
@@ -990,16 +989,35 @@ class _MyHomePageState extends State<MyHomePage> {
                   const SizedBox(height: 20),
                   SizedBox(
                     height: 100,
-                    child: Text(
-                      _feedbackText.isEmpty
-                          ? 'לחצו על המיקרופון כדי לדבר'
-                          : _feedbackText,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.purple,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, 0.2),
+                              end: Offset.zero,
+                            ).animate(CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.easeOut,
+                            )),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Text(
+                        _feedbackText.isEmpty
+                            ? 'לחצו על המיקרופון כדי לדבר'
+                            : _feedbackText,
+                        key: ValueKey(_feedbackText),
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
                     ),
                   ),
                   Row(

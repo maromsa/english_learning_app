@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/background_music_service.dart';
 import '../services/daily_reward_service.dart';
 import '../services/level_repository.dart';
+import '../utils/page_transitions.dart';
 import '../widgets/character_avatar.dart';
 import 'ai_adventure_screen.dart';
 import 'daily_missions_screen.dart';
@@ -326,7 +327,7 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _openSettings() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+      PageTransitions.slideFromRight(const SettingsScreen()),
     );
     if (!mounted) return;
     await _loadProgress();
@@ -392,8 +393,8 @@ class _MapScreenState extends State<MapScreen> {
     if (!mounted) return;
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => MyHomePage(
+      PageTransitions.fadeScale(
+        MyHomePage(
           title: level.name,
           levelId: level.id,
           wordsForLevel: level.words,
@@ -446,7 +447,7 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _openDailyMissions() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const DailyMissionsScreen()),
+      PageTransitions.slideFromRight(const DailyMissionsScreen()),
     );
 
     if (!mounted) {
@@ -479,13 +480,13 @@ class _MapScreenState extends State<MapScreen> {
       case _QuickAiAction.chatBuddy:
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const AiConversationScreen()),
+          PageTransitions.slideFromRight(const AiConversationScreen()),
         );
         break;
       case _QuickAiAction.practicePack:
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const AiPracticePackScreen()),
+          PageTransitions.slideFromRight(const AiPracticePackScreen()),
         );
         break;
     }
@@ -571,8 +572,8 @@ class _MapScreenState extends State<MapScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => AiAdventureScreen(
+                PageTransitions.fadeScale(
+                  AiAdventureScreen(
                     levels: List<LevelData>.unmodifiable(levels),
                     totalStars: _totalStars,
                   ),
@@ -622,7 +623,7 @@ class _MapScreenState extends State<MapScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ShopScreen()),
+                PageTransitions.slideFromRight(const ShopScreen()),
               );
             },
           ),

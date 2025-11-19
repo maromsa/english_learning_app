@@ -47,6 +47,7 @@ dependencies:
   google_fonts: ^6.2.1
   confetti: ^0.7.0
   just_audio: ^0.9.36
+  flutter_animate: ^4.5.2
 
 dev_dependencies:
   flutter_test:

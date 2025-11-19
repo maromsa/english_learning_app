@@ -52,29 +52,70 @@ class WordDisplayCard extends StatelessWidget {
                 ),
                 Positioned(
                   left: 0,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back_ios, size: 28),
-                    onPressed: onPrevious,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: onPrevious,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.arrow_back_ios, size: 28),
+                      ),
+                    ),
                   ),
                 ),
                 Positioned(
                   right: 0,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_forward_ios, size: 28),
-                    onPressed: onNext,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: onNext,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.arrow_forward_ios, size: 28),
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            Text(
-              wordData.word,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.w600,
-                color: Colors.indigo,
-                letterSpacing: 1.2,
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.3),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOut,
+                    )),
+                    child: child,
+                  ),
+                );
+              },
+              child: Text(
+                wordData.word,
+                key: ValueKey(wordData.word),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 48,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.indigo,
+                  letterSpacing: 1.2,
+                ),
               ),
             ),
           ],
