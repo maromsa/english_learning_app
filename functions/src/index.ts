@@ -7,7 +7,7 @@ import {z} from "zod";
 
 const GEMINI_API_VERSION = "v1";
 const DEFAULT_MODEL_MAP: Record<string, string> = {
-  "gemini-1.5": "gemini-2.0-flash",
+  "gemini-1.5": "gemini-3-pro-preview",
 };
 const GEMINI_MODEL_OVERRIDE = process.env.GEMINI_MODEL_OVERRIDE?.trim();
 
@@ -98,8 +98,8 @@ function getModel(
   logger.info("GoogleGenerativeAI client created successfully");
   
   // Resolve the model ID: use directModelId if provided, otherwise use default
-  // Use gemini-2.0-flash - this is a stable model version that works with v1 API
-  const resolvedModelId = options.directModelId ?? DEFAULT_MODEL_MAP["gemini-1.5"] ?? "gemini-2.0-flash";
+  // Use gemini-3-pro-preview - the latest preview model
+  const resolvedModelId = options.directModelId ?? DEFAULT_MODEL_MAP["gemini-1.5"] ?? "gemini-3-pro-preview";
   
   // Build model config with ONLY snake_case system_instruction (never camelCase)
   // Explicitly construct the object to avoid any camelCase properties
@@ -143,7 +143,7 @@ function getModel(
   });
   
   // Use getGenerativeModel with explicit v1 API version
-  // Using gemini-2.0-flash which is compatible with v1 API
+  // Using gemini-3-pro-preview which is compatible with v1 API
   const requestOptions = {
     apiVersion: GEMINI_API_VERSION as "v1",
   };
@@ -239,6 +239,8 @@ function buildModelAttempts(): ModelAttempt[] {
     normalizedPrimary,
     stripLatestSuffix(primaryModel),
     stripLatestSuffix(normalizedPrimary),
+    "gemini-3-pro-preview",
+    "gemini-2.0-flash",
     "gemini-1.5-flash-latest",
     "gemini-1.5-flash",
     "gemini-1.5",
