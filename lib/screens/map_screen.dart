@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/models/word_data.dart';
+import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/screens/ai_conversation_screen.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
@@ -14,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/background_music_service.dart';
 import '../services/daily_reward_service.dart';
 import '../services/level_repository.dart';
+import '../widgets/character_avatar.dart';
 import 'ai_adventure_screen.dart';
 import 'daily_missions_screen.dart';
 import 'settings_screen.dart';
@@ -354,14 +356,16 @@ class _MapScreenState extends State<MapScreen> {
         context,
         listen: false,
       ).addCoins(result.reward);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '🎁 קיבלת ${result.reward} מטבעות! רצף יומי: ${result.streak}',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '🎁 קיבלת ${result.reward} מטבעות! רצף יומי: ${result.streak}',
+            ),
+            backgroundColor: Colors.green.shade600,
           ),
-          backgroundColor: Colors.green.shade600,
-        ),
-      );
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -385,6 +389,7 @@ class _MapScreenState extends State<MapScreen> {
       debugPrint('$stackTrace');
     }
 
+    if (!mounted) return;
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -408,7 +413,7 @@ class _MapScreenState extends State<MapScreen> {
       final levelData = levels[levelIndex];
       final previousStars = levelData.stars;
       final starsEarned =
-          ((coinsEarnedInLevel / 10).floor()).clamp(0, 3) as int;
+          ((coinsEarnedInLevel / 10).floor()).clamp(0, 3).toInt();
 
       final bool gainedMoreStars = starsEarned > previousStars;
       final bool shouldReward =
@@ -424,14 +429,16 @@ class _MapScreenState extends State<MapScreen> {
 
       if (shouldReward && mounted) {
         await coinProvider.addCoins(levelData.reward);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '⭐ כל הכבוד! קיבלתם בונוס של ${levelData.reward} מטבעות.',
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '⭐ כל הכבוד! קיבלתם בונוס של ${levelData.reward} מטבעות.',
+              ),
+              backgroundColor: Colors.blueGrey.shade700,
             ),
-            backgroundColor: Colors.blueGrey.shade700,
-          ),
-        );
+          );
+        }
       }
     }
   }
@@ -508,15 +515,37 @@ class _MapScreenState extends State<MapScreen> {
     try {
       final coinProvider = Provider.of<CoinProvider>(context, listen: false);
       return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text(
-          "מסע המילים",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
-          ),
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+        leading: Consumer<CharacterProvider>(
+          builder: (context, characterProvider, _) {
+            if (characterProvider.hasCharacter) {
+              return Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: CharacterAvatar(
+                  character: characterProvider.character!,
+                  size: 40,
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+        title: Consumer<CharacterProvider>(
+          builder: (context, characterProvider, _) {
+            String title = "מסע המילים";
+            if (characterProvider.hasCharacter) {
+              title = "${characterProvider.character!.characterName} - $title";
+            }
+            return Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+              ),
+            );
+          },
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -604,29 +633,32 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          // Background image with error handling
-          Image.asset(
-            'assets/images/map/map_background.jpg',
-            fit: BoxFit.cover,
-            height: double.infinity,
-            width: double.infinity,
-            errorBuilder: (context, error, stackTrace) {
-              debugPrint('Failed to load map background image: $error');
-              // Fallback to a colored background if image fails
-              return Container(
-                color: Colors.blue.shade900,
-                child: const Center(
-                  child: Icon(
-                    Icons.map,
-                    size: 100,
-                    color: Colors.white54,
+      body: RepaintBoundary(
+        child: Stack(
+          children: [
+            // Background image with error handling - cached for performance
+            Image.asset(
+              'assets/images/map/map_background.jpg',
+              fit: BoxFit.cover,
+              height: double.infinity,
+              width: double.infinity,
+              cacheWidth: 1920, // Optimize memory usage
+              cacheHeight: 1080,
+              errorBuilder: (context, error, stackTrace) {
+                debugPrint('Failed to load map background image: $error');
+                // Fallback to a colored background if image fails
+                return Container(
+                  color: Colors.blue.shade900,
+                  child: const Center(
+                    child: Icon(
+                      Icons.map,
+                      size: 100,
+                      color: Colors.white54,
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            ),
           if (_isLoading)
             const Center(child: CircularProgressIndicator())
           else if (levels.isEmpty)
@@ -651,6 +683,7 @@ class _MapScreenState extends State<MapScreen> {
               child: _InfoBanner(message: _errorMessage!),
             ),
         ],
+        ),
       ),
     );
     } catch (e, stackTrace) {
@@ -701,16 +734,18 @@ class _MapScreenState extends State<MapScreen> {
     for (int i = 0; i < levels.length; i++) {
       final level = levels[i];
       nodes.add(
-        Align(
-          alignment: Alignment(
-            level.positionX * 2 - 1,
-            level.positionY * 2 - 1,
-          ),
-          child: _LevelNode(
-            level: level,
-            levelNumber: i + 1,
-            onTap: () => _navigateToLevel(level, i),
-            onLockedTap: () => _showLockedMessage(level),
+        RepaintBoundary(
+          child: Align(
+            alignment: Alignment(
+              level.positionX * 2 - 1,
+              level.positionY * 2 - 1,
+            ),
+            child: _LevelNode(
+              level: level,
+              levelNumber: i + 1,
+              onTap: () => _navigateToLevel(level, i),
+              onLockedTap: () => _showLockedMessage(level),
+            ),
           ),
         ),
       );
@@ -726,6 +761,7 @@ class _LevelNode extends StatelessWidget {
   final VoidCallback? onLockedTap;
 
   const _LevelNode({
+    super.key,
     required this.level,
     required this.levelNumber,
     this.onTap,
@@ -734,7 +770,7 @@ class _LevelNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int cappedStars = level.stars.clamp(0, 3) as int;
+    final int cappedStars = level.stars.clamp(0, 3).toInt();
     return Tooltip(
       message: level.description ?? '${level.words.length} מילים בשלב',
       child: InkWell(
@@ -757,7 +793,7 @@ class _LevelNode extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withValues(alpha: 0.5),
                     blurRadius: 6,
                     spreadRadius: 2,
                   ),
@@ -802,7 +838,7 @@ class _InfoBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.65),
+        color: Colors.black.withValues(alpha: 0.65),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white24),
       ),

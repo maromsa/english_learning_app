@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:english_learning_app/firebase_options.dart';
 import 'package:english_learning_app/providers/auth_provider.dart';
+import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/shop_provider.dart';
@@ -23,11 +24,26 @@ import 'services/background_music_service.dart';
 import 'services/telemetry_service.dart';
 
 Future<void> main() async {
+  // Global error handler to catch any unhandled errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('Flutter Error: ${details.exception}');
+    debugPrint('Stack trace: ${details.stack}');
+  };
+
+  // Platform error handler
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('Platform Error: $error');
+    debugPrint('Stack trace: $stack');
+    return true;
+  };
+
   WidgetsFlutterBinding.ensureInitialized();
 
   if (!kIsWeb) {
     try {
       await dotenv.load(fileName: '.env');
+      debugPrint('dotenv loaded successfully');
     } catch (e) {
       debugPrint('dotenv load failed: $e');
     }
@@ -37,13 +53,22 @@ Future<void> main() async {
     );
   }
 
-  // Initialize Firebase
+  // Initialize Firebase with better error handling
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        debugPrint('Firebase initialization timed out');
+        throw TimeoutException('Firebase initialization timed out');
+      },
     );
-  } catch (e) {
+    debugPrint('Firebase initialized successfully');
+  } catch (e, stackTrace) {
     debugPrint('Firebase initialization error: $e');
+    debugPrint('Stack trace: $stackTrace');
+    // Continue anyway - app should work without Firebase
   }
 
   final prefs = await SharedPreferences.getInstance();
@@ -54,54 +79,46 @@ Future<void> main() async {
   final themeProvider = ThemeProvider();
   final achievementService = AchievementService();
   final shopProvider = ShopProvider();
+  final characterProvider = CharacterProvider();
   final telemetryService = TelemetryService();
   final dailyMissionProvider = DailyMissionProvider();
   final backgroundMusicService = BackgroundMusicService();
 
-  // Load persisted data with timeouts to prevent hanging
-  try {
-    await coinProvider.loadCoins().timeout(
-      const Duration(seconds: 5),
+  // Load persisted data in parallel with timeouts to prevent hanging
+  await Future.wait([
+    coinProvider.loadCoins().timeout(
+      const Duration(seconds: 3),
       onTimeout: () {
         debugPrint('Coin loading timed out, continuing with default value');
       },
-    );
-  } catch (e) {
-    debugPrint('Error loading coins: $e');
-  }
-
-  try {
-    await themeProvider.loadTheme().timeout(
-      const Duration(seconds: 5),
+    ).catchError((e) {
+      debugPrint('Error loading coins: $e');
+    }),
+    themeProvider.loadTheme().timeout(
+      const Duration(seconds: 3),
       onTimeout: () {
         debugPrint('Theme loading timed out, continuing with default theme');
       },
-    );
-  } catch (e) {
-    debugPrint('Error loading theme: $e');
-  }
-
-  try {
-    await shopProvider.loadPurchasedItems().timeout(
-      const Duration(seconds: 5),
+    ).catchError((e) {
+      debugPrint('Error loading theme: $e');
+    }),
+    shopProvider.loadPurchasedItems().timeout(
+      const Duration(seconds: 3),
       onTimeout: () {
         debugPrint('Shop items loading timed out, continuing with empty list');
       },
-    );
-  } catch (e) {
-    debugPrint('Error loading shop items: $e');
-  }
-
-  try {
-    await dailyMissionProvider.initialize().timeout(
-      const Duration(seconds: 5),
+    ).catchError((e) {
+      debugPrint('Error loading shop items: $e');
+    }),
+    dailyMissionProvider.initialize().timeout(
+      const Duration(seconds: 3),
       onTimeout: () {
         debugPrint('Daily missions initialization timed out, continuing anyway');
       },
-    );
-  } catch (e) {
-    debugPrint('Error initializing daily missions: $e');
-  }
+    ).catchError((e) {
+      debugPrint('Error initializing daily missions: $e');
+    }),
+  ], eagerError: false); // Don't fail if one fails
   
   // Initialize background music service asynchronously without blocking UI
   if (kIsWeb) {
@@ -123,19 +140,7 @@ Future<void> main() async {
     });
   }
 
-  // Set up global error handling
-  FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.presentError(details);
-    debugPrint('Flutter error: ${details.exception}');
-    debugPrint('Stack trace: ${details.stack}');
-  };
-
-  // Handle platform errors
-  PlatformDispatcher.instance.onError = (error, stack) {
-    debugPrint('Platform error: $error');
-    debugPrint('Stack trace: $stack');
-    return true;
-  };
+  // Error handlers are already set up at the beginning of main()
 
   runApp(
     MultiProvider(
@@ -144,6 +149,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider.value(value: achievementService),
         ChangeNotifierProvider.value(value: shopProvider),
+        ChangeNotifierProvider.value(value: characterProvider),
         ChangeNotifierProvider.value(value: dailyMissionProvider),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         Provider<TelemetryService>.value(value: telemetryService),

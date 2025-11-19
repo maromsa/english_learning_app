@@ -39,7 +39,12 @@ class BackgroundMusicService with WidgetsBindingObserver {
     }
     try {
       await _player.setVolume(_defaultVolume);
-      await _player.setLoopMode(LoopMode.off);
+      try {
+        await _player.setLoopMode(LoopMode.off);
+      } catch (e) {
+        debugPrint('Failed to set loop mode during init: $e');
+        // Continue anyway - player might not be ready yet
+      }
       _currentIndexSubscription ??=
           _player.currentIndexStream.listen((int? index) {
         if (index == null) {
@@ -53,7 +58,9 @@ class BackgroundMusicService with WidgetsBindingObserver {
               unawaited(_prepareBackgroundLoopForWebAfterStartup());
             }
           } else {
-            unawaited(_player.setLoopMode(LoopMode.one));
+            unawaited(_player.setLoopMode(LoopMode.one).catchError((e) {
+              debugPrint('Failed to set loop mode in stream: $e');
+            }));
           }
         }
       });
@@ -61,6 +68,8 @@ class BackgroundMusicService with WidgetsBindingObserver {
     } catch (error, stackTrace) {
       debugPrint('BackgroundMusicService init failed: $error');
       debugPrint('$stackTrace');
+      // Mark as initialized anyway to prevent retry loops
+      _initialized = true;
     }
   }
 
@@ -85,7 +94,11 @@ class BackgroundMusicService with WidgetsBindingObserver {
     try {
       _webStartupLoopPrepared = false;
       await _player.stop();
-      await _player.setLoopMode(LoopMode.off);
+      try {
+        await _player.setLoopMode(LoopMode.off);
+      } catch (e) {
+        debugPrint('Failed to set loop mode in startup sequence: $e');
+      }
       final source = ConcatenatingAudioSource(
         children: [
           AudioSource.asset(_startupChimeAsset),
@@ -115,7 +128,12 @@ class BackgroundMusicService with WidgetsBindingObserver {
       await _player.setAudioSource(
         AudioSource.asset(_backgroundLoopAsset),
       );
-      await _player.setLoopMode(LoopMode.one);
+      try {
+        await _player.setLoopMode(LoopMode.one);
+      } catch (e) {
+        debugPrint('Failed to set loop mode for map loop: $e');
+        // Continue anyway - music will still play, just won't loop
+      }
       _currentPlaylist = _BackgroundPlaylist.mapLoop;
       await _player.setVolume(_defaultVolume);
       await _startPlaybackWithUnlock(
@@ -210,7 +228,11 @@ class BackgroundMusicService with WidgetsBindingObserver {
     _currentPlaylist = _BackgroundPlaylist.none;
     _awaitingUserInteractionUnlock = false;
     _webStartupLoopPrepared = false;
-    await _player.setLoopMode(LoopMode.off);
+    try {
+      await _player.setLoopMode(LoopMode.off);
+    } catch (e) {
+      debugPrint('Failed to set loop mode when stopping: $e');
+    }
     try {
       await _player.stop();
     } catch (error, stackTrace) {
@@ -258,11 +280,19 @@ class BackgroundMusicService with WidgetsBindingObserver {
   Future<void> _prepareBackgroundLoopForWebAfterStartup() async {
     try {
       final wasPlaying = _player.playing;
-      await _player.setLoopMode(LoopMode.off);
+      try {
+        await _player.setLoopMode(LoopMode.off);
+      } catch (e) {
+        debugPrint('Failed to set loop mode off in web prep: $e');
+      }
       await _player.setAudioSource(
         AudioSource.asset(_backgroundLoopAsset),
       );
-      await _player.setLoopMode(LoopMode.one);
+      try {
+        await _player.setLoopMode(LoopMode.one);
+      } catch (e) {
+        debugPrint('Failed to set loop mode one in web prep: $e');
+      }
       if (wasPlaying) {
         await _player.play();
       }

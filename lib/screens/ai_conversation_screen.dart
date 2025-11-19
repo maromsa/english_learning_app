@@ -1,9 +1,13 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/services/conversation_coach_service.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:http/http.dart' as http;
+import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -19,6 +23,7 @@ class AiConversationScreen extends StatefulWidget {
 class _AiConversationScreenState extends State<AiConversationScreen> {
   late final ConversationCoachService _service;
   late final FlutterTts _tts;
+  final AudioPlayer _audioPlayer = AudioPlayer();
   final SpeechToText _speechToText = SpeechToText();
 
   final TextEditingController _messageController = TextEditingController();
@@ -62,7 +67,8 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
 
   Future<void> _configureTts() async {
     await _tts.setLanguage('he-IL');
-    await _tts.setSpeechRate(0.9);
+    await _tts.setSpeechRate(0.4); // Slower rate for children
+    await _tts.setPitch(1.1); // Friendly, child-appropriate pitch
   }
 
   @override
@@ -78,6 +84,7 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     _nameController.dispose();
     _scrollController.dispose();
     _tts.stop();
+    _audioPlayer.dispose();
     _speechToText.stop();
     _speechToText.cancel();
     super.dispose();
@@ -207,7 +214,7 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     ValueChanged<String> onChanged,
   ) {
     return DropdownButtonFormField<String>(
-      value: selected,
+      initialValue: selected,
       decoration: const InputDecoration(border: OutlineInputBorder()),
       items: options
           .map(
@@ -272,7 +279,7 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
             Icon(
               Icons.chat_bubble_outline,
               size: 64,
-              color: Colors.white.withOpacity(0.85),
+              color: Colors.white.withValues(alpha: 0.85),
             ),
             const SizedBox(height: 12),
             const Text(
@@ -290,28 +297,36 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     }
 
     return ListView.builder(
+      key: ValueKey('chat_${_entries.length}_${_sessionStarted}'), // Force rebuild when entries change
       controller: _scrollController,
       itemCount: _entries.length,
       padding: const EdgeInsets.only(bottom: 12),
+      cacheExtent: 500, // Optimize scrolling performance
       itemBuilder: (context, index) {
-        final entry = _entries[index];
-        if (entry.speaker == ConversationSpeaker.spark) {
-          return _SparkBubble(
-            response: entry.responseMeta,
-            message: entry.message,
-            onSuggestionTap: (suggestion) {
-              setState(() {
-                _messageController.text = suggestion;
-                _messageController.selection = TextSelection.fromPosition(
-                  TextPosition(offset: suggestion.length),
-                );
-              });
-            },
-          );
-        }
-        return _LearnerBubble(message: entry.message);
+        return RepaintBoundary(
+          child: _buildChatEntry(index),
+        );
       },
     );
+  }
+
+  Widget _buildChatEntry(int index) {
+    final entry = _entries[index];
+    if (entry.speaker == ConversationSpeaker.spark) {
+      return _SparkBubble(
+        response: entry.responseMeta,
+        message: entry.message,
+        onSuggestionTap: (suggestion) {
+          setState(() {
+            _messageController.text = suggestion;
+            _messageController.selection = TextSelection.fromPosition(
+              TextPosition(offset: suggestion.length),
+            );
+          });
+        },
+      );
+    }
+    return _LearnerBubble(message: entry.message);
   }
 
   Widget _buildInputBar() {
@@ -357,10 +372,18 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
 
   Future<void> _startConversation() async {
     if (_isBusy) return;
+    
+    // Clear previous conversation data
+    _entries.clear();
+    _history.clear();
+    
+    // Reset scroll position
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+    
     setState(() {
       _isBusy = true;
-      _entries.clear();
-      _history.clear();
       _sessionStarted = false;
       _errorMessage = null;
     });
@@ -389,10 +412,12 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
       _sessionStarted = true;
 
       await _speakSpark(response.message);
-      TelemetryService.maybeOf(context)?.logCustomEvent(
-        'ai_conversation_started',
-        {'topic': _selectedTopic, 'skill': _selectedSkill},
-      );
+      if (mounted) {
+        TelemetryService.maybeOf(context)?.logCustomEvent(
+          'ai_conversation_started',
+          {'topic': _selectedTopic, 'skill': _selectedSkill},
+        );
+      }
     } on ConversationGenerationException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -470,10 +495,12 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
 
       await _speakSpark(response.message);
       await _rewardLearner();
-      TelemetryService.maybeOf(context)?.logCustomEvent(
-        'ai_conversation_turn',
-        {'topic': _selectedTopic, 'skill': _selectedSkill},
-      );
+      if (mounted) {
+        TelemetryService.maybeOf(context)?.logCustomEvent(
+          'ai_conversation_turn',
+          {'topic': _selectedTopic, 'skill': _selectedSkill},
+        );
+      }
     } on ConversationGenerationException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -508,11 +535,87 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
   }
 
   Future<void> _speakSpark(String message) async {
+    if (message.isEmpty) return;
+
     try {
       await _tts.stop();
+      _audioPlayer.stop();
+
+      // Use Google Cloud TTS if available for better quality
+      if (AppConfig.hasGoogleTts) {
+        // Use Hebrew voice for Spark's responses
+        const languageCode = 'he-IL';
+        final voiceNames = [
+          'he-IL-Standard-B', // Warm Hebrew female voice - excellent for children
+          'he-IL-Neural2-B', // Natural Hebrew female voice
+          'he-IL-Wavenet-B', // Fallback: warm Hebrew female voice
+        ];
+        
+        http.Response? response;
+        String? usedVoice;
+        
+        // Try voices in order until one works
+        for (final voiceName in voiceNames) {
+          try {
+            response = await http.post(
+              Uri.parse(
+                'https://texttospeech.googleapis.com/v1/text:synthesize?key=${AppConfig.googleTtsApiKey}',
+              ),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'input': {
+                  'text': message,
+                },
+                'voice': {
+                  'languageCode': languageCode,
+                  'name': voiceName,
+                  'ssmlGender': 'FEMALE',
+                },
+                'audioConfig': {
+                  'audioEncoding': 'MP3',
+                  'speakingRate': 0.80, // Natural, clear speed for children
+                  'pitch': 0.0, // Natural pitch (sounds most human)
+                  'volumeGainDb': 2.0, // Clear but natural volume
+                  'effectsProfileId': ['headphone-class-device'],
+                  'sampleRateHertz': 24000, // High quality audio
+                },
+              }),
+            ).timeout(const Duration(seconds: 10));
+            
+            if (response.statusCode == 200) {
+              usedVoice = voiceName;
+              debugPrint('Successfully used TTS voice for Spark: $voiceName');
+              break;
+            }
+          } catch (e) {
+            debugPrint('Error trying voice $voiceName: $e');
+            continue;
+          }
+        }
+
+        if (response != null && response.statusCode == 200) {
+          final body = jsonDecode(response.body);
+          final audioBytes = base64Decode(body['audioContent']);
+          await _audioPlayer.setAudioSource(BytesAudioSource(audioBytes));
+          await _audioPlayer.play();
+          return;
+        }
+      }
+
+      // Fallback to built-in TTS
+      await _tts.setLanguage('he-IL');
+      await _tts.setSpeechRate(0.80);
+      await _tts.setPitch(1.0);
       await _tts.speak(message);
     } catch (error) {
       debugPrint('TTS error: $error');
+      // Final fallback
+      try {
+        await _tts.setLanguage('he-IL');
+        await _tts.speak(message);
+      } catch (e) {
+        debugPrint('Final TTS fallback error: $e');
+      }
     }
   }
 
@@ -634,7 +737,7 @@ class _SparkBubble extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -769,7 +872,7 @@ class _LearnerBubble extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -912,3 +1015,21 @@ const Map<String, List<String>> _topicVocabulary = <String, List<String>>{
   'everyday_fun': ['pancake', 'drawing', 'friend'],
   'superhero_rescue': ['hero', 'save', 'power'],
 };
+
+// Helper class for playing audio from bytes
+class BytesAudioSource extends StreamAudioSource {
+  final List<int> _bytes;
+
+  BytesAudioSource(this._bytes) : super(tag: 'BytesAudioSource');
+
+  @override
+  Future<StreamAudioResponse> request([int? start, int? end]) async {
+    return StreamAudioResponse(
+      sourceLength: _bytes.length,
+      contentLength: (end ?? _bytes.length) - (start ?? 0),
+      offset: start ?? 0,
+      stream: Stream.value(_bytes.sublist(start ?? 0, end ?? _bytes.length)),
+      contentType: 'audio/mpeg',
+    );
+  }
+}

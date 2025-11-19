@@ -1,12 +1,24 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/user_data_service.dart';
+
 class CoinProvider with ChangeNotifier {
+  CoinProvider({UserDataService? userDataService})
+      : _userDataService = userDataService ?? UserDataService();
+
+  final UserDataService _userDataService;
   int _coins = 0;
   int _coinsAtLevelStart = 0;
+  String? _currentUserId;
 
   int get coins => _coins;
   int get levelCoins => _coins - _coinsAtLevelStart;
+
+  /// Set the current user ID for cloud sync
+  void setUserId(String? userId) {
+    _currentUserId = userId;
+  }
 
   Future<void> loadCoins() async {
     try {
@@ -20,8 +32,14 @@ class CoinProvider with ChangeNotifier {
 
   Future<void> _saveCoins() async {
     try {
+      // Save locally
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('totalCoins', _coins);
+
+      // Save to cloud if user is authenticated
+      if (_currentUserId != null) {
+        await _userDataService.updateCoins(_currentUserId!, _coins);
+      }
     } catch (e) {
       debugPrint('Error saving coins: $e');
     }

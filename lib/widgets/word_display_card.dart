@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
@@ -106,15 +107,21 @@ class WordDisplayCard extends StatelessWidget {
                 return _errorBuilder(context, error, stackTrace);
               },
             )
-          : Image.network(
-              imageUrl,
+          : CachedNetworkImage(
+              imageUrl: imageUrl,
               key: ValueKey(imageUrl),
               fit: BoxFit.cover,
-              loadingBuilder: _loadingBuilder,
-              errorBuilder: (context, error, stackTrace) {
+              placeholder: (context, url) => const Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              errorWidget: (context, url, error) {
                 debugPrint('Failed to load network image "$imageUrl": $error');
-                return _errorBuilder(context, error, stackTrace);
+                return _errorBuilder(context, error, null);
               },
+              memCacheWidth: 500, // Optimize memory usage
+              memCacheHeight: 500,
+              maxWidthDiskCache: 1000,
+              maxHeightDiskCache: 1000,
             ),
     );
   }

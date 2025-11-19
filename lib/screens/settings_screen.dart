@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/player_character.dart';
 import '../providers/auth_provider.dart';
+import '../providers/character_provider.dart';
 import '../providers/coin_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/word_repository.dart';
+import '../widgets/character_avatar.dart';
+import 'character_selection_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -27,6 +31,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         children: [
           _buildProfileHeader(context),
+          const Divider(),
+          // Character section
+          Consumer<CharacterProvider>(
+            builder: (context, characterProvider, _) {
+              if (characterProvider.hasCharacter) {
+                return ListTile(
+                  leading: CharacterAvatar(
+                    character: characterProvider.character!,
+                    size: 48,
+                  ),
+                  title: Text(characterProvider.character!.characterName),
+                  subtitle: const Text('הדמות שלך'),
+                  trailing: const Icon(Icons.edit),
+                  onTap: () => _editCharacter(context),
+                );
+              } else {
+                return ListTile(
+                  leading: const Icon(Icons.person_add, size: 48),
+                  title: const Text('בחר דמות'),
+                  subtitle: const Text('עדיין לא בחרת דמות'),
+                  trailing: const Icon(Icons.arrow_forward_ios),
+                  onTap: () => _selectCharacter(context),
+                );
+              }
+            },
+          ),
           const Divider(),
           SwitchListTile.adaptive(
             secondary: const Icon(Icons.dark_mode),
@@ -90,7 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         radius: 28,
         backgroundColor: Theme.of(
           context,
-        ).colorScheme.primary.withOpacity(0.15),
+        ).colorScheme.primary.withValues(alpha: 0.15),
         backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
         child: photoUrl == null
             ? Text(
@@ -152,7 +182,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     for (final key in keysToRemove) {
       await prefs.remove(key);
     }
-    await context.read<CoinProvider>().setCoins(0);
+    if (mounted) {
+      await context.read<CoinProvider>().setCoins(0);
+    }
 
     if (!mounted) return;
     setState(() => _isBusy = false);
@@ -168,10 +200,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (!mounted) return;
     setState(() => _isBusy = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('מטמון המילים נוקה. בפעם הבאה נטען תוכן חדש מהענן.'),
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('מטמון המילים נוקה. בפעם הבאה נטען תוכן חדש מהענן.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _selectCharacter(BuildContext context) async {
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.firebaseUser == null) return;
+
+    final character = await Navigator.push<PlayerCharacter>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CharacterSelectionScreen(
+          userId: authProvider.firebaseUser!.uid,
+        ),
       ),
     );
+
+    if (character != null && mounted) {
+      final characterProvider = context.read<CharacterProvider>();
+      await characterProvider.setCharacter(character);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('הדמות נשמרה בהצלחה!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  Future<void> _editCharacter(BuildContext context) async {
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.firebaseUser == null) return;
+
+    final character = await Navigator.push<PlayerCharacter>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CharacterSelectionScreen(
+          userId: authProvider.firebaseUser!.uid,
+        ),
+      ),
+    );
+
+    if (character != null && mounted) {
+      final characterProvider = context.read<CharacterProvider>();
+      await characterProvider.setCharacter(character);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('הדמות עודכנה בהצלחה!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 }

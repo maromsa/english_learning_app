@@ -60,7 +60,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final ImagePicker _picker = ImagePicker();
   late final WordRepository _wordRepository;
   WebImageService? _webImageService;
-  AiImageValidator _cameraValidator = const PassthroughAiImageValidator();
+  final AiImageValidator _cameraValidator = const PassthroughAiImageValidator();
   HttpFunctionAiImageValidator? _httpImageValidator;
   GeminiProxyService? _geminiProxy;
 
@@ -72,6 +72,7 @@ class _MyHomePageState extends State<MyHomePage> {
   String _recognizedWords = '';
   bool _speechEnabled = false;
   int _streak = 0;
+  bool _isEvaluating = false; // Prevent double evaluation
   OverlayEntry? _achievementOverlay;
   // AI features are always enabled since geminiProxyEndpoint always returns a valid endpoint
   Uri get proxyEndpoint => AppConfig.geminiProxyEndpoint;
@@ -108,9 +109,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _showAchievementNotification(Achievement achievement) {
     final overlay = Overlay.of(context);
-    if (overlay == null) {
-      return;
-    }
 
     _achievementOverlay?.remove();
 
@@ -198,41 +196,94 @@ class _MyHomePageState extends State<MyHomePage> {
 
     try {
       if (!AppConfig.hasGoogleTts) {
+        // Configure TTS for Hebrew with child-friendly settings
         await flutterTts.setLanguage(languageCode);
+        if (languageCode == 'he-IL') {
+          await flutterTts.setSpeechRate(0.4); // Slow for children
+          await flutterTts.setPitch(1.1); // Friendly pitch
+        }
         await flutterTts.speak(text);
         return;
       }
 
-      final response = await http.post(
-        Uri.parse(
-          'https://texttospeech.googleapis.com/v1/text:synthesize?key=${AppConfig.googleTtsApiKey}',
-        ),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'input': {'text': text},
-          'voice': {
-            'languageCode': languageCode,
-            'name': languageCode == 'en-US'
-                ? 'en-US-Wavenet-D'
-                : 'he-IL-Wavenet-A',
-          },
-          'audioConfig': {'audioEncoding': 'MP3'},
-        }),
-      );
+      // Try multiple voices in order - best quality first
+      // Using Standard voices (C for English, B for Hebrew) which are warm and child-friendly
+      List<String> voiceNames = languageCode == 'en-US'
+          ? [
+              'en-US-Standard-C', // Warm, friendly female voice - excellent for children
+              'en-US-Neural2-C', // Natural, warm female voice
+              'en-US-Neural2-F', // Friendly female voice
+              'en-US-Wavenet-C', // Fallback: warm female voice
+            ]
+          : [
+              'he-IL-Standard-B', // Warm Hebrew female voice - excellent for children
+              'he-IL-Neural2-B', // Natural Hebrew female voice
+              'he-IL-Wavenet-B', // Fallback: warm Hebrew female voice
+            ];
+      
+      http.Response? response;
+      String? usedVoice;
+      
+      // Try voices in order until one works
+      for (final voiceName in voiceNames) {
+        try {
+          response = await http.post(
+            Uri.parse(
+              'https://texttospeech.googleapis.com/v1/text:synthesize?key=${AppConfig.googleTtsApiKey}',
+            ),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'input': {
+                'text': text,
+              },
+              'voice': {
+                'languageCode': languageCode,
+                'name': voiceName,
+                'ssmlGender': 'FEMALE',
+              },
+              'audioConfig': {
+                'audioEncoding': 'MP3',
+                'speakingRate': languageCode == 'he-IL' ? 0.80 : 0.90, // Natural, clear speed for children
+                'pitch': 0.0, // Natural pitch (0 = default, sounds most human)
+                'volumeGainDb': 2.0, // Clear but natural volume
+                'effectsProfileId': ['headphone-class-device'], // Optimize for speakers
+                'sampleRateHertz': 24000, // High quality audio
+              },
+            }),
+          ).timeout(const Duration(seconds: 10));
+          
+          if (response.statusCode == 200) {
+            usedVoice = voiceName;
+            debugPrint('Successfully used TTS voice: $voiceName');
+            break;
+          } else {
+            debugPrint('Voice $voiceName failed with status ${response.statusCode}');
+          }
+        } catch (e) {
+          debugPrint('Error trying voice $voiceName: $e');
+          continue;
+        }
+      }
 
-      if (response.statusCode == 200) {
+      if (response != null && response.statusCode == 200) {
         final body = jsonDecode(response.body);
         final audioBytes = base64Decode(body['audioContent']);
 
         await _audioPlayer.setAudioSource(BytesAudioSource(audioBytes));
-        _audioPlayer.play();
+        await _audioPlayer.play();
+        debugPrint('Playing audio with voice: $usedVoice');
       } else {
-        debugPrint("Google TTS Error: ${response.body}");
-        if (mounted) {
-          setState(() {
-            _feedbackText = 'שגיאה בהשמעת הקול. אנא נסו שוב.';
-          });
+        debugPrint("All Google TTS voices failed, using fallback");
+        // Fallback to built-in TTS if Google TTS fails
+        await flutterTts.setLanguage(languageCode);
+        if (languageCode == 'he-IL') {
+          await flutterTts.setSpeechRate(0.80); // Natural speed
+          await flutterTts.setPitch(1.0); // Natural pitch
+        } else {
+          await flutterTts.setSpeechRate(0.90);
+          await flutterTts.setPitch(1.0);
         }
+        await flutterTts.speak(text);
       }
     } catch (e) {
       debugPrint("Error in _speak function: $e");
@@ -280,9 +331,26 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     try {
-      await flutterTts.setSpeechRate(0.5);
+      // Set slower speech rate for children (0.4-0.45 is ideal for kids learning)
+      await flutterTts.setSpeechRate(0.4);
     } catch (error, stackTrace) {
       debugPrint('TTS setSpeechRate failed: $error');
+      debugPrint('$stackTrace');
+    }
+
+    try {
+      // Set pitch for friendly, child-appropriate voice (slightly higher for warmth)
+      await flutterTts.setPitch(1.1);
+    } catch (error, stackTrace) {
+      debugPrint('TTS setPitch failed: $error');
+      debugPrint('$stackTrace');
+    }
+
+    try {
+      // Set volume to comfortable level
+      await flutterTts.setVolume(0.9);
+    } catch (error, stackTrace) {
+      debugPrint('TTS setVolume failed: $error');
       debugPrint('$stackTrace');
     }
   }
@@ -384,10 +452,12 @@ class _MyHomePageState extends State<MyHomePage> {
           _words,
           cacheNamespace: widget.levelId,
         );
-        Provider.of<AchievementService>(
-          context,
-          listen: false,
-        ).checkForAchievements(streak: _streak, wordAdded: true);
+        if (mounted) {
+          Provider.of<AchievementService>(
+            context,
+            listen: false,
+          ).checkForAchievements(streak: _streak, wordAdded: true);
+        }
         await _speak('מצוין! אני רואה ${newWord.word}.', languageCode: 'he-IL');
         await flutterTts.setLanguage('en-US');
         await flutterTts.speak(newWord.word);
@@ -494,11 +564,20 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _evaluateSpeech() async {
     if (_words.isEmpty) return;
+    
+    // Prevent double evaluation
+    if (_isEvaluating) {
+      debugPrint('Evaluation already in progress, skipping duplicate call');
+      return;
+    }
+    
+    _isEvaluating = true;
 
     final currentWordObject = _words[_currentIndex];
     final recognizedWord = _recognizedWords.trim();
 
     if (recognizedWord.isEmpty) {
+      _isEvaluating = false;
       if (!mounted) return;
       setState(() {
         _feedbackText = "לא שמעתי כלום. בוא ננסה שוב.";
@@ -539,11 +618,18 @@ class _MyHomePageState extends State<MyHomePage> {
       feedback = "זה נשמע כמו '$recognizedWord'. בוא ננסה שוב.";
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      _isEvaluating = false;
+      return;
+    }
     setState(() => _feedbackText = feedback);
 
-    if (!mounted) return;
+    if (!mounted) {
+      _isEvaluating = false;
+      return;
+    }
     await _speak(feedback, languageCode: "he-IL");
+    _isEvaluating = false;
   }
 
   void _startListening() async {
@@ -558,27 +644,48 @@ class _MyHomePageState extends State<MyHomePage> {
       _isListening = true;
       _feedbackText = 'מקשיב...';
       _recognizedWords = '';
+      _isEvaluating = false; // Reset evaluation flag when starting new listening session
     });
 
     try {
       await _speechToText.listen(
-        onResult: (result) {
+        onResult: (result) async {
           if (mounted) {
             setState(() {
               _recognizedWords = result.recognizedWords;
-              if (result.finalResult) {
-                _feedbackText = 'סיימתי להקשיב. בודק...';
-                // Auto-evaluate when final result is received
-                Future.delayed(const Duration(milliseconds: 500), () {
-                  if (mounted && _speechToText.isNotListening) {
-                    setState(() {
-                      _isListening = false;
-                    });
+            });
+            
+            // Auto-stop and evaluate when final result is received
+            if (result.finalResult && result.recognizedWords.trim().isNotEmpty) {
+              // Stop listening immediately
+              try {
+                await _speechToText.stop();
+              } catch (e) {
+                debugPrint('Error stopping speech recognition: $e');
+              }
+              
+              if (mounted) {
+                setState(() {
+                  _isListening = false;
+                  _feedbackText = 'סיימתי להקשיב. בודק...';
+                });
+                
+                // Evaluate speech immediately after stopping
+                // Small delay to ensure state is updated
+                Future.delayed(const Duration(milliseconds: 200), () {
+                  if (mounted) {
                     _evaluateSpeech();
                   }
                 });
               }
-            });
+            } else if (!result.finalResult && result.recognizedWords.trim().isNotEmpty) {
+              // Show live recognition feedback
+              if (mounted) {
+                setState(() {
+                  _feedbackText = 'שמעתי: ${result.recognizedWords}';
+                });
+              }
+            }
           }
         },
         localeId: "en_US",
@@ -602,18 +709,21 @@ class _MyHomePageState extends State<MyHomePage> {
       if (mounted) {
         setState(() => _isListening = false);
       }
-      // Evaluate speech after a short delay to ensure recognition is complete
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          if (_recognizedWords.isNotEmpty) {
+      // Only evaluate if not already evaluating (to prevent double evaluation)
+      // The onResult callback with finalResult=true will handle evaluation
+      if (!_isEvaluating && _recognizedWords.isNotEmpty) {
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted && !_isEvaluating) {
             _evaluateSpeech();
-          } else {
-            setState(() {
-              _feedbackText = "לא שמעתי כלום. בוא ננסה שוב.";
-            });
           }
+        });
+      } else if (_recognizedWords.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _feedbackText = "לא שמעתי כלום. בוא ננסה שוב.";
+          });
         }
-      });
+      }
     } catch (e) {
       debugPrint("Error stopping speech recognition: $e");
       if (mounted) {
@@ -658,20 +768,22 @@ class _MyHomePageState extends State<MyHomePage> {
       return Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(title: Text(widget.title)),
-        body: Stack(
-          children: [
-            Image.asset(
-              'assets/images/background.png',
-              fit: BoxFit.cover,
-              height: double.infinity,
-              width: double.infinity,
-            ),
-            Center(
-              child: SingleChildScrollView(
-                child: const CircularProgressIndicator(),
+        body: RepaintBoundary(
+          child: Stack(
+            children: [
+              Image.asset(
+                'assets/images/background.png',
+                fit: BoxFit.cover,
+                height: double.infinity,
+                width: double.infinity,
+                cacheWidth: 1920, // Optimize memory
+                cacheHeight: 1080,
               ),
-            ),
-          ],
+              const Center(
+                child: CircularProgressIndicator(),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -691,7 +803,7 @@ class _MyHomePageState extends State<MyHomePage> {
               IconButton(
                 icon: const Icon(Icons.chat),
                 tooltip: 'חבר שיחה של ספרק',
-                onPressed: () {
+                onPressed: _isListening ? null : () {
                   final focusWords = _words
                       .take(6)
                       .map((word) => word.word)
@@ -708,7 +820,7 @@ class _MyHomePageState extends State<MyHomePage> {
               IconButton(
                 icon: const Icon(Icons.emoji_events),
                 tooltip: 'חבילת אימון AI',
-                onPressed: () {
+                onPressed: _isListening ? null : () {
                   final focusWords = _words
                       .take(6)
                       .map((word) => word.word)
@@ -725,7 +837,7 @@ class _MyHomePageState extends State<MyHomePage> {
               IconButton(
                 icon: const Icon(Icons.image_search),
                 tooltip: 'Image Quiz Game',
-                onPressed: () {
+                onPressed: _isListening ? null : () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => ImageQuizGame()),
@@ -735,12 +847,12 @@ class _MyHomePageState extends State<MyHomePage> {
               IconButton(
                 icon: const Icon(Icons.camera_alt),
                 tooltip: 'הוסף מילה',
-                onPressed: _takePictureAndIdentify,
+                onPressed: _isListening ? null : _takePictureAndIdentify,
               ),
               IconButton(
                 icon: const Icon(Icons.store),
                 tooltip: 'חנות',
-                onPressed: () {
+                onPressed: _isListening ? null : () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => ShopScreen()),
@@ -750,7 +862,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ],
           ),
           floatingActionButton: FloatingActionButton.extended(
-            onPressed: _takePictureAndIdentify,
+            onPressed: _isListening ? null : _takePictureAndIdentify,
             label: const Text('הוסף מילה'),
             icon: const Icon(Icons.camera_alt),
           ),
@@ -791,7 +903,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: _MissionNudgeCard(
                           mission: highlight,
                           isClaimable: highlight.isClaimable,
-                          onTap: _openDailyMissionsFromHome,
+                          onTap: _isListening ? null : _openDailyMissionsFromHome,
                         ),
                       );
                     },
@@ -799,8 +911,8 @@ class _MyHomePageState extends State<MyHomePage> {
                   if (currentWordData != null)
                     WordDisplayCard(
                       wordData: currentWordData,
-                      onPrevious: _previousWord,
-                      onNext: _nextWord,
+                      onPrevious: _isListening ? null : _previousWord,
+                      onNext: _isListening ? null : _nextWord,
                     )
                   else
                     const SizedBox(
@@ -822,11 +934,14 @@ class _MyHomePageState extends State<MyHomePage> {
                           text: 'הקשב',
                           icon: Icons.volume_up,
                           color: Colors.lightBlue.shade400,
-                          onPressed: (currentWordData == null)
+                          onPressed: (_isListening || currentWordData == null)
                               ? null
                               : () async {
+                                  // Use slower, clearer TTS settings for word pronunciation
                                   await flutterTts.setLanguage("en-US");
-                                  flutterTts.speak(currentWordData.word);
+                                  await flutterTts.setSpeechRate(0.4);
+                                  await flutterTts.setPitch(1.1);
+                                  await flutterTts.speak(currentWordData.word);
                                 },
                         ),
                         const SizedBox(width: 20),
@@ -843,29 +958,31 @@ class _MyHomePageState extends State<MyHomePage> {
                           text: 'ריצת ברק',
                           icon: Icons.flash_on,
                           color: Colors.orangeAccent,
-                          onPressed: _words.length < 2
-                              ? () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'הוסיפו לפחות שתי מילים כדי להתחיל ריצת ברק!',
-                                      ),
-                                    ),
-                                  );
-                                }
-                              : () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => LightningPracticeScreen(
-                                        words: List<WordData>.unmodifiable(
-                                          _words,
+                          onPressed: _isListening
+                              ? null
+                              : (_words.length < 2
+                                  ? () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'הוסיפו לפחות שתי מילים כדי להתחיל ריצת ברק!',
+                                          ),
                                         ),
-                                        levelTitle: widget.title,
-                                      ),
-                                    ),
-                                  );
-                                },
+                                      );
+                                    }
+                                  : () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => LightningPracticeScreen(
+                                            words: List<WordData>.unmodifiable(
+                                              _words,
+                                            ),
+                                            levelTitle: widget.title,
+                                          ),
+                                        ),
+                                      );
+                                    }),
                         ),
                       ],
                     ),
@@ -895,7 +1012,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         iconSize: 40,
                         color: Colors.white,
                         style: IconButton.styleFrom(
-                          backgroundColor: Colors.lightBlue.withOpacity(0.8),
+                          backgroundColor: Colors.lightBlue.withValues(alpha: 0.8),
                           padding: const EdgeInsets.all(15),
                         ),
                       ),
@@ -935,7 +1052,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           iconSize: 40,
                           color: Colors.white,
                           style: IconButton.styleFrom(
-                            backgroundColor: Colors.lightBlue.withOpacity(0.8),
+                            backgroundColor: Colors.lightBlue.withValues(alpha: 0.8),
                             padding: const EdgeInsets.all(15),
                           ),
                         ),
@@ -997,12 +1114,12 @@ class _MissionNudgeCard extends StatelessWidget {
   const _MissionNudgeCard({
     required this.mission,
     required this.isClaimable,
-    required this.onTap,
+    this.onTap,
   });
 
   final DailyMission mission;
   final bool isClaimable;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1027,7 +1144,7 @@ class _MissionNudgeCard extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 18,
-                    backgroundColor: accent.withOpacity(0.15),
+                    backgroundColor: accent.withValues(alpha: 0.15),
                     child: Icon(
                       isClaimable ? Icons.card_giftcard : Icons.flag,
                       color: accent,

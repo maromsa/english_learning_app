@@ -137,9 +137,11 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
     );
 
     try {
-      context.read<DailyMissionProvider>().incrementByType(
-        DailyMissionType.quizPlay,
-      );
+      if (mounted) {
+        context.read<DailyMissionProvider>().incrementByType(
+          DailyMissionType.quizPlay,
+        );
+      }
     } on ProviderNotFoundException {
       // Tests or standalone screens might not provide DailyMissionProvider; ignore silently.
     }

@@ -1,6 +1,5 @@
 // lib/screens/onboarding_screen.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/onboarding_personalizer.dart';
@@ -34,9 +33,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_seen', true);
 
-    final telemetry = TelemetryService.maybeOf(context);
     final personalization = _latestPersonalization;
-    telemetry?.logOnboardingCompleted(
+    if (mounted) {
+      final telemetry = TelemetryService.maybeOf(context);
+      telemetry?.logOnboardingCompleted(
       tipIds:
           personalization?.insights.map((tip) => tip.id).toList() ??
           const <String>[],
@@ -45,7 +45,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       millisecondsToComplete: DateTime.now()
           .difference(_viewStartedAt)
           .inMilliseconds,
-    );
+      );
+    }
 
     if (!mounted) {
       return;
@@ -158,7 +159,7 @@ class _InsightCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4)),
@@ -170,7 +171,7 @@ class _InsightCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
             child: Icon(
               insight.icon,
               color: theme.colorScheme.primary,

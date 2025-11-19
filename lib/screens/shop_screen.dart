@@ -69,14 +69,14 @@ class _ShopScreenState extends State<ShopScreen>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                product.rarityColor.withOpacity(0.9),
-                product.rarityColor.withOpacity(0.7),
+                product.rarityColor.withValues(alpha: 0.9),
+                product.rarityColor.withValues(alpha: 0.7),
               ],
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: product.rarityColor.withOpacity(0.5),
+                color: product.rarityColor.withValues(alpha: 0.5),
                 blurRadius: 20,
                 spreadRadius: 5,
               ),
@@ -97,7 +97,7 @@ class _ShopScreenState extends State<ShopScreen>
                     borderRadius: BorderRadius.circular(15),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
+                        color: Colors.black.withValues(alpha: 0.2),
                         blurRadius: 10,
                         spreadRadius: 2,
                       ),
@@ -132,7 +132,7 @@ class _ShopScreenState extends State<ShopScreen>
                 product.englishName,
                 style: GoogleFonts.assistant(
                   fontSize: 20,
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -158,7 +158,7 @@ class _ShopScreenState extends State<ShopScreen>
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -217,7 +217,7 @@ class _ShopScreenState extends State<ShopScreen>
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: TextButton.styleFrom(
-                  backgroundColor: Colors.white.withOpacity(0.3),
+                  backgroundColor: Colors.white.withValues(alpha: 0.3),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,
                     vertical: 12,
@@ -397,10 +397,10 @@ class _ShopScreenState extends State<ShopScreen>
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 10,
                       ),
                     ],
@@ -434,7 +434,7 @@ class _ShopScreenState extends State<ShopScreen>
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
+                                  color: Colors.black.withValues(alpha: 0.2),
                                   blurRadius: 5,
                                 ),
                               ],
@@ -640,14 +640,14 @@ class _ProductCardState extends State<_ProductCard>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                widget.product.rarityColor.withOpacity(0.8),
-                widget.product.rarityColor.withOpacity(0.6),
+                widget.product.rarityColor.withValues(alpha: 0.8),
+                widget.product.rarityColor.withValues(alpha: 0.6),
               ],
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: widget.product.rarityColor.withOpacity(0.5),
+                color: widget.product.rarityColor.withValues(alpha: 0.5),
                 blurRadius: 15,
                 spreadRadius: 2,
               ),
@@ -707,7 +707,7 @@ class _ProductCardState extends State<_ProductCard>
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.3),
+                              color: Colors.white.withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(

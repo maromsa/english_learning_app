@@ -1,7 +1,6 @@
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/services/practice_pack_service.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -184,7 +183,7 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
     ValueChanged<String> onChanged,
   ) {
     return DropdownButtonFormField<String>(
-      value: selected,
+      initialValue: selected,
       decoration: const InputDecoration(border: OutlineInputBorder()),
       items: options
           .map(
@@ -217,7 +216,7 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
               Icon(
                 Icons.local_fire_department,
                 size: 72,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
               ),
               const SizedBox(height: 12),
               const Text(
@@ -258,7 +257,7 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
   Widget _buildHeaderCard(PracticePack pack) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      color: Colors.white.withOpacity(0.95),
+      color: Colors.white.withValues(alpha: 0.95),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -420,7 +419,7 @@ class _ActivityCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      color: Colors.white.withOpacity(0.95),
+      color: Colors.white.withValues(alpha: 0.95),
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(

@@ -76,29 +76,57 @@ class AuthProvider extends ChangeNotifier {
         final googleProvider = GoogleAuthProvider()
           ..addScope('email')
           ..setCustomParameters(const {'prompt': 'select_account'});
-        await _auth.signInWithPopup(googleProvider);
+        await _auth.signInWithPopup(googleProvider).timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            throw TimeoutException('Sign-in timed out. Please try again.');
+          },
+        );
       } else {
-        final googleUser = await _googleSignIn.signIn();
+        // Add timeout to prevent hanging
+        final googleUser = await _googleSignIn.signIn().timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            throw TimeoutException('Sign-in timed out. Please try again.');
+          },
+        );
+        
         if (googleUser == null) {
-          throw FirebaseAuthException(
-            code: 'aborted-by-user',
-            message: 'Sign-in aborted by user',
-          );
+          _setBusy(false);
+          return; // User cancelled, don't show error
         }
 
-        final googleAuth = await googleUser.authentication;
+        final googleAuth = await googleUser.authentication.timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            throw TimeoutException('Authentication timed out. Please try again.');
+          },
+        );
+        
         final credential = GoogleAuthProvider.credential(
           accessToken: googleAuth.accessToken,
           idToken: googleAuth.idToken,
         );
 
-        await _auth.signInWithCredential(credential);
+        await _auth.signInWithCredential(credential).timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            throw TimeoutException('Sign-in credential verification timed out. Please try again.');
+          },
+        );
       }
-    } on FirebaseAuthException catch (e) {
-      _errorMessage = e.message ?? 'Authentication failed.';
+    } on TimeoutException catch (e) {
+      debugPrint('Sign-in timeout: $e');
+      _errorMessage = e.message ?? 'Sign-in timed out. Please check your internet connection and try again.';
       notifyListeners();
-    } catch (e) {
-      _errorMessage = e.toString();
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Firebase auth error: ${e.code} - ${e.message}');
+      _errorMessage = e.message ?? 'Authentication failed. Please try again.';
+      notifyListeners();
+    } catch (e, stackTrace) {
+      debugPrint('Sign-in error: $e');
+      debugPrint('Stack trace: $stackTrace');
+      _errorMessage = 'An error occurred during sign-in. Please try again.';
       notifyListeners();
     } finally {
       _setBusy(false);
@@ -159,9 +187,11 @@ class AuthProvider extends ChangeNotifier {
         debugPrint('Failed to get existing user: $e');
         // Leave _appUser as null if we can't get it
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Failed to sync user profile: $e');
-      _errorMessage = 'Failed to sync user profile: $e';
+      debugPrint('Stack trace: $stackTrace');
+      // Don't set error message here - user is still authenticated
+      // Just log the error and continue
     }
 
     if (_initializing) {

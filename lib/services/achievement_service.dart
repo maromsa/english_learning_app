@@ -2,8 +2,22 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/achievement.dart';
+import '../services/user_data_service.dart';
 
 class AchievementService with ChangeNotifier {
+  final UserDataService _userDataService;
+  String? _currentUserId;
+
+  AchievementService({UserDataService? userDataService})
+      : _userDataService = userDataService ?? UserDataService() {
+    loadAchievements();
+  }
+
+  /// Set the current user ID for cloud sync
+  void setUserId(String? userId) {
+    _currentUserId = userId;
+  }
+
   List<Achievement> achievements = [
     Achievement(
       id: 'first_correct',
@@ -30,10 +44,6 @@ class AchievementService with ChangeNotifier {
       icon: Icons.camera_alt,
     ),
   ];
-
-  AchievementService() {
-    loadAchievements();
-  }
 
   // פונקציה שבודקת אם צריך לפתוח הישגים חדשים
   void checkForAchievements({
@@ -103,8 +113,14 @@ class AchievementService with ChangeNotifier {
 
   // שמירה וטעינה מהזיכרון
   Future<void> _saveAchievement(String id, bool value) async {
+    // Save locally
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('achievement_$id', value);
+
+    // Save to cloud if user is authenticated
+    if (_currentUserId != null && value) {
+      await _userDataService.unlockAchievement(_currentUserId!, id);
+    }
   }
 
   Future<void> loadAchievements() async {

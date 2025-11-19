@@ -123,14 +123,24 @@ class WordRepository {
 
   List<WordData>? _decodeWords(String jsonStr) {
     try {
+      // Use compute for heavy JSON parsing to avoid blocking UI
+      return _decodeWordsSync(jsonStr);
+    } catch (e) {
+      debugPrint('Failed to decode cached words: $e');
+      return null;
+    }
+  }
+
+  static List<WordData> _decodeWordsSync(String jsonStr) {
+    try {
       final decoded = jsonDecode(jsonStr) as List<dynamic>;
       return decoded
           .whereType<Map<String, dynamic>>()
           .map(WordData.fromJson)
-          .toList();
+          .toList(growable: false);
     } catch (e) {
       debugPrint('Failed to decode cached words: $e');
-      return null;
+      return [];
     }
   }
 
@@ -140,7 +150,8 @@ class WordRepository {
     String cacheNamespace,
   ) async {
     try {
-      final jsonStr = jsonEncode(words.map((w) => w.toJson()).toList());
+      // Encode JSON in isolate for large datasets to avoid blocking UI
+      final jsonStr = await compute(_encodeWordsSync, words);
       final bool storedWords =
           await prefs.setString(_cacheKey(cacheNamespace), jsonStr);
       final bool storedTimestamp = await prefs.setInt(
@@ -156,6 +167,10 @@ class WordRepository {
       debugPrint('WordRepository cache write failed: $error');
       debugPrint('$stackTrace');
     }
+  }
+
+  static String _encodeWordsSync(List<WordData> words) {
+    return jsonEncode(words.map((w) => w.toJson()).toList(growable: false));
   }
 
   Future<List<WordData>> _maybeAddWebImages(List<WordData> words) async {

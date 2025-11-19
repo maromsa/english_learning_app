@@ -45,8 +45,7 @@ class DailyMissionsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 ...missions
-                    .map((mission) => _MissionCard(mission: mission))
-                    .toList(growable: false),
+                    .map((mission) => _MissionCard(mission: mission)),
                 const SizedBox(height: 24),
                 _TipsSection(),
               ],
@@ -183,7 +182,7 @@ class _MissionCard extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: _badgeColor().withOpacity(0.15),
+                    color: _badgeColor().withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(_badgeIcon(), color: _badgeColor()),
@@ -318,7 +317,7 @@ class _SummaryChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(

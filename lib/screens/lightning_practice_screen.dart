@@ -3,7 +3,6 @@ import 'dart:collection';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:characters/characters.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -810,7 +809,7 @@ class _StatusChip extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 20,
-          backgroundColor: color.withOpacity(0.15),
+          backgroundColor: color.withValues(alpha: 0.15),
           child: Icon(icon, color: color),
         ),
         const SizedBox(height: 6),
@@ -845,7 +844,7 @@ class _SummaryStat extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(

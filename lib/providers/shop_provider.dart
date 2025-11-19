@@ -1,8 +1,19 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
+import '../services/user_data_service.dart';
 
 class ShopProvider with ChangeNotifier {
+  ShopProvider({UserDataService? userDataService})
+      : _userDataService = userDataService ?? UserDataService();
+
+  final UserDataService _userDataService;
+  String? _currentUserId;
+
+  /// Set the current user ID for cloud sync
+  void setUserId(String? userId) {
+    _currentUserId = userId;
+  }
   final List<Product> _products = [
     // Accessories
     Product(
@@ -181,8 +192,18 @@ class ShopProvider with ChangeNotifier {
 
   Future<void> _savePurchasedItems() async {
     try {
+      // Save locally
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList('purchased_items', _purchasedItemIds);
+
+      // Save to cloud if user is authenticated
+      if (_currentUserId != null) {
+        // Update the entire list in cloud
+        await _userDataService.updatePlayerData(
+          _currentUserId!,
+          {'purchasedItems': _purchasedItemIds},
+        );
+      }
     } catch (e) {
       debugPrint('Error saving purchased items: $e');
     }
@@ -201,6 +222,11 @@ class ShopProvider with ChangeNotifier {
       _purchasedItemIds.add(productId);
       notifyListeners();
       await _savePurchasedItems();
+
+      // Also add to cloud individually
+      if (_currentUserId != null) {
+        await _userDataService.addPurchasedItem(_currentUserId!, productId);
+      }
     }
   }
 }
