@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+
+import 'network/app_http_client.dart';
 
 /// Contract for validating whether an image matches a requested word.
 abstract class AiImageValidator {
@@ -17,28 +20,32 @@ class PassthroughAiImageValidator implements AiImageValidator {
     Uint8List imageBytes,
     String word, {
     String? mimeType,
-  }) async => true;
+  }) async =>
+      true;
 }
 
 /// Calls an HTTP endpoint (e.g., Cloud Function) to validate image-word matches.
 class HttpFunctionAiImageValidator implements AiImageValidator {
   HttpFunctionAiImageValidator(
     this._validationEndpoint, {
-    http.Client? client,
+    AppHttpClient? client,
     Duration timeout = const Duration(seconds: 8),
     double minimumConfidence = 0.5,
-  }) : assert(
-         minimumConfidence >= 0 && minimumConfidence <= 1,
-         'minimumConfidence must be between 0 and 1.',
-       ),
-       _httpClient = client ?? http.Client(),
-       _disposeClientOnClose = client == null,
-       _requestTimeout = timeout,
-       _minimumConfidence = minimumConfidence;
+  })  : assert(
+          minimumConfidence >= 0 && minimumConfidence <= 1,
+          'minimumConfidence must be between 0 and 1.',
+        ),
+        _httpClient = client ??
+            AppHttpClient(
+              connectTimeout: timeout,
+              receiveTimeout: timeout,
+              sendTimeout: timeout,
+            ),
+        _requestTimeout = timeout,
+        _minimumConfidence = minimumConfidence;
 
   final Uri _validationEndpoint;
-  final http.Client _httpClient;
-  final bool _disposeClientOnClose;
+  final AppHttpClient _httpClient;
   final Duration _requestTimeout;
   final double _minimumConfidence;
   double? _lastConfidence;
@@ -56,23 +63,24 @@ class HttpFunctionAiImageValidator implements AiImageValidator {
     try {
       _lastConfidence = null;
       _lastApproval = null;
-      final response = await _httpClient
-          .post(
-            _validationEndpoint,
-            headers: const {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'word': word,
-              'mimeType': mimeType,
-              'imageBase64': base64Encode(imageBytes),
-            }),
-          )
-          .timeout(_requestTimeout);
+      final response = await _httpClient.dio.postUri<Map<String, dynamic>>(
+        _validationEndpoint,
+        data: {
+          'word': word,
+          'mimeType': mimeType,
+          'imageBase64': base64Encode(imageBytes),
+        },
+        options: Options(
+          contentType: Headers.jsonContentType,
+          responseType: ResponseType.json,
+        ),
+      );
 
       if (response.statusCode != 200) {
         return false;
       }
 
-      final decoded = jsonDecode(response.body);
+      final decoded = response.data;
       if (decoded is! Map<String, dynamic>) {
         return false;
       }
@@ -97,6 +105,11 @@ class HttpFunctionAiImageValidator implements AiImageValidator {
       }
 
       return false;
+    } on DioException catch (error) {
+      debugPrint('AI validator network error: ${error.message}');
+      _lastConfidence = null;
+      _lastApproval = null;
+      return false;
     } catch (_) {
       _lastConfidence = null;
       _lastApproval = null;
@@ -105,9 +118,7 @@ class HttpFunctionAiImageValidator implements AiImageValidator {
   }
 
   void dispose() {
-    if (_disposeClientOnClose) {
-      _httpClient.close();
-    }
+    _httpClient.close();
   }
 
   double? _parseConfidence(Object? value) {

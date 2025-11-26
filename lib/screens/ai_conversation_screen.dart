@@ -1,12 +1,16 @@
-import 'dart:convert';
-import 'dart:typed_data';
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/user_session_provider.dart';
+import 'package:english_learning_app/services/audio/bytes_audio_source.dart';
 import 'package:english_learning_app/services/conversation_coach_service.dart';
+import 'package:english_learning_app/services/google_tts_service.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
+import 'package:english_learning_app/services/local_user_service.dart';
+import 'package:english_learning_app/models/local_user.dart';
+import 'package:english_learning_app/services/background_music_service.dart';
+import 'package:english_learning_app/utils/route_observer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -20,11 +24,14 @@ class AiConversationScreen extends StatefulWidget {
   State<AiConversationScreen> createState() => _AiConversationScreenState();
 }
 
-class _AiConversationScreenState extends State<AiConversationScreen> {
+class _AiConversationScreenState extends State<AiConversationScreen>
+    with TickerProviderStateMixin, RouteAware {
   late final ConversationCoachService _service;
   late final FlutterTts _tts;
+  GoogleTtsService? _googleTts;
   final AudioPlayer _audioPlayer = AudioPlayer();
   final SpeechToText _speechToText = SpeechToText();
+  final LocalUserService _localUserService = LocalUserService();
 
   final TextEditingController _messageController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
@@ -44,16 +51,43 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
   String _selectedSkill = _skills.first.id;
   String _selectedEnergy = _energies.first.id;
 
+  // New animation controller for mic pulse - Redesigned by Gemini 3 Pro
+  late AnimationController _micPulseController;
+
   @override
   void initState() {
     super.initState();
+    // Stop map music immediately when entering AI conversation screen
+    // Use fadeOut first for smooth transition, then stop
+    BackgroundMusicService()
+        .fadeOut(duration: const Duration(milliseconds: 300))
+        .then((_) {
+      BackgroundMusicService().stop().catchError((error) {
+        debugPrint('Failed to stop map music in initState: $error');
+      });
+    }).catchError((error) {
+      // If fadeOut fails, try stop directly
+      BackgroundMusicService().stop().catchError((e) {
+        debugPrint('Failed to stop map music in initState: $e');
+      });
+    });
+
     _service = ConversationCoachService();
     _tts = FlutterTts();
+    if (AppConfig.hasGoogleTts) {
+      _googleTts = GoogleTtsService(apiKey: AppConfig.googleTtsApiKey);
+    }
     _initSpeech();
     _configureTts();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       TelemetryService.maybeOf(context)?.startScreenSession('ai_conversation');
     });
+
+    // Initialize mic pulse animation - Redesigned by Gemini 3 Pro
+    _micPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
   }
 
   Future<void> _initSpeech() async {
@@ -65,14 +99,56 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     }
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Subscribe to route changes and stop music when entering this screen
+    RouteObserverService.routeObserver.subscribe(this, ModalRoute.of(context)!);
+    // Stop map music when entering AI conversation screen
+    // Use fadeOut first for smooth transition, then stop
+    BackgroundMusicService()
+        .fadeOut(duration: const Duration(milliseconds: 200))
+        .then((_) {
+      BackgroundMusicService().stop().catchError((error) {
+        debugPrint('Failed to stop map music in didChangeDependencies: $error');
+      });
+    }).catchError((error) {
+      // If fadeOut fails, try stop directly
+      BackgroundMusicService().stop().catchError((e) {
+        debugPrint('Failed to stop map music in didChangeDependencies: $e');
+      });
+    });
+  }
+
+  @override
+  void didPush() {
+    // Called when this route is pushed onto the navigator
+    // Stop map music when entering AI conversation screen
+    // Use fadeOut first for smooth transition, then stop
+    BackgroundMusicService()
+        .fadeOut(duration: const Duration(milliseconds: 200))
+        .then((_) {
+      BackgroundMusicService().stop().catchError((error) {
+        debugPrint('Failed to stop map music in didPush: $error');
+      });
+    }).catchError((error) {
+      // If fadeOut fails, try stop directly
+      BackgroundMusicService().stop().catchError((e) {
+        debugPrint('Failed to stop map music in didPush: $e');
+      });
+    });
+  }
+
   Future<void> _configureTts() async {
     await _tts.setLanguage('he-IL');
-    await _tts.setSpeechRate(0.4); // Slower rate for children
-    await _tts.setPitch(1.1); // Friendly, child-appropriate pitch
+    await _tts.setSpeechRate(
+        0.5); // Slower rate for children - clear and understandable
+    await _tts.setPitch(1.0); // Natural pitch
   }
 
   @override
   void dispose() {
+    RouteObserverService.routeObserver.unsubscribe(this);
     TelemetryService.maybeOf(context)?.endScreenSession(
       'ai_conversation',
       extra: {
@@ -87,50 +163,279 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     _audioPlayer.dispose();
     _speechToText.stop();
     _speechToText.cancel();
+    _googleTts?.dispose();
+    _micPulseController.dispose(); // Redesigned by Gemini 3 Pro
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Redesigned by Gemini 3 Pro
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA), // Light clean background
       appBar: AppBar(
-        title: const Text('חבר השיחה של ספרק'),
-        backgroundColor: Colors.deepPurple.shade400,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF5E4AE3), Color(0xFF8E8DFF)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
+          onPressed: () => Navigator.of(context).pop(),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: _buildConfiguratorCard(),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const _SparkAvatar(size: 32),
+            const SizedBox(width: 8),
+            Text(
+              'ספרק AI',
+              style: TextStyle(
+                color: Colors.deepPurple.shade700,
+                fontWeight: FontWeight.bold,
               ),
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _ErrorBanner(
-                    message: _errorMessage!,
-                    onClose: () {
+            ),
+          ],
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: Colors.grey.shade200, height: 1),
+        ),
+      ),
+      body: Column(
+        children: [
+          // 1. Configurator (Collapsible)
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            child: Container(
+              color: Colors.white,
+              child: !_sessionStarted
+                  ? _buildFullConfigurator()
+                  : const SizedBox.shrink(),
+            ),
+          ),
+          // 2. Error Banner
+          if (_errorMessage != null)
+            Container(
+              color: Colors.red.shade100,
+              padding: const EdgeInsets.all(8),
+              width: double.infinity,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(color: Colors.red.shade900),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    color: Colors.red.shade900,
+                    onPressed: () {
                       setState(() => _errorMessage = null);
                     },
                   ),
-                ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: _buildConversationArea(),
+                ],
+              ),
+            ),
+          // 3. Conversation Area
+          Expanded(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFF8F9FF), Color(0xFFECECFF)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
               ),
-              _buildInputBar(),
+              child: _entries.isEmpty && !_sessionStarted
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 20),
+                      itemCount: _entries.length + (_isBusy ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        // Loading Indicator at the end
+                        if (index == _entries.length) {
+                          return const _TypingIndicator();
+                        }
+
+                        final entry = _entries[index];
+                        final bool isSpark =
+                            entry.speaker == ConversationSpeaker.spark;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: isSpark
+                              ? _SparkMessageBubble(
+                                  entry: entry,
+                                  onSuggestionSelected: (text) {
+                                    setState(() {
+                                      _messageController.text = text;
+                                      _messageController.selection =
+                                          TextSelection.fromPosition(
+                                        TextPosition(offset: text.length),
+                                      );
+                                    });
+                                  },
+                                )
+                              : _LearnerMessageBubble(message: entry.message),
+                        );
+                      },
+                    ),
+            ),
+          ),
+          // 4. Input Bar
+          if (_sessionStarted) _buildEnhancedInputBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFullConfigurator() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          const Text(
+            "בואו נתכונן לשיחה!",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _ConfigChip(
+                  icon: Icons.topic,
+                  label:
+                      "נושא: ${_topics.firstWhere((t) => t.id == _selectedTopic).label}",
+                  color: Colors.orange.shade100,
+                  textColor: Colors.orange.shade900,
+                  onTap: () {
+                    _showTopicSelector();
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ConfigChip(
+                  icon: Icons.bar_chart,
+                  label:
+                      "מיומנות: ${_skills.firstWhere((s) => s.id == _selectedSkill).label}",
+                  color: Colors.green.shade100,
+                  textColor: Colors.green.shade900,
+                  onTap: () {
+                    _showSkillSelector();
+                  },
+                ),
+              ),
             ],
           ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _ConfigChip(
+                  icon: Icons.energy_savings_leaf,
+                  label:
+                      "אנרגיה: ${_energies.firstWhere((e) => e.id == _selectedEnergy).label}",
+                  color: Colors.purple.shade100,
+                  textColor: Colors.purple.shade900,
+                  onTap: () {
+                    _showEnergySelector();
+                  },
+                ),
+              ),
+            ],
+          ),
+          if (widget.focusWords.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _buildFocusWordsPreview(),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _isBusy ? null : _startConversation,
+              icon: const Icon(Icons.chat_bubble_outline),
+              label: Text(
+                _sessionStarted ? 'התחילו שיחה חדשה' : 'צאו לשיחה קסומה',
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.deepPurple,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTopicSelector() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('בחר נושא'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: _topics.map((topic) {
+            return ListTile(
+              title: Text(topic.label),
+              selected: topic.id == _selectedTopic,
+              onTap: () {
+                setState(() => _selectedTopic = topic.id);
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showSkillSelector() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('בחר מיומנות'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: _skills.map((skill) {
+            return ListTile(
+              title: Text(skill.label),
+              selected: skill.id == _selectedSkill,
+              onTap: () {
+                setState(() => _selectedSkill = skill.id);
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showEnergySelector() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('בחר רמת אנרגיה'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: _energies.map((energy) {
+            return ListTile(
+              title: Text(energy.label),
+              selected: energy.id == _selectedEnergy,
+              onTap: () {
+                setState(() => _selectedEnergy = energy.id);
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
         ),
       ),
     );
@@ -232,6 +537,56 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     );
   }
 
+  /// Collapsed configurator shown when session is active
+  Widget _buildCollapsedConfigurator() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 2,
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _sessionStarted = false; // Expand configurator
+            });
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(Icons.settings, color: Colors.deepPurple.shade400),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'הגדרות שיחה',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.deepPurple.shade700,
+                        ),
+                      ),
+                      Text(
+                        'לחץ לשינוי הגדרות',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.expand_more, color: Colors.grey.shade600),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildFocusWordsPreview() {
     final words = _resolveFocusWords();
     if (words.isEmpty) {
@@ -270,118 +625,126 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     );
   }
 
-  Widget _buildConversationArea() {
-    if (_entries.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.chat_bubble_outline,
-              size: 64,
-              color: Colors.white.withValues(alpha: 0.85),
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const _SparkAvatar(size: 100),
+          const SizedBox(height: 24),
+          Text(
+            "שלום! אני ספרק",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.deepPurple.shade700,
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'התחילו שיחה עם ספרק כדי לראות את הקסם קורה!',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      key: ValueKey('chat_${_entries.length}_${_sessionStarted}'), // Force rebuild when entries change
-      controller: _scrollController,
-      itemCount: _entries.length,
-      padding: const EdgeInsets.only(bottom: 12),
-      cacheExtent: 500, // Optimize scrolling performance
-      itemBuilder: (context, index) {
-        return RepaintBoundary(
-          child: _buildChatEntry(index),
-        );
-      },
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "בחר נושא והתחל לתרגל אנגלית בכיף",
+            style: TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildChatEntry(int index) {
-    final entry = _entries[index];
-    if (entry.speaker == ConversationSpeaker.spark) {
-      return _SparkBubble(
-        response: entry.responseMeta,
-        message: entry.message,
-        onSuggestionTap: (suggestion) {
-          setState(() {
-            _messageController.text = suggestion;
-            _messageController.selection = TextSelection.fromPosition(
-              TextPosition(offset: suggestion.length),
-            );
-          });
-        },
-      );
-    }
-    return _LearnerBubble(message: entry.message);
-  }
-
-  Widget _buildInputBar() {
-    return SafeArea(
-      top: false,
-      child: Card(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+  Widget _buildEnhancedInputBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      decoration: BoxDecoration(
         color: Colors.white,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _messageController,
-                  enabled: !_isBusy,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    hintText: 'מה תרצו להגיד לספרק?',
-                  ),
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _sendLearnerMessage(),
-                ),
-              ),
-              IconButton(
-                icon: Icon(
-                  _isListening ? Icons.hearing_disabled : Icons.hearing,
-                ),
-                tooltip: _speechReady ? 'אמרו משפט בקול' : 'הפעלת דיבור',
-                onPressed: !_speechReady || _isBusy ? null : _toggleListening,
-              ),
-              IconButton(
-                icon: const Icon(Icons.send),
-                onPressed: _isBusy ? null : _sendLearnerMessage,
-              ),
-            ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            offset: const Offset(0, -4),
+            blurRadius: 16,
           ),
-        ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Microphone Button
+          GestureDetector(
+            onTap: !_speechReady || _isBusy ? null : _toggleListening,
+            child: AnimatedBuilder(
+              animation: _micPulseController,
+              builder: (context, child) {
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color:
+                        _isListening ? Colors.redAccent : Colors.grey.shade100,
+                    shape: BoxShape.circle,
+                    boxShadow: _isListening
+                        ? [
+                            BoxShadow(
+                              color: Colors.redAccent.withValues(alpha: 0.4),
+                              blurRadius: 10 + (_micPulseController.value * 10),
+                              spreadRadius: _micPulseController.value * 4,
+                            )
+                          ]
+                        : [],
+                  ),
+                  child: Icon(
+                    _isListening ? Icons.mic : Icons.mic_none,
+                    color: _isListening ? Colors.white : Colors.grey.shade700,
+                    size: 24,
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Text Input
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: TextField(
+                controller: _messageController,
+                decoration: const InputDecoration(
+                  hintText: "כתוב הודעה לספרק...",
+                  border: InputBorder.none,
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _sendLearnerMessage(),
+                enabled: !_isBusy,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Send Button
+          IconButton.filled(
+            onPressed: (_isBusy) ? null : _sendLearnerMessage,
+            icon: const Icon(Icons.send_rounded),
+            style: IconButton.styleFrom(
+              backgroundColor: const Color(0xFF4A90E2), // Primary Blue
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Future<void> _startConversation() async {
     if (_isBusy) return;
-    
+
     // Clear previous conversation data
     _entries.clear();
     _history.clear();
-    
+
     // Reset scroll position
     if (_scrollController.hasClients) {
       _scrollController.jumpTo(0);
     }
-    
+
     setState(() {
       _isBusy = true;
       _sessionStarted = false;
@@ -399,7 +762,22 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     );
 
     try {
-      final response = await _service.startConversation(setup);
+      // Get current user context
+      final userSession =
+          Provider.of<UserSessionProvider>(context, listen: false);
+      final appUser = userSession.currentUser;
+      LocalUser? localUser;
+
+      // If local user, fetch full details (for age)
+      if (appUser != null && !appUser.isGoogle) {
+        localUser = await _localUserService.getUserById(appUser.id);
+      }
+
+      final response = await _service.startConversation(
+        setup,
+        user: appUser,
+        localUser: localUser,
+      );
       if (!mounted) return;
 
       _appendSparkResponse(response);
@@ -410,6 +788,13 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
         ),
       );
       _sessionStarted = true;
+
+      // Hide loading state before speaking
+      if (mounted) {
+        setState(() {
+          _isBusy = false;
+        });
+      }
 
       await _speakSpark(response.message);
       if (mounted) {
@@ -422,19 +807,15 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
       if (!mounted) return;
       setState(() {
         _errorMessage = error.message;
+        _isBusy = false;
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _errorMessage = 'משהו השתבש. נסו שוב בעוד רגע.';
+        _isBusy = false;
       });
       debugPrint('Unexpected conversation start error: $error');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isBusy = false;
-        });
-      }
     }
   }
 
@@ -467,6 +848,17 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     _scrollToBottom();
 
     try {
+      // Get current user context
+      final userSession =
+          Provider.of<UserSessionProvider>(context, listen: false);
+      final appUser = userSession.currentUser;
+      LocalUser? localUser;
+
+      // If local user, fetch full details (for age)
+      if (appUser != null && !appUser.isGoogle) {
+        localUser = await _localUserService.getUserById(appUser.id);
+      }
+
       final trimmedHistory = _history.length > 12
           ? _history.sublist(_history.length - 12)
           : List<ConversationTurn>.from(_history);
@@ -482,6 +874,8 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
         ),
         history: trimmedHistory,
         learnerMessage: message,
+        user: appUser,
+        localUser: localUser,
       );
       if (!mounted) return;
 
@@ -492,6 +886,13 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
           message: response.message,
         ),
       );
+
+      // Update state to hide typing indicator before speaking
+      if (mounted) {
+        setState(() {
+          _isBusy = false;
+        });
+      }
 
       await _speakSpark(response.message);
       await _rewardLearner();
@@ -505,19 +906,15 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
       if (!mounted) return;
       setState(() {
         _errorMessage = error.message;
+        _isBusy = false;
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _errorMessage = 'ספרק נתקע בתשובה. נסו שוב.';
+        _isBusy = false;
       });
       debugPrint('Unexpected conversation turn error: $error');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isBusy = false;
-        });
-      }
     }
   }
 
@@ -542,70 +939,25 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
       _audioPlayer.stop();
 
       // Use Google Cloud TTS if available for better quality
-      if (AppConfig.hasGoogleTts) {
-        // Use Hebrew voice for Spark's responses
-        const languageCode = 'he-IL';
-        final voiceNames = [
-          'he-IL-Standard-B', // Warm Hebrew female voice - excellent for children
-          'he-IL-Neural2-B', // Natural Hebrew female voice
-          'he-IL-Wavenet-B', // Fallback: warm Hebrew female voice
-        ];
-        
-        http.Response? response;
-        String? usedVoice;
-        
-        // Try voices in order until one works
-        for (final voiceName in voiceNames) {
-          try {
-            response = await http.post(
-              Uri.parse(
-                'https://texttospeech.googleapis.com/v1/text:synthesize?key=${AppConfig.googleTtsApiKey}',
-              ),
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({
-                'input': {
-                  'text': message,
-                },
-                'voice': {
-                  'languageCode': languageCode,
-                  'name': voiceName,
-                  'ssmlGender': 'FEMALE',
-                },
-                'audioConfig': {
-                  'audioEncoding': 'MP3',
-                  'speakingRate': 0.80, // Natural, clear speed for children
-                  'pitch': 0.0, // Natural pitch (sounds most human)
-                  'volumeGainDb': 2.0, // Clear but natural volume
-                  'effectsProfileId': ['headphone-class-device'],
-                  'sampleRateHertz': 24000, // High quality audio
-                },
-              }),
-            ).timeout(const Duration(seconds: 10));
-            
-            if (response.statusCode == 200) {
-              usedVoice = voiceName;
-              debugPrint('Successfully used TTS voice for Spark: $voiceName');
-              break;
-            }
-          } catch (e) {
-            debugPrint('Error trying voice $voiceName: $e');
-            continue;
-          }
-        }
-
-        if (response != null && response.statusCode == 200) {
-          final body = jsonDecode(response.body);
-          final audioBytes = base64Decode(body['audioContent']);
+      // Use slower, clearer settings for children
+      if (_googleTts != null) {
+        final audioBytes = await _googleTts!.synthesize(
+          text: message,
+          speakingRateOverride: 0.6, // Slower for clarity
+          pitchOverride: 0.0, // Natural pitch
+          languageCodeOverride: 'he-IL',
+        );
+        if (audioBytes != null) {
           await _audioPlayer.setAudioSource(BytesAudioSource(audioBytes));
           await _audioPlayer.play();
           return;
         }
       }
 
-      // Fallback to built-in TTS
+      // Fallback to built-in TTS - slower and clearer for children
       await _tts.setLanguage('he-IL');
-      await _tts.setSpeechRate(0.80);
-      await _tts.setPitch(1.0);
+      await _tts.setSpeechRate(0.5); // Much slower for clarity
+      await _tts.setPitch(1.0); // Natural pitch
       await _tts.speak(message);
     } catch (error) {
       debugPrint('TTS error: $error');
@@ -708,6 +1060,467 @@ class _ChatEntry {
   final SparkCoachResponse? responseMeta;
 }
 
+// --- Helper Widgets - Redesigned by Gemini 3 Pro ---
+
+// 1. Spark Avatar
+class _SparkAvatar extends StatelessWidget {
+  final double size;
+
+  const _SparkAvatar({this.size = 40});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF7B68EE), Color(0xFF5E4AE3)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF7B68EE).withValues(alpha: 0.4),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.white, width: 2),
+      ),
+      child: Icon(
+        Icons.auto_awesome,
+        color: Colors.white,
+        size: size * 0.6,
+      ),
+    );
+  }
+}
+
+// 2. Config Chip
+class _ConfigChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color textColor;
+  final VoidCallback onTap;
+
+  const _ConfigChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.textColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 20, color: textColor),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: textColor,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// 3. Learner Bubble (Right Aligned)
+class _LearnerMessageBubble extends StatelessWidget {
+  final String message;
+
+  const _LearnerMessageBubble({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerRight, // User on right
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Flexible(
+            child: Container(
+              margin:
+                  const EdgeInsets.only(left: 40), // Prevent stretching too far
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(
+                color: Color(0xFF4A90E2), // Blue
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                  bottomRight: Radius.circular(4), // Tail
+                  bottomLeft: Radius.circular(20),
+                ),
+              ),
+              child: Text(
+                message,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+                textDirection: TextDirection.rtl,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const CircleAvatar(
+            radius: 16,
+            backgroundColor: Colors.grey,
+            child: Icon(Icons.person, color: Colors.white, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// 4. Spark Bubble (Left Aligned) with Response Cards
+class _SparkMessageBubble extends StatelessWidget {
+  final _ChatEntry entry;
+  final Function(String) onSuggestionSelected;
+
+  const _SparkMessageBubble({
+    required this.entry,
+    required this.onSuggestionSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final response = entry.responseMeta;
+
+    return Align(
+      alignment: Alignment.centerLeft, // Spark on left
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SparkAvatar(size: 36),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Main Message
+                Container(
+                  margin: const EdgeInsets.only(right: 32),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                      bottomLeft: Radius.circular(4), // Tail
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (response?.celebration != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Text(
+                            response!.celebration!,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange,
+                            ),
+                            textDirection: TextDirection.rtl,
+                          ),
+                        ),
+                      Text(
+                        entry.message,
+                        style: const TextStyle(
+                            fontSize: 16, color: Colors.black87),
+                        textDirection: TextDirection.rtl,
+                      ),
+                    ],
+                  ),
+                ),
+                // Structured Response Cards
+                if (response != null) ...[
+                  // 1. Tip Card
+                  if (response.sparkTip != null)
+                    _ResponseCard(
+                      color: Colors.amber.shade50,
+                      icon: Icons.lightbulb_outline,
+                      iconColor: Colors.amber.shade800,
+                      title: "טיפ מספרק",
+                      content: response.sparkTip!,
+                    ),
+                  // 2. Vocabulary Card
+                  if (response.vocabularyHighlights.isNotEmpty)
+                    _VocabularyCard(words: response.vocabularyHighlights),
+                  // 3. Challenge Card
+                  if (response.miniChallenge != null)
+                    _ResponseCard(
+                      color: Colors.green.shade50,
+                      icon: Icons.flag_outlined,
+                      iconColor: Colors.green.shade700,
+                      title: "אתגר קטן",
+                      content: response.miniChallenge!,
+                    ),
+                  // 4. Follow-up Card
+                  if (response.followUp != null)
+                    _ResponseCard(
+                      color: Colors.purple.shade50,
+                      icon: Icons.question_answer,
+                      iconColor: Colors.purple.shade700,
+                      title: "שאלת המשך",
+                      content: response.followUp!,
+                    ),
+                  // 5. Suggestions (Quick Replies)
+                  if (response.suggestedLearnerReplies.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: response.suggestedLearnerReplies.map((reply) {
+                          return ActionChip(
+                            label: Text(reply),
+                            onPressed: () => onSuggestionSelected(reply),
+                            backgroundColor: Colors.white,
+                            surfaceTintColor: Colors.deepPurple.shade50,
+                            side: BorderSide(color: Colors.deepPurple.shade100),
+                            labelStyle:
+                                TextStyle(color: Colors.deepPurple.shade700),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// 5. Reusable Response Card
+class _ResponseCard extends StatelessWidget {
+  final Color color;
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String content;
+
+  const _ResponseCard({
+    required this.color,
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.content,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8, right: 32),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: iconColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: iconColor, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: iconColor,
+                    fontSize: 12,
+                  ),
+                  textDirection: TextDirection.rtl,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  content,
+                  style: const TextStyle(fontSize: 14, color: Colors.black87),
+                  textDirection: TextDirection.rtl,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// 6. Vocabulary Card
+class _VocabularyCard extends StatelessWidget {
+  final List<String> words;
+
+  const _VocabularyCard({required this.words});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8, right: 32),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.book_outlined, color: Colors.blue.shade700, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                "מילים חדשות",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade700,
+                  fontSize: 12,
+                ),
+                textDirection: TextDirection.rtl,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            children: words.map((w) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.blue.shade100),
+                ),
+                child: Text(
+                  w,
+                  style: TextStyle(
+                    color: Colors.blue.shade900,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            }).toList(),
+          )
+        ],
+      ),
+    );
+  }
+}
+
+// 7. Typing Indicator
+class _TypingIndicator extends StatefulWidget {
+  const _TypingIndicator();
+
+  @override
+  State<_TypingIndicator> createState() => _TypingIndicatorState();
+}
+
+class _TypingIndicatorState extends State<_TypingIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        children: [
+          const _SparkAvatar(size: 28),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(3, (index) {
+                return FadeTransition(
+                  opacity: Tween(begin: 0.4, end: 1.0).animate(
+                    CurvedAnimation(
+                      parent: _controller,
+                      curve: Interval(
+                        index * 0.2,
+                        0.6 + index * 0.2,
+                        curve: Curves.easeInOut,
+                      ),
+                    ),
+                  ),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Colors.grey,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Keep old _SparkBubble for backward compatibility (will be removed)
 class _SparkBubble extends StatelessWidget {
   const _SparkBubble({
     required this.message,
@@ -1015,21 +1828,3 @@ const Map<String, List<String>> _topicVocabulary = <String, List<String>>{
   'everyday_fun': ['pancake', 'drawing', 'friend'],
   'superhero_rescue': ['hero', 'save', 'power'],
 };
-
-// Helper class for playing audio from bytes
-class BytesAudioSource extends StreamAudioSource {
-  final List<int> _bytes;
-
-  BytesAudioSource(this._bytes) : super(tag: 'BytesAudioSource');
-
-  @override
-  Future<StreamAudioResponse> request([int? start, int? end]) async {
-    return StreamAudioResponse(
-      sourceLength: _bytes.length,
-      contentLength: (end ?? _bytes.length) - (start ?? 0),
-      offset: start ?? 0,
-      stream: Stream.value(_bytes.sublist(start ?? 0, end ?? _bytes.length)),
-      contentType: 'audio/mpeg',
-    );
-  }
-}

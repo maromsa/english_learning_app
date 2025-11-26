@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../app_config.dart';
+import '../providers/user_session_provider.dart';
+import '../models/local_user.dart';
 import 'gemini_proxy_service.dart';
 
 typedef _PracticePackGenerator = Future<String?> Function(String prompt);
@@ -16,8 +18,12 @@ class PracticePackService {
   final _PracticePackGenerator _generator;
   final Duration _timeout;
 
-  Future<PracticePack> generatePack(PracticePackRequest request) async {
-    final prompt = _buildPrompt(request);
+  Future<PracticePack> generatePack(
+    PracticePackRequest request, {
+    AppSessionUser? user,
+    LocalUser? localUser,
+  }) async {
+    final prompt = _buildPrompt(request, user: user, localUser: localUser);
 
     try {
       final raw = await _generator(prompt).timeout(_timeout);
@@ -48,7 +54,14 @@ class PracticePackService {
   static const String _sparkSystemInstruction =
       'You are Spark, an upbeat AI mentor helping Hebrew-speaking kids practise English. '
       'You design playful activities that mix Hebrew guidance with English words and phrases the child should try. '
-      'Keep instructions short, energetic, and friendly. Always return compact JSON as instructed by the prompt.';
+      'Keep instructions short, energetic, and friendly. Always return compact JSON as instructed by the prompt.\n\n'
+      'PERSONALIZATION:\n'
+      '- Tailor vocabulary difficulty to the child\'s age.\n'
+      '- Use the child\'s name in example sentences.\n\n'
+      'CHILD SAFETY - STRICT REQUIREMENTS:\n'
+      '- NEVER include inappropriate, violent, or scary words.\n'
+      '- Ensure all example sentences are positive and child-friendly.\n'
+      '- Filter out any requested topics that are not suitable for children aged 5-10.';
 
   static const String _geminiUnavailableMessage =
       'חבילת האימון של ספרק דורשת חיבור ל-Gemini. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי להפעיל את התכונה.';
@@ -90,8 +103,27 @@ class PracticePackService {
     };
   }
 
-  String _buildPrompt(PracticePackRequest request) {
-    final jsonContext = jsonEncode(request.toMap());
+  String _buildPrompt(
+    PracticePackRequest request, {
+    AppSessionUser? user,
+    LocalUser? localUser,
+  }) {
+    final userName = user?.name ?? localUser?.name;
+    final userAge = localUser?.age;
+    
+    final requestMap = request.toMap();
+    if (userName != null && userName.isNotEmpty) {
+      requestMap['learnerName'] = userName;
+    }
+    if (userAge != null) {
+      requestMap['learnerAge'] = userAge;
+    }
+    
+    final jsonContext = jsonEncode(requestMap);
+    final personalizationNote = userName != null && userName.isNotEmpty
+        ? 'The learner\'s name is $userName. Use their name in the pep talk and example sentences.'
+        : '';
+    
     return '''
 Craft a three-part micro practice plan for a young learner using the JSON context.
 
@@ -99,6 +131,8 @@ Context:
 ```
 $jsonContext
 ```
+
+$personalizationNote
 
 Rules:
 - Audience: Hebrew-speaking child aged 6-10 learning English.

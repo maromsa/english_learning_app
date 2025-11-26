@@ -73,6 +73,7 @@ class _ActionButtonState extends State<ActionButton>
           elevation: 6.0,
           shadowColor: widget.color.withValues(alpha: 0.5),
         ),
+      ),
     );
   }
 }

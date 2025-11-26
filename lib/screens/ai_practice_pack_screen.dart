@@ -1,6 +1,11 @@
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/practice_pack_service.dart';
+import 'package:english_learning_app/services/local_user_service.dart';
+import 'package:english_learning_app/models/local_user.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
+import 'package:english_learning_app/services/background_music_service.dart';
+import 'package:english_learning_app/utils/route_observer.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -13,8 +18,10 @@ class AiPracticePackScreen extends StatefulWidget {
   State<AiPracticePackScreen> createState() => _AiPracticePackScreenState();
 }
 
-class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
+class _AiPracticePackScreenState extends State<AiPracticePackScreen>
+    with RouteAware {
   late final PracticePackService _service;
+  final LocalUserService _localUserService = LocalUserService();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _extraWordsController = TextEditingController();
 
@@ -31,6 +38,21 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
   @override
   void initState() {
     super.initState();
+    // Stop map music immediately when entering AI practice pack screen
+    // Use fadeOut first for smooth transition, then stop
+    BackgroundMusicService()
+        .fadeOut(duration: const Duration(milliseconds: 300))
+        .then((_) {
+      BackgroundMusicService().stop().catchError((error) {
+        debugPrint('Failed to stop map music in initState: $error');
+      });
+    }).catchError((error) {
+      // If fadeOut fails, try stop directly
+      BackgroundMusicService().stop().catchError((e) {
+        debugPrint('Failed to stop map music in initState: $e');
+      });
+    });
+
     _service = PracticePackService();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       TelemetryService.maybeOf(context)?.startScreenSession('ai_practice_pack');
@@ -38,7 +60,48 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Subscribe to route changes and stop music when entering this screen
+    RouteObserverService.routeObserver.subscribe(this, ModalRoute.of(context)!);
+    // Stop map music when entering AI practice pack screen
+    // Use fadeOut first for smooth transition, then stop
+    BackgroundMusicService()
+        .fadeOut(duration: const Duration(milliseconds: 200))
+        .then((_) {
+      BackgroundMusicService().stop().catchError((error) {
+        debugPrint('Failed to stop map music in didChangeDependencies: $error');
+      });
+    }).catchError((error) {
+      // If fadeOut fails, try stop directly
+      BackgroundMusicService().stop().catchError((e) {
+        debugPrint('Failed to stop map music in didChangeDependencies: $e');
+      });
+    });
+  }
+
+  @override
+  void didPush() {
+    // Called when this route is pushed onto the navigator
+    // Stop map music when entering AI practice pack screen
+    // Use fadeOut first for smooth transition, then stop
+    BackgroundMusicService()
+        .fadeOut(duration: const Duration(milliseconds: 200))
+        .then((_) {
+      BackgroundMusicService().stop().catchError((error) {
+        debugPrint('Failed to stop map music in didPush: $error');
+      });
+    }).catchError((error) {
+      // If fadeOut fails, try stop directly
+      BackgroundMusicService().stop().catchError((e) {
+        debugPrint('Failed to stop map music in didPush: $e');
+      });
+    });
+  }
+
+  @override
   void dispose() {
+    RouteObserverService.routeObserver.unsubscribe(this);
     TelemetryService.maybeOf(context)?.endScreenSession(
       'ai_practice_pack',
       extra: {
@@ -318,7 +381,22 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen> {
     );
 
     try {
-      final pack = await _service.generatePack(request);
+      // Get current user context
+      final userSession =
+          Provider.of<UserSessionProvider>(context, listen: false);
+      final appUser = userSession.currentUser;
+      LocalUser? localUser;
+
+      // If local user, fetch full details (for age)
+      if (appUser != null && !appUser.isGoogle) {
+        localUser = await _localUserService.getUserById(appUser.id);
+      }
+
+      final pack = await _service.generatePack(
+        request,
+        user: appUser,
+        localUser: localUser,
+      );
       if (!mounted) return;
       setState(() {
         _pack = pack;

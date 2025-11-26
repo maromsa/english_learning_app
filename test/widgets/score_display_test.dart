@@ -5,12 +5,18 @@ import 'package:english_learning_app/widgets/score_display.dart';
 
 void main() {
   group('ScoreDisplay', () {
-    testWidgets('should display coins correctly', (WidgetTester tester) async {
+    testWidgets('should display coins with labels',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(home: Scaffold(body: ScoreDisplay(coins: 100))),
       );
 
       expect(find.text('100'), findsOneWidget);
+      expect(find.text('מטבעות שנאספו'), findsOneWidget);
+      expect(
+        find.textContaining('כל 10 מטבעות שצוברים'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('should display zero coins', (WidgetTester tester) async {

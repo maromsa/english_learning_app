@@ -1,7 +1,12 @@
 import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/adventure_story_service.dart';
+import 'package:english_learning_app/services/local_user_service.dart';
+import 'package:english_learning_app/models/local_user.dart';
 import 'package:english_learning_app/models/word_data.dart';
+import 'package:english_learning_app/services/background_music_service.dart';
+import 'package:english_learning_app/utils/route_observer.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -21,9 +26,10 @@ class AiAdventureScreen extends StatefulWidget {
   State<AiAdventureScreen> createState() => _AiAdventureScreenState();
 }
 
-class _AiAdventureScreenState extends State<AiAdventureScreen> {
+class _AiAdventureScreenState extends State<AiAdventureScreen> with RouteAware {
   late final AdventureStoryService _service;
   late LevelData _selectedLevel;
+  final LocalUserService _localUserService = LocalUserService();
 
   String _selectedMood = _moods.first;
   bool _isGenerating = false;
@@ -48,8 +54,63 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
   @override
   void initState() {
     super.initState();
+    // Stop map music immediately when entering AI adventure screen
+    // Use fadeOut first for smooth transition, then stop
+    BackgroundMusicService()
+        .fadeOut(duration: const Duration(milliseconds: 300))
+        .then((_) {
+      BackgroundMusicService().stop().catchError((error) {
+        debugPrint('Failed to stop map music in initState: $error');
+      });
+    }).catchError((error) {
+      // If fadeOut fails, try stop directly
+      BackgroundMusicService().stop().catchError((e) {
+        debugPrint('Failed to stop map music in initState: $e');
+      });
+    });
+
     _service = AdventureStoryService();
     _selectedLevel = _initialLevel();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Subscribe to route changes and stop music when entering this screen
+    RouteObserverService.routeObserver.subscribe(this, ModalRoute.of(context)!);
+    // Stop map music when entering AI adventure screen
+    // Use fadeOut first for smooth transition, then stop
+    BackgroundMusicService()
+        .fadeOut(duration: const Duration(milliseconds: 200))
+        .then((_) {
+      BackgroundMusicService().stop().catchError((error) {
+        debugPrint('Failed to stop map music in didChangeDependencies: $error');
+      });
+    }).catchError((error) {
+      // If fadeOut fails, try stop directly
+      BackgroundMusicService().stop().catchError((e) {
+        debugPrint('Failed to stop map music in didChangeDependencies: $e');
+      });
+    });
+  }
+
+  @override
+  void didPush() {
+    // Called when this route is pushed onto the navigator
+    // Stop map music when entering AI adventure screen
+    // Use fadeOut first for smooth transition, then stop
+    BackgroundMusicService()
+        .fadeOut(duration: const Duration(milliseconds: 200))
+        .then((_) {
+      BackgroundMusicService().stop().catchError((error) {
+        debugPrint('Failed to stop map music in didPush: $error');
+      });
+    }).catchError((error) {
+      // If fadeOut fails, try stop directly
+      BackgroundMusicService().stop().catchError((e) {
+        debugPrint('Failed to stop map music in didPush: $e');
+      });
+    });
   }
 
   LevelData _initialLevel() {
@@ -72,6 +133,7 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
 
   @override
   void dispose() {
+    RouteObserverService.routeObserver.unsubscribe(this);
     _nameController.dispose();
     super.dispose();
   }
@@ -305,7 +367,22 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> {
     );
 
     try {
-      final story = await _service.generateAdventure(context);
+      // Get current user context
+      final userSession =
+          Provider.of<UserSessionProvider>(this.context, listen: false);
+      final appUser = userSession.currentUser;
+      LocalUser? localUser;
+
+      // If local user, fetch full details (for age)
+      if (appUser != null && !appUser.isGoogle) {
+        localUser = await _localUserService.getUserById(appUser.id);
+      }
+
+      final story = await _service.generateAdventure(
+        context,
+        user: appUser,
+        localUser: localUser,
+      );
       if (!mounted) return;
       setState(() {
         _story = story;
@@ -341,9 +418,9 @@ class _StoryView extends StatelessWidget {
           Text(
             story.title.isEmpty ? 'המשימה של ספרק' : story.title,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.deepPurple.shade700,
-              fontWeight: FontWeight.w700,
-            ),
+                  color: Colors.deepPurple.shade700,
+                  fontWeight: FontWeight.w700,
+                ),
           ),
           const SizedBox(height: 12),
           Text(story.scene, style: const TextStyle(fontSize: 16, height: 1.5)),

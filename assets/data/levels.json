@@ -7,7 +7,7 @@
       "unlockStars": 0,
       "reward": 30,
       "position": {
-        "x": 0.6,
+        "x": 0.1,
         "y": 0.85
       },
       "words": [
@@ -50,8 +50,8 @@
       "unlockStars": 3,
       "reward": 45,
       "position": {
-        "x": 0.2,
-        "y": 0.68
+        "x": 0.3,
+        "y": 0.85
       },
       "words": [
         {
@@ -93,8 +93,8 @@
       "unlockStars": 7,
       "reward": 55,
       "position": {
-        "x": 0.74,
-        "y": 0.46
+        "x": 0.5,
+        "y": 0.85
       },
       "words": [
         {
@@ -136,8 +136,8 @@
       "unlockStars": 11,
       "reward": 65,
       "position": {
-        "x": 0.32,
-        "y": 0.32
+        "x": 0.7,
+        "y": 0.85
       },
       "words": [
         {
@@ -179,8 +179,8 @@
       "unlockStars": 15,
       "reward": 75,
       "position": {
-        "x": 0.15,
-        "y": 0.18
+        "x": 0.9,
+        "y": 0.85
       },
       "words": [
         {
@@ -222,8 +222,8 @@
       "unlockStars": 20,
       "reward": 90,
       "position": {
-        "x": 0.85,
-        "y": 0.18
+        "x": 0.9,
+        "y": 0.75
       },
       "words": [
         {
@@ -255,6 +255,880 @@
           "word": "Mars Rover",
           "searchHint": "mars rover exploration",
           "imageUrl": "assets/images/words/mars_rover.png"
+        }
+      ]
+    },
+    {
+      "id": "level_colors",
+      "name": "שלב 7: צבעים",
+      "description": "למדו את כל הצבעים הקסומים",
+      "unlockStars": 26,
+      "reward": 100,
+      "position": {
+        "x": 0.7,
+        "y": 0.75
+      },
+      "words": [
+        {
+          "word": "Red",
+          "searchHint": "bright red color",
+          "imageUrl": "assets/images/words/red.png"
+        },
+        {
+          "word": "Blue",
+          "searchHint": "sky blue color",
+          "imageUrl": "assets/images/words/blue.png"
+        },
+        {
+          "word": "Yellow",
+          "searchHint": "sunny yellow color",
+          "imageUrl": "assets/images/words/yellow.png"
+        },
+        {
+          "word": "Green",
+          "searchHint": "grass green color",
+          "imageUrl": "assets/images/words/green.png"
+        },
+        {
+          "word": "Purple",
+          "searchHint": "royal purple color",
+          "imageUrl": "assets/images/words/purple.png"
+        },
+        {
+          "word": "Orange",
+          "searchHint": "sunset orange color",
+          "imageUrl": "assets/images/words/orange_color.png"
+        }
+      ]
+    },
+    {
+      "id": "level_food",
+      "name": "שלב 8: אוכל טעים",
+      "description": "מה תרצו לאכול היום?",
+      "unlockStars": 33,
+      "reward": 110,
+      "position": {
+        "x": 0.5,
+        "y": 0.75
+      },
+      "words": [
+        {
+          "word": "Pizza",
+          "searchHint": "cheesy pizza slice",
+          "imageUrl": "assets/images/words/pizza.png"
+        },
+        {
+          "word": "Ice Cream",
+          "searchHint": "delicious ice cream cone",
+          "imageUrl": "assets/images/words/ice_cream.png"
+        },
+        {
+          "word": "Sandwich",
+          "searchHint": "tasty sandwich lunch",
+          "imageUrl": "assets/images/words/sandwich.png"
+        },
+        {
+          "word": "Cookie",
+          "searchHint": "chocolate chip cookie",
+          "imageUrl": "assets/images/words/cookie.png"
+        },
+        {
+          "word": "Cake",
+          "searchHint": "birthday cake candles",
+          "imageUrl": "assets/images/words/cake.png"
+        },
+        {
+          "word": "Hamburger",
+          "searchHint": "juicy hamburger",
+          "imageUrl": "assets/images/words/hamburger.png"
+        }
+      ]
+    },
+    {
+      "id": "level_home",
+      "name": "שלב 9: בבית",
+      "description": "מה יש לנו בבית?",
+      "unlockStars": 40,
+      "reward": 120,
+      "position": {
+        "x": 0.3,
+        "y": 0.75
+      },
+      "words": [
+        {
+          "word": "Bed",
+          "searchHint": "comfortable bed bedroom",
+          "imageUrl": "assets/images/words/bed.png"
+        },
+        {
+          "word": "Chair",
+          "searchHint": "wooden chair furniture",
+          "imageUrl": "assets/images/words/chair.png"
+        },
+        {
+          "word": "Table",
+          "searchHint": "dining table wood",
+          "imageUrl": "assets/images/words/table.png"
+        },
+        {
+          "word": "Lamp",
+          "searchHint": "desk lamp light",
+          "imageUrl": "assets/images/words/lamp.png"
+        },
+        {
+          "word": "Window",
+          "searchHint": "house window glass",
+          "imageUrl": "assets/images/words/window.png"
+        },
+        {
+          "word": "Door",
+          "searchHint": "wooden door entrance",
+          "imageUrl": "assets/images/words/door.png"
+        }
+      ]
+    },
+    {
+      "id": "level_sports",
+      "name": "שלב 10: ספורט",
+      "description": "בואו נשחק ונזוז!",
+      "unlockStars": 48,
+      "reward": 130,
+      "position": {
+        "x": 0.1,
+        "y": 0.75
+      },
+      "words": [
+        {
+          "word": "Ball",
+          "searchHint": "soccer ball sport",
+          "imageUrl": "assets/images/words/ball.png"
+        },
+        {
+          "word": "Bicycle",
+          "searchHint": "bicycle ride bike",
+          "imageUrl": "assets/images/words/bicycle.png"
+        },
+        {
+          "word": "Tennis Racket",
+          "searchHint": "tennis racket sport",
+          "imageUrl": "assets/images/words/tennis_racket.png"
+        },
+        {
+          "word": "Soccer Goal",
+          "searchHint": "soccer goal net",
+          "imageUrl": "assets/images/words/soccer_goal.png"
+        },
+        {
+          "word": "Basketball",
+          "searchHint": "basketball orange ball",
+          "imageUrl": "assets/images/words/basketball.png"
+        },
+        {
+          "word": "Swimming Pool",
+          "searchHint": "swimming pool water",
+          "imageUrl": "assets/images/words/swimming_pool.png"
+        }
+      ]
+    },
+    {
+      "id": "level_ocean",
+      "name": "שלב 11: העולם התת-ימי",
+      "description": "צללו לעומק הים",
+      "unlockStars": 57,
+      "reward": 140,
+      "position": {
+        "x": 0.1,
+        "y": 0.65
+      },
+      "words": [
+        {
+          "word": "Fish",
+          "searchHint": "colorful fish ocean",
+          "imageUrl": "assets/images/words/fish.png"
+        },
+        {
+          "word": "Octopus",
+          "searchHint": "octopus tentacles sea",
+          "imageUrl": "assets/images/words/octopus.png"
+        },
+        {
+          "word": "Starfish",
+          "searchHint": "starfish beach ocean",
+          "imageUrl": "assets/images/words/starfish.png"
+        },
+        {
+          "word": "Seashell",
+          "searchHint": "beautiful seashell beach",
+          "imageUrl": "assets/images/words/seashell.png"
+        },
+        {
+          "word": "Crab",
+          "searchHint": "crab beach sand",
+          "imageUrl": "assets/images/words/crab.png"
+        },
+        {
+          "word": "Dolphin",
+          "searchHint": "dolphin jumping ocean",
+          "imageUrl": "assets/images/words/dolphin.png"
+        }
+      ]
+    },
+    {
+      "id": "level_nature",
+      "name": "שלב 12: הטבע",
+      "description": "גלו את יופיו של הטבע",
+      "unlockStars": 67,
+      "reward": 150,
+      "position": {
+        "x": 0.3,
+        "y": 0.65
+      },
+      "words": [
+        {
+          "word": "Tree",
+          "searchHint": "tall green tree",
+          "imageUrl": "assets/images/words/tree.png"
+        },
+        {
+          "word": "Flower",
+          "searchHint": "beautiful flower garden",
+          "imageUrl": "assets/images/words/flower.png"
+        },
+        {
+          "word": "Butterfly",
+          "searchHint": "colorful butterfly wings",
+          "imageUrl": "assets/images/words/butterfly.png"
+        },
+        {
+          "word": "Sun",
+          "searchHint": "bright sun sky",
+          "imageUrl": "assets/images/words/sun.png"
+        },
+        {
+          "word": "Cloud",
+          "searchHint": "white cloud sky",
+          "imageUrl": "assets/images/words/cloud.png"
+        },
+        {
+          "word": "Rainbow",
+          "searchHint": "colorful rainbow sky",
+          "imageUrl": "assets/images/words/rainbow.png"
+        }
+      ]
+    },
+    {
+      "id": "level_music",
+      "name": "שלב 13: מוזיקה וצלילים",
+      "description": "גלו את עולם המוזיקה הקסום",
+      "unlockStars": 78,
+      "reward": 160,
+      "position": {
+        "x": 0.5,
+        "y": 0.65
+      },
+      "words": [
+        {
+          "word": "Piano",
+          "searchHint": "grand piano keys music",
+          "imageUrl": "assets/images/words/piano.png"
+        },
+        {
+          "word": "Guitar",
+          "searchHint": "acoustic guitar strings",
+          "imageUrl": "assets/images/words/guitar.png"
+        },
+        {
+          "word": "Drums",
+          "searchHint": "drum set percussion",
+          "imageUrl": "assets/images/words/drums.png"
+        },
+        {
+          "word": "Violin",
+          "searchHint": "violin classical music",
+          "imageUrl": "assets/images/words/violin.png"
+        },
+        {
+          "word": "Trumpet",
+          "searchHint": "brass trumpet instrument",
+          "imageUrl": "assets/images/words/trumpet.png"
+        },
+        {
+          "word": "Microphone",
+          "searchHint": "singing microphone stage",
+          "imageUrl": "assets/images/words/microphone.png"
+        },
+        {
+          "word": "Music Note",
+          "searchHint": "musical note sheet music",
+          "imageUrl": "assets/images/words/music_note.png"
+        }
+      ]
+    },
+    {
+      "id": "level_clothing",
+      "name": "שלב 14: ארון הבגדים",
+      "description": "מה נלבש היום?",
+      "unlockStars": 92,
+      "reward": 170,
+      "position": {
+        "x": 0.7,
+        "y": 0.65
+      },
+      "words": [
+        {
+          "word": "Shirt",
+          "searchHint": "colorful shirt clothing",
+          "imageUrl": "assets/images/words/shirt.png"
+        },
+        {
+          "word": "Pants",
+          "searchHint": "blue jeans pants",
+          "imageUrl": "assets/images/words/pants.png"
+        },
+        {
+          "word": "Shoes",
+          "searchHint": "running shoes sneakers",
+          "imageUrl": "assets/images/words/shoes.png"
+        },
+        {
+          "word": "Hat",
+          "searchHint": "baseball cap hat",
+          "imageUrl": "assets/images/words/hat.png"
+        },
+        {
+          "word": "Dress",
+          "searchHint": "pretty dress girl",
+          "imageUrl": "assets/images/words/dress.png"
+        },
+        {
+          "word": "Jacket",
+          "searchHint": "warm jacket coat",
+          "imageUrl": "assets/images/words/jacket.png"
+        },
+        {
+          "word": "Socks",
+          "searchHint": "colorful socks pair",
+          "imageUrl": "assets/images/words/socks.png"
+        }
+      ]
+    },
+    {
+      "id": "level_professions",
+      "name": "שלב 15: מה תרצו להיות?",
+      "description": "גלו מקצועות מעניינים",
+      "unlockStars": 107,
+      "reward": 180,
+      "position": {
+        "x": 0.9,
+        "y": 0.65
+      },
+      "words": [
+        {
+          "word": "Doctor",
+          "searchHint": "doctor stethoscope medical",
+          "imageUrl": "assets/images/words/doctor.png"
+        },
+        {
+          "word": "Teacher",
+          "searchHint": "teacher classroom education",
+          "imageUrl": "assets/images/words/teacher.png"
+        },
+        {
+          "word": "Firefighter",
+          "searchHint": "firefighter fire truck",
+          "imageUrl": "assets/images/words/firefighter.png"
+        },
+        {
+          "word": "Chef",
+          "searchHint": "chef cooking kitchen",
+          "imageUrl": "assets/images/words/chef.png"
+        },
+        {
+          "word": "Pilot",
+          "searchHint": "pilot airplane cockpit",
+          "imageUrl": "assets/images/words/pilot.png"
+        },
+        {
+          "word": "Artist",
+          "searchHint": "artist painting brush",
+          "imageUrl": "assets/images/words/artist.png"
+        },
+        {
+          "word": "Police Officer",
+          "searchHint": "police officer badge",
+          "imageUrl": "assets/images/words/police_officer.png"
+        },
+        {
+          "word": "Astronaut",
+          "searchHint": "astronaut space suit",
+          "imageUrl": "assets/images/words/astronaut_profession.png"
+        }
+      ]
+    },
+    {
+      "id": "level_emotions",
+      "name": "שלב 16: רגשות",
+      "description": "איך אתם מרגישים היום?",
+      "unlockStars": 123,
+      "reward": 190,
+      "position": {
+        "x": 0.9,
+        "y": 0.55
+      },
+      "words": [
+        {
+          "word": "Happy",
+          "searchHint": "happy smiling face emotion",
+          "imageUrl": "assets/images/words/happy.png"
+        },
+        {
+          "word": "Sad",
+          "searchHint": "sad crying face emotion",
+          "imageUrl": "assets/images/words/sad.png"
+        },
+        {
+          "word": "Angry",
+          "searchHint": "angry frowning face emotion",
+          "imageUrl": "assets/images/words/angry.png"
+        },
+        {
+          "word": "Excited",
+          "searchHint": "excited happy jumping emotion",
+          "imageUrl": "assets/images/words/excited.png"
+        },
+        {
+          "word": "Surprised",
+          "searchHint": "surprised shocked face emotion",
+          "imageUrl": "assets/images/words/surprised.png"
+        },
+        {
+          "word": "Scared",
+          "searchHint": "scared afraid face emotion",
+          "imageUrl": "assets/images/words/scared.png"
+        },
+        {
+          "word": "Proud",
+          "searchHint": "proud confident face emotion",
+          "imageUrl": "assets/images/words/proud.png"
+        }
+      ]
+    },
+    {
+      "id": "level_weather",
+      "name": "שלב 17: מזג האוויר",
+      "description": "מה מזג האוויר היום?",
+      "unlockStars": 140,
+      "reward": 200,
+      "position": {
+        "x": 0.7,
+        "y": 0.55
+      },
+      "words": [
+        {
+          "word": "Sunny",
+          "searchHint": "sunny bright sun weather",
+          "imageUrl": "assets/images/words/sunny.png"
+        },
+        {
+          "word": "Rainy",
+          "searchHint": "rainy rain drops weather",
+          "imageUrl": "assets/images/words/rainy.png"
+        },
+        {
+          "word": "Snowy",
+          "searchHint": "snowy snowflakes winter weather",
+          "imageUrl": "assets/images/words/snowy.png"
+        },
+        {
+          "word": "Windy",
+          "searchHint": "windy wind blowing weather",
+          "imageUrl": "assets/images/words/windy.png"
+        },
+        {
+          "word": "Cloudy",
+          "searchHint": "cloudy clouds sky weather",
+          "imageUrl": "assets/images/words/cloudy.png"
+        },
+        {
+          "word": "Stormy",
+          "searchHint": "stormy thunder lightning weather",
+          "imageUrl": "assets/images/words/stormy.png"
+        },
+        {
+          "word": "Foggy",
+          "searchHint": "foggy mist weather",
+          "imageUrl": "assets/images/words/foggy.png"
+        },
+        {
+          "word": "Hot",
+          "searchHint": "hot temperature sun weather",
+          "imageUrl": "assets/images/words/hot.png"
+        }
+      ]
+    },
+    {
+      "id": "level_body",
+      "name": "שלב 18: גוף האדם",
+      "description": "למדו על חלקי הגוף",
+      "unlockStars": 158,
+      "reward": 210,
+      "position": {
+        "x": 0.5,
+        "y": 0.55
+      },
+      "words": [
+        {
+          "word": "Head",
+          "searchHint": "human head face",
+          "imageUrl": "assets/images/words/head.png"
+        },
+        {
+          "word": "Hand",
+          "searchHint": "human hand fingers",
+          "imageUrl": "assets/images/words/hand.png"
+        },
+        {
+          "word": "Foot",
+          "searchHint": "human foot toes",
+          "imageUrl": "assets/images/words/foot.png"
+        },
+        {
+          "word": "Eye",
+          "searchHint": "human eye vision",
+          "imageUrl": "assets/images/words/eye.png"
+        },
+        {
+          "word": "Ear",
+          "searchHint": "human ear hearing",
+          "imageUrl": "assets/images/words/ear.png"
+        },
+        {
+          "word": "Nose",
+          "searchHint": "human nose smell",
+          "imageUrl": "assets/images/words/nose.png"
+        },
+        {
+          "word": "Mouth",
+          "searchHint": "human mouth smile",
+          "imageUrl": "assets/images/words/mouth.png"
+        },
+        {
+          "word": "Heart",
+          "searchHint": "human heart organ",
+          "imageUrl": "assets/images/words/heart.png"
+        }
+      ]
+    },
+    {
+      "id": "level_family",
+      "name": "שלב 19: המשפחה",
+      "description": "מי במשפחה שלכם?",
+      "unlockStars": 177,
+      "reward": 220,
+      "position": {
+        "x": 0.3,
+        "y": 0.55
+      },
+      "words": [
+        {
+          "word": "Mother",
+          "searchHint": "mother mom family",
+          "imageUrl": "assets/images/words/mother.png"
+        },
+        {
+          "word": "Father",
+          "searchHint": "father dad family",
+          "imageUrl": "assets/images/words/father.png"
+        },
+        {
+          "word": "Brother",
+          "searchHint": "brother boy sibling family",
+          "imageUrl": "assets/images/words/brother.png"
+        },
+        {
+          "word": "Sister",
+          "searchHint": "sister girl sibling family",
+          "imageUrl": "assets/images/words/sister.png"
+        },
+        {
+          "word": "Grandmother",
+          "searchHint": "grandmother grandma family",
+          "imageUrl": "assets/images/words/grandmother.png"
+        },
+        {
+          "word": "Grandfather",
+          "searchHint": "grandfather grandpa family",
+          "imageUrl": "assets/images/words/grandfather.png"
+        },
+        {
+          "word": "Baby",
+          "searchHint": "baby infant family",
+          "imageUrl": "assets/images/words/baby.png"
+        }
+      ]
+    },
+    {
+      "id": "level_school",
+      "name": "שלב 20: בית הספר",
+      "description": "מה יש בבית הספר?",
+      "unlockStars": 197,
+      "reward": 230,
+      "position": {
+        "x": 0.1,
+        "y": 0.55
+      },
+      "words": [
+        {
+          "word": "Book",
+          "searchHint": "school book reading",
+          "imageUrl": "assets/images/words/book.png"
+        },
+        {
+          "word": "Pencil",
+          "searchHint": "pencil writing school",
+          "imageUrl": "assets/images/words/pencil.png"
+        },
+        {
+          "word": "Eraser",
+          "searchHint": "eraser pencil school",
+          "imageUrl": "assets/images/words/eraser.png"
+        },
+        {
+          "word": "Backpack",
+          "searchHint": "school backpack bag",
+          "imageUrl": "assets/images/words/backpack.png"
+        },
+        {
+          "word": "Desk",
+          "searchHint": "school desk table",
+          "imageUrl": "assets/images/words/desk.png"
+        },
+        {
+          "word": "Chalkboard",
+          "searchHint": "chalkboard blackboard school",
+          "imageUrl": "assets/images/words/chalkboard.png"
+        },
+        {
+          "word": "Globe",
+          "searchHint": "globe earth geography school",
+          "imageUrl": "assets/images/words/globe.png"
+        },
+        {
+          "word": "Calculator",
+          "searchHint": "calculator math school",
+          "imageUrl": "assets/images/words/calculator.png"
+        }
+      ]
+    },
+    {
+      "id": "level_shapes",
+      "name": "שלב 21: צורות גיאומטריות",
+      "description": "למדו על צורות שונות",
+      "unlockStars": 218,
+      "reward": 240,
+      "position": {
+        "x": 0.1,
+        "y": 0.45
+      },
+      "words": [
+        {
+          "word": "Circle",
+          "searchHint": "perfect circle shape",
+          "imageUrl": "assets/images/words/circle.png"
+        },
+        {
+          "word": "Square",
+          "searchHint": "square shape geometry",
+          "imageUrl": "assets/images/words/square.png"
+        },
+        {
+          "word": "Triangle",
+          "searchHint": "triangle shape geometry",
+          "imageUrl": "assets/images/words/triangle.png"
+        },
+        {
+          "word": "Rectangle",
+          "searchHint": "rectangle shape geometry",
+          "imageUrl": "assets/images/words/rectangle.png"
+        },
+        {
+          "word": "Star",
+          "searchHint": "star shape five points",
+          "imageUrl": "assets/images/words/star_shape.png"
+        },
+        {
+          "word": "Diamond",
+          "searchHint": "diamond shape gem",
+          "imageUrl": "assets/images/words/diamond.png"
+        },
+        {
+          "word": "Heart",
+          "searchHint": "heart shape love",
+          "imageUrl": "assets/images/words/heart_shape.png"
+        },
+        {
+          "word": "Oval",
+          "searchHint": "oval ellipse shape",
+          "imageUrl": "assets/images/words/oval.png"
+        }
+      ]
+    },
+    {
+      "id": "level_time",
+      "name": "שלב 22: זמן וזמנים",
+      "description": "מה השעה?",
+      "unlockStars": 240,
+      "reward": 250,
+      "position": {
+        "x": 0.3,
+        "y": 0.45
+      },
+      "words": [
+        {
+          "word": "Clock",
+          "searchHint": "wall clock time",
+          "imageUrl": "assets/images/words/clock.png"
+        },
+        {
+          "word": "Watch",
+          "searchHint": "wrist watch time",
+          "imageUrl": "assets/images/words/watch.png"
+        },
+        {
+          "word": "Morning",
+          "searchHint": "morning sunrise time",
+          "imageUrl": "assets/images/words/morning.png"
+        },
+        {
+          "word": "Afternoon",
+          "searchHint": "afternoon sun time",
+          "imageUrl": "assets/images/words/afternoon.png"
+        },
+        {
+          "word": "Evening",
+          "searchHint": "evening sunset time",
+          "imageUrl": "assets/images/words/evening.png"
+        },
+        {
+          "word": "Night",
+          "searchHint": "night moon stars time",
+          "imageUrl": "assets/images/words/night.png"
+        },
+        {
+          "word": "Today",
+          "searchHint": "today calendar date",
+          "imageUrl": "assets/images/words/today.png"
+        },
+        {
+          "word": "Tomorrow",
+          "searchHint": "tomorrow future calendar",
+          "imageUrl": "assets/images/words/tomorrow.png"
+        }
+      ]
+    },
+    {
+      "id": "level_actions",
+      "name": "שלב 23: פעולות",
+      "description": "מה אתם אוהבים לעשות?",
+      "unlockStars": 263,
+      "reward": 260,
+      "position": {
+        "x": 0.5,
+        "y": 0.45
+      },
+      "words": [
+        {
+          "word": "Run",
+          "searchHint": "running person action",
+          "imageUrl": "assets/images/words/run.png"
+        },
+        {
+          "word": "Jump",
+          "searchHint": "jumping person action",
+          "imageUrl": "assets/images/words/jump.png"
+        },
+        {
+          "word": "Dance",
+          "searchHint": "dancing person action",
+          "imageUrl": "assets/images/words/dance.png"
+        },
+        {
+          "word": "Sing",
+          "searchHint": "singing person microphone action",
+          "imageUrl": "assets/images/words/sing.png"
+        },
+        {
+          "word": "Read",
+          "searchHint": "reading person book action",
+          "imageUrl": "assets/images/words/read.png"
+        },
+        {
+          "word": "Write",
+          "searchHint": "writing person pencil action",
+          "imageUrl": "assets/images/words/write.png"
+        },
+        {
+          "word": "Draw",
+          "searchHint": "drawing person art action",
+          "imageUrl": "assets/images/words/draw.png"
+        },
+        {
+          "word": "Play",
+          "searchHint": "playing children fun action",
+          "imageUrl": "assets/images/words/play.png"
+        }
+      ]
+    },
+    {
+      "id": "level_final",
+      "name": "שלב 24: הרפתקה אחרונה",
+      "description": "השלב הסופי - אתם מוכנים!",
+      "unlockStars": 287,
+      "reward": 300,
+      "position": {
+        "x": 0.7,
+        "y": 0.45
+      },
+      "words": [
+        {
+          "word": "Adventure",
+          "searchHint": "adventure journey quest",
+          "imageUrl": "assets/images/words/adventure.png"
+        },
+        {
+          "word": "Victory",
+          "searchHint": "victory success trophy",
+          "imageUrl": "assets/images/words/victory.png"
+        },
+        {
+          "word": "Champion",
+          "searchHint": "champion winner medal",
+          "imageUrl": "assets/images/words/champion.png"
+        },
+        {
+          "word": "Success",
+          "searchHint": "success achievement goal",
+          "imageUrl": "assets/images/words/success.png"
+        },
+        {
+          "word": "Celebration",
+          "searchHint": "celebration party confetti",
+          "imageUrl": "assets/images/words/celebration.png"
+        },
+        {
+          "word": "Trophy",
+          "searchHint": "golden trophy award",
+          "imageUrl": "assets/images/words/trophy.png"
+        },
+        {
+          "word": "Medal",
+          "searchHint": "gold medal award",
+          "imageUrl": "assets/images/words/medal.png"
+        },
+        {
+          "word": "Crown",
+          "searchHint": "golden crown king queen",
+          "imageUrl": "assets/images/words/crown.png"
         }
       ]
     }

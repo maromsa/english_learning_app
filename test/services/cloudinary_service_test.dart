@@ -1,9 +1,11 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:english_learning_app/services/cloudinary_service.dart';
+import 'package:english_learning_app/services/network/app_http_client.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
+
+import '../test_utils/test_http_adapter.dart';
 
 void main() {
   const cloudName = 'sample-cloud';
@@ -13,9 +15,10 @@ void main() {
     test(
       'returns parsed words when Cloudinary responds successfully',
       () async {
-        final mockClient = MockClient((request) async {
+        final dio = Dio();
+        dio.httpClientAdapter = TestHttpClientAdapter((options, _) async {
           expect(
-            request.url,
+            options.uri,
             Uri.parse(
               'https://res.cloudinary.com/$cloudName/image/list/$tagName.json',
             ),
@@ -31,14 +34,18 @@ void main() {
             ],
           });
 
-          return http.Response(
+          return ResponseBody.fromString(
             body,
             200,
-            headers: {'content-type': 'application/json'},
+            headers: {
+              Headers.contentTypeHeader: ['application/json']
+            },
           );
         });
 
-        final service = CloudinaryService(httpClient: mockClient);
+        final service = CloudinaryService(
+          httpClient: AppHttpClient(dio: dio),
+        );
 
         final words = await service.fetchWords(
           cloudName: cloudName,
@@ -57,7 +64,8 @@ void main() {
     );
 
     test('falls back to constructed URL when secure_url is missing', () async {
-      final mockClient = MockClient((request) async {
+      final dio = Dio();
+      dio.httpClientAdapter = TestHttpClientAdapter((options, _) async {
         final body = jsonEncode({
           'resources': [
             {
@@ -69,14 +77,16 @@ void main() {
           ],
         });
 
-        return http.Response(
+        return ResponseBody.fromString(
           body,
           200,
-          headers: {'content-type': 'application/json'},
+          headers: {
+            Headers.contentTypeHeader: ['application/json']
+          },
         );
       });
 
-      final service = CloudinaryService(httpClient: mockClient);
+      final service = CloudinaryService(httpClient: AppHttpClient(dio: dio));
 
       final words = await service.fetchWords(
         cloudName: cloudName,
@@ -92,11 +102,12 @@ void main() {
     });
 
     test('returns empty list on non-200 response', () async {
-      final mockClient = MockClient((request) async {
-        return http.Response('Error', 500);
-      });
+      final dio = Dio();
+      dio.httpClientAdapter = TestHttpClientAdapter(
+        (options, _) async => ResponseBody.fromString('Error', 500),
+      );
 
-      final service = CloudinaryService(httpClient: mockClient);
+      final service = CloudinaryService(httpClient: AppHttpClient(dio: dio));
 
       final words = await service.fetchWords(
         cloudName: cloudName,
@@ -107,7 +118,8 @@ void main() {
     });
 
     test('ignores malformed resources and keeps valid ones', () async {
-      final mockClient = MockClient((request) async {
+      final dio = Dio();
+      dio.httpClientAdapter = TestHttpClientAdapter((options, _) async {
         final body = jsonEncode({
           'resources': [
             'invalid',
@@ -122,14 +134,16 @@ void main() {
           ],
         });
 
-        return http.Response(
+        return ResponseBody.fromString(
           body,
           200,
-          headers: {'content-type': 'application/json'},
+          headers: {
+            Headers.contentTypeHeader: ['application/json']
+          },
         );
       });
 
-      final service = CloudinaryService(httpClient: mockClient);
+      final service = CloudinaryService(httpClient: AppHttpClient(dio: dio));
 
       final words = await service.fetchWords(
         cloudName: cloudName,

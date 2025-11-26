@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import 'ai_image_validator.dart';
+import 'network/app_http_client.dart';
 
 /// Contract for fetching web images for a given word.
 abstract class WebImageProvider {
@@ -15,18 +17,20 @@ class WebImageService implements WebImageProvider {
   WebImageService({
     required String apiKey,
     AiImageValidator? imageValidator,
-    http.Client? httpClient,
-  }) : _apiKey = apiKey,
-       _httpClient = httpClient ?? http.Client(),
-       _ownsClient = httpClient == null,
-       _imageValidator = imageValidator;
+    AppHttpClient? httpClient,
+  })  : _apiKey = apiKey,
+        _httpClient = httpClient ??
+            AppHttpClient(
+              connectTimeout: _requestTimeout,
+              receiveTimeout: _requestTimeout,
+            ),
+        _imageValidator = imageValidator;
 
   static const Duration _requestTimeout = Duration(seconds: 8);
   static const int _maxCandidates = 8;
 
   final String _apiKey;
-  final http.Client _httpClient;
-  final bool _ownsClient;
+  final AppHttpClient _httpClient;
   final AiImageValidator? _imageValidator;
 
   @override
@@ -80,9 +84,7 @@ class WebImageService implements WebImageProvider {
   }
 
   void dispose() {
-    if (_ownsClient) {
-      _httpClient.close();
-    }
+    _httpClient.close();
   }
 
   Future<List<Map<String, dynamic>>> _searchPixabay(String word) async {
@@ -98,12 +100,15 @@ class WebImageService implements WebImageProvider {
     final uri = Uri.https('pixabay.com', '/api/', queryParameters);
 
     try {
-      final response = await _httpClient.get(uri).timeout(_requestTimeout);
+      final response = await _httpClient.dio.getUri<Map<String, dynamic>>(
+        uri,
+        options: Options(responseType: ResponseType.json),
+      );
       if (response.statusCode != 200) {
         return const <Map<String, dynamic>>[];
       }
 
-      final decoded = jsonDecode(response.body) as Map<String, dynamic>?;
+      final decoded = response.data;
       if (decoded == null) {
         return const <Map<String, dynamic>>[];
       }
@@ -121,25 +126,31 @@ class WebImageService implements WebImageProvider {
 
   Future<_DownloadedImage?> _downloadImage(String url) async {
     try {
-      final response = await _httpClient
-          .get(Uri.parse(url))
-          .timeout(_requestTimeout);
+      final response = await _httpClient.dio.getUri<List<int>>(
+        Uri.parse(url),
+        options: Options(responseType: ResponseType.bytes),
+      );
       if (response.statusCode != 200) {
         return null;
       }
 
-      final contentTypeHeader = response.headers['content-type'];
+      final contentTypeHeader = response.headers.value('content-type');
       final mimeType = contentTypeHeader?.split(';').first;
 
-      return _DownloadedImage(response.bodyBytes, mimeType);
-    } catch (_) {
+      final data = response.data;
+      if (data == null) {
+        return null;
+      }
+
+      return _DownloadedImage(Uint8List.fromList(data), mimeType);
+    } catch (error) {
+      debugPrint('WebImageService download failed: $error');
       return null;
     }
   }
 
   String? _extractImageUrl(Map<String, dynamic> candidate) {
-    final url =
-        candidate['webformatURL'] as String? ??
+    final url = candidate['webformatURL'] as String? ??
         candidate['largeImageURL'] as String? ??
         candidate['previewURL'] as String?;
 
@@ -169,13 +180,12 @@ class WebImageService implements WebImageProvider {
         .split(RegExp(r'[\s_-]+'))
         .where((part) => part.trim().isNotEmpty)
         .map((part) {
-          final lowercase = part.toLowerCase();
-          if (lowercase.length <= 1) {
-            return lowercase.toUpperCase();
-          }
-          return lowercase[0].toUpperCase() + lowercase.substring(1);
-        })
-        .toList();
+      final lowercase = part.toLowerCase();
+      if (lowercase.length <= 1) {
+        return lowercase.toUpperCase();
+      }
+      return lowercase[0].toUpperCase() + lowercase.substring(1);
+    }).toList();
 
     return words.isEmpty ? label : words.join(' ');
   }

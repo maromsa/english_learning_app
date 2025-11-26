@@ -1,4 +1,4 @@
-import 'dart:math';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:confetti/confetti.dart';
@@ -6,7 +6,6 @@ import 'package:just_audio/just_audio.dart';
 import '../providers/coin_provider.dart';
 import '../providers/shop_provider.dart';
 import '../models/product.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -16,18 +15,19 @@ class ShopScreen extends StatefulWidget {
 }
 
 class _ShopScreenState extends State<ShopScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   ProductCategory? _selectedCategory;
   late final ConfettiController _confettiController;
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isInitialized = false;
+  bool _isDeductingCoins = false;
 
   @override
   void initState() {
     super.initState();
     try {
       _confettiController = ConfettiController(
-        duration: const Duration(seconds: 3),
+        duration: const Duration(seconds: 2),
       );
       _isInitialized = true;
     } catch (e) {
@@ -47,8 +47,6 @@ class _ShopScreenState extends State<ShopScreen>
 
   Future<void> _playPurchaseSound() async {
     try {
-      // Using a simple beep-like sound effect
-      // You can replace this with an actual sound file if available
       await _audioPlayer.setAsset('assets/audio/startup_chime.wav');
       await _audioPlayer.setVolume(0.3);
       await _audioPlayer.play();
@@ -58,195 +56,18 @@ class _ShopScreenState extends State<ShopScreen>
     }
   }
 
-  void _showProductDetails(BuildContext context, Product product) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                product.rarityColor.withValues(alpha: 0.9),
-                product.rarityColor.withValues(alpha: 0.7),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: product.rarityColor.withValues(alpha: 0.5),
-                blurRadius: 20,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Product Image
-              Hero(
-                tag: product.id,
-                child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(15),
-                    child: Image.asset(
-                      product.assetImagePath,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        debugPrint('Error loading image ${product.assetImagePath}: $error');
-                        return const Icon(Icons.image, size: 80);
-                      },
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Product Name
-              Text(
-                product.name,
-                style: GoogleFonts.assistant(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                product.englishName,
-                style: GoogleFonts.assistant(
-                  fontSize: 20,
-                  color: Colors.white.withValues(alpha: 0.9),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              // Rarity Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: product.rarityColor,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  product.rarityName,
-                  style: GoogleFonts.assistant(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Description
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  product.description,
-                  style: GoogleFonts.assistant(
-                    fontSize: 16,
-                    color: Colors.white,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              if (product.specialEffect != null) ...[
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.star, color: Colors.yellow, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      product.specialEffect!,
-                      style: GoogleFonts.assistant(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.yellow.shade100,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 20),
-              // Price
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.amber,
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.monetization_on, color: Colors.white),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${product.price} מטבעות',
-                      style: GoogleFonts.assistant(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Close Button
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.3),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12,
-                  ),
-                ),
-                child: Text(
-                  'סגור',
-                  style: GoogleFonts.assistant(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _purchaseProduct(Product product) async {
+  Future<void> _handlePurchase(Product product) async {
     final coinProvider = Provider.of<CoinProvider>(context, listen: false);
     final shopProvider = Provider.of<ShopProvider>(context, listen: false);
 
     if (coinProvider.coins >= product.price) {
-      final success = await coinProvider.spendCoins(product.price);
+      setState(() => _isDeductingCoins = true);
 
-                              if (success) {
+      // Simulate network/processing delay
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      final success = await coinProvider.spendCoins(product.price);
+      if (success) {
         await shopProvider.purchase(product.id);
         if (_isInitialized) {
           try {
@@ -258,295 +79,164 @@ class _ShopScreenState extends State<ShopScreen>
         await _playPurchaseSound();
 
         if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '🎉 קנית את ${product.name}!',
-                      style: GoogleFonts.assistant(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-                                      backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-                                    ),
-                                  );
+          setState(() => _isDeductingCoins = false);
+          Navigator.pop(context); // Close sheet
+          _showSuccessOverlay(product);
         }
-                                }
-                              } else {
+      } else {
+        if (mounted) {
+          setState(() => _isDeductingCoins = false);
+        }
+      }
+    } else {
       if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'אין לך מספיק מטבעות!',
-                    style: GoogleFonts.assistant(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-                                      backgroundColor: Colors.red,
-            duration: const Duration(seconds: 2),
+            content: const Text("אופס! אין מספיק מטבעות"),
+            backgroundColor: Colors.red.shade400,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-                                    ),
-                                  );
-                                }
-                              }
-                            }
-
-  @override
-  Widget build(BuildContext context) {
-    try {
-      final shopProvider = Provider.of<ShopProvider>(context, listen: false);
-      final coinProvider = Provider.of<CoinProvider>(context, listen: false);
-
-      final filteredProducts = _selectedCategory == null
-          ? shopProvider.products
-          : shopProvider.getProductsByCategory(_selectedCategory!);
-
-      return _buildShopContent(context, shopProvider, coinProvider, filteredProducts);
-    } catch (e, stackTrace) {
-      debugPrint('Error building shop screen: $e');
-      debugPrint('Stack trace: $stackTrace');
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(
-                'שגיאה בטעינת החנות',
-                style: GoogleFonts.assistant(fontSize: 18),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('חזור'),
-              ),
-            ],
           ),
-        ),
-      );
+        );
+      }
     }
   }
 
-  Widget _buildShopContent(BuildContext context, ShopProvider shopProvider, CoinProvider coinProvider, List<Product> filteredProducts) {
-    // Recalculate filtered products based on current selection
-    final currentFilteredProducts = _selectedCategory == null
+  void _showSuccessOverlay(Product product) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _PurchaseSuccessDialog(product: product),
+    );
+  }
+
+  void _showProductDetailsSheet(BuildContext context, Product product) {
+    final shopProvider = Provider.of<ShopProvider>(context, listen: false);
+    final isPurchased = shopProvider.isPurchased(product.id);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _ProductDetailsSheet(
+        product: product,
+        isPurchased: isPurchased,
+        onPurchase: () => _handlePurchase(product),
+      ),
+    );
+  }
+
+  IconData _getCategoryIcon(ProductCategory category) {
+    switch (category) {
+      case ProductCategory.accessories:
+        return Icons.checkroom;
+      case ProductCategory.powerUps:
+        return Icons.bolt;
+      case ProductCategory.pets:
+        return Icons.pets;
+      case ProductCategory.magical:
+        return Icons.auto_awesome;
+      case ProductCategory.special:
+        return Icons.star;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shopProvider = Provider.of<ShopProvider>(context);
+    final coinProvider = Provider.of<CoinProvider>(context);
+
+    final filteredProducts = _selectedCategory == null
         ? shopProvider.products
         : shopProvider.getProductsByCategory(_selectedCategory!);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F0FF), // Light purple tint background
       body: Stack(
         children: [
-          // Background Gradient
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.purple.shade300,
-                  Colors.blue.shade300,
-                  Colors.pink.shade300,
-                ],
-              ),
-            ),
-          ),
-          // Confetti
+          // 1. Background Elements
+          const _BackgroundPattern(),
+
+          // 2. Confetti Layer (Behind UI)
           if (_isInitialized)
             Align(
               alignment: Alignment.topCenter,
               child: ConfettiWidget(
                 confettiController: _confettiController,
-                blastDirection: pi / 2,
+                blastDirection: math.pi / 2,
                 maxBlastForce: 5,
                 minBlastForce: 2,
                 emissionFrequency: 0.05,
                 numberOfParticles: 20,
                 gravity: 0.1,
+                colors: const [
+                  Colors.green,
+                  Colors.blue,
+                  Colors.pink,
+                  Colors.orange,
+                  Colors.purple
+                ],
               ),
             ),
+
+          // 3. Main Content
           SafeArea(
             child: Column(
               children: [
                 // Header
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                      Expanded(
-                        child: Text(
-                          '🏪 חנות הקסמים',
-                          style: GoogleFonts.assistant(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      Consumer<CoinProvider>(
-                        builder: (context, coinProvider, child) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.amber,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 5,
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.monetization_on,
-                                    color: Colors.white, size: 24),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${coinProvider.coins}',
-                                  style: GoogleFonts.assistant(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
+                _ShopHeader(
+                  coinCount: coinProvider.coins,
+                  isDeducting: _isDeductingCoins,
+                  onBack: () => Navigator.pop(context),
                 ),
-                // Category Tabs
+
+                // Categories
                 Container(
-                  height: 60,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: ListView.builder(
+                  height: 80,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: ListView(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    itemCount: shopProvider.categories.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == 0) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: FilterChip(
-                            label: const Text('הכל'),
-                            selected: _selectedCategory == null,
-                            onSelected: (selected) {
-                              setState(() {
-                                _selectedCategory = null;
-                              });
-                            },
-                            selectedColor: Colors.white,
-                            checkmarkColor: Colors.purple,
-                            labelStyle: GoogleFonts.assistant(
-                              fontWeight: FontWeight.bold,
-                              color: _selectedCategory == null
-                                  ? Colors.purple
-                                  : Colors.black87,
-                            ),
-                          ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: [
+                      _CategoryTab(
+                        label: "הכל",
+                        icon: Icons.grid_view_rounded,
+                        isSelected: _selectedCategory == null,
+                        onTap: () => setState(() => _selectedCategory = null),
+                      ),
+                      ...shopProvider.categories.map((cat) {
+                        final categoryProducts =
+                            shopProvider.getProductsByCategory(cat);
+                        if (categoryProducts.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        return _CategoryTab(
+                          label: cat.categoryName,
+                          icon: _getCategoryIcon(cat),
+                          isSelected: _selectedCategory == cat,
+                          onTap: () => setState(() => _selectedCategory = cat),
                         );
-                      }
-                      final category =
-                          shopProvider.categories[index - 1];
-                      final categoryProducts =
-                          shopProvider.getProductsByCategory(category);
-                      if (categoryProducts.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: FilterChip(
-                          label: Text(category.categoryName),
-                          selected: _selectedCategory == category,
-                          onSelected: (selected) {
-                            setState(() {
-                              _selectedCategory = selected ? category : null;
-                            });
-                          },
-                          selectedColor: Colors.white,
-                          checkmarkColor: Colors.purple,
-                          labelStyle: GoogleFonts.assistant(
-                            fontWeight: FontWeight.bold,
-                            color: _selectedCategory == category
-                                ? Colors.purple
-                                : Colors.black87,
-                          ),
-                        ),
-                      );
-                    },
+                      }),
+                    ],
                   ),
                 ),
+
                 // Products Grid
                 Expanded(
-                  child: currentFilteredProducts.isEmpty
-                      ? Center(
-                          child: Text(
-                            'אין מוצרים בקטגוריה זו',
-                            style: GoogleFonts.assistant(
-                              fontSize: 18,
-                              color: Colors.white,
-                            ),
-                          ),
-                        )
+                  child: filteredProducts.isEmpty
+                      ? _EmptyShopState(category: _selectedCategory)
                       : Consumer2<ShopProvider, CoinProvider>(
                           builder: (context, shopProvider, coinProvider, child) {
-                            // Recalculate filtered products inside Consumer to ensure latest data
+                            // Recalculate filtered products inside Consumer
                             final products = _selectedCategory == null
                                 ? shopProvider.products
                                 : shopProvider.getProductsByCategory(_selectedCategory!);
-                            
+
                             return GridView.builder(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                               gridDelegate:
                                   const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
-                                childAspectRatio: 0.75,
+                                childAspectRatio: 0.7, // Taller cards
                                 crossAxisSpacing: 16,
                                 mainAxisSpacing: 16,
                               ),
@@ -555,14 +245,13 @@ class _ShopScreenState extends State<ShopScreen>
                                 final product = products[index];
                                 final isPurchased =
                                     shopProvider.isPurchased(product.id);
-                                final canBuy = coinProvider.coins >= product.price;
 
-                                return _ProductCard(
+                                return _EnhancedProductCard(
                                   product: product,
                                   isPurchased: isPurchased,
-                                  canBuy: canBuy,
-                                  onTap: () => _showProductDetails(context, product),
-                                  onPurchase: () => _purchaseProduct(product),
+                                  canBuy: coinProvider.coins >= product.price,
+                                  onTap: () =>
+                                      _showProductDetailsSheet(context, product),
                                 );
                               },
                             );
@@ -578,205 +267,572 @@ class _ShopScreenState extends State<ShopScreen>
   }
 }
 
-class _ProductCard extends StatefulWidget {
-  final Product product;
-  final bool isPurchased;
-  final bool canBuy;
-  final VoidCallback onTap;
-  final VoidCallback onPurchase;
+// ----------------------------------------------------------------
+// COMPONENT WIDGETS
+// ----------------------------------------------------------------
 
-  const _ProductCard({
-    required this.product,
-    required this.isPurchased,
-    required this.canBuy,
-    required this.onTap,
-    required this.onPurchase,
+class _ShopHeader extends StatelessWidget {
+  final int coinCount;
+  final bool isDeducting;
+  final VoidCallback onBack;
+
+  const _ShopHeader({
+    required this.coinCount,
+    required this.isDeducting,
+    required this.onBack,
   });
 
   @override
-  State<_ProductCard> createState() => _ProductCardState();
-}
-
-class _ProductCardState extends State<_ProductCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: Colors.white,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
+              onPressed: onBack,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "חנות הקסמים",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF6A1B9A),
+                  ),
+                ),
+                Text(
+                  "שדרגו את החוויה!",
+                  style: TextStyle(fontSize: 14, color: Colors.purple.shade700),
+                ),
+              ],
+            ),
+          ),
+          // Coin Wallet
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade400,
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.amber.shade700.withValues(alpha: 0.4),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: Row(
+              children: [
+                AnimatedScale(
+                  scale: isDeducting ? 1.3 : 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: const Icon(Icons.monetization_on_rounded,
+                      color: Colors.white, size: 24),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$coinCount',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Colors.white,
+                    fontFamily: 'Nunito',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
+}
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
+class _CategoryTab extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CategoryTab({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => _animationController.forward(),
-      onTapUp: (_) {
-        _animationController.reverse();
-        widget.onTap();
-      },
-      onTapCancel: () => _animationController.reverse(),
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                widget.product.rarityColor.withValues(alpha: 0.8),
-                widget.product.rarityColor.withValues(alpha: 0.6),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: widget.product.rarityColor.withValues(alpha: 0.5),
-                blurRadius: 15,
-                spreadRadius: 2,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.only(left: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.deepPurple : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.deepPurple.withValues(alpha: 0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  )
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.grey.withValues(alpha: 0.1),
+                    blurRadius: 4,
+                  )
+                ],
+          border: isSelected ? null : Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon,
+                color: isSelected ? Colors.white : Colors.grey.shade600, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey.shade600,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
               ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EnhancedProductCard extends StatelessWidget {
+  final Product product;
+  final bool isPurchased;
+  final bool canBuy;
+  final VoidCallback onTap;
+
+  const _EnhancedProductCard({
+    required this.product,
+    required this.isPurchased,
+    required this.canBuy,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: product.rarityColor.withValues(alpha: 0.2),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(
+            color: isPurchased
+                ? Colors.grey.shade300
+                : product.rarityColor.withValues(alpha: 0.5),
+            width: isPurchased ? 1 : 2,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Product Image
-              Expanded(
-                flex: 3,
-                child: Container(
-                  margin: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(15),
-                    child: Image.asset(
-                      widget.product.assetImagePath,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.image, size: 50);
-                      },
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Image Section
+            Expanded(
+              flex: 3,
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(18)),
+                    child: Container(
+                      color: Colors.grey.shade50,
+                      width: double.infinity,
+                      child: Image.asset(
+                        product.assetImagePath,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  if (isPurchased)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(18)),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.check_circle,
+                            color: Colors.white, size: 40),
+                      ),
+                    ),
+                  if (!isPurchased && product.specialEffect != null)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.orange,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.auto_awesome,
+                            color: Colors.white, size: 12),
+                      ),
+                    ),
+                ],
               ),
-              // Product Info
-              Expanded(
-                flex: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Name and Rarity
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.product.name,
-                            style: GoogleFonts.assistant(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+            ),
+
+            // Info Section
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
                           ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.3),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              widget.product.rarityName,
-                              style: GoogleFonts.assistant(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          product.rarityName,
+                          style: TextStyle(
+                            color: product.rarityColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isPurchased
+                            ? Colors.grey.shade100
+                            : (canBuy
+                                ? Colors.amber.shade100
+                                : Colors.red.shade50),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.monetization_on,
+                            size: 14,
+                            color: isPurchased
+                                ? Colors.grey
+                                : Colors.amber.shade800,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isPurchased ? "בבעלותך" : '${product.price}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: isPurchased ? Colors.grey : Colors.black87,
                             ),
                           ),
                         ],
                       ),
-                      // Price and Buy Button
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.monetization_on,
-                                  color: Colors.white, size: 16),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${widget.product.price}',
-                                style: GoogleFonts.assistant(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (widget.isPurchased)
-                            const Icon(Icons.check_circle,
-                                color: Colors.green, size: 20)
-                          else
-                            GestureDetector(
-                              onTap: widget.canBuy ? widget.onPurchase : null,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: widget.canBuy
-                                      ? Colors.amber
-                                      : Colors.grey,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  'קנה',
-                                  style: GoogleFonts.assistant(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductDetailsSheet extends StatelessWidget {
+  final Product product;
+  final bool isPurchased;
+  final VoidCallback onPurchase;
+
+  const _ProductDetailsSheet({
+    required this.product,
+    required this.isPurchased,
+    required this.onPurchase,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle bar
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 24),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // Hero Image
+          Container(
+            height: 150,
+            width: 150,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: product.rarityColor, width: 3),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(17),
+              child: Image.asset(
+                product.assetImagePath,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.image_not_supported,
+                  size: 80,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Text(
+            product.name,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            product.englishName,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey.shade600,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: product.rarityColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                  color: product.rarityColor.withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  product.description,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14),
+                ),
+                if (product.specialEffect != null) ...[
+                  const Divider(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.auto_awesome,
+                          size: 16, color: Colors.purple),
+                      const SizedBox(width: 8),
+                      Text(
+                        product.specialEffect!,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple,
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ),
-            ],
+                ]
+              ],
+            ),
           ),
+
+          const SizedBox(height: 24),
+
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: isPurchased
+                ? OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.check),
+                    label: const Text("כבר בבעלותך"),
+                  )
+                : FilledButton.icon(
+                    onPressed: onPurchase,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF50C878), // Green
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                    icon: const Icon(Icons.shopping_bag_outlined),
+                    label: Text(
+                      "קנה עכשיו - ${product.price}",
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+          ),
+
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyShopState extends StatelessWidget {
+  final ProductCategory? category;
+  const _EmptyShopState({this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inventory_2_outlined,
+              size: 80, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          Text(
+            "המדפים ריקים בקטגוריה זו",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "נסה לחפש בקטגוריה אחרת!",
+            style: TextStyle(color: Colors.grey.shade500),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PurchaseSuccessDialog extends StatelessWidget {
+  final Product product;
+
+  const _PurchaseSuccessDialog({required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.amber, width: 4),
         ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.celebration, size: 60, color: Colors.amber),
+            const SizedBox(height: 16),
+            const Text(
+              "תתחדש!",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                color: Colors.deepPurple,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "רכשת בהצלחה את ${product.name}",
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 24),
+            Image.asset(
+              product.assetImagePath,
+              height: 100,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.image_not_supported,
+                size: 80,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("איזה כיף!"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BackgroundPattern extends StatelessWidget {
+  const _BackgroundPattern();
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: 0.05,
+      child: GridView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate:
+            const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4),
+        itemBuilder: (context, index) =>
+            const Icon(Icons.star_rounded, size: 40),
       ),
     );
   }

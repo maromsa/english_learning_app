@@ -2,22 +2,27 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+
+import 'network/app_http_client.dart';
 
 class GeminiProxyService {
   GeminiProxyService(
     Uri endpoint, {
-    http.Client? client,
+    AppHttpClient? httpClient,
     Duration timeout = const Duration(seconds: 12),
-  }) : _endpoint = endpoint,
-       _httpClient = client ?? http.Client(),
-       _disposeClientOnClose = client == null,
-       _timeout = timeout;
+  })  : _endpoint = endpoint,
+        _httpClient = httpClient ??
+            AppHttpClient(
+              connectTimeout: timeout,
+              receiveTimeout: timeout,
+              sendTimeout: timeout,
+            ),
+        _timeout = timeout;
 
   final Uri _endpoint;
-  final http.Client _httpClient;
-  final bool _disposeClientOnClose;
+  final AppHttpClient _httpClient;
   final Duration _timeout;
 
   Future<String?> identifyMainObject(
@@ -51,10 +56,13 @@ class GeminiProxyService {
       if (systemInstruction != null) 'system_instruction': systemInstruction,
     };
     debugPrint('[GeminiProxyService] Sending payload: ${jsonEncode(payload)}');
-    debugPrint('[GeminiProxyService] systemInstruction present: ${systemInstruction != null}');
+    debugPrint(
+        '[GeminiProxyService] systemInstruction present: ${systemInstruction != null}');
     if (systemInstruction != null) {
-      debugPrint('[GeminiProxyService] systemInstruction length: ${systemInstruction.length}');
-      debugPrint('[GeminiProxyService] systemInstruction preview: ${systemInstruction.substring(0, systemInstruction.length > 100 ? 100 : systemInstruction.length)}...');
+      debugPrint(
+          '[GeminiProxyService] systemInstruction length: ${systemInstruction.length}');
+      debugPrint(
+          '[GeminiProxyService] systemInstruction preview: ${systemInstruction.substring(0, systemInstruction.length > 100 ? 100 : systemInstruction.length)}...');
     }
     final response = await _postJson(payload);
 
@@ -70,41 +78,44 @@ class GeminiProxyService {
 
   Future<Map<String, dynamic>?> _postJson(Map<String, dynamic> payload) async {
     try {
-      final jsonBody = jsonEncode(payload);
       debugPrint('[GeminiProxyService] POST to $_endpoint');
-      debugPrint('[GeminiProxyService] Request body: $jsonBody');
-      
-      final response = await _httpClient
-          .post(
-            _endpoint,
-            headers: const {'Content-Type': 'application/json'},
-            body: jsonBody,
-          )
-          .timeout(_timeout);
+      debugPrint('[GeminiProxyService] Request body: ${jsonEncode(payload)}');
 
-      debugPrint('[GeminiProxyService] Response status: ${response.statusCode}');
-      debugPrint('[GeminiProxyService] Response body: ${response.body}');
-      
+      final response = await _httpClient.dio.postUri<Map<String, dynamic>>(
+        _endpoint,
+        data: payload,
+        options: Options(
+          contentType: Headers.jsonContentType,
+          responseType: ResponseType.json,
+        ),
+      );
+
+      debugPrint(
+          '[GeminiProxyService] Response status: ${response.statusCode}');
+      debugPrint('[GeminiProxyService] Response body: ${response.data}');
+
       if (response.statusCode != 200) {
         return null;
       }
 
-      final decoded = jsonDecode(response.body);
+      final decoded = response.data;
       if (decoded is Map<String, dynamic>) {
         return decoded;
       }
-
       return null;
-    } on TimeoutException {
-      return null;
-    } catch (_) {
+    } on DioException catch (error, stackTrace) {
+      if (error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout) {
+        debugPrint('[GeminiProxyService] Timeout: $error');
+        return null;
+      }
+      debugPrint('[GeminiProxyService] Dio error: ${error.message}');
+      debugPrint('$stackTrace');
       return null;
     }
   }
 
   void dispose() {
-    if (_disposeClientOnClose) {
-      _httpClient.close();
-    }
+    _httpClient.close();
   }
 }

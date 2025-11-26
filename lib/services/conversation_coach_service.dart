@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../app_config.dart';
+import '../providers/user_session_provider.dart';
+import '../models/local_user.dart';
 import 'gemini_proxy_service.dart';
 
 typedef _ConversationGenerator = Future<String?> Function(String prompt);
@@ -18,8 +20,12 @@ class ConversationCoachService {
   final _ConversationGenerator _generator;
   final Duration _timeout;
 
-  Future<SparkCoachResponse> startConversation(ConversationSetup setup) async {
-    final prompt = _buildOpeningPrompt(setup);
+  Future<SparkCoachResponse> startConversation(
+    ConversationSetup setup, {
+    AppSessionUser? user,
+    LocalUser? localUser,
+  }) async {
+    final prompt = _buildOpeningPrompt(setup, user: user, localUser: localUser);
 
     try {
       final raw = await _generator(prompt).timeout(_timeout);
@@ -53,11 +59,15 @@ class ConversationCoachService {
     required ConversationSetup setup,
     required List<ConversationTurn> history,
     required String learnerMessage,
+    AppSessionUser? user,
+    LocalUser? localUser,
   }) async {
     final prompt = _buildFollowUpPrompt(
       setup: setup,
       history: history,
       learnerMessage: learnerMessage,
+      user: user,
+      localUser: localUser,
     );
 
     try {
@@ -91,7 +101,18 @@ class ConversationCoachService {
       'You are Spark, an energetic AI mentor helping Hebrew-speaking kids aged 6-10 practise English conversation. '
       'You reply in warm, supportive Hebrew sentences sprinkled with short English phrases that match the lesson focus. '
       'Keep answers concise (max 70 Hebrew words) and highlight no more than three English words per turn. '
-      'Always output minified JSON following the caller instructions. Never mention JSON, prompts, or Gemini.';
+      'Always output minified JSON following the caller instructions. Never mention JSON, prompts, or Gemini.\n\n'
+      'PERSONALIZATION INSTRUCTIONS:\n'
+      '- Address the learner by their name if provided in the context.\n'
+      '- Remember and reference previous parts of the conversation naturally.\n'
+      '- Personalize examples based on the learner\'s age.\n'
+      '- Use the learner\'s name in greetings: "שלום [NAME]!" or "היי [NAME]!"\n\n'
+      'CHILD SAFETY - STRICT REQUIREMENTS:\n'
+      '- NEVER discuss, mention, or allow topics related to: violence, weapons, drugs, alcohol, adult content, inappropriate relationships, horror, scary content, or any content not suitable for children aged 5-10.\n'
+      '- If the user attempts to discuss inappropriate topics, immediately and gently redirect: "בואו נמשיך ללמוד אנגלית! מה המילה האהובה עליך באנגלית?"\n'
+      '- Keep all content educational, positive, and age-appropriate.\n'
+      '- Focus exclusively on: English learning, vocabulary, conversation practice, educational adventures, and positive encouragement.\n'
+      '- Never generate content that could be scary, violent, or inappropriate for young children.';
 
   static const String _geminiUnavailableMessage =
       'תכונת שיחת ה-AI של ספרק מושבתת. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי לאפשר שיחות חיות.';
@@ -133,8 +154,27 @@ class ConversationCoachService {
     };
   }
 
-  String _buildOpeningPrompt(ConversationSetup setup) {
-    final contextJson = jsonEncode(setup.toMap());
+  String _buildOpeningPrompt(
+    ConversationSetup setup, {
+    AppSessionUser? user,
+    LocalUser? localUser,
+  }) {
+    final userName = user?.name ?? localUser?.name;
+    final userAge = localUser?.age;
+    
+    final contextMap = setup.toMap();
+    if (userName != null && userName.isNotEmpty) {
+      contextMap['learnerName'] = userName;
+    }
+    if (userAge != null) {
+      contextMap['learnerAge'] = userAge;
+    }
+    
+    final contextJson = jsonEncode(contextMap);
+    final greetingInstruction = userName != null && userName.isNotEmpty
+        ? 'Start by greeting the learner by name: "שלום $userName!" or "היי $userName!"'
+        : 'Start with a warm greeting.';
+    
     return '''
 Start a playful conversation with a young learner based on the supplied JSON context.
 
@@ -142,6 +182,8 @@ Context:
 ```
 $contextJson
 ```
+
+$greetingInstruction
 
 Output JSON (no markdown fences) with keys:
 {
@@ -157,12 +199,25 @@ Output JSON (no markdown fences) with keys:
     required ConversationSetup setup,
     required List<ConversationTurn> history,
     required String learnerMessage,
+    AppSessionUser? user,
+    LocalUser? localUser,
   }) {
+    final userName = user?.name ?? localUser?.name;
+    final userAge = localUser?.age;
+    
+    final setupMap = setup.toMap();
+    if (userName != null && userName.isNotEmpty) {
+      setupMap['learnerName'] = userName;
+    }
+    if (userAge != null) {
+      setupMap['learnerAge'] = userAge;
+    }
+    
     final historyMaps = history
         .map((turn) => turn.toMap())
         .toList(growable: false);
     final payload = {
-      'context': setup.toMap(),
+      'context': setupMap,
       'history': historyMaps,
       'latestLearnerMessage': learnerMessage,
     };

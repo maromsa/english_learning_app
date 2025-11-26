@@ -15,13 +15,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/auth_gate.dart';
 import 'services/background_music_service.dart';
+import 'services/sound_service.dart';
 import 'services/telemetry_service.dart';
+import 'utils/app_theme.dart';
+import 'utils/route_observer.dart';
+import 'providers/user_session_provider.dart';
 
 Future<void> main() async {
   // Global error handler to catch any unhandled errors
@@ -83,6 +86,7 @@ Future<void> main() async {
   final telemetryService = TelemetryService();
   final dailyMissionProvider = DailyMissionProvider();
   final backgroundMusicService = BackgroundMusicService();
+  final soundService = SoundService();
 
   // Load persisted data in parallel with timeouts to prevent hanging
   await Future.wait([
@@ -113,38 +117,34 @@ Future<void> main() async {
     dailyMissionProvider.initialize().timeout(
       const Duration(seconds: 3),
       onTimeout: () {
-        debugPrint('Daily missions initialization timed out, continuing anyway');
+        debugPrint(
+            'Daily missions initialization timed out, continuing anyway');
       },
     ).catchError((e) {
       debugPrint('Error initializing daily missions: $e');
     }),
   ], eagerError: false); // Don't fail if one fails
-  
-  // Initialize background music service asynchronously without blocking UI
-  if (kIsWeb) {
-    backgroundMusicService.initialize().catchError((error) {
-      debugPrint('Background music initialization failed: $error');
-    });
-    debugPrint(
-      'Startup chime disabled on web; map music will begin after first interaction.',
-    );
-  } else {
-    // Don't await - let it run in background so UI can render immediately
-    backgroundMusicService.playStartupSequence().timeout(
-      const Duration(seconds: 5),
-      onTimeout: () {
-        debugPrint('Background music startup timed out, continuing anyway');
-      },
-    ).catchError((error) {
-      debugPrint('Background music startup failed: $error');
-    });
-  }
+
+  // Initialize background music service (music will only play on MapScreen)
+  backgroundMusicService.initialize().catchError((error) {
+    debugPrint('Background music initialization failed: $error');
+  });
+
+  // Initialize sound service for UI feedback
+  soundService.initialize().catchError((error) {
+    debugPrint('Sound service initialization failed: $error');
+  });
 
   // Error handlers are already set up at the beginning of main()
+
+  // Create UserSessionProvider and load active user
+  final userSessionProvider = UserSessionProvider();
+  await userSessionProvider.loadActiveUser();
 
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider.value(value: userSessionProvider),
         ChangeNotifierProvider.value(value: coinProvider),
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider.value(value: achievementService),
@@ -173,6 +173,7 @@ class MyApp extends StatelessWidget {
       },
       child: MaterialApp(
         title: 'מסע המילים באנגלית',
+        navigatorObservers: [RouteObserverService.routeObserver],
         locale: const Locale('he', 'IL'),
         supportedLocales: const [Locale('he', 'IL'), Locale('en', 'US')],
         localizationsDelegates: const [
@@ -180,20 +181,15 @@ class MyApp extends StatelessWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        theme: ThemeData(
-          colorScheme:
-              ColorScheme.fromSeed(seedColor: Colors.lightBlue.shade100),
-          useMaterial3: true,
-          textTheme:
-              GoogleFonts.assistantTextTheme(Theme.of(context).textTheme),
-        ),
-        darkTheme: ThemeData.dark(),
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
         themeMode: themeProvider.themeMode,
         debugShowCheckedModeBanner: false,
         builder: (context, child) {
           // Wrap entire app in error boundary
           return MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(1.0)),
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: const TextScaler.linear(1.0)),
             child: child ?? const SizedBox.shrink(),
           );
         },

@@ -1,11 +1,13 @@
 import 'dart:collection';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
+import 'package:english_learning_app/services/network/app_http_client.dart';
 import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
+
+import '../test_utils/test_http_adapter.dart';
 
 class _FakeAiValidator implements AiImageValidator {
   _FakeAiValidator(List<bool> answers) : _answers = Queue<bool>.from(answers);
@@ -28,31 +30,34 @@ class _FakeAiValidator implements AiImageValidator {
 
 void main() {
   test('returns the first validated image result', () async {
-    final client = MockClient((request) async {
-      if (request.url.host == 'pixabay.com') {
-        return http.Response(
+    final dio = Dio();
+    dio.httpClientAdapter = TestHttpClientAdapter((options, _) async {
+      if (options.uri.host == 'pixabay.com') {
+        return ResponseBody.fromString(
           '{"hits":[{"webformatURL":"https://cdn.pixabay.com/photo1.jpg","tags":"Apple, Fruit"}]}',
           200,
-          headers: {'content-type': 'application/json'},
+          headers: {
+            Headers.contentTypeHeader: ['application/json']
+          },
         );
       }
-
-      if (request.url.toString() == 'https://cdn.pixabay.com/photo1.jpg') {
-        return http.Response.bytes(
+      if (options.uri.toString() == 'https://cdn.pixabay.com/photo1.jpg') {
+        return ResponseBody.fromBytes(
           List<int>.filled(4, 1),
           200,
-          headers: {'content-type': 'image/jpeg'},
+          headers: {
+            Headers.contentTypeHeader: ['image/jpeg']
+          },
         );
       }
-
-      return http.Response('not found', 404);
+      return ResponseBody.fromString('not found', 404);
     });
 
     final validator = _FakeAiValidator(<bool>[true]);
     final service = WebImageService(
       apiKey: 'demo',
       imageValidator: validator,
-      httpClient: client,
+      httpClient: AppHttpClient(dio: dio),
     );
 
     final result = await service.fetchImageForWord('apple');
@@ -65,40 +70,44 @@ void main() {
   });
 
   test('skips failing candidates until validation succeeds', () async {
-    final client = MockClient((request) async {
-      if (request.url.host == 'pixabay.com') {
-        return http.Response(
+    final dio = Dio();
+    dio.httpClientAdapter = TestHttpClientAdapter((options, _) async {
+      if (options.uri.host == 'pixabay.com') {
+        return ResponseBody.fromString(
           '{"hits":[{"webformatURL":"https://cdn.pixabay.com/photo_bad.jpg","tags":"Stone"},'
           '{"webformatURL":"https://cdn.pixabay.com/photo_good.jpg","tags":"Banana"}]}',
           200,
-          headers: {'content-type': 'application/json'},
+          headers: {
+            Headers.contentTypeHeader: ['application/json']
+          },
         );
       }
-
-      if (request.url.toString() == 'https://cdn.pixabay.com/photo_bad.jpg') {
-        return http.Response.bytes(
+      if (options.uri.toString() == 'https://cdn.pixabay.com/photo_bad.jpg') {
+        return ResponseBody.fromBytes(
           List<int>.filled(4, 2),
           200,
-          headers: {'content-type': 'image/jpeg'},
+          headers: {
+            Headers.contentTypeHeader: ['image/jpeg']
+          },
         );
       }
-
-      if (request.url.toString() == 'https://cdn.pixabay.com/photo_good.jpg') {
-        return http.Response.bytes(
+      if (options.uri.toString() == 'https://cdn.pixabay.com/photo_good.jpg') {
+        return ResponseBody.fromBytes(
           List<int>.filled(4, 3),
           200,
-          headers: {'content-type': 'image/jpeg'},
+          headers: {
+            Headers.contentTypeHeader: ['image/jpeg']
+          },
         );
       }
-
-      return http.Response('not found', 404);
+      return ResponseBody.fromString('not found', 404);
     });
 
     final validator = _FakeAiValidator(<bool>[false, true]);
     final service = WebImageService(
       apiKey: 'demo',
       imageValidator: validator,
-      httpClient: client,
+      httpClient: AppHttpClient(dio: dio),
     );
 
     final result = await service.fetchImageForWord('banana');
@@ -111,14 +120,16 @@ void main() {
   });
 
   test('returns null when api key is missing', () async {
-    final client = MockClient(
-      (request) async => http.Response('should not be called', 500),
+    final dio = Dio();
+    dio.httpClientAdapter = TestHttpClientAdapter(
+      (options, _) async =>
+          ResponseBody.fromString('should not be called', 500),
     );
     final validator = _FakeAiValidator(<bool>[]);
     final service = WebImageService(
       apiKey: '',
       imageValidator: validator,
-      httpClient: client,
+      httpClient: AppHttpClient(dio: dio),
     );
 
     final result = await service.fetchImageForWord('cat');

@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -701,7 +702,23 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       return Image.asset(path, fit: BoxFit.contain);
     }
     if (path.startsWith('http')) {
-      return Image.network(path, fit: BoxFit.cover);
+      return CachedNetworkImage(
+        imageUrl: path,
+        fit: BoxFit.cover,
+        memCacheWidth: 600, // Optimize for typical display size
+        memCacheHeight: 600,
+        placeholder: (context, url) => Container(
+          color: Colors.grey.shade200,
+          child: const Center(
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: Colors.grey.shade300,
+          child: const Icon(Icons.image_not_supported, color: Colors.grey),
+        ),
+        fadeInDuration: const Duration(milliseconds: 200),
+      );
     }
     if (!kIsWeb) {
       final file = File(path);

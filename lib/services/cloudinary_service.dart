@@ -1,14 +1,21 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+
+import 'network/app_http_client.dart';
 
 import '../models/word_data.dart';
 
 class CloudinaryService {
-  CloudinaryService({http.Client? httpClient})
-    : _httpClient = httpClient ?? http.Client();
+  CloudinaryService({AppHttpClient? httpClient})
+      : _httpClient = httpClient ??
+            AppHttpClient(
+              connectTimeout: const Duration(seconds: 10),
+              receiveTimeout: const Duration(seconds: 10),
+            );
 
-  final http.Client _httpClient;
+  final AppHttpClient _httpClient;
 
   Future<List<WordData>> fetchWords({
     required String cloudName,
@@ -20,18 +27,21 @@ class CloudinaryService {
     );
 
     try {
-      final response = await _httpClient
-          .get(url)
-          .timeout(const Duration(seconds: 10));
+      final response = await _httpClient.dio.getUri<Map<String, dynamic>>(
+        url,
+        options: Options(responseType: ResponseType.json),
+      );
 
       if (response.statusCode != 200) {
         return const <WordData>[];
       }
 
-      final body = jsonDecode(response.body);
-      final resources = (body['resources'] as List<dynamic>? ?? [])
-          .take(maxResults)
-          .toList();
+      final body = response.data;
+      if (body == null) {
+        return const <WordData>[];
+      }
+      final resources =
+          (body['resources'] as List<dynamic>? ?? []).take(maxResults).toList();
 
       final List<WordData> results = [];
 
@@ -75,6 +85,9 @@ class CloudinaryService {
       }
 
       return results;
+    } on DioException catch (error) {
+      debugPrint('CloudinaryService error: ${error.message}');
+      return const <WordData>[];
     } catch (_) {
       return const <WordData>[];
     }

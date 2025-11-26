@@ -13,7 +13,7 @@ class AuthProvider extends ChangeNotifier {
     GoogleSignIn? googleSignIn,
     AuthService? authService,
   }) : _auth = auth ?? FirebaseAuth.instance,
-       _googleSignIn = googleSignIn ?? GoogleSignIn(),
+       _googleSignIn = googleSignIn ?? GoogleSignIn.instance,
        _authService = authService ?? AuthService() {
     // Check current auth state immediately
     final currentUser = _auth.currentUser;
@@ -83,28 +83,35 @@ class AuthProvider extends ChangeNotifier {
           },
         );
       } else {
+        // Ensure GoogleSignIn is initialized
+        await _googleSignIn.initialize();
         // Add timeout to prevent hanging
-        final googleUser = await _googleSignIn.signIn().timeout(
+        final googleUser = await _googleSignIn.authenticate().timeout(
           const Duration(seconds: 30),
           onTimeout: () {
             throw TimeoutException('Sign-in timed out. Please try again.');
           },
         );
-        
-        if (googleUser == null) {
-          _setBusy(false);
-          return; // User cancelled, don't show error
-        }
 
-        final googleAuth = await googleUser.authentication.timeout(
-          const Duration(seconds: 15),
-          onTimeout: () {
-            throw TimeoutException('Authentication timed out. Please try again.');
-          },
-        );
+        // Get authentication tokens
+        final googleAuth = googleUser.authentication;
+        
+        // Get access token via authorization client if needed
+        String? accessToken;
+        try {
+          final clientAuth = await googleUser.authorizationClient
+              .authorizationForScopes(['email', 'profile']).timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => null,
+          );
+          accessToken = clientAuth?.accessToken;
+        } catch (e) {
+          debugPrint('Failed to get access token: $e');
+          // Continue with just idToken
+        }
         
         final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
+          accessToken: accessToken,
           idToken: googleAuth.idToken,
         );
 

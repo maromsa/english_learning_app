@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../app_config.dart';
+import '../providers/user_session_provider.dart';
+import '../models/local_user.dart';
 import 'gemini_proxy_service.dart';
 
 typedef GeminiTextGenerator = Future<String?> Function(String prompt);
@@ -17,9 +19,11 @@ class AdventureStoryService {
   final Duration _timeout;
 
   Future<AdventureStory> generateAdventure(
-    AdventureStoryContext context,
-  ) async {
-    final prompt = _buildPrompt(context);
+    AdventureStoryContext context, {
+    AppSessionUser? user,
+    LocalUser? localUser,
+  }) async {
+    final prompt = _buildPrompt(context, user: user, localUser: localUser);
 
     try {
       final raw = await _generator(prompt).timeout(_timeout);
@@ -47,7 +51,15 @@ class AdventureStoryService {
       'You are Spark, a playful mentor guiding 5-8 year olds through English adventures. '
       'Speak in simple, upbeat Hebrew so young native Hebrew speakers feel at home, '
       'but keep every English vocabulary word exactly as provided. '
-      'Always respect the JSON schema instructions.';
+      'Always respect the JSON schema instructions.\n\n'
+      'PERSONALIZATION:\n'
+      '- Use the child\'s name as the main character or companion if provided.\n'
+      '- Adjust the complexity based on the child\'s age.\n\n'
+      'CHILD SAFETY - STRICT REQUIREMENTS:\n'
+      '- NEVER discuss, mention, or allow topics related to: violence, weapons, drugs, alcohol, adult content, inappropriate relationships, horror, scary content.\n'
+      '- Keep all content educational, positive, and age-appropriate for children (5-10 years).\n'
+      '- Redirect inappropriate inputs to magical/educational topics.\n'
+      '- No scary monsters (use "silly" or "friendly" creatures instead).';
 
   static const String _geminiUnavailableMessage =
       'חסר חיבור ל-Gemini. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי להפעיל את התכונה.';
@@ -74,14 +86,35 @@ class AdventureStoryService {
     };
   }
 
-  String _buildPrompt(AdventureStoryContext context) {
-    final contextJson = jsonEncode(context.toMap());
+  String _buildPrompt(
+    AdventureStoryContext context, {
+    AppSessionUser? user,
+    LocalUser? localUser,
+  }) {
+    final userName = user?.name ?? localUser?.name;
+    final userAge = localUser?.age;
+    
+    final contextMap = context.toMap();
+    if (userName != null && userName.isNotEmpty) {
+      contextMap['heroName'] = userName;
+    }
+    if (userAge != null) {
+      contextMap['heroAge'] = userAge;
+    }
+    
+    final contextJson = jsonEncode(contextMap);
+    final heroInstruction = userName != null && userName.isNotEmpty
+        ? 'The hero of the story should be named "$userName".'
+        : 'Create a fun adventure story.';
+    
     return '''Craft a playful mini-quest for a child learning English. The audience is 5-8 years old.
 
 Use the supplied JSON context to personalize the story:
 ```
 $contextJson
 ```
+
+$heroInstruction
 
 Requirements:
 - The mentor persona is "Spark" who speaks in encouraging, friendly sentences.

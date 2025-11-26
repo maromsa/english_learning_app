@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:convert';
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/models/achievement.dart';
 import 'package:english_learning_app/models/daily_mission.dart';
@@ -15,26 +14,33 @@ import 'package:english_learning_app/screens/lightning_practice_screen.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
+import 'package:english_learning_app/services/audio/bytes_audio_source.dart';
 import 'package:english_learning_app/services/gemini_proxy_service.dart';
+import 'package:english_learning_app/services/google_tts_service.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
-import 'package:english_learning_app/widgets/action_button.dart';
+import 'package:english_learning_app/services/level_progress_service.dart';
+import 'package:english_learning_app/providers/auth_provider.dart';
+import 'package:english_learning_app/services/local_user_service.dart';
+import 'package:english_learning_app/screens/level_completion_screen.dart';
 import 'package:english_learning_app/widgets/achievement_notification.dart';
-import 'package:english_learning_app/widgets/score_display.dart';
 import 'package:english_learning_app/utils/page_transitions.dart';
-import 'package:english_learning_app/widgets/word_display_card.dart';
-import 'package:english_learning_app/widgets/words_progress_bar.dart';
+import 'package:english_learning_app/widgets/bouncy_button.dart';
+import 'package:english_learning_app/widgets/living_spark.dart';
+import 'package:english_learning_app/services/sound_service.dart';
+import 'package:english_learning_app/services/spark_voice_service.dart';
+import 'package:english_learning_app/services/kid_speech_service.dart';
 import 'package:confetti/confetti.dart';
-import 'package:flutter/foundation.dart';
+import 'dart:math' as math;
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:speech_to_text/speech_to_text.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({
@@ -52,14 +58,19 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage>
+    with SingleTickerProviderStateMixin {
   late final ConfettiController _confettiController;
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   late final FlutterTts flutterTts;
-  final SpeechToText _speechToText = SpeechToText();
+  GoogleTtsService? _googleTts;
+  final KidSpeechService _kidSpeechService = KidSpeechService();
+  final SparkVoiceService _sparkVoiceService = SparkVoiceService();
   final ImagePicker _picker = ImagePicker();
   late final WordRepository _wordRepository;
+  final LevelProgressService _levelProgressService = LevelProgressService();
+  final LocalUserService _localUserService = LocalUserService();
   WebImageService? _webImageService;
   final AiImageValidator _cameraValidator = const PassthroughAiImageValidator();
   HttpFunctionAiImageValidator? _httpImageValidator;
@@ -72,11 +83,39 @@ class _MyHomePageState extends State<MyHomePage> {
   String _feedbackText = 'לחצו על המיקרופון כדי לדבר';
   String _recognizedWords = '';
   bool _speechEnabled = false;
+  double _soundLevel = 0.0; // For visual feedback
   int _streak = 0;
   bool _isEvaluating = false; // Prevent double evaluation
   OverlayEntry? _achievementOverlay;
   // AI features are always enabled since geminiProxyEndpoint always returns a valid endpoint
   Uri get proxyEndpoint => AppConfig.geminiProxyEndpoint;
+
+  // New visual state for redesigned UI - Redesigned by Gemini 3 Pro
+  late AnimationController _micPulseController;
+  bool _showFeedback = false;
+  bool _lastResultSuccess = false;
+  
+  // Spark emotion state
+  SparkEmotion _sparkEmotion = SparkEmotion.neutral;
+  
+  // Sound service
+  final SoundService _soundService = SoundService();
+  
+  // Random compliments for success
+  static final List<String> _successCompliments = [
+    'מעולה!',
+    'וואו!',
+    'אלוף!',
+    'מדהים!',
+    'כל הכבוד!',
+    'נהדר!',
+    'מצוין!',
+    'פנטסטי!',
+  ];
+  
+  String _getRandomCompliment() {
+    return _successCompliments[math.Random().nextInt(_successCompliments.length)];
+  }
 
   @override
   void initState() {
@@ -86,11 +125,20 @@ class _MyHomePageState extends State<MyHomePage> {
     );
     _words = widget.wordsForLevel;
     _setupAchievementListener();
-    _initializeServices();
+    _initializeServices().then((_) async {
+      // Load progress after services are initialized
+      await _loadLevelProgress();
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final telemetry = TelemetryService.maybeOf(context);
       telemetry?.startScreenSession('home');
     });
+
+    // Initialize mic pulse animation - Redesigned by Gemini 3 Pro
+    _micPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
   }
 
   void _setupAchievementListener() {
@@ -147,13 +195,15 @@ class _MyHomePageState extends State<MyHomePage> {
       },
     );
     flutterTts.stop();
-    _speechToText.stop();
+    _kidSpeechService.stop();
     _confettiController.dispose();
     _audioPlayer.dispose();
     _achievementOverlay?.remove();
     _httpImageValidator?.dispose();
     _webImageService?.dispose();
     _geminiProxy?.dispose();
+    _googleTts?.dispose();
+    _micPulseController.dispose(); // Redesigned by Gemini 3 Pro
     super.dispose();
   }
 
@@ -174,8 +224,11 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     flutterTts = FlutterTts();
+    if (AppConfig.hasGoogleTts) {
+      _googleTts = GoogleTtsService(apiKey: AppConfig.googleTtsApiKey);
+    }
     await _configureTts();
-    _speechEnabled = await _speechToText.initialize();
+    _speechEnabled = await _kidSpeechService.initialize();
 
     if (!cloudinaryAvailable) {
       AppConfig.debugWarnIfMissing('Cloudinary word sync', false);
@@ -192,108 +245,52 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<void> _speak(String text, {String languageCode = "he-IL"}) async {
+  Future<void> _speak(String text, {String languageCode = "he-IL", SparkEmotion emotion = SparkEmotion.neutral}) async {
     if (text.isEmpty) return;
 
     try {
-      if (!AppConfig.hasGoogleTts) {
-        // Configure TTS for Hebrew with child-friendly settings
-        await flutterTts.setLanguage(languageCode);
-        if (languageCode == 'he-IL') {
-          await flutterTts.setSpeechRate(0.4); // Slow for children
-          await flutterTts.setPitch(1.1); // Friendly pitch
-        }
-        await flutterTts.speak(text);
+      // Try SparkVoiceService first (uses Google TTS with SSML)
+      if (AppConfig.hasGoogleTts) {
+        await _sparkVoiceService.speak(
+          text: text,
+          isEnglish: languageCode == 'en-US',
+          emotion: emotion,
+        );
         return;
       }
 
-      // Try multiple voices in order - best quality first
-      // Using Standard voices (C for English, B for Hebrew) which are warm and child-friendly
-      List<String> voiceNames = languageCode == 'en-US'
-          ? [
-              'en-US-Standard-C', // Warm, friendly female voice - excellent for children
-              'en-US-Neural2-C', // Natural, warm female voice
-              'en-US-Neural2-F', // Friendly female voice
-              'en-US-Wavenet-C', // Fallback: warm female voice
-            ]
-          : [
-              'he-IL-Standard-B', // Warm Hebrew female voice - excellent for children
-              'he-IL-Neural2-B', // Natural Hebrew female voice
-              'he-IL-Wavenet-B', // Fallback: warm Hebrew female voice
-            ];
-      
-      http.Response? response;
-      String? usedVoice;
-      
-      // Try voices in order until one works
-      for (final voiceName in voiceNames) {
-        try {
-          response = await http.post(
-            Uri.parse(
-              'https://texttospeech.googleapis.com/v1/text:synthesize?key=${AppConfig.googleTtsApiKey}',
-            ),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'input': {
-                'text': text,
-              },
-              'voice': {
-                'languageCode': languageCode,
-                'name': voiceName,
-                'ssmlGender': 'FEMALE',
-              },
-              'audioConfig': {
-                'audioEncoding': 'MP3',
-                'speakingRate': languageCode == 'he-IL' ? 0.80 : 0.90, // Natural, clear speed for children
-                'pitch': 0.0, // Natural pitch (0 = default, sounds most human)
-                'volumeGainDb': 2.0, // Clear but natural volume
-                'effectsProfileId': ['headphone-class-device'], // Optimize for speakers
-                'sampleRateHertz': 24000, // High quality audio
-              },
-            }),
-          ).timeout(const Duration(seconds: 10));
-          
-          if (response.statusCode == 200) {
-            usedVoice = voiceName;
-            debugPrint('Successfully used TTS voice: $voiceName');
-            break;
-          } else {
-            debugPrint('Voice $voiceName failed with status ${response.statusCode}');
-          }
-        } catch (e) {
-          debugPrint('Error trying voice $voiceName: $e');
-          continue;
-        }
-      }
-
-      if (response != null && response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        final audioBytes = base64Decode(body['audioContent']);
-
-        await _audioPlayer.setAudioSource(BytesAudioSource(audioBytes));
-        await _audioPlayer.play();
-        debugPrint('Playing audio with voice: $usedVoice');
-      } else {
-        debugPrint("All Google TTS voices failed, using fallback");
-        // Fallback to built-in TTS if Google TTS fails
-        await flutterTts.setLanguage(languageCode);
-        if (languageCode == 'he-IL') {
-          await flutterTts.setSpeechRate(0.80); // Natural speed
-          await flutterTts.setPitch(1.0); // Natural pitch
-        } else {
-          await flutterTts.setSpeechRate(0.90);
-          await flutterTts.setPitch(1.0);
-        }
-        await flutterTts.speak(text);
-      }
+      // Fallback to FlutterTts if Google TTS is not available
+      debugPrint("Google TTS not available, using FlutterTts fallback");
+      await _speakWithFlutterTts(text, languageCode: languageCode);
     } catch (e) {
       debugPrint("Error in _speak function: $e");
-      if (mounted) {
-        setState(() {
-          _feedbackText = 'שגיאה בהשמעת הקול. אנא נסו שוב.';
-        });
+      // Fallback to FlutterTts on error
+      try {
+        await _speakWithFlutterTts(text, languageCode: languageCode);
+      } catch (fallbackError) {
+        debugPrint("FlutterTts fallback also failed: $fallbackError");
+        if (mounted) {
+          setState(() {
+            _feedbackText = 'שגיאה בהשמעת הקול. אנא נסו שוב.';
+          });
+        }
       }
     }
+  }
+
+  Future<void> _speakWithFlutterTts(
+    String text, {
+    required String languageCode,
+  }) async {
+    await flutterTts.setLanguage(languageCode);
+    if (languageCode == 'he-IL') {
+      await flutterTts.setSpeechRate(0.4);
+      await flutterTts.setPitch(1.1);
+    } else {
+      await flutterTts.setSpeechRate(0.9);
+      await flutterTts.setPitch(1.0);
+    }
+    await flutterTts.speak(text);
   }
 
   Future<void> _loadWords({required bool remoteEnabled}) async {
@@ -540,16 +537,14 @@ class _MyHomePageState extends State<MyHomePage> {
         throw StateError('Gemini proxy is not initialized.');
       }
 
-      final prompt =
-          "You are an English teacher for a 3-6 year old child. "
+      final prompt = "You are an English teacher for a 3-6 year old child. "
           "The child was asked to say the word '$correctWord' and they said '$recognizedWord'. "
           "Considering their age and common pronunciation mistakes (like confusing 'th' and 't' sounds), "
           "should this attempt be considered a good and acceptable try? "
           "Answer with only 'yes' or 'no'.";
 
-      final response = await proxy
-          .generateText(prompt)
-          .timeout(const Duration(seconds: 10));
+      final response =
+          await proxy.generateText(prompt).timeout(const Duration(seconds: 10));
       if (response == null || response.trim().isEmpty) {
         throw StateError('Gemini proxy returned an empty response.');
       }
@@ -565,13 +560,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _evaluateSpeech() async {
     if (_words.isEmpty) return;
-    
+
     // Prevent double evaluation
     if (_isEvaluating) {
       debugPrint('Evaluation already in progress, skipping duplicate call');
       return;
     }
-    
+
     _isEvaluating = true;
 
     final currentWordObject = _words[_currentIndex];
@@ -586,10 +581,19 @@ class _MyHomePageState extends State<MyHomePage> {
       return;
     }
 
-    final bool isCorrect = await _evaluateSpeechWithGemini(
+    // First check if it's close enough using fuzzy matching
+    bool isCorrect = _kidSpeechService.isCloseEnough(
       currentWordObject.word,
       recognizedWord,
     );
+    
+    // If fuzzy match fails, use Gemini for more sophisticated evaluation
+    if (!isCorrect) {
+      isCorrect = await _evaluateSpeechWithGemini(
+        currentWordObject.word,
+        recognizedWord,
+      );
+    }
 
     if (!mounted) return;
 
@@ -600,37 +604,123 @@ class _MyHomePageState extends State<MyHomePage> {
       await context.read<CoinProvider>().addCoins(pointsToAdd);
       if (!mounted) return;
 
-      context
-          .read<AchievementService>()
-          .checkForAchievements(streak: _streak);
+      context.read<AchievementService>().checkForAchievements(streak: _streak);
 
       await context
           .read<DailyMissionProvider>()
           .incrementByType(DailyMissionType.speakPractice);
       if (!mounted) return;
 
-      feedback = "כל הכבוד! +10 מטבעות";
+      // Use random compliment for variety
+      final compliment = _getRandomCompliment();
+      feedback = "$compliment +10 מטבעות";
+      
+      // Play success sound
+      _soundService.playSound('success');
+      
+      // Update Spark emotion
       if (mounted) {
-        setState(() => currentWordObject.isCompleted = true);
+        setState(() {
+          _sparkEmotion = SparkEmotion.excited;
+          currentWordObject.isCompleted = true;
+        });
         _confettiController.play();
+        
+        // Reset Spark to happy after celebration
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            setState(() {
+              _sparkEmotion = SparkEmotion.happy;
+            });
+          }
+        });
+
+        // Save word completion
+        final userId = await _getCurrentUserId();
+        if (userId != null) {
+          final isLocalUser = await _isLocalUser();
+          debugPrint('=== Saving Word Completion ===');
+          debugPrint('Level ID: ${widget.levelId}');
+          debugPrint('Word: ${currentWordObject.word}');
+          debugPrint('User ID: $userId');
+          debugPrint('Is local user: $isLocalUser');
+
+          await _levelProgressService.markWordCompleted(
+            userId,
+            widget.levelId,
+            currentWordObject.word,
+            isLocalUser: isLocalUser,
+          );
+
+          // Verify it was saved
+          final isSaved = await _levelProgressService.isWordCompleted(
+            userId,
+            widget.levelId,
+            currentWordObject.word,
+            isLocalUser: isLocalUser,
+          );
+          debugPrint('Word saved verification: $isSaved');
+          debugPrint('=== Word Completion Saved ===');
+
+          // Check if level is now complete
+          await _checkLevelCompletion();
+        } else {
+          debugPrint('Cannot save word completion: No user ID');
+        }
       }
     } else {
       _streak = 0;
-      feedback = "זה נשמע כמו '$recognizedWord'. בוא ננסה שוב.";
+      // Empathetic failure message - never make child feel bad
+      feedback = "כמעט! זה נשמע כמו '$recognizedWord'. בוא ננסה שוב יחד!";
+      
+      // Play gentle error sound (not harsh)
+      _soundService.playSound('error');
+      
+      // Update Spark emotion to be empathetic, not disappointed
+      if (mounted) {
+        setState(() {
+          _sparkEmotion = SparkEmotion.empathetic;
+        });
+        
+        // Reset Spark to idle after a moment
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            setState(() {
+              _sparkEmotion = SparkEmotion.neutral;
+            });
+          }
+        });
+      }
     }
 
     if (!mounted) {
       _isEvaluating = false;
       return;
     }
-    setState(() => _feedbackText = feedback);
+    setState(() {
+      _feedbackText = feedback;
+      _lastResultSuccess = isCorrect;
+      _showFeedback = true;
+    });
 
     if (!mounted) {
       _isEvaluating = false;
       return;
     }
-    await _speak(feedback, languageCode: "he-IL");
+    
+    // Determine emotion based on result
+    final emotion = isCorrect ? SparkEmotion.excited : SparkEmotion.empathetic;
+    await _speak(feedback, languageCode: "he-IL", emotion: emotion);
     _isEvaluating = false;
+
+    // Auto-hide feedback after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _showFeedback = false;
+        });
+      }
+    });
   }
 
   void _startListening() async {
@@ -645,32 +735,33 @@ class _MyHomePageState extends State<MyHomePage> {
       _isListening = true;
       _feedbackText = 'מקשיב...';
       _recognizedWords = '';
-      _isEvaluating = false; // Reset evaluation flag when starting new listening session
+      _isEvaluating =
+          false; // Reset evaluation flag when starting new listening session
     });
 
     try {
-      await _speechToText.listen(
-        onResult: (result) async {
+      await _kidSpeechService.listen(
+        onResult: (recognizedWords) async {
           if (mounted) {
             setState(() {
-              _recognizedWords = result.recognizedWords;
+              _recognizedWords = recognizedWords;
             });
-            
+
             // Auto-stop and evaluate when final result is received
-            if (result.finalResult && result.recognizedWords.trim().isNotEmpty) {
+            if (recognizedWords.trim().isNotEmpty) {
               // Stop listening immediately
               try {
-                await _speechToText.stop();
+                await _kidSpeechService.stop();
               } catch (e) {
                 debugPrint('Error stopping speech recognition: $e');
               }
-              
+
               if (mounted) {
                 setState(() {
                   _isListening = false;
                   _feedbackText = 'סיימתי להקשיב. בודק...';
                 });
-                
+
                 // Evaluate speech immediately after stopping
                 // Small delay to ensure state is updated
                 Future.delayed(const Duration(milliseconds: 200), () {
@@ -679,19 +770,17 @@ class _MyHomePageState extends State<MyHomePage> {
                   }
                 });
               }
-            } else if (!result.finalResult && result.recognizedWords.trim().isNotEmpty) {
-              // Show live recognition feedback
-              if (mounted) {
-                setState(() {
-                  _feedbackText = 'שמעתי: ${result.recognizedWords}';
-                });
-              }
             }
           }
         },
-        localeId: "en_US",
-        listenFor: const Duration(seconds: 10),
-        pauseFor: const Duration(seconds: 3),
+        onSoundLevel: (level) {
+          // Update visual feedback with sound level
+          if (mounted) {
+            setState(() {
+              _soundLevel = level;
+            });
+          }
+        },
       );
     } catch (e) {
       debugPrint("Error starting speech recognition: $e");
@@ -706,12 +795,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _stopListening() async {
     try {
-      await _speechToText.stop();
+      await _kidSpeechService.stop();
       if (mounted) {
         setState(() => _isListening = false);
       }
       // Only evaluate if not already evaluating (to prevent double evaluation)
-      // The onResult callback with finalResult=true will handle evaluation
+      // The onResult callback will handle evaluation
       if (!_isEvaluating && _recognizedWords.isNotEmpty) {
         Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted && !_isEvaluating) {
@@ -738,7 +827,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _handleSpeech() {
     if (!_speechEnabled) return;
-    if (_speechToText.isListening) {
+    if (_kidSpeechService.isListening) {
       _stopListening();
     } else {
       _startListening();
@@ -747,20 +836,111 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _nextWord() {
     if (_words.isNotEmpty) {
+      _soundService.playSound('pop');
       setState(() {
         _currentIndex = (_currentIndex + 1) % _words.length;
         _feedbackText = '';
+        _showFeedback = false;
+        _sparkEmotion = SparkEmotion.neutral;
       });
     }
   }
 
   void _previousWord() {
     if (_words.isNotEmpty) {
+      _soundService.playSound('pop');
       setState(() {
         _currentIndex = (_currentIndex - 1 + _words.length) % _words.length;
         _feedbackText = '';
+        _showFeedback = false;
+        _sparkEmotion = SparkEmotion.neutral;
       });
     }
+  }
+
+  void _openGameMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => _GameMenuSheet(
+        onAddWord: _isListening ? null : _takePictureAndIdentify,
+        onShop: _isListening
+            ? null
+            : () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  PageTransitions.slideFromRight(const ShopScreen()),
+                );
+              },
+        onImageQuiz: _isListening
+            ? null
+            : () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  PageTransitions.fadeScale(ImageQuizGame()),
+                );
+              },
+        onChatBuddy: _isListening
+            ? null
+            : () {
+                Navigator.pop(context);
+                final focusWords = _words
+                    .take(6)
+                    .map((word) => word.word)
+                    .toList(growable: false);
+                Navigator.push(
+                  context,
+                  PageTransitions.slideFromRight(
+                    AiConversationScreen(focusWords: focusWords),
+                  ),
+                );
+              },
+        onPracticePack: _isListening
+            ? null
+            : () {
+                Navigator.pop(context);
+                final focusWords = _words
+                    .take(6)
+                    .map((word) => word.word)
+                    .toList(growable: false);
+                Navigator.push(
+                  context,
+                  PageTransitions.slideFromRight(
+                    AiPracticePackScreen(focusWords: focusWords),
+                  ),
+                );
+              },
+        onLightning: _isListening
+            ? null
+            : (_words.length < 2
+                ? () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'הוסיפו לפחות שתי מילים כדי להתחיל ריצת ברק!',
+                        ),
+                      ),
+                    );
+                  }
+                : () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => LightningPracticeScreen(
+                          words: List<WordData>.unmodifiable(_words),
+                          levelTitle: widget.title,
+                        ),
+                      ),
+                    );
+                  }),
+      ),
+    );
   }
 
   @override
@@ -777,7 +957,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 fit: BoxFit.cover,
                 height: double.infinity,
                 width: double.infinity,
-                cacheWidth: 1920, // Optimize memory
+                cacheWidth: 1920,
                 cacheHeight: 1080,
               ),
               const Center(
@@ -789,291 +969,153 @@ class _MyHomePageState extends State<MyHomePage> {
       );
     }
     final currentWordData = _words.isNotEmpty ? _words[_currentIndex] : null;
+    final coinProvider = context.watch<CoinProvider>();
+    // Redesigned by Gemini 3 Pro
     return Stack(
-      alignment: Alignment.topCenter,
       children: [
         Scaffold(
+          extendBodyBehindAppBar: true,
+          // Cleaner AppBar
           appBar: AppBar(
-            backgroundColor: Colors.lightBlue.shade300,
-            title: Text(
-              widget.title,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+              onPressed: () => Navigator.of(context).pop(),
             ),
             centerTitle: true,
+            title: _LevelHeader(title: widget.title),
             actions: [
               IconButton(
-                icon: const Icon(Icons.chat),
-                tooltip: 'חבר שיחה של ספרק',
-                onPressed: _isListening ? null : () {
-                  final focusWords = _words
-                      .take(6)
-                      .map((word) => word.word)
-                      .toList(growable: false);
-                  Navigator.push(
-                    context,
-                    PageTransitions.slideFromRight(
-                      AiConversationScreen(focusWords: focusWords),
-                    ),
-                  );
-                },
+                icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 32),
+                onPressed: _openGameMenu,
               ),
-              IconButton(
-                icon: const Icon(Icons.emoji_events),
-                tooltip: 'חבילת אימון AI',
-                onPressed: _isListening ? null : () {
-                  final focusWords = _words
-                      .take(6)
-                      .map((word) => word.word)
-                      .toList(growable: false);
-                  Navigator.push(
-                    context,
-                    PageTransitions.slideFromRight(
-                      AiPracticePackScreen(focusWords: focusWords),
-                    ),
-                  );
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.image_search),
-                tooltip: 'Image Quiz Game',
-                onPressed: _isListening ? null : () {
-                  Navigator.push(
-                    context,
-                    PageTransitions.fadeScale(ImageQuizGame()),
-                  );
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.camera_alt),
-                tooltip: 'הוסף מילה',
-                onPressed: _isListening ? null : _takePictureAndIdentify,
-              ),
-              IconButton(
-                icon: const Icon(Icons.store),
-                tooltip: 'חנות',
-                onPressed: _isListening ? null : () {
-                  Navigator.push(
-                    context,
-                    PageTransitions.slideFromRight(const ShopScreen()),
-                  );
-                },
-              ),
+              const SizedBox(width: 8),
             ],
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: _isListening ? null : _takePictureAndIdentify,
-            label: const Text('הוסף מילה'),
-            icon: const Icon(Icons.camera_alt),
-          ),
-          body: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  ScoreDisplay(coins: Provider.of<CoinProvider>(context).coins),
-                  WordsProgressBar(
-                    totalWords: _words.length,
-                    completedWords: _words.where((w) => w.isCompleted).length,
-                  ),
-                  Consumer<DailyMissionProvider>(
-                    builder: (context, missionsProvider, _) {
-                      if (!missionsProvider.isInitialized ||
-                          missionsProvider.missions.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
-
-                      DailyMission? claimable;
-                      DailyMission? next;
-                      for (final mission in missionsProvider.missions) {
-                        if (mission.isClaimable) {
-                          claimable = mission;
-                          break;
-                        }
-                        if (!mission.isCompleted && next == null) {
-                          next = mission;
-                        }
-                      }
-
-                      final DailyMission highlight =
-                          claimable ?? next ?? missionsProvider.missions.first;
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 12.0),
-                        child: _MissionNudgeCard(
-                          mission: highlight,
-                          isClaimable: highlight.isClaimable,
-                          onTap: _isListening ? null : _openDailyMissionsFromHome,
-                        ),
-                      );
-                    },
-                  ),
-                  if (currentWordData != null)
-                    WordDisplayCard(
-                      wordData: currentWordData,
-                      onPrevious: _isListening ? null : _previousWord,
-                      onNext: _isListening ? null : _nextWord,
-                    )
-                  else
-                    const SizedBox(
-                      height: 346,
-                      child: Center(
-                        child: Text(
-                          "אין עדיין מילים לתרגול. לחץ על המצלמה כדי להוסיף אחת חדשה!",
-                          style: TextStyle(fontSize: 22),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 40),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ActionButton(
-                          text: 'הקשב',
-                          icon: Icons.volume_up,
-                          color: Colors.lightBlue.shade400,
-                          onPressed: (_isListening || currentWordData == null)
-                              ? null
-                              : () async {
-                                  // Use slower, clearer TTS settings for word pronunciation
-                                  await flutterTts.setLanguage("en-US");
-                                  await flutterTts.setSpeechRate(0.4);
-                                  await flutterTts.setPitch(1.1);
-                                  await flutterTts.speak(currentWordData.word);
-                                },
-                        ),
-                        const SizedBox(width: 20),
-                        ActionButton(
-                          text: 'דבר',
-                          icon: _isListening ? Icons.stop : Icons.mic,
-                          color: _isListening
-                              ? Colors.grey.shade600
-                              : Colors.redAccent,
-                          onPressed: _handleSpeech,
-                        ),
-                        const SizedBox(width: 20),
-                        ActionButton(
-                          text: 'ריצת ברק',
-                          icon: Icons.flash_on,
-                          color: Colors.orangeAccent,
-                          onPressed: _isListening
-                              ? null
-                              : (_words.length < 2
-                                  ? () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'הוסיפו לפחות שתי מילים כדי להתחיל ריצת ברק!',
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  : () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => LightningPracticeScreen(
-                                            words: List<WordData>.unmodifiable(
-                                              _words,
-                                            ),
-                                            levelTitle: widget.title,
-                                          ),
-                                        ),
-                                      );
-                                    }),
-                        ),
-                      ],
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.blue.shade300,
+                  Colors.purple.shade200,
+                ],
+              ),
+            ),
+            child: SafeArea(
+              child: Stack(
+                children: [
+                  // Living Spark in top corner
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: LivingSpark(
+                      emotion: _sparkEmotion,
+                      size: 60,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    height: 100,
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      transitionBuilder: (child, animation) {
-                        return FadeTransition(
-                          opacity: animation,
-                          child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(0, 0.2),
-                              end: Offset.zero,
-                            ).animate(CurvedAnimation(
-                              parent: animation,
-                              curve: Curves.easeOut,
-                            )),
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: Text(
-                        _feedbackText.isEmpty
-                            ? 'לחצו על המיקרופון כדי לדבר'
-                            : _feedbackText,
-                        key: ValueKey(_feedbackText),
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.purple,
+                  Column(
+                    children: [
+                      const SizedBox(height: 10),
+                      // 1. Top Stats & Progress
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Stats Pill (Coins)
+                            _CoinBadge(coins: coinProvider.coins),
+                            // Segmented Progress
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                                child: _SegmentedProgressBar(
+                                  total: _words.length,
+                                  current: _currentIndex,
+                                  completedIndices: _words
+                                      .asMap()
+                                      .entries
+                                      .where((e) => e.value.isCompleted)
+                                      .map((e) => e.key)
+                                      .toList(),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        textAlign: TextAlign.center,
                       ),
-                    ),
+                      const Spacer(flex: 1),
+                      // 2. Hero Word Card Area
+                      Expanded(
+                        flex: 10,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: currentWordData != null
+                              ? _HeroWordDisplay(
+                                  wordData: currentWordData,
+                                  onNext: _isListening ? null : _nextWord,
+                                  onPrev: _isListening ? null : _previousWord,
+                                  onPlayAudio: _isListening
+                                      ? null
+                                      : () async {
+                                          _soundService.playSound('pop');
+                                          await flutterTts.setLanguage("en-US");
+                                          await flutterTts.setSpeechRate(0.4);
+                                          await flutterTts.setPitch(1.1);
+                                          await flutterTts.speak(currentWordData.word);
+                                        },
+                                  canGoNext: _currentIndex < _words.length - 1,
+                                  canGoPrev: _currentIndex > 0,
+                                )
+                              : const Center(
+                                  child: Text(
+                                    "אין עדיין מילים לתרגול. לחץ על המצלמה כדי להוסיף אחת חדשה!",
+                                    style: TextStyle(fontSize: 22, color: Colors.white),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const Spacer(flex: 1),
+                      // 3. Feedback Area (Dynamic Height)
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        child: _showFeedback
+                            ? _FeedbackPanel(
+                                text: _feedbackText,
+                                isSuccess: _lastResultSuccess,
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                      const SizedBox(height: 20),
+                      // 4. Controls Area
+                      SizedBox(
+                        height: 100,
+                        child: Center(
+                          child: _SmartMicButton(
+                            isListening: _isListening,
+                            isEvaluating: _isEvaluating,
+                            onPressed: _handleSpeech,
+                            animation: _micPulseController,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: <Widget>[
-                      // כפתור "אחורה" - תמיד מוצג
-                      IconButton(
-                        onPressed: _previousWord,
-                        icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                        iconSize: 40,
-                        color: Colors.white,
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.lightBlue.withValues(alpha: 0.8),
-                          padding: const EdgeInsets.all(15),
-                        ),
-                      ),
-
-                      // כאן מגיע התנאי הלוגי
-                      if (_isLevelComplete)
-                        // אם השלב הושלם, הצג את כפתור "סיימתי"
-                        ElevatedButton(
-                          onPressed: () {
-                            // החזר את הניקוד והרצף למסך הקודם
-                            Navigator.pop(context);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                          ),
-                          child: const Text(
-                            'סיימתי!',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        )
-                      else
-                        // אם השלב עוד לא הושלם, הצג את כפתור "הבא"
-                        IconButton(
-                          onPressed: _nextWord,
-                          icon: const Icon(Icons.arrow_forward_ios_rounded),
-                          iconSize: 40,
-                          color: Colors.white,
-                          style: IconButton.styleFrom(
-                            backgroundColor: Colors.lightBlue.withValues(alpha: 0.8),
-                            padding: const EdgeInsets.all(15),
-                          ),
-                        ),
+                  // Confetti widget
+                  ConfettiWidget(
+                    confettiController: _confettiController,
+                    blastDirectionality: BlastDirectionality.explosive,
+                    shouldLoop: false,
+                    colors: const [
+                      Colors.green,
+                      Colors.blue,
+                      Colors.pink,
+                      Colors.orange,
+                      Colors.purple,
                     ],
                   ),
                 ],
@@ -1081,23 +1123,128 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
         ),
-        ConfettiWidget(
-          confettiController: _confettiController,
-          blastDirectionality: BlastDirectionality.explosive,
-          shouldLoop: false,
-          colors: const [
-            Colors.green,
-            Colors.blue,
-            Colors.pink,
-            Colors.orange,
-            Colors.purple,
-          ],
-        ),
       ],
     );
   }
 
   bool get _isLevelComplete => !_words.any((word) => !word.isCompleted);
+
+  /// Load saved progress for words in this level
+  Future<void> _loadLevelProgress() async {
+    try {
+      debugPrint('=== Loading Level Progress ===');
+      debugPrint('Level ID: ${widget.levelId}');
+      debugPrint('Total words: ${_words.length}');
+
+      final userId = await _getCurrentUserId();
+      debugPrint('User ID: $userId');
+      if (userId == null) {
+        debugPrint('No user ID found, skipping progress load');
+        return;
+      }
+
+      final isLocalUser = await _isLocalUser();
+      debugPrint('Is local user: $isLocalUser');
+
+      // Get all completed words at once
+      final completedWords = await _levelProgressService.getCompletedWords(
+        userId,
+        widget.levelId,
+        isLocalUser: isLocalUser,
+      );
+
+      debugPrint('Completed words from storage: $completedWords');
+
+      int loadedCount = 0;
+      for (final word in _words) {
+        if (completedWords.contains(word.word)) {
+          word.isCompleted = true;
+          loadedCount++;
+          debugPrint('Loaded completed word: ${word.word}');
+        } else {
+          word.isCompleted = false;
+        }
+      }
+
+      debugPrint('Loaded $loadedCount completed words out of ${_words.length}');
+      debugPrint('=== Level Progress Loaded ===');
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Error loading level progress: $e');
+      debugPrint('Stack trace: $stackTrace');
+    }
+  }
+
+  /// Get current user ID (Firebase or local)
+  Future<String?> _getCurrentUserId() async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.isAuthenticated && authProvider.firebaseUser != null) {
+        return authProvider.firebaseUser!.uid;
+      } else {
+        final localUser = await _localUserService.getActiveUser();
+        return localUser?.id;
+      }
+    } catch (e) {
+      debugPrint('Error getting user ID: $e');
+      return null;
+    }
+  }
+
+  /// Check if current user is a local user
+  Future<bool> _isLocalUser() async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.isAuthenticated) {
+        return false;
+      }
+      final localUser = await _localUserService.getActiveUser();
+      return localUser != null;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Check if level is completed and show completion screen
+  Future<void> _checkLevelCompletion() async {
+    if (!_isLevelComplete) return;
+
+    try {
+      final userId = await _getCurrentUserId();
+      if (userId == null) return;
+
+      final isLocalUser = await _isLocalUser();
+      final isCompleted = await _levelProgressService.isLevelCompleted(
+        userId,
+        widget.levelId,
+        _words.length,
+        isLocalUser: isLocalUser,
+      );
+
+      if (isCompleted && mounted) {
+        // Show completion screen
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LevelCompletionScreen(
+              levelName: widget.title,
+              completedWords: _words.where((w) => w.isCompleted).length,
+              totalWords: _words.length,
+              onContinue: () {
+                Navigator.of(context).pop(); // Pop completion screen
+                Navigator.of(context).pop(); // Pop home page, return to map
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error checking level completion: $e');
+    }
+  }
 
   String get _cameraValidatorType => _cameraValidator.runtimeType.toString();
 
@@ -1107,24 +1254,6 @@ class _MyHomePageState extends State<MyHomePage> {
       return validator.lastConfidence;
     }
     return null;
-  }
-}
-
-// Add this helper class at the end of the file
-class BytesAudioSource extends StreamAudioSource {
-  final List<int> _bytes;
-
-  BytesAudioSource(this._bytes) : super(tag: 'BytesAudioSource');
-
-  @override
-  Future<StreamAudioResponse> request([int? start, int? end]) async {
-    return StreamAudioResponse(
-      sourceLength: _bytes.length,
-      contentLength: (end ?? _bytes.length) - (start ?? 0),
-      offset: start ?? 0,
-      stream: Stream.value(_bytes.sublist(start ?? 0, end)),
-      contentType: 'audio/mpeg',
-    );
   }
 }
 
@@ -1141,9 +1270,8 @@ class _MissionNudgeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = isClaimable
-        ? Colors.green.shade500
-        : Colors.indigo.shade400;
+    final Color accent =
+        isClaimable ? Colors.green.shade500 : Colors.indigo.shade400;
     final double progress = mission.completionRatio;
 
     return InkWell(
@@ -1257,6 +1385,544 @@ class _MissionNudgeCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// --- Helper Widgets - Redesigned by Gemini 3 Pro ---
+
+// 1. Coin Badge (Floating Style)
+class _CoinBadge extends StatelessWidget {
+  final int coins;
+
+  const _CoinBadge({required this.coins});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.monetization_on, color: Colors.yellow.shade700, size: 20),
+          const SizedBox(width: 6),
+          Text(
+            "$coins",
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// 2. Segmented Progress Bar
+class _SegmentedProgressBar extends StatelessWidget {
+  final int total;
+  final int current;
+  final List<int> completedIndices;
+
+  const _SegmentedProgressBar({
+    required this.total,
+    required this.current,
+    required this.completedIndices,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (total == 0) return const SizedBox();
+
+    return SizedBox(
+      height: 8,
+      child: Row(
+        children: List.generate(total, (index) {
+          bool isActive = index == current;
+          bool isDone = completedIndices.contains(index);
+
+          Color color;
+          if (isActive) {
+            color = Colors.white;
+          } else if (isDone) {
+            color = const Color(0xFF50C878); // Success Green
+          } else {
+            color = Colors.white.withValues(alpha: 0.3);
+          }
+
+          return Expanded(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: isActive
+                    ? [
+                        BoxShadow(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          blurRadius: 4,
+                        ),
+                      ]
+                    : null,
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+// 3. Hero Word Display
+class _HeroWordDisplay extends StatelessWidget {
+  final WordData wordData;
+  final VoidCallback? onNext;
+  final VoidCallback? onPrev;
+  final VoidCallback? onPlayAudio;
+  final bool canGoNext;
+  final bool canGoPrev;
+
+  const _HeroWordDisplay({
+    required this.wordData,
+    required this.onNext,
+    required this.onPrev,
+    required this.onPlayAudio,
+    required this.canGoNext,
+    required this.canGoPrev,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Main Card
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          transitionBuilder: (Widget child, Animation<double> animation) {
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.0, 0.1),
+                end: Offset.zero,
+              ).animate(animation),
+              child: FadeTransition(opacity: animation, child: child),
+            );
+          },
+          child: Card(
+            key: ValueKey<String>(wordData.word),
+            elevation: 12,
+            shadowColor: Colors.black.withValues(alpha: 0.3),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(32),
+            ),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                border: wordData.isCompleted
+                    ? Border.all(color: Colors.green.shade300, width: 3)
+                    : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Image Area
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        color: Colors.grey.shade100,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            // Use WordDisplayCard's image building logic
+                            _buildImage(context),
+                            if (wordData.isCompleted)
+                              Container(
+                                color: Colors.green.withValues(alpha: 0.2),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.check_circle,
+                                    color: Colors.green,
+                                    size: 64,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Word & TTS
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        wordData.word,
+                        style: const TextStyle(
+                          fontSize: 42,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF4A4A4A),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      IconButton.filledTonal(
+                        onPressed: onPlayAudio,
+                        icon: const Icon(Icons.volume_up_rounded, size: 28),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.indigo.shade50,
+                          foregroundColor: Colors.indigo,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Navigation Arrows (Floating on sides)
+        if (canGoPrev)
+          Positioned(
+            left: 0,
+            child: CircleAvatar(
+              backgroundColor: Colors.white,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                onPressed: onPrev,
+              ),
+            ),
+          ),
+        if (canGoNext)
+          Positioned(
+            right: 0,
+            child: CircleAvatar(
+              backgroundColor: Colors.white,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_forward, color: Colors.black87),
+                onPressed: onNext,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildImage(BuildContext context) {
+    final imageUrl = wordData.imageUrl;
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return const Center(
+        child: Icon(Icons.image, size: 64, color: Colors.grey),
+      );
+    }
+
+    final bool isAssetImage = imageUrl.startsWith('assets/');
+    final bool isLocalFile = !kIsWeb &&
+        !imageUrl.startsWith('http') &&
+        !imageUrl.startsWith('blob:') &&
+        !imageUrl.startsWith('data:') &&
+        !isAssetImage;
+
+    if (isAssetImage) {
+      return Image.asset(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 64, color: Colors.grey),
+      );
+    } else if (isLocalFile) {
+      return Image.file(
+        File(imageUrl),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 64, color: Colors.grey),
+      );
+    } else {
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => const Center(
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        errorWidget: (context, url, error) => const Icon(Icons.image, size: 64, color: Colors.grey),
+      );
+    }
+  }
+}
+
+// 4. Smart Microphone Button
+class _SmartMicButton extends StatelessWidget {
+  final bool isListening;
+  final bool isEvaluating;
+  final VoidCallback onPressed;
+  final Animation<double> animation;
+
+  const _SmartMicButton({
+    required this.isListening,
+    required this.isEvaluating,
+    required this.onPressed,
+    required this.animation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color bgColor = Colors.blue; // Default
+    IconData icon = Icons.mic_rounded;
+    String label = "דבר";
+
+    if (isListening) {
+      bgColor = Colors.redAccent;
+      icon = Icons.graphic_eq;
+      label = "מקשיב...";
+    } else if (isEvaluating) {
+      bgColor = Colors.purpleAccent;
+      icon = Icons.auto_awesome;
+      label = "בודק...";
+    }
+
+    final buttonContent = AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        double scale = isListening ? 1.0 + (animation.value * 0.1) : 1.0;
+        return Transform.scale(
+          scale: scale,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 72,
+                width: 72,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: bgColor,
+                  boxShadow: [
+                    BoxShadow(
+                      color: bgColor.withValues(alpha: 0.4),
+                      blurRadius: 16,
+                      spreadRadius: 4,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: isEvaluating
+                    ? const Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 3,
+                        ),
+                      )
+                    : Icon(icon, color: Colors.white, size: 36),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+                ),
+              )
+            ],
+          ),
+        );
+      },
+    );
+
+    // Wrap in BouncyButton for satisfying tactile feedback
+    if (isListening || isEvaluating) {
+      return buttonContent; // Disable bounce when active
+    }
+
+    return BouncyButton(
+      onPressed: onPressed,
+      child: buttonContent,
+    );
+  }
+}
+
+// 5. Feedback Panel
+class _FeedbackPanel extends StatelessWidget {
+  final String text;
+  final bool isSuccess;
+
+  const _FeedbackPanel({required this.text, required this.isSuccess});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+      decoration: BoxDecoration(
+        color: isSuccess ? Colors.green.shade600 : Colors.orange.shade800,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isSuccess ? Icons.check_circle : Icons.info_outline,
+            color: Colors.white,
+            size: 28,
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// 6. Level Header
+class _LevelHeader extends StatelessWidget {
+  final String title;
+
+  const _LevelHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 18,
+        ),
+      ),
+    );
+  }
+}
+
+// 7. Menu Sheet (Clean way to handle secondary actions)
+class _GameMenuSheet extends StatelessWidget {
+  final VoidCallback? onAddWord;
+  final VoidCallback? onShop;
+  final VoidCallback? onImageQuiz;
+  final VoidCallback? onChatBuddy;
+  final VoidCallback? onPracticePack;
+  final VoidCallback? onLightning;
+
+  const _GameMenuSheet({
+    this.onAddWord,
+    this.onShop,
+    this.onImageQuiz,
+    this.onChatBuddy,
+    this.onPracticePack,
+    this.onLightning,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            "תפריט משחק",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+          if (onAddWord != null)
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Colors.blue),
+              title: const Text("הוסף מילה חדשה"),
+              onTap: () {
+                Navigator.pop(context);
+                onAddWord?.call();
+              },
+            ),
+          if (onShop != null)
+            ListTile(
+              leading: const Icon(Icons.store, color: Colors.purple),
+              title: const Text("חנות"),
+              onTap: () {
+                Navigator.pop(context);
+                onShop?.call();
+              },
+            ),
+          if (onImageQuiz != null)
+            ListTile(
+              leading: const Icon(Icons.image_search, color: Colors.orange),
+              title: const Text("חידון תמונות"),
+              onTap: () {
+                Navigator.pop(context);
+                onImageQuiz?.call();
+              },
+            ),
+          if (onChatBuddy != null)
+            ListTile(
+              leading: const Icon(Icons.chat, color: Colors.green),
+              title: const Text("חבר שיחה של ספרק"),
+              onTap: () {
+                Navigator.pop(context);
+                onChatBuddy?.call();
+              },
+            ),
+          if (onPracticePack != null)
+            ListTile(
+              leading: const Icon(Icons.emoji_events, color: Colors.amber),
+              title: const Text("חבילת אימון AI"),
+              onTap: () {
+                Navigator.pop(context);
+                onPracticePack?.call();
+              },
+            ),
+          if (onLightning != null)
+            ListTile(
+              leading: const Icon(Icons.flash_on, color: Colors.orange),
+              title: const Text("ריצת ברק"),
+              onTap: () {
+                Navigator.pop(context);
+                onLightning?.call();
+              },
+            ),
+        ],
       ),
     );
   }
