@@ -1,0 +1,35 @@
+---
+description: "REST controller patterns - Spring MVC, validation, OpenAPI, metrics"
+globs: "**/*Controller*.java"
+alwaysApply: false
+---
+
+# REST Controller
+
+## Controller Structure
+```java
+@RestController
+@Tag(name = "ServiceName")
+@Validated
+@Log4j2
+public class MyController {
+    private final MyService service;
+
+    public MyController(MyService service) {
+        this.service = service;
+    }
+}
+```
+
+## Request/Response
+- `@Valid @RequestBody` for Jakarta Bean Validation
+- `@Parameter` + `@Schema` for query params
+- `201 CREATED` + `Location` header for POST, `204 NO_CONTENT` for DELETE
+- `MediaType.APPLICATION_JSON_VALUE` for produces/consumes
+
+## Error Handling
+See `java-conventions.mdc` — controllers throw `ResponseStatusException`, centralized handler converts to RFC 7807.
+
+## OpenAPI & Metrics
+- SpringDoc OpenAPI — `@Tag`, `@Operation`, `@ApiResponse`
+- OpenTelemetry counters for request metrics

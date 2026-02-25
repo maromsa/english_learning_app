@@ -1,0 +1,89 @@
+---
+description: "MANDATORY global agent behavior - lifecycle enforcement, code discipline, anti-skip, evidence rules, continuous learning"
+alwaysApply: true
+---
+
+# Agent Behavior
+
+## Feature Lifecycle (MANDATORY — NEVER SKIP)
+
+All non-trivial work MUST follow the lifecycle defined in `feature-lifecycle.mdc`:
+**Clarify → Plan → Implement → Test Loop → Integration → Completion.**
+
+### Hard Rules
+- **Never jump straight to coding.** Phase 1 (plan) must be approved first.
+- **Never guess when ambiguous.** Ask the user with structured options (Phase 0).
+- **Never claim tests pass without evidence.** Paste real terminal output.
+- **Never skip a phase silently.** Print `PHASE {N}: SKIPPED — reason: {reason}` for any skipped phase.
+- **Never proceed past a gate without meeting it.** Phase 1 needs user approval. Phase 3 needs all tests green with pasted output.
+
+## Subagent Rules
+- **NEVER set `model: "fast"` on subagents (Task tool).** Always omit the `model` parameter so subagents inherit the parent model.
+- Subagents MUST also follow the lifecycle — they do not get exemptions.
+
+## Code Discipline
+
+### Read Before Write (MANDATORY)
+- **Always read a file before editing it.** No exceptions. Understand existing code, patterns, and imports first.
+- Read neighboring files in the same package to match style and naming conventions.
+- If modifying a shared module, read at least one downstream consumer to understand impact.
+
+### Write Tests With Code (Not After)
+- Every new public method or endpoint gets a test written in the same implementation step.
+- Never defer test writing to "Phase 3" — tests are part of implementation.
+- If you create a file without a corresponding test, you have violated this rule.
+
+### Linter Discipline
+- After editing any file, check for linter errors on that file.
+- Fix linter errors you introduced before moving on to the next file.
+- Do NOT fix pre-existing linter errors unless they block your work.
+
+### Compile Early and Often
+- Run compile check after each logical unit of code (not just at the end).
+- If compile fails, fix immediately — do NOT stack multiple broken files.
+- **Paste compile output** to prove it succeeded.
+
+### Evidence-Based Verification
+- When running tests, compiles, or deployments: **always paste the actual terminal output**.
+- Never summarize results in your own words without showing the raw output first.
+- If terminal output is too long, paste the summary section (e.g., Maven's `BUILD SUCCESS` / `Tests run:` line).
+
+## Quality Gate Checklist (Phase 2)
+
+### Before Writing Code
+- Read existing patterns in the same module — match the style
+- Check if the change affects extension point interfaces (requires downstream updates)
+- Run existing tests for modules you will touch → establish green baseline → **paste output**
+
+### While Writing Code
+- Follow the project's language convention rules strictly
+- Follow role-specific rules for the file type being edited (controller, service, persistence, etc.)
+- Include tests for new behavior alongside the implementation
+
+### After Writing Code
+- Compile check → **paste output**
+- Linter check on modified files
+- If persistence changed → check if a database migration is needed
+- If adding dependencies → check dependency management (BOM/catalog) first
+- Run tests for the modified module → **paste output**
+
+## Continuous Learning
+
+After completing any task, evaluate whether `.cursor/rules/` files need updating. Treat rules as living documentation. This is NOT optional.
+
+### What to Capture
+- New patterns, conventions, or architectural decisions established
+- Existing rules that were contradicted (update rule to match reality)
+- Environment/infra facts discovered (cluster names, URLs, ports, commands)
+- Gotchas, pitfalls, workarounds encountered
+- New modules, services, schemas, APIs, or deployment changes
+
+### What NOT to Capture
+- Ephemeral debugging info (stack traces, one-off typos)
+- Obvious language/framework defaults already in existing rules
+
+### How to Update
+1. Read the relevant rule file(s) before editing
+2. Make surgical updates — preserve existing structure
+3. Never duplicate content across rule files
+4. Briefly mention the rule update to the user

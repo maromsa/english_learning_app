@@ -52,6 +52,7 @@ dependencies:
   just_audio: ^0.10.5
   flutter_animate: ^4.5.2
   model_viewer_plus: ^1.9.3
+  webview_flutter: ^4.13.0
 
 dev_dependencies:
   flutter_test:
@@ -70,4 +71,6 @@ flutter:
     - assets/images/words/
     - assets/audio/
     - assets/data/levels.json
+    - assets/models/
+    - assets/map_3d/
 

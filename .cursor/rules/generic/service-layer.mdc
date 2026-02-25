@@ -1,0 +1,45 @@
+---
+description: "Service layer patterns - Spring services, SPI extension points, component design"
+globs: "**/service/src/main/java/**/*.java"
+alwaysApply: false
+---
+
+# Service Layer
+
+## Service Class Structure
+```java
+@Log4j2
+@Service
+public class OrderService {
+    private final OrderDal orderDal;
+    private final EventPublisher eventPublisher;
+    private final OrderMapper mapper;
+
+    public OrderService(OrderDal dal, EventPublisher publisher, OrderMapper mapper) {
+        this.orderDal = dal;
+        this.eventPublisher = publisher;
+        this.mapper = mapper;
+    }
+}
+```
+
+## SPI (Extension Point) Pattern
+```java
+public interface NotificationBuilder {
+    Notification build(EventData data);
+}
+
+@Component
+@ConditionalOnMissingBean(NotificationBuilder.class)
+public class DefaultNotificationBuilder implements NotificationBuilder {
+    // Default used when no extension is provided
+}
+```
+Downstream modules override defaults by providing their own `@Component` implementation.
+
+## Conventions
+- Constructor injection — **no field injection**
+- Inject DALs (not repositories directly) for persistence
+- Use MapStruct mappers for object transformation
+- `@ConditionalOnMissingBean` for default SPI implementations
+- `application.yaml` for configuration (not `.properties`)

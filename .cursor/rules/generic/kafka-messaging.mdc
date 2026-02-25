@@ -1,0 +1,47 @@
+---
+description: "Kafka messaging - Spring Kafka producers, consumers, Avro serialization, schema conventions"
+globs: "{**/kafka/**/*.java,**/*Producer*.java,**/*Consumer*.java,**/*Listener*.java,**/*.avdl,**/*.avsc}"
+alwaysApply: false
+---
+
+# Kafka Messaging
+
+## Producer Pattern
+```java
+@Log4j2 @Service
+public class OrderEventProducer {
+    private final KafkaTemplate<String, OrderEvent> kafkaTemplate;
+
+    public void send(String topic, String key, OrderEvent event) {
+        kafkaTemplate.send(topic, key, event);
+        kafkaTemplate.flush();
+    }
+}
+```
+- Key is always `String`
+
+## Consumer Pattern
+```java
+@KafkaListener(
+    topics = "${ORDER_EVENT_TOPIC}",
+    groupId = "order-processor",
+    containerFactory = "avroListenerContainerFactory")
+public void consume(@Header(name = KafkaHeaders.RECEIVED_KEY) String key,
+                    ConsumerRecord<String, OrderEvent> record) {
+    log.info("Received key=[{}]", key);
+}
+```
+- Explicit `groupId` and `containerFactory` on every listener
+- Extract key via `@Header(name = KafkaHeaders.RECEIVED_KEY)`
+
+## Error Handling
+- `DefaultErrorHandler` with exponential backoff
+- `ErrorHandlingDeserializer` wraps all consumers
+- Failed records sent to DLQ after exhausting retries
+
+## Avro Schema Conventions
+- Format: Avro IDL (`.avdl`) in `src/main/resources/avro/`
+- PascalCase records, camelCase fields
+- `@doc` annotations for documentation
+- Evolution: add optional fields with defaults, never remove/rename
+- Confluent Schema Registry with TopicNameStrategy

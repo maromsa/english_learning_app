@@ -1,0 +1,80 @@
+---
+description: "Persistence layer - JPA entities, repositories, DALs, MapStruct, Liquibase"
+globs: "{**/persistence/**/*.java,**/db/**/*.xml,**/liquibase/**,**/changelog*.xml}"
+alwaysApply: false
+---
+
+# Persistence Layer
+
+## Entity Pattern
+```java
+@Entity
+@Table(name = "orders")
+@Accessors(chain = true)
+@Getter @Setter @NoArgsConstructor @Builder @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+public class OrderEntity {
+    @Id
+    @Column(name = "order_id", nullable = false, length = 36)
+    @EqualsAndHashCode.Include
+    private String id;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Integer version;
+}
+```
+- Column names: `snake_case` | Fields: `camelCase`
+- Always use `@Version` for optimistic locking
+- String UUIDs for primary keys (length = 36)
+
+## Repository Pattern
+```java
+@Lazy
+public interface OrderRepository extends JpaRepository<OrderEntity, String> {
+    @Modifying
+    @Query("update OrderEntity o set o.status = ?2 where o.id = ?1")
+    void updateStatusById(String id, StatusType status);
+}
+```
+- Extend `JpaRepository<Entity, IdType>` with `@Lazy`
+- JPQL preferred over native SQL
+- `@Query` + `@Modifying` for update/delete operations
+
+## DAL (Data Access Layer)
+```java
+@Component @Transactional @Log4j2
+public class OrderDal {
+    private final OrderRepository repository;
+    private final OrderMapper mapper;
+}
+```
+
+## MapStruct Mappers
+```java
+@Mapper
+public interface OrderMapper {
+    OrderMapper MAPPER = Mappers.getMapper(OrderMapper.class);
+    Order toOrder(OrderEntity entity);
+}
+```
+
+## Database Rules
+- DDL managed by **Liquibase** — never `ddl-auto`
+- PostgreSQL in production, H2 for unit tests
+
+## Liquibase Conventions
+```xml
+<changeSet id="{module}-{sequence}-{description}" author="developer">
+    <addColumn tableName="orders">
+        <column name="status" type="VARCHAR(50)" defaultValue="ACTIVE"/>
+    </addColumn>
+    <rollback>
+        <dropColumn tableName="orders" columnName="status"/>
+    </rollback>
+</changeSet>
+```
+- **Always include `<rollback>`** for every changeset
+- Incremental sequence numbers (001, 002, 003...)
+- One logical change per changeset
+- Table/column names: `snake_case`

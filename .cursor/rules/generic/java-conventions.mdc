@@ -1,0 +1,70 @@
+---
+description: "Java conventions - Lombok, DI, logging, error handling, naming, null handling"
+globs: "**/*.java"
+alwaysApply: false
+---
+
+# Java Conventions
+
+## Naming
+- **Controllers**: `*Controller` | **Services**: `*Service` | **Repositories**: `*Repository`
+- **Entities**: `*Entity` | **DALs**: `*Dal` | **Mappers**: `*Mapper` (MapStruct)
+- **Exceptions**: `*Exception` with `@Getter` for context fields
+
+## Lombok
+- `@Log4j2` for logging — **never** `@Slf4j`
+- `@Getter`/`@Setter`, `@Builder`, `@NoArgsConstructor`/`@AllArgsConstructor`
+- Entity-specific annotations (`@Accessors`, `@EqualsAndHashCode`) → see `persistence-patterns.mdc`
+
+## Dependency Injection
+- **Constructor injection only** — no `@Autowired` on fields
+- `@Autowired(required = false)` only for genuinely optional beans
+- `@Value("${property:default}")` for config properties
+
+## Logging
+```java
+log.info("Processing request id=[{}] status=[{}]", id, status);
+log.atDebug().log(() -> "Expensive: " + expensiveCall());
+```
+- Parameterized messages — never concatenate strings
+- Always include contextual IDs in log messages
+- Exception as **last** argument: `log.error("Failed id=[{}]", id, e);`
+
+## Error Handling
+
+### Custom Exceptions
+```java
+@Getter
+public class ResourceNotFoundException extends RuntimeException {
+    private final String resourceId;
+    public ResourceNotFoundException(String resourceId) {
+        super("Resource not found: " + resourceId);
+        this.resourceId = resourceId;
+    }
+}
+```
+- Extend `RuntimeException` (unchecked), use `@Getter` for context fields
+
+### Controller Error Mapping
+- Throw `ResponseStatusException` for HTTP status mapping
+- Centralized handler converts to RFC 7807 Problem Details
+- All API errors return `type`, `title`, `status`, `detail`, `instance` fields
+
+## Import Ordering
+- No wildcard imports — always explicit
+- Group: `java.*` → `javax.*`/`jakarta.*` → company packages → third-party
+
+## Null Handling
+- `@NotNull` for method parameters that must not be null
+- `Optional<T>` for return types that may be absent — never for parameters or fields
+- `Objects.requireNonNull(param, "message")` in constructors
+
+## Collections & Immutability
+- Prefer `List.of()`, `Set.of()`, `Map.of()` for immutable collections
+- `new ArrayList<>()` only when mutation is required
+
+## Java 17 Features
+- **Records** for pure data carriers: `record Foo(String bar, int baz) {}`
+- **Text blocks** for multi-line strings (SQL, JSON templates)
+- **Pattern matching**: `if (obj instanceof String s) { ... }`
+- `"text %s".formatted(val)` over `String.format()`

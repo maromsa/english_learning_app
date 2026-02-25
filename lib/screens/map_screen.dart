@@ -1,5 +1,6 @@
 // lib/screens/map_screen.dart
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -11,8 +12,10 @@ import 'package:english_learning_app/screens/ai_conversation_screen.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/home_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../services/background_music_service.dart';
 import '../services/daily_reward_service.dart';
@@ -62,6 +65,10 @@ class _MapScreenState extends State<MapScreen>
 
   late ScrollController _scrollController;
   late AnimationController _pulseController;
+  
+  // WebView Controller for 3D Map
+  late final WebViewController _webViewController;
+  bool _isWebMapReady = false;
 
   @override
   void initState() {
@@ -71,12 +78,15 @@ class _MapScreenState extends State<MapScreen>
     _localUserDataService = LocalUserDataService();
     _localUserService = LocalUserService();
 
-    // Initialize scroll controller and animation
+    // Initialize scroll controller and animation (keeping for fallback or transition)
     _scrollController = ScrollController();
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
+    
+    // Initialize WebView
+    _initWebView();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Don't block UI - play music in background
@@ -95,6 +105,70 @@ class _MapScreenState extends State<MapScreen>
         _userSessionProvider?.addListener(_onUserSessionChanged);
       }
     });
+  }
+  
+  void _initWebView() {
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0x00000000))
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (String url) {
+            debugPrint('3D Map Loaded: $url');
+            _isWebMapReady = true;
+            _sendLevelsToJs();
+          },
+          onWebResourceError: (WebResourceError error) {
+            debugPrint('WebView Error: ${error.description}');
+          },
+        ),
+      )
+      ..addJavaScriptChannel(
+        'MapChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          _handleJsMessage(message.message);
+        },
+      )
+      ..loadFlutterAsset('assets/map_3d/index.html');
+  }
+  
+  void _handleJsMessage(String jsonMessage) {
+    try {
+      final data = jsonDecode(jsonMessage);
+      final type = data['type'];
+      final payload = data['data'];
+      
+      switch (type) {
+        case 'enter_level':
+          final index = payload['index'] as int;
+          if (index >= 0 && index < levels.length) {
+            _navigateToLevel(levels[index], index);
+          }
+          break;
+        case 'level_locked':
+          final index = payload['index'] as int;
+          if (index >= 0 && index < levels.length) {
+            _showLockedMessage(levels[index]);
+          }
+          break;
+        case 'arrived_at_level':
+             // Optional: Show "Enter Level" button or similar
+             break;
+      }
+    } catch (e) {
+      debugPrint('Error handling JS message: $e');
+    }
+  }
+
+  void _sendLevelsToJs() {
+    if (!_isWebMapReady || levels.isEmpty) return;
+    try {
+      final jsonList = levels.map((l) => l.toJson()).toList();
+      final jsonString = jsonEncode(jsonList);
+      _webViewController.runJavaScript('window.updateLevels($jsonString)');
+    } catch (e) {
+      debugPrint('Error sending levels to JS: $e');
+    }
   }
 
   void _onUserSessionChanged() {
@@ -234,6 +308,9 @@ class _MapScreenState extends State<MapScreen>
               ? 'נשתמש במסלול ברירת המחדל עד לחיבור לשרת.'
               : null;
         });
+        
+        _sendLevelsToJs(); // Send levels to 3D map
+        
         // Scroll to current level after build
         // Use a small delay to ensure scroll controller is ready
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -480,6 +557,7 @@ class _MapScreenState extends State<MapScreen>
       _updateUnlockStatuses();
       if (mounted) {
         setState(() {});
+        _sendLevelsToJs(); // Update 3D map with new progress
       }
     } on TimeoutException {
       debugPrint('Progress loading timed out, using defaults');
@@ -1011,107 +1089,31 @@ class _MapScreenState extends State<MapScreen>
                   )
                 : Stack(
                     children: [
-                      // 1. Fixed Background (Does not scroll, parallax effect)
+                      // 1. 3D Map View (WebView)
                       Positioned.fill(
-                        child: RepaintBoundary(
-                          child: Image.asset(
-                            'assets/images/map/map_background.jpg',
-                            fit: BoxFit.cover,
-                            cacheWidth: 1920,
-                            cacheHeight: 1080,
-                            // Use ColorFilter to dim background slightly for better contrast
-                            color: Colors.white.withValues(alpha: 0.85),
-                            colorBlendMode: BlendMode.modulate,
-                            errorBuilder: (_, __, ___) => Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.blue.shade300,
-                                    Colors.purple.shade300
-                                  ],
+                        child: WebViewWidget(controller: _webViewController),
+                      ),
+
+                      // 2. Loading Overlay for WebView
+                      if (!_isWebMapReady)
+                        Container(
+                          color: Colors.blue.shade900,
+                          child: const Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircularProgressIndicator(color: Colors.white),
+                                SizedBox(height: 16),
+                                Text(
+                                  'טוען עולם תלת-מימדי...',
+                                  style: TextStyle(color: Colors.white),
                                 ),
-                              ),
+                              ],
                             ),
                           ),
                         ),
-                      ),
 
-                      // 2. Scrollable Map Content
-                      SingleChildScrollView(
-                        controller: _scrollController,
-                        physics: const BouncingScrollPhysics(),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final size = MediaQuery.of(context).size;
-                            final totalMapHeight = _topPadding +
-                                (levels.length * _levelHeightSpacing) +
-                                _bottomPadding;
-
-                            return SizedBox(
-                              height: math.max(size.height, totalMapHeight),
-                              width: size.width,
-                              child: Stack(
-                                children: [
-                                  // A. The Path Line (Drawn behind nodes)
-                                  CustomPaint(
-                                    size: Size(size.width, totalMapHeight),
-                                    painter: _MapPathPainter(
-                                      levelCount: levels.length,
-                                      getPosition: (i) =>
-                                          _calculateLevelPosition(
-                                              i, size.width),
-                                      completedColor: const Color(0xFF50C878),
-                                      lockedColor:
-                                          Colors.grey.withValues(alpha: 0.5),
-                                      levels: levels,
-                                    ),
-                                  ),
-
-                                  // B. The Level Nodes
-                                  ...List.generate(levels.length, (index) {
-                                    final level = levels[index];
-                                    final pos = _calculateLevelPosition(
-                                        index, size.width);
-
-                                    // Determine status
-                                    final isCompleted = level.stars > 0;
-                                    final isCurrent =
-                                        level.isUnlocked && !isCompleted;
-                                    // Logic: if previous level is not completed, this is not current
-                                    bool actualIsCurrent = isCurrent;
-                                    if (index > 0 &&
-                                        !_isLevelCompleted(levels[index - 1])) {
-                                      actualIsCurrent = false;
-                                    }
-
-                                    return Positioned(
-                                      left: pos.dx - 40, // Center the 80px node
-                                      top: pos.dy - 40,
-                                      child: _LevelNode(
-                                        levelNumber: index + 1,
-                                        level: level,
-                                        isCurrent: actualIsCurrent,
-                                        isCompleted: isCompleted,
-                                        animation: actualIsCurrent
-                                            ? _pulseController
-                                            : null,
-                                        onTap: () =>
-                                            _navigateToLevel(level, index),
-                                        onLockedTap: () =>
-                                            _showLockedMessage(level),
-                                      ),
-                                    );
-                                  }),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-
-                      // 3. Floating Stats Pill (Fixed Position, safe from scrolling)
+                      // 3. Floating Stats Pill (Fixed Position)
                       Positioned(
                         top: kToolbarHeight + 20, // Below AppBar
                         left: 20,
@@ -1338,209 +1340,13 @@ class _MapScreenState extends State<MapScreen>
     super.dispose();
   }
 
-  // Calculate level position using sine wave algorithm (snake pattern)
-  Offset _calculateLevelPosition(int index, double screenWidth) {
-    // Center X coordinate
-    double centerX = screenWidth / 2;
-
-    // Calculate horizontal offset using Sine wave (alternating left and right)
-    double xOffset = math.sin(index * math.pi / 1.5) * _pathAmplitude;
-
-    double x = centerX + xOffset;
-    double y = _topPadding + (index * _levelHeightSpacing);
-
-    return Offset(x, y);
-  }
-
   // Scroll to current level after levels are loaded
   void _scrollToCurrentLevel() {
-    if (levels.isEmpty) return;
-
-    // Wait for scroll controller to be ready
-    if (!_scrollController.hasClients) {
-      // Retry after a short delay
-      Future.delayed(const Duration(milliseconds: 50), () {
-        if (mounted && _scrollController.hasClients) {
-          _scrollToCurrentLevel();
-        }
-      });
-      return;
-    }
-
-    // Find the first unlocked level that is not completed (current level)
-    int currentIndex =
-        levels.indexWhere((l) => l.isUnlocked && !_isLevelCompleted(l));
-
-    if (currentIndex == -1) {
-      // All levels are completed, start at the top (first level)
-      // Don't scroll - just ensure we're at the top
-      if (_scrollController.offset > 0) {
-        _scrollController.jumpTo(0);
-      }
-      return;
-    }
-
-    // Calculate position to show the current level near the top
-    // Position it at about 1/4 from the top so user can see previous levels too
-    final screenHeight = MediaQuery.of(context).size.height;
-    double targetOffset = (_topPadding + (currentIndex * _levelHeightSpacing)) -
-        (screenHeight * 0.25);
-
-    // Ensure we don't scroll below 0 (top of map)
-    targetOffset =
-        targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent);
-
-    // If we're already close to the target, don't animate
-    final currentOffset = _scrollController.offset;
-    if ((currentOffset - targetOffset).abs() < 50) {
-      return; // Already close enough
-    }
-
-    _scrollController.animateTo(
-      targetOffset,
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeOut,
-    );
+    // Not used in 3D map
   }
 
   bool _isLevelCompleted(LevelData level) {
     return level.stars > 0;
-  }
-}
-
-// --- Enhanced Level Node Widget - Redesigned by Gemini 3 Pro V2 ---
-
-class _LevelNode extends StatelessWidget {
-  final int levelNumber;
-  final LevelData level;
-  final bool isCurrent;
-  final bool isCompleted;
-  final VoidCallback onTap;
-  final VoidCallback? onLockedTap;
-  final Animation<double>? animation;
-
-  const _LevelNode({
-    required this.levelNumber,
-    required this.level,
-    required this.isCurrent,
-    required this.isCompleted,
-    required this.onTap,
-    this.onLockedTap,
-    this.animation,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isLocked = !level.isUnlocked;
-
-    // Colors
-    final Color lockedColor = Colors.grey.shade400;
-    final Color activeColor = const Color(0xFF4A90E2); // Blue
-    final Color completedColor = const Color(0xFF50C878); // Green
-
-    Color baseColor =
-        isLocked ? lockedColor : (isCompleted ? completedColor : activeColor);
-
-    return GestureDetector(
-      onTap: () {
-        if (!isLocked) {
-          onTap();
-        } else {
-          onLockedTap?.call();
-        }
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // The Circle Node
-          AnimatedBuilder(
-            animation: animation ?? const AlwaysStoppedAnimation(0),
-            builder: (context, child) {
-              double scale = 1.0;
-              double elevation = 4.0;
-
-              if (isCurrent && animation != null) {
-                scale = 1.0 +
-                    (animation!.value * 0.15); // Pulse between 1.0 and 1.15
-                elevation = 4.0 + (animation!.value * 6);
-              }
-
-              return Transform.scale(
-                scale: scale,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: baseColor,
-                    border: Border.all(color: Colors.white, width: 4),
-                    boxShadow: [
-                      BoxShadow(
-                        color: baseColor.withValues(alpha: 0.4),
-                        blurRadius: elevation,
-                        offset: Offset(0, elevation / 2),
-                      )
-                    ],
-                  ),
-                  child: Center(
-                    child: isLocked
-                        ? const Icon(Icons.lock, color: Colors.white, size: 32)
-                        : isCompleted
-                            ? const Icon(Icons.check_rounded,
-                                color: Colors.white, size: 40)
-                            : Text(
-                                "$levelNumber",
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w900,
-                                  fontFamily: 'Nunito',
-                                ),
-                              ),
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-
-          // Level Label
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              level.name,
-              style: TextStyle(
-                color: isLocked ? Colors.grey : Colors.black87,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ),
-
-          // Star Rating (if completed)
-          if (isCompleted && level.stars > 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                    3,
-                    (i) => Icon(
-                          Icons.star,
-                          size: 14,
-                          color: i < level.stars
-                              ? const Color(0xFFFFD93D)
-                              : Colors.grey.shade300,
-                        )),
-              ),
-            )
-        ],
-      ),
-    );
   }
 }
 
@@ -1684,82 +1490,3 @@ class _StatItem extends StatelessWidget {
 }
 
 enum _QuickAiAction { chatBuddy, practicePack }
-
-// -----------------------------------------------------------------------------
-// Custom Painter for the Map Path
-// -----------------------------------------------------------------------------
-
-class _MapPathPainter extends CustomPainter {
-  final int levelCount;
-  final Offset Function(int) getPosition;
-  final Color completedColor;
-  final Color lockedColor;
-  final List<LevelData> levels;
-
-  _MapPathPainter({
-    required this.levelCount,
-    required this.getPosition,
-    required this.completedColor,
-    required this.lockedColor,
-    required this.levels,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    Paint paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 6.0
-      ..strokeCap = StrokeCap.round;
-
-    // Draw dashed line between levels
-    for (int i = 0; i < levelCount - 1; i++) {
-      final start = getPosition(i);
-      final end = getPosition(i + 1);
-
-      // Bezier Curve for smooth path
-      Path path = Path();
-      path.moveTo(start.dx, start.dy);
-
-      // Control point creates the curve.
-      // Simple Cubic Bezier for "S" shapes
-      path.cubicTo(
-        start.dx,
-        start.dy + 60, // Control point 1 (down from start)
-        end.dx,
-        end.dy - 60, // Control point 2 (up from end)
-        end.dx,
-        end.dy, // End point
-      );
-
-      // Choose color based on level completion
-      final isSegmentCompleted = i < levels.length &&
-          i + 1 < levels.length &&
-          levels[i].stars > 0 &&
-          levels[i + 1].stars > 0;
-      paint.color = isSegmentCompleted ? completedColor : lockedColor;
-
-      _drawDashedLine(canvas, path, paint);
-    }
-  }
-
-  void _drawDashedLine(Canvas canvas, Path path, Paint paint) {
-    // Simple implementation of dashed path
-    final ui.PathMetrics pathMetrics = path.computeMetrics();
-    for (ui.PathMetric pathMetric in pathMetrics) {
-      double distance = 0.0;
-      while (distance < pathMetric.length) {
-        final double length = 10.0; // Dash length
-        final double gap = 10.0; // Gap length
-
-        canvas.drawPath(
-          pathMetric.extractPath(distance, distance + length),
-          paint,
-        );
-        distance += (length + gap);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}

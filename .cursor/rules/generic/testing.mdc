@@ -1,0 +1,54 @@
+---
+description: "Testing conventions - JUnit 5, Mockito, Spring Boot Test, embedded Kafka"
+globs: "**/src/test/**/*.java"
+alwaysApply: false
+---
+
+# Testing Conventions
+
+## Naming
+- Classes: `*Test` (unit), `*IntegrationTest` (integration)
+- Methods: descriptive behavior — `shouldReturnNotFoundWhenMissing`
+- `@Nested` for grouping related scenarios
+- `@TestInstance(TestInstance.Lifecycle.PER_CLASS)` for shared state
+
+## Unit Test Structure
+```java
+@ExtendWith(MockitoExtension.class)
+class OrderServiceTest {
+    @Mock private OrderDal dal;
+    @Mock private EventPublisher publisher;
+    @InjectMocks private OrderService service;
+
+    @Nested
+    class WhenCreatingOrder {
+        @Test
+        void shouldPersistAndPublishEvent() { }
+    }
+}
+```
+
+## Spring Boot Tests
+```java
+@SpringBootTest
+@ContextConfiguration(classes = {ServiceUnderTest.class, Dependencies.class})
+@TestPropertySource(properties = {"config.key=testValue"})
+class MySpringTest {
+    @Autowired private ServiceUnderTest service;
+    @MockBean private ExternalDependency dependency;
+}
+```
+- H2 in-memory database (auto-configured)
+- `@DirtiesContext` when context is modified
+
+## Embedded Kafka
+```java
+@EmbeddedKafka
+@ResourceLock("embeddedKafkaResource")
+class KafkaIntegrationTest { }
+```
+
+## Frameworks
+- **JUnit 5**, **Mockito** (`@ExtendWith(MockitoExtension.class)`)
+- **Awaitility** — async assertions
+- **JaCoCo** — coverage enforcement

@@ -1,0 +1,255 @@
+---
+description: "MANDATORY closed-loop workflow - Clarify, Plan, Implement, Test Loop, Integration, Completion. NEVER skip phases."
+alwaysApply: true
+---
+
+# Feature Lifecycle: Closed-Loop Autonomous Workflow
+
+## ENFORCEMENT RULES (Non-Negotiable)
+
+1. **Phase announcements are MANDATORY.** Before starting ANY phase, print the header exactly:
+   ```
+   ══════════════════════════════════════
+   PHASE {N}: {PHASE NAME}
+   ══════════════════════════════════════
+   ```
+2. **Sequential execution only.** You MUST NOT enter Phase N+1 before Phase N's success gate is met.
+3. **Evidence over claims.** Every gate requires pasting REAL terminal output. Never write "tests passed" without showing the actual output.
+4. **No silent skipping.** If you skip a phase (only allowed per Exceptions), you MUST print: `PHASE {N}: SKIPPED — reason: {reason}`
+5. **User approval gates.** Phases 1 and 3 require explicit user approval before proceeding to the next phase.
+
+---
+
+## Phase 0: Clarify Ambiguity
+
+**Announcement:** Print `PHASE 0: CLARIFY` header.
+
+**Goal:** Resolve unknowns BEFORE planning. Never guess when you can ask.
+
+If ANY of the following are unclear, STOP and ask the user with structured interactive questions:
+
+- **Scope:** Which modules or layers are affected?
+- **Design direction:** Multiple valid approaches? (new endpoint vs. extending existing, sync vs. async)
+- **Naming:** Is the name/path for new classes, endpoints, or topics clear?
+- **Backward compatibility:** Could this break existing clients or API contracts?
+- **Dependencies:** New library, or reuse an existing shared module?
+- **Test scope:** Unit tests only, or also integration / E2E tests?
+
+**How to ask:** Concise questions with concrete options. **If unambiguous**, print `PHASE 0: SKIPPED — all requirements are clear` and proceed to Phase 1.
+
+---
+
+## Phase 1: Design & Plan
+
+**Announcement:** Print `PHASE 1: DESIGN & PLAN` header.
+
+**Goal:** Written plan + explicit user approval before any code.
+
+1. Analyze the request — identify affected modules, services, layers
+2. If design decisions remain unresolved from Phase 0, ask now
+3. Create a plan at `.cursor/plans/{slug}.plan.md`:
+   - **Overview:** 1-2 sentence summary
+   - **Design decisions:** key choices and why
+   - **Files to create/modify:** every file with a one-line description
+   - **Database/schema changes:** migrations needed (or "None")
+   - **Testing strategy:** which tests to add/modify, expected coverage
+   - **Risks / open questions**
+4. Present the plan and **STOP. Wait for explicit user approval** before proceeding
+
+**Gate:** User must say "approved", "go", "proceed", "lgtm", or similar. If user requests changes → revise and re-present. **NEVER write implementation code until approved.**
+
+---
+
+## Phase 2: Implementation (with Inline Testing)
+
+**Announcement:** Print `PHASE 2: IMPLEMENTATION` header.
+
+**Goal:** Build the feature AND its tests together, on a verified-green baseline.
+
+### Step 1: Establish Baseline
+Before modifying any code, run existing tests for modules you will touch.
+- **EVIDENCE REQUIRED:** Paste the actual terminal output showing test results.
+- If tests **pass** → proceed. This is your green baseline.
+- If tests **fail** → STOP. Report pre-existing failures to the user. Do NOT build on a broken foundation.
+
+### Step 2: Implement + Test Together
+For each unit of work in the plan:
+1. **Read** the file(s) you will modify — understand the existing code before changing it
+2. **Write** the implementation code
+3. **Write tests immediately** for every new public method, endpoint, or behavior. Do NOT defer tests to "later"
+4. **Compile check**: run compile after each logical change. **Paste output.**
+5. **Linter check**: verify no new linter errors in modified files
+6. **Quick test**: run the specific test class you just wrote. **Paste output.**
+
+### Step 3: Handle Surprises
+- If you discover an unexpected fork (class doesn't exist, API behaves differently, dependency conflict) → STOP and ask the user with options
+- If the plan needs adjustment → explain the deviation before proceeding
+- If the change touches persistence → create the migration **before** updating entity code
+
+### Exit Criteria
+Every file you touched must be compilable, linted, and have corresponding tests.
+
+### Checkpoint (MANDATORY)
+After implementation is complete, present a summary of what was built:
+```
+PHASE 2 COMPLETE — Implementation Summary
+──────────────────────────────────────────
+Files created: {list}
+Files modified: {list}
+Tests written: {list}
+Awaiting Phase 3 — proceed with full test suite? (Y/n)
+```
+**STOP and wait for user confirmation before running Phase 3.**
+
+---
+
+## Phase 3: Closed-Loop Local Testing (Regression Guard)
+
+**Announcement:** Print `PHASE 3: LOCAL TESTING` header.
+
+**Goal:** Prove the implementation is correct AND hasn't broken anything. Loop until fully green.
+
+### Step 1: Full Module Test Suite
+Run ALL tests for every modified module — not just the new tests.
+**EVIDENCE REQUIRED:** Paste the full terminal output including test counts.
+
+### Step 2: Downstream Regression Check
+If you modified a shared module (commons, SPI, client), also run tests for dependent modules.
+**EVIDENCE REQUIRED:** Paste the terminal output.
+
+### Step 3: Linter Verification
+Check all modified files for linter errors. Fix any that you introduced.
+
+### Step 4: Self-Heal Loop (on failure)
+1. Read the full stack trace
+2. Identify root cause (compilation error, assertion failure, missing mock, config issue)
+3. Print: `FIX ATTEMPT {N}/5: {description of what you're changing and why}`
+4. Fix the code
+5. **Re-run ALL module tests** — not just the one that failed. A fix for one test must not break another.
+6. **EVIDENCE REQUIRED:** Paste the test output after each fix attempt.
+7. Repeat until fully green
+
+### Guardrails
+- **Max iterations:** After 5 failed attempts on the same test without progress, STOP and explain the situation to the user
+- **Progress tracking:** Each iteration, note what you tried and what changed. If attempt N uses the same approach as attempt N-2, you are looping — try a fundamentally different approach or escalate.
+- **No blind fixes:** Never change code without explaining the root cause first.
+
+### Success Gate
+All tests green + no linter errors. Print with REAL numbers from terminal output:
+```
+PHASE 3 PASSED ✓
+──────────────────────────────────────────
+Tests run: {N}, Failures: 0, Errors: 0
+Module(s) tested: {list}
+Downstream modules verified: {list or "N/A"}
+Linter: clean
+Fix attempts used: {N}/5
+```
+
+**Do NOT proceed to Phase 4 until Phase 3 passes.**
+
+---
+
+## Phase 4: Integration / Cluster Verification
+
+**Announcement:** Print `PHASE 4: INTEGRATION VERIFICATION` header.
+
+**Goal:** Verify the feature works against real infrastructure. Loop until verified.
+
+Follow the project's deployment and integration testing workflow (see project-specific rules).
+
+1. **Deploy** the changed service(s) to the test environment
+2. **EVIDENCE REQUIRED:** Paste `kubectl` output showing pod status after deploy
+3. **Run integration tests** against the environment
+4. **EVIDENCE REQUIRED:** Paste integration test results
+5. **On failure — self-heal loop:**
+   - Read test failures and service logs
+   - Print: `REDEPLOY ATTEMPT {N}/3: {description of fix}`
+   - If code issue: fix → go back to Phase 3 first (re-verify locally) → then redeploy
+   - If environment issue: diagnose and report to user
+6. **Max iterations:** After 3 redeploy attempts without progress, STOP and present a diagnostic summary
+
+### Success Gate
+```
+PHASE 4 PASSED ✓
+──────────────────────────────────────────
+Service(s) deployed: {list}
+Pod status: Running
+Integration test summary: {pass/fail counts from actual output}
+Redeploy attempts used: {N}/3
+```
+
+---
+
+## Phase 5: Completion Verification
+
+**Announcement:** Print `PHASE 5: COMPLETION VERIFICATION` header.
+
+**Goal:** Final proof that the task is fully done. Never skip this.
+
+### Checklist (verify each item, mark with ✓ or ✗)
+```
+[ ] All plan items implemented (cross-check .cursor/plans/{slug}.plan.md)
+[ ] All local tests pass (Phase 3 gate met)
+[ ] Integration tests pass (Phase 4 gate met, or Phase 4 skipped with reason)
+[ ] No linter errors in modified files
+[ ] No TODO/FIXME stubs left in new code
+[ ] Rule files updated if needed (see agent-behavior.mdc)
+```
+
+### Completion Report
+```
+TASK COMPLETE ✓
+══════════════════════════════════════════
+Feature: {description}
+Files modified: {count} ({list key files})
+Tests added/modified: {count}
+Tests passing: {total} / {total} (from Phase 3 evidence)
+Phases completed: {list with ✓/SKIPPED}
+  Phase 0: {✓ or SKIPPED}
+  Phase 1: ✓ (plan approved)
+  Phase 2: ✓ (implementation complete)
+  Phase 3: ✓ ({N} tests, 0 failures)
+  Phase 4: {✓ or SKIPPED}
+  Phase 5: ✓ (this report)
+══════════════════════════════════════════
+```
+
+---
+
+## Phase Transitions
+
+```
+Feature Request
+     │
+     ▼
+Phase 0: Clarify ────► Ambiguous? ──Yes──► Ask user, WAIT
+     │
+Phase 1: Plan ──────► Approved? ──No──► Revise, WAIT
+     │                               (GATE: user approval required)
+     ▼
+Phase 2: Implement ──► Baseline green? ──No──► Report, STOP
+     │                  Tests written? ──No──► Write them
+     │                  Compiles? ──No──► Fix
+     │                               (GATE: user confirmation required)
+     ▼
+Phase 3: Test Loop ──► ALL green? ──No──► Fix, re-run ALL (max 5)
+     │                  Downstream ok? ──No──► Fix, re-run ALL
+     │                  Linter clean? ──No──► Fix
+     │
+Phase 4: Integration ─► Pass? ──No──► Fix → Phase 3 → redeploy (max 3)
+     │
+Phase 5: Complete ───► Checklist ok? ──No──► Fix gaps
+     │
+   DONE — Completion report printed
+```
+
+---
+
+## Exceptions
+
+- **Trivial changes** (typo, single-line fix): Phase 1 plan can be a 2-line chat summary (still requires approval). Phases 3+5 still apply.
+- **Documentation-only changes**: Skip Phases 3 and 4 (print SKIPPED with reason). Phase 5 still applies.
+- **User says "skip planning"**: Skip Phase 1 (print SKIPPED). Execute Phases 2-5.
+- **User says "skip cluster"/"skip integration"**: Skip Phase 4 (print SKIPPED). Execute Phases 1-3+5.
+- **No other exceptions exist.** If unsure whether to skip, DO NOT skip.
