@@ -88,6 +88,9 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
       case DailyMissionType.quizPlay:
         Navigator.pop(context, 'quiz');
         break;
+      case DailyMissionType.camera:
+        Navigator.pop(context, 'camera');
+        break;
     }
   }
 
@@ -699,6 +702,8 @@ class _MissionTypeConfig {
         return _MissionTypeConfig(Colors.orange, Icons.bolt_rounded);
       case DailyMissionType.quizPlay:
         return _MissionTypeConfig(Colors.green, Icons.quiz_rounded);
+      case DailyMissionType.camera:
+        return _MissionTypeConfig(Colors.purple, Icons.camera_alt_rounded);
     }
   }
 }

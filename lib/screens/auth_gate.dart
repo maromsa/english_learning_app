@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../providers/character_provider.dart';
 import '../providers/coin_provider.dart';
 import '../providers/shop_provider.dart';
+import '../providers/spark_overlay_controller.dart';
 import '../services/achievement_service.dart';
 import '../services/player_data_sync_service.dart';
 import '../services/local_user_service.dart';
@@ -424,8 +425,17 @@ class _AchievementOverlayScopeState extends State<_AchievementOverlayScope> {
     if (!mounted) return;
     final overlay = Overlay.of(context);
     final achievementService = context.read<AchievementService>();
+    // Keep a reference to SparkOverlayController so we can trigger celebration
+    // from here as well — this makes the global toast + spark dance guaranteed
+    // even if AchievementService's internal reference is ever null.
+    final sparkController = context.read<SparkOverlayController>();
+
     achievementService.setAchievementUnlockedCallback((achievement) {
       if (!mounted) return;
+
+      // Trigger the global spark celebration animation.
+      sparkController.markCelebrating();
+
       _overlayEntry?.remove();
       late final OverlayEntry entry;
       entry = OverlayEntry(
@@ -439,6 +449,8 @@ class _AchievementOverlayScopeState extends State<_AchievementOverlayScope> {
               onDismiss: () {
                 entry.remove();
                 if (_overlayEntry == entry) _overlayEntry = null;
+                // Return Spark to idle after the toast is dismissed.
+                sparkController.markIdle();
               },
             ),
           ),

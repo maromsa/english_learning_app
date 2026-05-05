@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-enum DailyMissionType { speakPractice, lightningRound, quizPlay }
+enum DailyMissionType { speakPractice, lightningRound, quizPlay, camera }
 
 class DailyMission {
   final String id;
