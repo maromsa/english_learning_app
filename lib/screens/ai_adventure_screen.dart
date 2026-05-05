@@ -1,5 +1,6 @@
 import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/adventure_story_service.dart';
 import 'package:english_learning_app/services/local_user_service.dart';
@@ -348,6 +349,9 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> with RouteAware {
       _error = null;
     });
 
+    final sparkController = Provider.of<SparkOverlayController>(this.context, listen: false);
+    sparkController.markThinking();
+
     final selected = _selectedLevel;
     final context = AdventureStoryContext(
       levelName: selected.name,
@@ -394,6 +398,7 @@ class _AiAdventureScreenState extends State<AiAdventureScreen> with RouteAware {
         _story = null;
       });
     } finally {
+      sparkController.markIdle();
       if (mounted) {
         setState(() {
           _isGenerating = false;

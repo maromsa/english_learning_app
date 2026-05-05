@@ -8,7 +8,7 @@ import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/screens/ai_conversation_screen.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
-import 'package:english_learning_app/screens/image_quiz_game.dart';
+import 'package:english_learning_app/screens/image_quiz_screen.dart';
 import 'package:english_learning_app/screens/daily_missions_screen.dart';
 import 'package:english_learning_app/screens/lightning_practice_screen.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
@@ -24,7 +24,6 @@ import 'package:english_learning_app/services/level_progress_service.dart';
 import 'package:english_learning_app/providers/auth_provider.dart';
 import 'package:english_learning_app/services/local_user_service.dart';
 import 'package:english_learning_app/screens/level_completion_screen.dart';
-import 'package:english_learning_app/widgets/achievement_notification.dart';
 import 'package:english_learning_app/utils/page_transitions.dart';
 import 'package:english_learning_app/widgets/bouncy_button.dart';
 import 'package:english_learning_app/widgets/living_spark.dart';
@@ -86,7 +85,6 @@ class _MyHomePageState extends State<MyHomePage>
   double _soundLevel = 0.0; // For visual feedback
   int _streak = 0;
   bool _isEvaluating = false; // Prevent double evaluation
-  OverlayEntry? _achievementOverlay;
   // AI features are always enabled since geminiProxyEndpoint always returns a valid endpoint
   Uri get proxyEndpoint => AppConfig.geminiProxyEndpoint;
 
@@ -124,7 +122,6 @@ class _MyHomePageState extends State<MyHomePage>
       duration: const Duration(seconds: 1),
     );
     _words = widget.wordsForLevel;
-    _setupAchievementListener();
     _initializeServices().then((_) async {
       // Load progress after services are initialized
       await _loadLevelProgress();
@@ -141,49 +138,6 @@ class _MyHomePageState extends State<MyHomePage>
     )..repeat(reverse: true);
   }
 
-  void _setupAchievementListener() {
-    // Set up achievement notification callback
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final achievementService = Provider.of<AchievementService>(
-        context,
-        listen: false,
-      );
-      achievementService.setAchievementUnlockedCallback((achievement) {
-        if (mounted) {
-          _showAchievementNotification(achievement);
-        }
-      });
-    });
-  }
-
-  void _showAchievementNotification(Achievement achievement) {
-    final overlay = Overlay.of(context);
-
-    _achievementOverlay?.remove();
-
-    late final OverlayEntry entry;
-    entry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: 0,
-        left: 0,
-        right: 0,
-        child: SafeArea(
-          child: AchievementNotification(
-            achievement: achievement,
-            onDismiss: () {
-              entry.remove();
-              if (_achievementOverlay == entry) {
-                _achievementOverlay = null;
-              }
-            },
-          ),
-        ),
-      ),
-    );
-    _achievementOverlay = entry;
-    overlay.insert(entry);
-  }
-
   @override
   void dispose() {
     TelemetryService.maybeOf(context)?.endScreenSession(
@@ -198,7 +152,6 @@ class _MyHomePageState extends State<MyHomePage>
     _kidSpeechService.stop();
     _confettiController.dispose();
     _audioPlayer.dispose();
-    _achievementOverlay?.remove();
     _httpImageValidator?.dispose();
     _webImageService?.dispose();
     _geminiProxy?.dispose();
@@ -881,7 +834,12 @@ class _MyHomePageState extends State<MyHomePage>
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  PageTransitions.fadeScale(ImageQuizGame()),
+                  PageTransitions.fadeScale(
+                    ImageQuizScreen(
+                      levelId: widget.levelId,
+                      wordsForLevel: widget.wordsForLevel,
+                    ),
+                  ),
                 );
               },
         onChatBuddy: _isListening

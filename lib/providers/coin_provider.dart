@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/shop_item.dart';
 import '../services/user_data_service.dart';
 import '../services/local_user_data_service.dart';
 
@@ -17,8 +18,15 @@ class CoinProvider with ChangeNotifier {
   int _coinsAtLevelStart = 0;
   String? _currentUserId;
   bool _isLocalUser = false;
+  final List<String> _ownedShopItemIds = [];
 
   int get coins => _coins;
+
+  /// Number of shop items owned (for Map Builder achievement).
+  int get ownedShopItemsCount => _ownedShopItemIds.length;
+
+  /// Whether the user owns the shop item with [shopItemId].
+  bool isOwned(String shopItemId) => _ownedShopItemIds.contains(shopItemId);
   int get levelCoins {
     final earned = _coins - _coinsAtLevelStart;
     debugPrint(
@@ -39,18 +47,30 @@ class CoinProvider with ChangeNotifier {
         // Fallback to global coins if no user is set
         final prefs = await SharedPreferences.getInstance();
         _coins = prefs.getInt('totalCoins') ?? 0;
+        _ownedShopItemIds.clear();
+        _ownedShopItemIds.addAll(
+          prefs.getStringList('owned_shop_items') ?? [],
+        );
         notifyListeners();
         return;
       }
 
       if (_isLocalUser) {
         _coins = await _localUserDataService.getCoins(_currentUserId!);
+        _ownedShopItemIds.clear();
+        _ownedShopItemIds.addAll(
+          await _localUserDataService.getPurchasedItems(_currentUserId!),
+        );
       } else {
         // For Firebase users, try cloud first, then fallback to local
         final prefs = await SharedPreferences.getInstance();
         _coins = prefs.getInt('user_${_currentUserId}_coins') ??
             prefs.getInt('totalCoins') ??
             0;
+        _ownedShopItemIds.clear();
+        _ownedShopItemIds.addAll(
+          prefs.getStringList('user_${_currentUserId}_owned_shop_items') ?? [],
+        );
       }
       notifyListeners();
     } catch (e) {
@@ -145,6 +165,48 @@ class CoinProvider with ChangeNotifier {
       return true;
     } else {
       return false;
+    }
+  }
+
+  /// Purchase a shop item: deducts coins and marks the item as owned.
+  /// Returns true if the purchase succeeded (or item was already owned).
+  Future<bool> purchaseItem(ShopItem item) async {
+    if (_ownedShopItemIds.contains(item.id)) {
+      return true;
+    }
+    if (_coins < item.cost) {
+      return false;
+    }
+    final success = await spendCoins(item.cost);
+    if (success) {
+      _ownedShopItemIds.add(item.id);
+      await _saveOwnedItems();
+      notifyListeners();
+    }
+    return success;
+  }
+
+  Future<void> _saveOwnedItems() async {
+    try {
+      if (_currentUserId == null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('owned_shop_items', _ownedShopItemIds);
+        return;
+      }
+      if (_isLocalUser) {
+        await _localUserDataService.savePurchasedItems(
+          _currentUserId!,
+          _ownedShopItemIds,
+        );
+      } else {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList(
+          'user_${_currentUserId}_owned_shop_items',
+          _ownedShopItemIds,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error saving owned shop items: $e');
     }
   }
 

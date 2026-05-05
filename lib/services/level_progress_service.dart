@@ -1,9 +1,23 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Service for managing level progress - tracks which words are completed in each level
+import 'map_bridge_service.dart';
+import 'word_mastery_service.dart';
+
+/// Service for managing level progress - tracks which words are completed in
+/// each level and coordinates mastery + map bridge events.
 class LevelProgressService {
+  LevelProgressService({
+    WordMasteryService? wordMasteryService,
+    MapBridgeService? mapBridgeService,
+  })  : _wordMasteryService = wordMasteryService ?? WordMasteryService(),
+        _mapBridgeService = mapBridgeService ?? MapBridgeService.instance;
+
+  final WordMasteryService _wordMasteryService;
+  final MapBridgeService _mapBridgeService;
+
   /// Get completed words for a specific level and user
   Future<Set<String>> getCompletedWords(String userId, String levelId,
       {bool isLocalUser = false}) async {
@@ -28,15 +42,51 @@ class LevelProgressService {
     }
   }
 
-  /// Mark a word as completed in a level
-  Future<void> markWordCompleted(String userId, String levelId, String word,
-      {bool isLocalUser = false}) async {
+  /// Mark a word as completed in a level.
+  ///
+  /// This keeps the existing completion persistence intact and additionally:
+  /// - Records a strong mastery review signal for the word.
+  /// - Emits a bridge event so that the 3D map can react (e.g. spawn an asset).
+  Future<void> markWordCompleted(
+    String userId,
+    String levelId,
+    String word, {
+    bool isLocalUser = false,
+  }) async {
     try {
       final completedWords =
           await getCompletedWords(userId, levelId, isLocalUser: isLocalUser);
       completedWords.add(word);
-      await _saveCompletedWords(userId, levelId, completedWords,
-          isLocalUser: isLocalUser);
+      await _saveCompletedWords(
+        userId,
+        levelId,
+        completedWords,
+        isLocalUser: isLocalUser,
+      );
+
+      // Record mastery and notify the map bridge; failures here should never
+      // break core progress persistence.
+      try {
+        final masteryEntry = await _wordMasteryService.recordSuccessfulReview(
+          userId: userId,
+          levelId: levelId,
+          word: word,
+        );
+        _mapBridgeService.emitWordMastered(
+          WordMasteredEvent(
+            userId: userId,
+            levelId: levelId,
+            word: word,
+            masteryLevel: masteryEntry.masteryLevel,
+          ),
+        );
+      } catch (error, stackTrace) {
+        debugPrint(
+          'LevelProgressService: non-fatal error updating mastery/bridge for '
+          'level=$levelId, word=$word: $error',
+        );
+        debugPrint('$stackTrace');
+      }
     } catch (e) {
       debugPrint('Error marking word as completed: $e');
     }

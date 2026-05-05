@@ -14,7 +14,7 @@ void main() {
       expect(find.text('100'), findsOneWidget);
       expect(find.text('מטבעות שנאספו'), findsOneWidget);
       expect(
-        find.textContaining('כל 10 מטבעות שצוברים'),
+        find.textContaining('10 מטבעות = 1 כוכב'),
         findsOneWidget,
       );
     });

@@ -12,6 +12,8 @@ void main() {
       expect(word.stickerUnlocked, false);
       expect(word.imageUrl, null);
       expect(word.publicId, null);
+      expect(word.masteryLevel, 0.0);
+      expect(word.lastReviewed, isNull);
     });
 
     test('should create WordData with all fields', () {
@@ -22,6 +24,7 @@ void main() {
         publicId: 'banana_123',
         isCompleted: true,
         stickerUnlocked: true,
+        masteryLevel: 0.7,
       );
       expect(word.word, 'Banana');
       expect(word.searchHint, 'yellow banana fruit');
@@ -29,6 +32,7 @@ void main() {
       expect(word.publicId, 'banana_123');
       expect(word.isCompleted, true);
       expect(word.stickerUnlocked, true);
+      expect(word.masteryLevel, closeTo(0.7, 0.0001));
     });
 
     test('should allow modifying isCompleted', () {

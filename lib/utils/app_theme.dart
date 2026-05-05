@@ -12,8 +12,8 @@ class AppTheme {
 
   // Gradient colors
   static const List<Color> primaryGradient = [
-    Color(0xFF667EEA),
-    Color(0xFF764BA2),
+    Color(0xFF4A90E2),
+    Color(0xFF7B68EE),
   ];
 
   static const List<Color> successGradient = [

@@ -8,6 +8,7 @@ import '../providers/shop_provider.dart';
 import '../services/achievement_service.dart';
 import '../services/player_data_sync_service.dart';
 import '../services/local_user_service.dart';
+import '../widgets/achievement_notification.dart';
 import 'map_screen.dart';
 import 'onboarding_screen.dart';
 import 'sign_in_screen.dart';
@@ -310,12 +311,13 @@ class _AuthGateState extends State<AuthGate> {
           //   );
           // }
 
-          // Wrap MapScreen in error boundary to prevent crashes
-          // If character check failed, allow app to continue without character
+          // Wrap MapScreen in error boundary and achievement overlay scope
           return Builder(
             builder: (context) {
               try {
-                return const MapScreen();
+                return _AchievementOverlayScope(
+                  child: const MapScreen(),
+                );
               } catch (e, stackTrace) {
                 debugPrint('Error building MapScreen: $e');
                 debugPrint('Stack trace: $stackTrace');
@@ -395,4 +397,64 @@ class _AuthGateState extends State<AuthGate> {
       },
     );
   }
+}
+
+/// Wraps the main app content and sets the achievement-unlocked callback
+/// so the glassmorphism toast shows from any screen (Home, Image Quiz, etc.).
+class _AchievementOverlayScope extends StatefulWidget {
+  const _AchievementOverlayScope({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_AchievementOverlayScope> createState() =>
+      _AchievementOverlayScopeState();
+}
+
+class _AchievementOverlayScopeState extends State<_AchievementOverlayScope> {
+  OverlayEntry? _overlayEntry;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _attachCallback());
+  }
+
+  void _attachCallback() {
+    if (!mounted) return;
+    final overlay = Overlay.of(context);
+    final achievementService = context.read<AchievementService>();
+    achievementService.setAchievementUnlockedCallback((achievement) {
+      if (!mounted) return;
+      _overlayEntry?.remove();
+      late final OverlayEntry entry;
+      entry = OverlayEntry(
+        builder: (ctx) => Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SafeArea(
+            child: AchievementNotification(
+              achievement: achievement,
+              onDismiss: () {
+                entry.remove();
+                if (_overlayEntry == entry) _overlayEntry = null;
+              },
+            ),
+          ),
+        ),
+      );
+      _overlayEntry = entry;
+      overlay.insert(entry);
+    });
+  }
+
+  @override
+  void dispose() {
+    _overlayEntry?.remove();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

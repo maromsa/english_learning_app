@@ -1,6 +1,8 @@
 // test/services/achievement_service_test.dart
-import 'package:flutter_test/flutter_test.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
+import 'package:english_learning_app/services/user_data_service.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -9,7 +11,9 @@ void main() {
 
     setUp(() {
       SharedPreferences.setMockInitialValues({});
-      achievementService = AchievementService();
+      achievementService = AchievementService(
+        userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
+      );
     });
 
     test('should have initial achievements', () {
@@ -20,7 +24,8 @@ void main() {
       final achievement = achievementService.achievements.firstWhere(
         (a) => a.id == 'first_correct',
       );
-      expect(achievement.name, 'צעד ראשון');
+      expect(achievement.title, 'First Word Learned');
+      expect(achievement.name, achievement.title);
       expect(achievement.isUnlocked, false);
     });
 
@@ -33,24 +38,26 @@ void main() {
     });
 
     test('unlockAchievement should unlock achievement', () async {
-      // Create a fresh service instance
+      // Create a fresh service instance (no CoinProvider so no listener)
       SharedPreferences.setMockInitialValues({});
-      final testService = AchievementService();
+      final testService = AchievementService(
+        userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
+      );
       await testService.loadAchievements();
 
       // Verify it's locked initially
       expect(testService.isUnlocked('first_correct'), false);
 
       // Unlock it
-      testService.unlockAchievement('first_correct');
+      await testService.unlockAchievement('first_correct');
 
-      // Check the achievement directly (unlockAchievement sets isUnlocked synchronously)
+      // Reload so we assert persisted state (avoids race with ctor's loadAchievements)
+      await testService.loadAchievements();
+
       final achievement = testService.achievements.firstWhere(
         (a) => a.id == 'first_correct',
       );
       expect(achievement.isUnlocked, true);
-
-      // Also verify via isUnlocked method
       expect(testService.isUnlocked('first_correct'), true);
     });
 
@@ -83,5 +90,14 @@ void main() {
         expect(achievementService.isUnlocked('add_word'), true);
       },
     );
+
+    test('should have coin_collector and map_builder with requirementValue', () {
+      final coinCollector = achievementService.achievements
+          .firstWhere((a) => a.id == 'coin_collector');
+      final mapBuilder = achievementService.achievements
+          .firstWhere((a) => a.id == 'map_builder');
+      expect(coinCollector.requirementValue, 500);
+      expect(mapBuilder.requirementValue, 10);
+    });
   });
 }

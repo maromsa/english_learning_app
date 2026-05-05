@@ -1,5 +1,6 @@
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/audio/bytes_audio_source.dart';
 import 'package:english_learning_app/services/conversation_coach_service.dart';
@@ -751,6 +752,9 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       _errorMessage = null;
     });
 
+    final sparkController = Provider.of<SparkOverlayController>(context, listen: false);
+    sparkController.markThinking();
+
     final setup = ConversationSetup(
       topic: _selectedTopic,
       skillFocus: _selectedSkill,
@@ -789,6 +793,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       );
       _sessionStarted = true;
 
+      sparkController.markIdle();
       // Hide loading state before speaking
       if (mounted) {
         setState(() {
@@ -804,12 +809,14 @@ class _AiConversationScreenState extends State<AiConversationScreen>
         );
       }
     } on ConversationGenerationException catch (error) {
+      sparkController.markIdle();
       if (!mounted) return;
       setState(() {
         _errorMessage = error.message;
         _isBusy = false;
       });
     } catch (error) {
+      sparkController.markIdle();
       if (!mounted) return;
       setState(() {
         _errorMessage = 'משהו השתבש. נסו שוב בעוד רגע.';
@@ -846,6 +853,9 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       _messageController.clear();
     });
     _scrollToBottom();
+
+    final sparkController = Provider.of<SparkOverlayController>(context, listen: false);
+    sparkController.markThinking();
 
     try {
       // Get current user context
@@ -887,6 +897,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
         ),
       );
 
+      sparkController.markIdle();
       // Update state to hide typing indicator before speaking
       if (mounted) {
         setState(() {
@@ -903,12 +914,14 @@ class _AiConversationScreenState extends State<AiConversationScreen>
         );
       }
     } on ConversationGenerationException catch (error) {
+      sparkController.markIdle();
       if (!mounted) return;
       setState(() {
         _errorMessage = error.message;
         _isBusy = false;
       });
     } catch (error) {
+      sparkController.markIdle();
       if (!mounted) return;
       setState(() {
         _errorMessage = 'ספרק נתקע בתשובה. נסו שוב.';

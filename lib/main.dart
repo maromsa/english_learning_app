@@ -7,6 +7,7 @@ import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/shop_provider.dart';
 import 'package:english_learning_app/providers/theme_provider.dart';
+import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'dart:ui';
@@ -24,7 +25,9 @@ import 'services/sound_service.dart';
 import 'services/telemetry_service.dart';
 import 'utils/app_theme.dart';
 import 'utils/route_observer.dart';
+import 'utils/spark_route_observer.dart';
 import 'providers/user_session_provider.dart';
+import 'widgets/living_spark.dart';
 
 Future<void> main() async {
   // Global error handler to catch any unhandled errors
@@ -77,10 +80,14 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
   final bool hasSeenOnboarding = prefs.getBool('onboarding_seen') ?? false;
 
-  // Initialize providers with persistence
+  // Initialize providers with persistence (Spark and AchievementService need refs)
   final coinProvider = CoinProvider();
   final themeProvider = ThemeProvider();
-  final achievementService = AchievementService();
+  final sparkOverlayController = SparkOverlayController();
+  final achievementService = AchievementService(
+    coinProvider: coinProvider,
+    sparkOverlayController: sparkOverlayController,
+  );
   final shopProvider = ShopProvider();
   final characterProvider = CharacterProvider();
   final telemetryService = TelemetryService();
@@ -151,6 +158,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: shopProvider),
         ChangeNotifierProvider.value(value: characterProvider),
         ChangeNotifierProvider.value(value: dailyMissionProvider),
+        ChangeNotifierProvider.value(value: sparkOverlayController),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         Provider<TelemetryService>.value(value: telemetryService),
       ],
@@ -166,6 +174,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final sparkController = Provider.of<SparkOverlayController>(context, listen: false);
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (_) {
@@ -173,7 +182,10 @@ class MyApp extends StatelessWidget {
       },
       child: MaterialApp(
         title: 'מסע המילים באנגלית',
-        navigatorObservers: [RouteObserverService.routeObserver],
+        navigatorObservers: [
+          RouteObserverService.routeObserver,
+          SparkRouteObserver(sparkController),
+        ],
         locale: const Locale('he', 'IL'),
         supportedLocales: const [Locale('he', 'IL'), Locale('en', 'US')],
         localizationsDelegates: const [
@@ -186,11 +198,17 @@ class MyApp extends StatelessWidget {
         themeMode: themeProvider.themeMode,
         debugShowCheckedModeBanner: false,
         builder: (context, child) {
-          // Wrap entire app in error boundary
+          final media = MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(1.0));
+
           return MediaQuery(
-            data: MediaQuery.of(context)
-                .copyWith(textScaler: const TextScaler.linear(1.0)),
-            child: child ?? const SizedBox.shrink(),
+            data: media,
+            child: Stack(
+              children: [
+                child ?? const SizedBox.shrink(),
+                const LivingSparkOverlay(),
+              ],
+            ),
           );
         },
         home: AuthGate(hasSeenOnboarding: hasSeenOnboarding),

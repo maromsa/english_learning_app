@@ -8,6 +8,7 @@ import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/screens/ai_conversation_screen.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/home_page.dart';
@@ -23,6 +24,7 @@ import '../services/level_repository.dart';
 import '../services/local_user_data_service.dart';
 import '../services/local_user_service.dart';
 import '../services/level_progress_service.dart';
+import '../services/map_bridge_service.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_session_provider.dart';
 import '../utils/page_transitions.dart';
@@ -30,6 +32,7 @@ import '../utils/route_observer.dart';
 import '../widgets/character_avatar.dart';
 import '../widgets/user/current_user_avatar.dart';
 import 'ai_adventure_screen.dart';
+import 'achievements_screen.dart';
 import 'daily_missions_screen.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
@@ -69,6 +72,8 @@ class _MapScreenState extends State<MapScreen>
   // WebView Controller for 3D Map
   late final WebViewController _webViewController;
   bool _isWebMapReady = false;
+  WordMasteredListener? _wordMasteredListener;
+  SparkOverlayController? _sparkController;
 
   @override
   void initState() {
@@ -97,14 +102,36 @@ class _MapScreenState extends State<MapScreen>
     });
     _initialize();
 
-    // Listen to user session changes
+    // Listen to user session changes and capture Spark controller for bridge events
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _userSessionProvider =
             Provider.of<UserSessionProvider>(context, listen: false);
         _userSessionProvider?.addListener(_onUserSessionChanged);
+        _sparkController = Provider.of<SparkOverlayController>(context, listen: false);
       }
     });
+
+    // Register map bridge listener: spawn 3D asset and celebrate with Spark for 2s
+    _wordMasteredListener = (event) {
+      if (_isWebMapReady) {
+        try {
+          final payloadJson = jsonEncode(event.toJson());
+          _webViewController.runJavaScript(
+            'window.spawnWordAsset($payloadJson)',
+          );
+        } catch (e, stackTrace) {
+          debugPrint('Error sending word asset to JS: $e');
+          debugPrint('$stackTrace');
+        }
+      }
+      _sparkController?.markCelebrating();
+      Future<void>.delayed(const Duration(seconds: 2), () {
+        _sparkController?.markIdle();
+      });
+    };
+    MapBridgeService.instance
+        .registerWordMasteredListener(_wordMasteredListener!);
   }
   
   void _initWebView() {
@@ -1213,6 +1240,11 @@ class _MapScreenState extends State<MapScreen>
               label: 'חנות',
             ),
             NavigationDestination(
+              icon: Icon(Icons.emoji_events_outlined),
+              selectedIcon: Icon(Icons.emoji_events),
+              label: 'הישגים',
+            ),
+            NavigationDestination(
               icon: Icon(Icons.auto_awesome_outlined),
               selectedIcon: Icon(Icons.auto_awesome),
               label: 'AI',
@@ -1244,13 +1276,23 @@ class _MapScreenState extends State<MapScreen>
       case 1: // Shop
         _navigateToShop();
         break;
-      case 2: // AI Tools
+      case 2: // Trophy Room (Achievements)
+        await _navigateToAchievements();
+        break;
+      case 3: // AI Tools
         _showAiToolsMenu();
         break;
-      case 3: // Missions
+      case 4: // Missions
         await _openDailyMissions();
         break;
     }
+  }
+
+  Future<void> _navigateToAchievements() async {
+    await Navigator.push(
+      context,
+      PageTransitions.slideFromRight(const AchievementsScreen()),
+    );
   }
 
   void _showAiToolsMenu() {
@@ -1331,6 +1373,11 @@ class _MapScreenState extends State<MapScreen>
     RouteObserverService.routeObserver.unsubscribe(this);
     // Unsubscribe from user session provider
     _userSessionProvider?.removeListener(_onUserSessionChanged);
+    if (_wordMasteredListener != null) {
+      MapBridgeService.instance
+          .unregisterWordMasteredListener(_wordMasteredListener!);
+      _wordMasteredListener = null;
+    }
     _scrollController.dispose();
     _pulseController.dispose();
     // Stop music when leaving MapScreen

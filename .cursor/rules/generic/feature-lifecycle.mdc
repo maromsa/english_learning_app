@@ -154,7 +154,8 @@ Fix attempts used: {N}/5
 
 **Announcement:** Print `PHASE 4: INTEGRATION VERIFICATION` header.
 
-**Goal:** Verify the feature works against real infrastructure. Loop until verified.
+**Goal:** Verify the feature works against real infrastructure or a realistic runtime environment (cluster, emulator, or simulator). Loop until verified.
+
 
 Follow the project's deployment and integration testing workflow (see project-specific rules).
 
