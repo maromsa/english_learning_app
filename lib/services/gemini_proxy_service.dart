@@ -186,12 +186,62 @@ class GeminiProxyService {
       }
       return null;
     } on DioException catch (error, stackTrace) {
-      if (error.type == DioExceptionType.connectionTimeout ||
-          error.type == DioExceptionType.receiveTimeout) {
-        debugPrint('[GeminiProxyService] Timeout: $error');
+      final errorType = error.type;
+      final statusCode = error.response?.statusCode;
+
+      // ── Timeout errors ──────────────────────────────────────────────────────
+      if (errorType == DioExceptionType.connectionTimeout ||
+          errorType == DioExceptionType.sendTimeout ||
+          errorType == DioExceptionType.receiveTimeout) {
+        debugPrint(
+          '[GeminiProxyService] ⏱ Timeout ($errorType) calling $_endpoint — '
+          'consider retrying with back-off.',
+        );
         return null;
       }
-      debugPrint('[GeminiProxyService] Dio error: ${error.message}');
+
+      // ── HTTP-level errors ────────────────────────────────────────────────────
+      if (statusCode != null) {
+        if (statusCode == 401) {
+          debugPrint(
+            '[GeminiProxyService] 🔒 401 Unauthorized — check Firebase auth '
+            'token / function IAM permissions.',
+          );
+          return null;
+        }
+
+        if (statusCode == 429) {
+          debugPrint(
+            '[GeminiProxyService] ⚠️ 429 Rate-limited by the proxy — '
+            'back off and retry later.',
+          );
+          return null;
+        }
+
+        if (statusCode >= 500) {
+          debugPrint(
+            '[GeminiProxyService] 🔥 Transient server error $statusCode — '
+            'the proxy or Gemini backend returned a 5xx response.',
+          );
+          debugPrint('[GeminiProxyService] Response body: ${error.response?.data}');
+          return null;
+        }
+
+        // Other 4xx (400, 403, 404, …) — unrecoverable without a code change.
+        debugPrint(
+          '[GeminiProxyService] ❌ Unrecoverable HTTP $statusCode error — '
+          'message: ${error.message}',
+        );
+        debugPrint('[GeminiProxyService] Response body: ${error.response?.data}');
+        debugPrint('$stackTrace');
+        return null;
+      }
+
+      // ── Network / connection errors (no HTTP response) ───────────────────────
+      debugPrint(
+        '[GeminiProxyService] ❌ Network error (type: $errorType, no HTTP response) — '
+        'message: ${error.message}',
+      );
       debugPrint('$stackTrace');
       return null;
     }
