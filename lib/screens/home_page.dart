@@ -892,6 +892,7 @@ class _MyHomePageState extends State<MyHomePage>
                       MaterialPageRoute(
                         builder: (_) => LightningPracticeScreen(
                           words: List<WordData>.unmodifiable(_words),
+                          levelId: widget.levelId,
                           levelTitle: widget.title,
                         ),
                       ),

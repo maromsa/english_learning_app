@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -12,17 +12,49 @@ import '../models/daily_mission.dart';
 import '../models/word_data.dart';
 import '../providers/coin_provider.dart';
 import '../providers/daily_mission_provider.dart';
+import '../providers/spark_overlay_controller.dart';
+import '../providers/user_session_provider.dart';
+import '../services/level_progress_service.dart';
 import '../services/telemetry_service.dart';
+import '../services/word_mastery_service.dart';
 
+/// Lightning-round practice screen — Phase 3 edition.
+///
+/// Sorting guarantee (spaced-repetition):
+///   Words are sorted in **ascending masteryLevel** order before the session
+///   starts. Words with masteryLevel < 0.5 ("weak words") are placed at the
+///   front of the pool so the child encounters them first. The pool is then
+///   consumed in a weighted-random fashion that keeps the last [_recentHistorySize]
+///   words out of rotation, preventing immediate repeats while still honouring
+///   the weak-first ordering on each cycle.
+///
+/// Integration:
+///   - Every correct answer calls [LevelProgressService.markWordCompleted],
+///     which in turn calls [WordMasteryService.recordSuccessfulReview] (+0.25
+///     mastery) and fires the Map Bridge event so the 3D map can react.
+///   - [SparkOverlayController] celebrates on correct answers and returns to
+///     idle at session end.
 class LightningPracticeScreen extends StatefulWidget {
   const LightningPracticeScreen({
     super.key,
     required this.words,
+    required this.levelId,
     this.levelTitle,
+    this.wordMasteryService,
+    this.levelProgressService,
   });
 
+  /// Raw words for this level, passed by the caller (e.g. [MyHomePage]).
   final List<WordData> words;
+
+  /// Level identifier used for mastery look-ups and [LevelProgressService].
+  final String levelId;
+
   final String? levelTitle;
+
+  // Overridable for testing.
+  final WordMasteryService? wordMasteryService;
+  final LevelProgressService? levelProgressService;
 
   @override
   State<LightningPracticeScreen> createState() =>
@@ -36,7 +68,14 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
   final Random _random = Random();
   final Queue<String> _recentWords = Queue<String>();
 
-  late final List<WordData> _wordPool;
+  late final WordMasteryService _wordMasteryService;
+  late final LevelProgressService _levelProgressService;
+
+  /// The sorted, mastery-enriched word pool used for the session.
+  List<WordData> _wordPool = [];
+  bool _isLoading = true;
+  String? _loadError;
+
   late TelemetryService? _telemetry;
 
   Timer? _timer;
@@ -58,6 +97,9 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
   int _currentStreak = 0;
   int _bestStreak = 0;
 
+  // ---------------------------------------------------------------------------
+  // Fallback word pool used when the level does not have enough words.
+  // ---------------------------------------------------------------------------
   static const List<Map<String, String>> _fallbackWordEntries = [
     {'word': 'Rainbow', 'hint': 'כל הצבעים שמופיעים אחרי הגשם'},
     {'word': 'Pirate', 'hint': 'שודד ים עם כובע וטלאי עין'},
@@ -133,17 +175,20 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     },
   ];
 
+  // ---------------------------------------------------------------------------
+  // Lifecycle
+  // ---------------------------------------------------------------------------
+
   @override
   void initState() {
     super.initState();
-    _wordPool = _buildWordPool();
+    _wordMasteryService = widget.wordMasteryService ?? WordMasteryService();
+    _levelProgressService = widget.levelProgressService ?? LevelProgressService();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       _telemetry = TelemetryService.maybeOf(context);
       _telemetry?.startScreenSession('lightning');
-      _startSession();
+      _loadAndSortWords();
     });
   }
 
@@ -160,56 +205,131 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
         'questions': _questionCount,
       },
     );
+    // Return Spark to idle when leaving the screen.
+    if (mounted) {
+      try {
+        context.read<SparkOverlayController>().markIdle();
+      } catch (_) {}
+    }
     super.dispose();
   }
 
-  List<WordData> _buildWordPool() {
-    final List<WordData> cleaned = widget.words
-        .where((word) => word.word.trim().isNotEmpty)
-        .map(
-          (word) => WordData(
-            word: word.word.trim(),
-            searchHint: word.searchHint,
-            imageUrl: word.imageUrl,
-          ),
-        )
-        .toList(growable: true);
+  // ---------------------------------------------------------------------------
+  // Phase 3: Mastery-sorted word loading
+  // ---------------------------------------------------------------------------
 
-    if (cleaned.length >= 4) {
-      return cleaned;
+  /// Fetches mastery data for every word and sorts the pool so the weakest
+  /// words (lowest masteryLevel) appear first.
+  ///
+  /// **Sorting guarantee:**
+  /// After this method completes, `_wordPool[0]` has the lowest mastery score
+  /// and `_wordPool[last]` has the highest. Words not yet seen by the learner
+  /// default to masteryLevel = 0.0, so brand-new words are always prioritised.
+  /// Words below the 0.5 threshold are considered "weak" and form the leading
+  /// segment of the queue, ensuring the 60-second round covers the most
+  /// under-practised vocabulary first.
+  Future<void> _loadAndSortWords() async {
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
+
+    try {
+      final session = context.read<UserSessionProvider>();
+      final userId = session.currentUser?.id ?? 'local_guest';
+
+      // Step 1: Sanitize and de-duplicate the raw word list from the level.
+      final List<WordData> cleaned = _sanitizeWords(widget.words);
+
+      // Step 2: Fetch each word's persisted mastery and merge it in.
+      final List<WordData> withMastery = [];
+      for (final word in cleaned) {
+        final entry = await _wordMasteryService.getMastery(
+          userId: userId,
+          levelId: widget.levelId,
+          word: word.word,
+        );
+        withMastery.add(_wordMasteryService.applyToWord(word, entry));
+      }
+
+      // Step 3: Sort ascending by masteryLevel (weak words first).
+      //   - masteryLevel 0.0  → brand-new / never reviewed
+      //   - masteryLevel < 0.5 → weak, needs repetition
+      //   - masteryLevel ≥ 0.5 → progressing / strong
+      withMastery.sort((a, b) => a.masteryLevel.compareTo(b.masteryLevel));
+
+      // Step 4: Pad with fallback words when the level pool is too small.
+      final pool = _padWithFallbacks(withMastery);
+
+      if (!mounted) return;
+      setState(() {
+        _wordPool = pool;
+        _isLoading = false;
+      });
+      _startSession();
+    } catch (error, stackTrace) {
+      debugPrint('LightningPracticeScreen: failed to load words: $error');
+      debugPrint('$stackTrace');
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError = 'שגיאה בטעינת המילים. נסו שוב.';
+      });
     }
+  }
 
+  List<WordData> _sanitizeWords(List<WordData> raw) {
+    final seen = <String>{};
+    final List<WordData> out = [];
+    for (final w in raw) {
+      final trimmed = w.word.trim();
+      if (trimmed.isEmpty) continue;
+      if (!seen.add(trimmed.toLowerCase())) continue;
+      out.add(WordData(
+        word: trimmed,
+        searchHint: w.searchHint,
+        imageUrl: w.imageUrl,
+        publicId: w.publicId,
+        isCompleted: w.isCompleted,
+        stickerUnlocked: w.stickerUnlocked,
+        masteryLevel: w.masteryLevel,
+        lastReviewed: w.lastReviewed,
+      ));
+    }
+    return out;
+  }
+
+  /// Appends fallback words (mastery = 0.0) when the pool has fewer than 4
+  /// entries. Fallback words are appended *after* the real words so they don't
+  /// displace genuinely weak level words at the front of the queue.
+  List<WordData> _padWithFallbacks(List<WordData> pool) {
+    if (pool.length >= 4) return pool;
+    final existing = pool.map((w) => w.word.toLowerCase()).toSet();
+    final padded = List<WordData>.from(pool);
     for (final entry in _fallbackWordEntries) {
       final word = entry['word']!;
-      final hint = entry['hint'];
-      final asset = entry['asset'];
-      if (cleaned.any(
-        (existing) => existing.word.toLowerCase() == word.toLowerCase(),
-      )) {
-        continue;
-      }
-      cleaned.add(
-        WordData(
-          word: word,
-          searchHint: hint,
-          imageUrl: asset,
-        ),
-      );
-      if (cleaned.length >= 8) {
-        break;
-      }
+      if (existing.contains(word.toLowerCase())) continue;
+      padded.add(WordData(
+        word: word,
+        searchHint: entry['hint'],
+        imageUrl: entry['asset'],
+        masteryLevel: 0.0, // Treat fallback words as unseen.
+      ));
+      if (padded.length >= 8) break;
     }
-
-    return cleaned;
+    return padded;
   }
+
+  // ---------------------------------------------------------------------------
+  // Session management
+  // ---------------------------------------------------------------------------
 
   void _startSession() {
     if (_wordPool.length < 2) {
       setState(() {
         _sessionActive = false;
         _sessionEnded = true;
-        _feedback =
-            'אין מספיק מילים כדי להתחיל ריצת ברק. הוסיפו עוד מילים בשלב!';
+        _feedback = 'אין מספיק מילים כדי להתחיל ריצת ברק. הוסיפו עוד מילים בשלב!';
       });
       return;
     }
@@ -231,6 +351,10 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       _bestStreak = 0;
       _recentWords.clear();
     });
+
+    // Notify Spark that a new session is starting.
+    _notifySpark(SparkOverlayAnimationState.idle);
+
     _prepareNextQuestion();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -241,25 +365,32 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
         timer.cancel();
         _endSession(triggeredByTimer: true);
       } else {
-        setState(() {
-          _remainingSeconds--;
-        });
+        setState(() => _remainingSeconds--);
       }
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // Question preparation
+  // ---------------------------------------------------------------------------
+
+  /// Picks the next word respecting recent-history deduplication.
+  ///
+  /// Weak-first ordering is baked in via the sorted [_wordPool]; we simply
+  /// avoid the [_recentHistorySize] most-recent words to prevent immediate
+  /// repeats. When all candidates have been shown recently (small pools),
+  /// the full pool is used.
   void _prepareNextQuestion() {
-    if (_wordPool.isEmpty) {
-      return;
-    }
+    if (_wordPool.isEmpty) return;
 
     final List<WordData> candidates = _wordPool
-        .where((word) => !_recentWords.contains(word.word))
+        .where((w) => !_recentWords.contains(w.word))
         .toList(growable: false);
-    final List<WordData> source = candidates.isNotEmpty
-        ? candidates
-        : _wordPool;
-    final WordData nextWord = source[_random.nextInt(source.length)];
+    final List<WordData> source = candidates.isNotEmpty ? candidates : _wordPool;
+
+    // Among candidates, bias toward lower-mastery words: pick from the first
+    // half of the sorted list 70 % of the time to reinforce weak words.
+    final WordData nextWord = _pickWeakBiased(source);
 
     _recentWords.addLast(nextWord.word);
     if (_recentWords.length > _recentHistorySize) {
@@ -276,26 +407,33 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     });
   }
 
+  /// Picks a word with a 70 / 30 bias toward the weak (lower mastery) half.
+  WordData _pickWeakBiased(List<WordData> source) {
+    if (source.length <= 2) return source[_random.nextInt(source.length)];
+    final int halfPoint = (source.length / 2).ceil();
+    // source is already sorted ascending by mastery, so the first half is weaker.
+    if (_random.nextDouble() < 0.70) {
+      return source[_random.nextInt(halfPoint)];
+    }
+    return source[_random.nextInt(source.length)];
+  }
+
   List<String> _buildOptions(String correctWord) {
     final Set<String> options = <String>{correctWord};
     final List<String> pool = _wordPool
-        .map((word) => word.word)
-        .where((word) => !word.equalsIgnoreCase(correctWord))
+        .map((w) => w.word)
+        .where((w) => !w.equalsIgnoreCase(correctWord))
         .toList(growable: true);
 
     while (options.length < 4 && pool.isNotEmpty) {
-      final candidate = pool.removeAt(_random.nextInt(pool.length));
-      options.add(candidate);
+      options.add(pool.removeAt(_random.nextInt(pool.length)));
     }
 
+    // Pad with fallback entries if the level pool is very small.
     while (options.length < 4) {
       final fallback =
-          _fallbackWordEntries[_random.nextInt(
-            _fallbackWordEntries.length,
-          )]['word']!;
-      if (!options.contains(fallback)) {
-        options.add(fallback);
-      }
+          _fallbackWordEntries[_random.nextInt(_fallbackWordEntries.length)]['word']!;
+      if (!options.contains(fallback)) options.add(fallback);
     }
 
     final List<String> shuffled = options.toList(growable: false);
@@ -303,11 +441,12 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     return shuffled;
   }
 
+  // ---------------------------------------------------------------------------
+  // Answer handling
+  // ---------------------------------------------------------------------------
+
   Future<void> _handleAnswer(String option) async {
-    if (!_sessionActive ||
-        _sessionEnded ||
-        _awaitingNext ||
-        _currentWord == null) {
+    if (!_sessionActive || _sessionEnded || _awaitingNext || _currentWord == null) {
       return;
     }
 
@@ -328,11 +467,21 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       _score += reward;
       _correctAnswers += 1;
       feedback = 'מעולה! הרווחתם $reward מטבעות ⚡️';
-      await context.read<CoinProvider>().addCoins(reward);
+
+      if (mounted) {
+        await context.read<CoinProvider>().addCoins(reward);
+        // ── Phase 3 Integration ──────────────────────────────────────────────
+        // markWordCompleted handles three responsibilities atomically:
+        //   1. Persists the word as completed in SharedPreferences.
+        //   2. Calls WordMasteryService.recordSuccessfulReview (+0.25 mastery).
+        //   3. Fires MapBridgeService.emitWordMastered → 3D map reacts.
+        await _markWordCompleted(_currentWord!.word);
+        // Spark celebrates on correct answer.
+        _notifySpark(SparkOverlayAnimationState.celebrating);
+      }
     } else {
       _currentStreak = 0;
       _incorrectAnswers += 1;
-      reward = 0;
       feedback = 'כמעט! התשובה הנכונה: "${_currentWord!.word}".';
     }
 
@@ -346,9 +495,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       reward: reward,
     );
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     setState(() {
       _feedback = feedback;
@@ -362,9 +509,9 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     }
 
     Future<void>.delayed(const Duration(milliseconds: 750), () {
-      if (!mounted || _sessionEnded) {
-        return;
-      }
+      if (!mounted || _sessionEnded) return;
+      // Return Spark to idle after celebrating.
+      if (isCorrect) _notifySpark(SparkOverlayAnimationState.idle);
       setState(() {
         _awaitingNext = false;
         _selectedAnswer = null;
@@ -375,10 +522,28 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     });
   }
 
-  void _endSession({bool triggeredByTimer = false}) {
-    if (_sessionEnded) {
-      return;
+  /// Calls [LevelProgressService.markWordCompleted] with the current user
+  /// context, feeding mastery + Map Bridge in one call. Non-fatal on error.
+  Future<void> _markWordCompleted(String word) async {
+    try {
+      final session = context.read<UserSessionProvider>();
+      final userId = session.currentUser?.id ?? 'local_guest';
+      final isLocalUser =
+          session.currentUser == null || !session.currentUser!.isGoogle;
+      await _levelProgressService.markWordCompleted(
+        userId,
+        widget.levelId,
+        word,
+        isLocalUser: isLocalUser,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('LightningPracticeScreen: markWordCompleted error: $error');
+      debugPrint('$stackTrace');
     }
+  }
+
+  void _endSession({bool triggeredByTimer = false}) {
+    if (_sessionEnded) return;
 
     _timer?.cancel();
     setState(() {
@@ -386,9 +551,13 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       _sessionEnded = true;
     });
 
-    context.read<DailyMissionProvider>().incrementByType(
-      DailyMissionType.lightningRound,
-    );
+    _notifySpark(SparkOverlayAnimationState.idle);
+
+    try {
+      context.read<DailyMissionProvider>().incrementByType(
+        DailyMissionType.lightningRound,
+      );
+    } catch (_) {}
 
     _telemetry?.logLightningSession(
       score: _score,
@@ -405,8 +574,66 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Spark helpers
+  // ---------------------------------------------------------------------------
+
+  void _notifySpark(SparkOverlayAnimationState state) {
+    if (!mounted) return;
+    try {
+      final controller = context.read<SparkOverlayController>();
+      switch (state) {
+        case SparkOverlayAnimationState.celebrating:
+          controller.markCelebrating();
+        case SparkOverlayAnimationState.thinking:
+          controller.markThinking();
+        case SparkOverlayAnimationState.idle:
+          controller.markIdle();
+      }
+    } catch (_) {
+      // SparkOverlayController not in tree during tests — ignore.
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            widget.levelTitle == null
+                ? 'ריצת ברק'
+                : 'ריצת ברק - ${widget.levelTitle}',
+          ),
+          backgroundColor: Colors.deepOrange.shade400,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_loadError != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('ריצת ברק'),
+          backgroundColor: Colors.deepOrange.shade400,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              _loadError!,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+          ),
+        ),
+      );
+    }
+
     final bool insufficientWords = _wordPool.length < 2;
     return Scaffold(
       appBar: AppBar(
@@ -503,6 +730,9 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Mastery indicator badge for the current word.
+            _MasteryBadge(masteryLevel: word.masteryLevel),
+            const SizedBox(height: 8),
             Text(
               'רמז קסם:',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -620,7 +850,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
             ),
             const SizedBox(height: 28),
             FilledButton.icon(
-              onPressed: _startSession,
+              onPressed: _loadAndSortWords,
               icon: const Icon(Icons.refresh),
               label: const Text('שחקו שוב'),
             ),
@@ -636,10 +866,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
   }
 
   Widget _buildBottomControls() {
-    if (_sessionEnded) {
-      return const SizedBox.shrink();
-    }
-
+    if (_sessionEnded) return const SizedBox.shrink();
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -669,11 +896,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.psychology,
-                size: 64,
-                color: Colors.deepOrange.shade300,
-              ),
+              Icon(Icons.psychology, size: 64, color: Colors.deepOrange.shade300),
               const SizedBox(height: 16),
               const Text(
                 'זקוקים לעוד מילים כדי להתחיל את ריצת הברק!',
@@ -695,9 +918,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
 
   Widget? _buildVisual(WordData word) {
     final String? path = word.imageUrl;
-    if (path == null || path.isEmpty) {
-      return null;
-    }
+    if (path == null || path.isEmpty) return null;
     if (path.startsWith('assets/')) {
       return Image.asset(path, fit: BoxFit.contain);
     }
@@ -705,13 +926,11 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       return CachedNetworkImage(
         imageUrl: path,
         fit: BoxFit.cover,
-        memCacheWidth: 600, // Optimize for typical display size
+        memCacheWidth: 600,
         memCacheHeight: 600,
         placeholder: (context, url) => Container(
           color: Colors.grey.shade200,
-          child: const Center(
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         ),
         errorWidget: (context, url, error) => Container(
           color: Colors.grey.shade300,
@@ -722,9 +941,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     }
     if (!kIsWeb) {
       final file = File(path);
-      if (file.existsSync()) {
-        return Image.file(file, fit: BoxFit.cover);
-      }
+      if (file.existsSync()) return Image.file(file, fit: BoxFit.cover);
     }
     return null;
   }
@@ -735,12 +952,59 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       return hint.endsWith('.') ? hint : '$hint.';
     }
     final cleaned = word.word.trim();
-    if (cleaned.length <= 2) {
-      return 'איזו מילה אתם מזהים? היא קצרה ומהירה!';
-    }
+    if (cleaned.length <= 2) return 'איזו מילה אתם מזהים? היא קצרה ומהירה!';
     final first = cleaned.characters.first.toUpperCase();
     final last = cleaned.characters.last.toUpperCase();
     return 'המילה מתחילה באות $first ונגמרת באות $last.';
+  }
+}
+
+// =============================================================================
+// Private widgets
+// =============================================================================
+
+/// Small badge that communicates the current word's mastery to the learner.
+class _MasteryBadge extends StatelessWidget {
+  const _MasteryBadge({required this.masteryLevel});
+  final double masteryLevel;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isWeak = masteryLevel < 0.5;
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isWeak
+              ? Colors.orange.withValues(alpha: 0.15)
+              : Colors.green.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isWeak ? Colors.orange.shade300 : Colors.green.shade300,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isWeak ? Icons.fitness_center : Icons.star,
+              size: 14,
+              color: isWeak ? Colors.orange.shade700 : Colors.green.shade700,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              isWeak ? 'תרגלו עוד' : 'מכירים טוב',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isWeak ? Colors.orange.shade700 : Colors.green.shade700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -830,14 +1094,8 @@ class _StatusChip extends StatelessWidget {
           child: Icon(icon, color: color),
         ),
         const SizedBox(height: 6),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.black54),
-        ),
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
       ],
     );
   }
@@ -872,16 +1130,10 @@ class _SummaryStat extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: const TextStyle(fontSize: 13, color: Colors.black54),
-              ),
+              Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54)),
               Text(
                 value,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ],
           ),
