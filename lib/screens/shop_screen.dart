@@ -3,10 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:confetti/confetti.dart';
-import 'package:just_audio/just_audio.dart';
 
 import '../models/shop_item.dart';
 import '../providers/coin_provider.dart';
+import '../services/sound_service.dart';
 import '../utils/app_theme.dart';
 
 class ShopScreen extends StatefulWidget {
@@ -20,7 +20,6 @@ class _ShopScreenState extends State<ShopScreen>
     with SingleTickerProviderStateMixin {
   ShopItemType? _selectedType;
   late final ConfettiController _confettiController;
-  final AudioPlayer _audioPlayer = AudioPlayer();
   bool _confettiInitialized = false;
   bool _isPurchasing = false;
 
@@ -42,18 +41,7 @@ class _ShopScreenState extends State<ShopScreen>
     if (_confettiInitialized) {
       _confettiController.dispose();
     }
-    _audioPlayer.dispose();
     super.dispose();
-  }
-
-  Future<void> _playPurchaseSound() async {
-    try {
-      await _audioPlayer.setAsset('assets/audio/startup_chime.wav');
-      await _audioPlayer.setVolume(0.3);
-      await _audioPlayer.play();
-    } catch (e) {
-      debugPrint('Error playing purchase sound: $e');
-    }
   }
 
   Future<void> _handlePurchase(ShopItem item) async {
@@ -99,7 +87,8 @@ class _ShopScreenState extends State<ShopScreen>
           debugPrint('Error playing confetti: $e');
         }
       }
-      await _playPurchaseSound();
+      // Play success sound — fire-and-forget via SoundService (non-blocking).
+      SoundService().playSuccessSound();
       Navigator.pop(context);
       _showSuccessDialog(item);
     }

@@ -15,6 +15,7 @@ import '../providers/daily_mission_provider.dart';
 import '../providers/spark_overlay_controller.dart';
 import '../providers/user_session_provider.dart';
 import '../services/level_progress_service.dart';
+import '../services/sound_service.dart';
 import '../services/telemetry_service.dart';
 import '../services/word_mastery_service.dart';
 
@@ -476,6 +477,8 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
         //   2. Calls WordMasteryService.recordSuccessfulReview (+0.25 mastery).
         //   3. Fires MapBridgeService.emitWordMastered → 3D map reacts.
         await _markWordCompleted(_currentWord!.word);
+        // Play success sound — fire-and-forget, does not block UI thread.
+        SoundService().playSuccessSound();
         // Spark celebrates on correct answer.
         _notifySpark(SparkOverlayAnimationState.celebrating);
       }

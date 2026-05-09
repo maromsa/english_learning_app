@@ -89,6 +89,22 @@ class SoundService {
     }
   }
 
+  /// Play a short "pop" sound — suitable for button taps and UI interactions.
+  /// Fire-and-forget: never blocks the calling widget's build / event cycle.
+  void playPopSound() {
+    playSound('pop').catchError((Object e) {
+      debugPrint('SoundService.playPopSound error: $e');
+    });
+  }
+
+  /// Play a "success" chime — suitable for correct answers and successful
+  /// purchases.  Fire-and-forget: never blocks the UI thread.
+  void playSuccessSound() {
+    playSound('success').catchError((Object e) {
+      debugPrint('SoundService.playSuccessSound error: $e');
+    });
+  }
+
   /// Dispose resources (called on app shutdown)
   Future<void> dispose() async {
     // Note: Individual players are disposed after playing

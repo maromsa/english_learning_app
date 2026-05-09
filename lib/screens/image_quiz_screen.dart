@@ -7,6 +7,7 @@ import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
+import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/services/spark_voice_service.dart';
 import 'package:english_learning_app/services/word_mastery_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
@@ -217,6 +218,8 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
         isLocalUser: isLocalUser,
       );
       if (mounted) {
+        // Play success sound — fire-and-forget, does not block UI thread.
+        SoundService().playSuccessSound();
         sparkController.markCelebrating();
         setState(() {
           _streak += 1;

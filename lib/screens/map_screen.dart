@@ -36,6 +36,7 @@ import 'achievements_screen.dart';
 import 'daily_missions_screen.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
+import 'character_selection_screen.dart';
 import 'user_selection_screen.dart';
 
 class MapScreen extends StatefulWidget {
@@ -750,6 +751,35 @@ class _MapScreenState extends State<MapScreen>
 
   int get _totalStars => levels.fold<int>(0, (sum, level) => sum + level.stars);
 
+  /// Navigate to [CharacterSelectionScreen] so the player can change their
+  /// avatar at any time from the map.
+  ///
+  /// The [onCharacterSelected] callback ensures [CharacterProvider] is updated
+  /// (SharedPreferences + Firestore) whenever a new character is confirmed,
+  /// regardless of whether the user is a local or Firebase-authenticated user.
+  Future<void> _navigateToCharacterSelection() async {
+    // Resolve a user ID — fall back to a guest token when not authenticated.
+    final userId = _currentUserId ?? 'local_guest';
+    final characterProvider =
+        Provider.of<CharacterProvider>(context, listen: false);
+
+    await Navigator.push(
+      context,
+      PageTransitions.slideFromRight(
+        CharacterSelectionScreen(
+          userId: userId,
+          onCharacterSelected: (character) {
+            // Keep CharacterProvider in sync: persists to SharedPreferences and,
+            // for logged-in users, triggers the Firestore sync via UserDataService.
+            characterProvider.setCharacter(character).catchError((Object e) {
+              debugPrint('CharacterProvider.setCharacter error: $e');
+            });
+          },
+        ),
+      ),
+    );
+  }
+
   Future<void> _openSettings() async {
     await Navigator.push(
       context,
@@ -1072,6 +1102,36 @@ class _MapScreenState extends State<MapScreen>
           leadingWidth: 180,
           title: const _MapTitleCard(),
           actions: [
+            // ── Character Selection button ────────────────────────────────────
+            Consumer<CharacterProvider>(
+              builder: (context, charProvider, _) {
+                return Tooltip(
+                  message: charProvider.hasCharacter
+                      ? 'שנה דמות (${charProvider.character!.characterName})'
+                      : 'בחר דמות',
+                  child: IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Theme.of(context).primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      child: charProvider.hasCharacter
+                          ? const Icon(Icons.face, color: Colors.deepPurple)
+                          : const Icon(Icons.person_add_alt_1,
+                              color: Colors.deepPurple),
+                    ),
+                    onPressed: _navigateToCharacterSelection,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 4),
+            // ── Settings button ───────────────────────────────────────────────
             IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(8),
