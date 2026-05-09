@@ -14,11 +14,15 @@ class CoinProvider with ChangeNotifier {
 
   final UserDataService _userDataService;
   final LocalUserDataService _localUserDataService;
+  SharedPreferences? _prefs;
   int _coins = 0;
   int _coinsAtLevelStart = 0;
   String? _currentUserId;
   bool _isLocalUser = false;
   final List<String> _ownedShopItemIds = [];
+
+  Future<SharedPreferences> get _sharedPrefs async =>
+      _prefs ??= await SharedPreferences.getInstance();
 
   int get coins => _coins;
 
@@ -45,7 +49,7 @@ class CoinProvider with ChangeNotifier {
     try {
       if (_currentUserId == null) {
         // Fallback to global coins if no user is set
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await _sharedPrefs;
         _coins = prefs.getInt('totalCoins') ?? 0;
         _ownedShopItemIds.clear();
         _ownedShopItemIds.addAll(
@@ -63,7 +67,7 @@ class CoinProvider with ChangeNotifier {
         );
       } else {
         // For Firebase users, try cloud first, then fallback to local
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await _sharedPrefs;
         _coins = prefs.getInt('user_${_currentUserId}_coins') ??
             prefs.getInt('totalCoins') ??
             0;
@@ -82,19 +86,19 @@ class CoinProvider with ChangeNotifier {
   Future<void> loadLevelStartCoins(String levelId) async {
     try {
       if (_currentUserId == null) {
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await _sharedPrefs;
         _coinsAtLevelStart =
             prefs.getInt('level_${levelId}_start_coins') ?? _coins;
         return;
       }
 
       if (_isLocalUser) {
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await _sharedPrefs;
         _coinsAtLevelStart = prefs.getInt(
                 'user_${_currentUserId}_level_${levelId}_start_coins') ??
             _coins;
       } else {
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await _sharedPrefs;
         _coinsAtLevelStart = prefs.getInt(
                 'user_${_currentUserId}_level_${levelId}_start_coins') ??
             _coins;
@@ -109,7 +113,7 @@ class CoinProvider with ChangeNotifier {
     try {
       if (_currentUserId == null) {
         // Fallback to global coins if no user is set
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await _sharedPrefs;
         await prefs.setInt('totalCoins', _coins);
         return;
       }
@@ -119,7 +123,7 @@ class CoinProvider with ChangeNotifier {
         await _localUserDataService.saveCoins(_currentUserId!, _coins);
       } else {
         // Save locally for Firebase user
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await _sharedPrefs;
         await prefs.setInt('user_${_currentUserId}_coins', _coins);
         // Also save to cloud
         await _userDataService.updateCoins(_currentUserId!, _coins);
@@ -189,7 +193,7 @@ class CoinProvider with ChangeNotifier {
   Future<void> _saveOwnedItems() async {
     try {
       if (_currentUserId == null) {
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await _sharedPrefs;
         await prefs.setStringList('owned_shop_items', _ownedShopItemIds);
         return;
       }
@@ -199,7 +203,7 @@ class CoinProvider with ChangeNotifier {
           _ownedShopItemIds,
         );
       } else {
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await _sharedPrefs;
         await prefs.setStringList(
           'user_${_currentUserId}_owned_shop_items',
           _ownedShopItemIds,
@@ -220,18 +224,18 @@ class CoinProvider with ChangeNotifier {
   Future<void> _saveLevelStartCoins(String levelId) async {
     try {
       if (_currentUserId == null) {
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await _sharedPrefs;
         await prefs.setInt('level_${levelId}_start_coins', _coinsAtLevelStart);
         return;
       }
 
       if (_isLocalUser) {
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await _sharedPrefs;
         await prefs.setInt(
             'user_${_currentUserId}_level_${levelId}_start_coins',
             _coinsAtLevelStart);
       } else {
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await _sharedPrefs;
         await prefs.setInt(
             'user_${_currentUserId}_level_${levelId}_start_coins',
             _coinsAtLevelStart);
