@@ -26,6 +26,12 @@ class UserSessionProvider with ChangeNotifier {
 
   AppSessionUser? get currentUser => _currentUser;
 
+  /// The ID of the currently active user, or null if no user is logged in.
+  String? get currentUserId => _currentUser?.id;
+
+  /// True when the active user is a locally-stored (non-Google) user.
+  bool get isLocalUser => _currentUser != null && !_currentUser!.isGoogle;
+
   /// טעינה ראשונית בעליית האפליקציה
   Future<void> loadActiveUser() async {
     try {

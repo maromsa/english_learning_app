@@ -22,10 +22,8 @@ import '../services/background_music_service.dart';
 import '../services/daily_reward_service.dart';
 import '../services/level_repository.dart';
 import '../services/local_user_data_service.dart';
-import '../services/local_user_service.dart';
 import '../services/level_progress_service.dart';
 import '../services/map_bridge_service.dart';
-import '../providers/auth_provider.dart';
 import '../providers/user_session_provider.dart';
 import '../utils/page_transitions.dart';
 import '../utils/route_observer.dart';
@@ -52,7 +50,6 @@ class _MapScreenState extends State<MapScreen>
   late final DailyRewardService _dailyRewardService;
   late final LevelRepository _levelRepository;
   late final LocalUserDataService _localUserDataService;
-  late final LocalUserService _localUserService;
   final LevelProgressService _levelProgressService = LevelProgressService();
   bool _isLoading = true;
   String? _errorMessage;
@@ -82,7 +79,6 @@ class _MapScreenState extends State<MapScreen>
     _dailyRewardService = DailyRewardService();
     _levelRepository = LevelRepository();
     _localUserDataService = LocalUserDataService();
-    _localUserService = LocalUserService();
 
     // Initialize scroll controller and animation (keeping for fallback or transition)
     _scrollController = ScrollController();
@@ -272,27 +268,11 @@ class _MapScreenState extends State<MapScreen>
 
   Future<void> _loadCurrentUser() async {
     try {
-      final userSessionProvider =
+      final sessionProvider =
           Provider.of<UserSessionProvider>(context, listen: false);
-      final currentSessionUser = userSessionProvider.currentUser;
 
-      if (currentSessionUser != null) {
-        _currentUserId = currentSessionUser.id;
-        _isLocalUser = !currentSessionUser.isGoogle;
-      } else {
-        // Fallback to old logic if session provider doesn't have a user
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        if (authProvider.isAuthenticated && authProvider.firebaseUser != null) {
-          _currentUserId = authProvider.firebaseUser!.uid;
-          _isLocalUser = false;
-        } else {
-          final localUser = await _localUserService.getActiveUser();
-          if (localUser != null) {
-            _currentUserId = localUser.id;
-            _isLocalUser = true;
-          }
-        }
-      }
+      _currentUserId = sessionProvider.currentUserId;
+      _isLocalUser = sessionProvider.isLocalUser;
 
       // Update coin provider with user ID
       if (_currentUserId != null) {

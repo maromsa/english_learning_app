@@ -21,8 +21,7 @@ import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
-import 'package:english_learning_app/providers/auth_provider.dart';
-import 'package:english_learning_app/services/local_user_service.dart';
+import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/level_completion_screen.dart';
 import 'package:english_learning_app/utils/page_transitions.dart';
 import 'package:english_learning_app/widgets/bouncy_button.dart';
@@ -69,7 +68,6 @@ class _MyHomePageState extends State<MyHomePage>
   final ImagePicker _picker = ImagePicker();
   late final WordRepository _wordRepository;
   final LevelProgressService _levelProgressService = LevelProgressService();
-  final LocalUserService _localUserService = LocalUserService();
   WebImageService? _webImageService;
   final AiImageValidator _cameraValidator = const PassthroughAiImageValidator();
   HttpFunctionAiImageValidator? _httpImageValidator;
@@ -609,9 +607,11 @@ class _MyHomePageState extends State<MyHomePage>
         });
 
         // Save word completion
-        final userId = await _getCurrentUserId();
+        final sessionProvider =
+            context.read<UserSessionProvider>();
+        final userId = sessionProvider.currentUserId;
         if (userId != null) {
-          final isLocalUser = await _isLocalUser();
+          final isLocalUser = sessionProvider.isLocalUser;
           debugPrint('=== Saving Word Completion ===');
           debugPrint('Level ID: ${widget.levelId}');
           debugPrint('Word: ${currentWordObject.word}');
@@ -1115,14 +1115,16 @@ class _MyHomePageState extends State<MyHomePage>
       debugPrint('Level ID: ${widget.levelId}');
       debugPrint('Total words: ${_words.length}');
 
-      final userId = await _getCurrentUserId();
+      final sessionProvider =
+          context.read<UserSessionProvider>();
+      final userId = sessionProvider.currentUserId;
       debugPrint('User ID: $userId');
       if (userId == null) {
         debugPrint('No user ID found, skipping progress load');
         return;
       }
 
-      final isLocalUser = await _isLocalUser();
+      final isLocalUser = sessionProvider.isLocalUser;
       debugPrint('Is local user: $isLocalUser');
 
       // Get all completed words at once
@@ -1157,45 +1159,17 @@ class _MyHomePageState extends State<MyHomePage>
     }
   }
 
-  /// Get current user ID (Firebase or local)
-  Future<String?> _getCurrentUserId() async {
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.isAuthenticated && authProvider.firebaseUser != null) {
-        return authProvider.firebaseUser!.uid;
-      } else {
-        final localUser = await _localUserService.getActiveUser();
-        return localUser?.id;
-      }
-    } catch (e) {
-      debugPrint('Error getting user ID: $e');
-      return null;
-    }
-  }
-
-  /// Check if current user is a local user
-  Future<bool> _isLocalUser() async {
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.isAuthenticated) {
-        return false;
-      }
-      final localUser = await _localUserService.getActiveUser();
-      return localUser != null;
-    } catch (e) {
-      return false;
-    }
-  }
-
   /// Check if level is completed and show completion screen
   Future<void> _checkLevelCompletion() async {
     if (!_isLevelComplete) return;
 
     try {
-      final userId = await _getCurrentUserId();
+      final sessionProvider =
+          context.read<UserSessionProvider>();
+      final userId = sessionProvider.currentUserId;
       if (userId == null) return;
 
-      final isLocalUser = await _isLocalUser();
+      final isLocalUser = sessionProvider.isLocalUser;
       final isCompleted = await _levelProgressService.isLevelCompleted(
         userId,
         widget.levelId,
