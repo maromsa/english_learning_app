@@ -85,6 +85,9 @@ class _MyHomePageState extends State<MyHomePage>
   double _soundLevel = 0.0; // For visual feedback
   int _streak = 0;
   bool _isEvaluating = false; // Prevent double evaluation
+  // In-memory cache for Gemini phonetic evaluation results.
+  // Key format: '<correctWord_lowercase>|<recognizedWord_lowercase>'
+  final Map<String, bool> _geminiResultCache = {};
   // AI features are always enabled since geminiProxyEndpoint always returns a valid endpoint
   Uri get proxyEndpoint => AppConfig.geminiProxyEndpoint;
 
@@ -481,6 +484,18 @@ class _MyHomePageState extends State<MyHomePage>
     String correctWord,
     String recognizedWord,
   ) async {
+    // Build a normalised cache key so casing differences are ignored.
+    final cacheKey =
+        '${correctWord.toLowerCase()}|${recognizedWord.toLowerCase()}';
+
+    // Return the cached result immediately – no network call needed.
+    if (_geminiResultCache.containsKey(cacheKey)) {
+      debugPrint(
+        '--- Gemini cache hit for "$cacheKey": ${_geminiResultCache[cacheKey]} ---',
+      );
+      return _geminiResultCache[cacheKey]!;
+    }
+
     try {
       debugPrint('--- Asking Gemini for phonetic evaluation ---');
       debugPrint("Correct: '$correctWord', Recognized: '$recognizedWord'");
@@ -504,9 +519,14 @@ class _MyHomePageState extends State<MyHomePage>
 
       final answer = response.trim().toLowerCase();
       debugPrint("Gemini's answer: '$answer'");
-      return answer == 'yes';
+      final result = answer == 'yes';
+
+      // Store the result so rapid/repeated calls skip the network entirely.
+      _geminiResultCache[cacheKey] = result;
+      return result;
     } catch (e) {
       debugPrint('Error during Gemini evaluation: $e');
+      // Do NOT cache error results – let the next attempt retry the API.
       return correctWord.toLowerCase() == recognizedWord.toLowerCase();
     }
   }
