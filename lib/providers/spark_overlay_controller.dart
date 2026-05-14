@@ -27,29 +27,60 @@ enum SparkOverlayPosition {
 class SparkOverlayController extends ChangeNotifier {
   SparkOverlayController();
 
-  bool _isVisible = true;
+  /// When > 0, the global Spark overlay is hidden (e.g. auth / onboarding).
+  int _sparkOverlaySuppressDepth = 0;
+
+  /// Manual visibility (e.g. future modal flows); combined with suppress depth.
+  bool _userWantsSparkVisible = true;
   SparkEmotion _emotion = SparkEmotion.neutral;
   SparkOverlayAnimationState _animationState = SparkOverlayAnimationState.idle;
   SparkOverlayPosition _position = SparkOverlayPosition.bottomRight;
   String? _lastScreenLabel;
 
-  bool get isVisible => _isVisible;
+  /// True when Spark should render in [LivingSparkOverlay].
+  bool get isVisible =>
+      _sparkOverlaySuppressDepth == 0 && _userWantsSparkVisible;
+
   SparkEmotion get emotion => _emotion;
   SparkOverlayAnimationState get animationState => _animationState;
   SparkOverlayPosition get position => _position;
 
   /// Show Spark overlay (e.g. when entering map or learning flows).
   void show() {
-    if (!_isVisible) {
-      _isVisible = true;
+    final was = isVisible;
+    _userWantsSparkVisible = true;
+    if (was != isVisible) {
       notifyListeners();
     }
   }
 
   /// Hide Spark overlay (e.g. on sensitive screens or full-screen modals).
   void hide() {
-    if (_isVisible) {
-      _isVisible = false;
+    final was = isVisible;
+    _userWantsSparkVisible = false;
+    if (was != isVisible) {
+      notifyListeners();
+    }
+  }
+
+  /// Increment suppress depth while an auth / onboarding subtree is mounted.
+  /// Pair with [endSparkOverlaySuppress] in [dispose].
+  void beginSparkOverlaySuppress() {
+    final was = isVisible;
+    _sparkOverlaySuppressDepth++;
+    if (was != isVisible) {
+      notifyListeners();
+    }
+  }
+
+  /// Decrement suppress depth after [beginSparkOverlaySuppress].
+  void endSparkOverlaySuppress() {
+    if (_sparkOverlaySuppressDepth <= 0) {
+      return;
+    }
+    final was = isVisible;
+    _sparkOverlaySuppressDepth--;
+    if (was != isVisible) {
       notifyListeners();
     }
   }

@@ -10,6 +10,7 @@ import '../services/achievement_service.dart';
 import '../services/player_data_sync_service.dart';
 import '../services/local_user_service.dart';
 import '../widgets/achievement_notification.dart';
+import '../widgets/spark_overlay_suppressor.dart';
 import 'map_screen.dart';
 import 'onboarding_screen.dart';
 import 'sign_in_screen.dart';
@@ -269,8 +270,10 @@ class _AuthGateState extends State<AuthGate> {
           }
 
           if (authProvider.initializing || _syncing || _checkingLocalUser) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
+            return const SparkOverlaySuppressor(
+              child: Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              ),
             );
           }
 

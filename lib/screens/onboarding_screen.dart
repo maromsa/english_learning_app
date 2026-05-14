@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/onboarding_personalizer.dart';
 import '../services/telemetry_service.dart';
+import '../widgets/spark_overlay_suppressor.dart';
 import 'map_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -78,70 +79,72 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'ברוכים הבאים למסע המילים!',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+    return SparkOverlaySuppressor(
+      child: Scaffold(
+        backgroundColor: theme.colorScheme.surface,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'ברוכים הבאים למסע המילים!',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'אספנו כמה טיפים שיעזרו לכם ללמוד באנגלית בקצב שמתאים לכם.',
-                style: theme.textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: FutureBuilder<OnboardingPersonalization>(
-                  future: _personalizationFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    final personalization = snapshot.data;
-                    if (personalization != null) {
-                      _latestPersonalization = personalization;
-                      _logImpressionOnce(context, personalization);
-
-                      final insights = personalization.insights;
-                      if (insights.isNotEmpty) {
-                        return ListView.separated(
-                          itemCount: insights.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 16),
-                          itemBuilder: (context, index) =>
-                              _InsightCard(insight: insights[index]),
-                        );
+                const SizedBox(height: 8),
+                Text(
+                  'אספנו כמה טיפים שיעזרו לכם ללמוד באנגלית בקצב שמתאים לכם.',
+                  style: theme.textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Expanded(
+                  child: FutureBuilder<OnboardingPersonalization>(
+                    future: _personalizationFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
                       }
-                    }
 
-                    return const _InsightFallback();
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: _completeOnboarding,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                      final personalization = snapshot.data;
+                      if (personalization != null) {
+                        _latestPersonalization = personalization;
+                        _logImpressionOnce(context, personalization);
+
+                        final insights = personalization.insights;
+                        if (insights.isNotEmpty) {
+                          return ListView.separated(
+                            itemCount: insights.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 16),
+                            itemBuilder: (context, index) =>
+                                _InsightCard(insight: insights[index]),
+                          );
+                        }
+                      }
+
+                      return const _InsightFallback();
+                    },
                   ),
                 ),
-                icon: const Icon(Icons.rocket_launch),
-                label: const Text('קדימה!'),
-              ),
-            ],
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: _completeOnboarding,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.rocket_launch),
+                  label: const Text('קדימה!'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

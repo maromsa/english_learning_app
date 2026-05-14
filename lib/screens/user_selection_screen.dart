@@ -8,6 +8,7 @@ import '../providers/coin_provider.dart';
 import '../providers/shop_provider.dart';
 import '../services/achievement_service.dart';
 import '../services/local_user_service.dart';
+import '../widgets/spark_overlay_suppressor.dart';
 import 'create_user_screen.dart';
 import 'map_screen.dart';
 import 'sign_in_screen.dart';
@@ -197,79 +198,81 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('מי משחק היום?'),
-        centerTitle: true,
-        actions: [
-          if (authProvider.isAuthenticated)
-            IconButton(
-              icon: const Icon(Icons.logout),
-              tooltip: 'התנתקות',
-              onPressed: () async {
-                await authProvider.signOut();
-                if (!mounted) return;
-                final navigator = Navigator.of(context);
-                navigator.pushReplacement(
-                  MaterialPageRoute(builder: (_) => const SignInScreen()),
-                );
-              },
-            ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Stack(
-              children: [
-                // Background Gradient
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.white, Colors.blue.shade50],
-                        stops: const [0.7, 1.0],
+    return SparkOverlaySuppressor(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('מי משחק היום?'),
+          centerTitle: true,
+          actions: [
+            if (authProvider.isAuthenticated)
+              IconButton(
+                icon: const Icon(Icons.logout),
+                tooltip: 'התנתקות',
+                onPressed: () async {
+                  await authProvider.signOut();
+                  if (!mounted) return;
+                  final navigator = Navigator.of(context);
+                  navigator.pushReplacement(
+                    MaterialPageRoute(builder: (_) => const SignInScreen()),
+                  );
+                },
+              ),
+          ],
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Stack(
+                children: [
+                  // Background Gradient
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.white, Colors.blue.shade50],
+                          stops: const [0.7, 1.0],
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                Column(
-                  children: [
-                    if (authProvider.isAuthenticated)
-                      _GoogleHeroCard(authProvider: authProvider),
+                  Column(
+                    children: [
+                      if (authProvider.isAuthenticated)
+                        _GoogleHeroCard(authProvider: authProvider),
 
-                    Expanded(
-                      child: _users.isEmpty
-                          ? _buildEmptyState()
-                          : ListView.builder(
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                              itemCount: _users.length,
-                              itemBuilder: (context, index) {
-                                final user = _users[index];
-                                return _UserCard(
-                                  user: user,
-                                  isActive: user.isActive,
-                                  onTap: () => _selectUser(user),
-                                  onDelete: () => _deleteUser(user),
-                                  onLink: () => _linkUserToGoogle(user),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _createNewUser,
-        label: const Text('שחקן חדש'),
-        icon: const Icon(Icons.add),
-        backgroundColor: const Color(0xFF50C878),
+                      Expanded(
+                        child: _users.isEmpty
+                            ? _buildEmptyState()
+                            : ListView.builder(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                                itemCount: _users.length,
+                                itemBuilder: (context, index) {
+                                  final user = _users[index];
+                                  return _UserCard(
+                                    user: user,
+                                    isActive: user.isActive,
+                                    onTap: () => _selectUser(user),
+                                    onDelete: () => _deleteUser(user),
+                                    onLink: () => _linkUserToGoogle(user),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _createNewUser,
+          label: const Text('שחקן חדש'),
+          icon: const Icon(Icons.add),
+          backgroundColor: const Color(0xFF50C878),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
