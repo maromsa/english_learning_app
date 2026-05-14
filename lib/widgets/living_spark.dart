@@ -4,6 +4,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
+/// Inline Spark avatar (same visuals as the global overlay bubble).
+class LivingSpark extends StatelessWidget {
+  const LivingSpark({
+    super.key,
+    required this.emotion,
+    this.size = 120,
+  });
+
+  final SparkEmotion emotion;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SparkBubble(
+      emotion: emotion,
+      animationState: SparkOverlayAnimationState.idle,
+      bubbleSize: size,
+    );
+  }
+}
+
 /// Global, persistent Spark companion widget that listens to
 /// [SparkOverlayController] for emotion, visibility and basic animation state.
 class LivingSparkOverlay extends StatelessWidget {
@@ -29,6 +50,7 @@ class LivingSparkOverlay extends StatelessWidget {
               child: _SparkBubble(
                 emotion: emotion,
                 animationState: controller.animationState,
+                bubbleSize: 120,
               ),
             ),
           ),
@@ -55,10 +77,12 @@ class _SparkBubble extends StatelessWidget {
   const _SparkBubble({
     required this.emotion,
     required this.animationState,
+    this.bubbleSize = 120,
   });
 
   final SparkEmotion emotion;
   final SparkOverlayAnimationState animationState;
+  final double bubbleSize;
 
   @override
   Widget build(BuildContext context) {
@@ -87,8 +111,6 @@ class _SparkBubble extends StatelessWidget {
         sparkColor = const Color(0xFF4A90E2);
         break;
     }
-
-    const double bubbleSize = 120;
 
     Widget sparkWidget = Container(
       width: bubbleSize,
