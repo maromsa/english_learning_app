@@ -33,7 +33,28 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        getByName("debug") {
+            val localDebugKeystore = file("debug.keystore")
+            val defaultDebugKeystore =
+                file("${System.getProperty("user.home")}/.android/debug.keystore")
+            // Prefer android/app/debug.keystore when present (matches explicit Firebase SHA setup);
+            // otherwise use the standard SDK debug keystore so local builds still work.
+            storeFile =
+                when {
+                    localDebugKeystore.isFile -> localDebugKeystore
+                    else -> defaultDebugKeystore
+                }
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.

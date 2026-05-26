@@ -3,9 +3,18 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // --- Configuration ---
-const ASSET_PATH = '../models/'; // Relative to index.html (assets/map_3d/) -> assets/models/
+// On Flutter Web, pubspec assets are served from /assets/<path>.
+// The index.html lives at /assets/map_3d/index.html, so 3D models
+// referenced relative to index.html need the correct URL prefix.
+// Using an absolute path avoids ambiguity regardless of the iframe src.
+const ASSET_PATH = 'assets/models/'; // Flutter Web absolute asset path
 const MAP_FILE = 'map_island.glb';
 const CHARACTER_FILE = 'spark.glb';
+
+// Helper: returns the current iframe viewport size, falling back to
+// document dimensions. window.innerWidth can be 0 on iframe first paint.
+function _viewportWidth()  { return window.innerWidth  || document.documentElement.clientWidth  || 300; }
+function _viewportHeight() { return window.innerHeight || document.documentElement.clientHeight || 500; }
 
 // Fallback positions if map nodes are not found (x, y, z)
 const LEVEL_POSITIONS = [
@@ -37,14 +46,16 @@ function init() {
     scene.fog = new THREE.Fog(0x87CEEB, 10, 50);
 
     // 2. Camera
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    // Use _viewportWidth/Height helpers — window.innerWidth can be 0 on
+    // the first paint inside an iframe, which causes a broken aspect ratio.
+    camera = new THREE.PerspectiveCamera(60, _viewportWidth() / _viewportHeight(), 0.1, 1000);
     camera.position.set(0, 10, 15);
     camera.lookAt(0, 0, 0);
 
     // 3. Renderer
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(_viewportWidth(), _viewportHeight());
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // cap at 2× to avoid OOM
     renderer.shadowMap.enabled = true;
     document.getElementById('canvas-container').appendChild(renderer.domElement);
 
@@ -96,7 +107,10 @@ function loadAssets() {
             scene.add(mapModel);
             document.getElementById('loading').style.display = 'none';
             console.log('Map loaded');
-            
+
+            // Notify Flutter / parent page that the map finished loading.
+            if (typeof window._notifyMapLoaded === 'function') window._notifyMapLoaded();
+
             // Try to find named nodes for levels
             // If the map has nodes named "Level1", "Level2", etc., update positions
             for(let i=0; i<LEVEL_POSITIONS.length; i++) {
@@ -105,15 +119,18 @@ function loadAssets() {
                     LEVEL_POSITIONS[i].copy(node.position);
                 }
             }
-            
+
             setupLevelMarkers();
         },
         undefined,
         (error) => {
             console.error('An error happened loading map:', error);
-            document.getElementById('loading').innerText = 'Loading Map Failed (Using Placeholder)';
+            document.getElementById('loading').style.display = 'none';
             createPlaceholderMap();
             setupLevelMarkers();
+            // Placeholder is shown — treat as "loaded" so the Flutter overlay
+            // doesn't hang. The placeholder map still renders correctly.
+            if (typeof window._notifyMapLoaded === 'function') window._notifyMapLoaded();
         }
     );
 
@@ -336,9 +353,9 @@ function animate() {
 }
 
 function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.aspect = _viewportWidth() / _viewportHeight();
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(_viewportWidth(), _viewportHeight());
 }
 
 // --- Bridge to Flutter ---

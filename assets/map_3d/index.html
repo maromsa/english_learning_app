@@ -5,27 +5,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>3D Map</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #87CEEB; }
-        #canvas-container { width: 100vw; height: 100vh; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #87CEEB;
+        }
+        /* canvas-container fills the entire viewport of the iframe */
+        #canvas-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+        }
         #loading {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: white; font-family: sans-serif; font-size: 24px; pointer-events: none;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: sans-serif;
+            font-size: 22px;
+            pointer-events: none;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            text-align: center;
+            z-index: 10;
+        }
+        #retry-btn {
+            display: none;
+            margin-top: 16px;
+            padding: 10px 28px;
+            font-size: 16px;
+            border: none;
+            border-radius: 24px;
+            background: white;
+            color: #0D47A1;
+            font-weight: bold;
+            cursor: pointer;
+            pointer-events: all;
         }
     </style>
 </head>
 <body>
-    <div id="loading">Loading World...</div>
+    <div id="loading">
+        <div id="loading-text">Loading World...</div>
+        <button id="retry-btn" onclick="location.reload()">Retry</button>
+    </div>
     <div id="canvas-container"></div>
 
-    <!-- Import Map via ES Modules -->
+    <!--
+        Import Map via ES Modules.
+        jsDelivr CDN is more reliable inside iframes than unpkg in some regions.
+        Using Three.js r160 which includes CapsuleGeometry.
+    -->
     <script type="importmap">
         {
             "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
             }
         }
+    </script>
+
+    <script>
+        // Fail-safe timeout: if the map hasn't loaded within 12 s, show Retry.
+        const _loadTimeout = setTimeout(function() {
+            const txt = document.getElementById('loading-text');
+            const btn = document.getElementById('retry-btn');
+            if (txt) txt.textContent = 'Failed to load map.';
+            if (btn) btn.style.display = 'inline-block';
+            // Notify the parent Flutter frame that loading failed.
+            try { window.parent.postMessage({ type: 'map3d_load_error' }, '*'); } catch(e) {}
+        }, 12000);
+
+        // Called by main.js once Three.js scene is ready.
+        window._notifyMapLoaded = function() {
+            clearTimeout(_loadTimeout);
+            // Notify parent Flutter frame (used by _Map3dWebView timeout logic).
+            try { window.parent.postMessage({ type: 'map3d_loaded' }, '*'); } catch(e) {}
+        };
     </script>
 
     <script type="module" src="js/main.js"></script>

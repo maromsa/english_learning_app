@@ -1,6 +1,5 @@
 // lib/widgets/action_button.dart
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class ActionButton extends StatefulWidget {
   final String text;
@@ -59,13 +58,10 @@ class _ActionButtonState extends State<ActionButton>
         icon: Icon(widget.icon, color: Colors.white, size: 28),
         label: Text(
           widget.text,
-          style: GoogleFonts.nunito(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          style: Theme.of(context).textTheme.labelLarge,
         ),
         style: ElevatedButton.styleFrom(
+          foregroundColor: Colors.white,
           backgroundColor: widget.color,
           disabledBackgroundColor: Colors.grey.shade400,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),

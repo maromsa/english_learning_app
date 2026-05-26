@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:provider/provider.dart';
@@ -236,11 +235,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                 // 2. Form Fields
                 TextFormField(
                   controller: _nameController,
-                  textDirection: TextDirection.rtl,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                      RegExp(r'[א-תa-zA-Z\s]')),
-                  ],
+                  keyboardType: TextInputType.text,
                   decoration: InputDecoration(
                     labelText: 'שם הילד/ה',
                     hintText: 'איך קוראים לך?',

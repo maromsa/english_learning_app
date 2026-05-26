@@ -7,6 +7,23 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../models/app_user.dart';
 import '../services/auth_service.dart';
 
+/// OAuth 2.0 **Web client** ID (must end with `.apps.googleusercontent.com`).
+///
+/// **Where to paste your real value:** replace the string below, or set the
+/// same value in one place and import it here.
+///
+/// **Where to find it:** Firebase Console → Project settings (gear) → General
+/// → *Your apps* → **Web** app → "Web client ID" in the config snippet; **or**
+/// Google Cloud Console → APIs & Services → Credentials → **Web client**
+/// (type "Web application") — **not** the Android client ID.
+///
+/// `google-services.json` in this repo has empty `oauth_client` entries, and
+/// `firebase_options.dart` does not include this string, so it must be supplied
+/// manually. Required on Android for Google Sign-In 7.x when using ID tokens
+/// with Firebase Auth.
+const String _kGoogleSignInServerClientId =
+    'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com';
+
 class AuthProvider extends ChangeNotifier {
   AuthProvider({
     FirebaseAuth? auth,
@@ -83,8 +100,10 @@ class AuthProvider extends ChangeNotifier {
           },
         );
       } else {
-        // Ensure GoogleSignIn is initialized
-        await _googleSignIn.initialize();
+        // Google Sign-In 7.x: [serverClientId] is required on Android (via [initialize], not a constructor).
+        await _googleSignIn.initialize(
+          serverClientId: _kGoogleSignInServerClientId,
+        );
         // Add timeout to prevent hanging
         final googleUser = await _googleSignIn.authenticate().timeout(
           const Duration(seconds: 30),

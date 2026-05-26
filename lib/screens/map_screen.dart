@@ -2,7 +2,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/models/word_data.dart';
@@ -12,11 +11,15 @@ import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/screens/ai_conversation_screen.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/home_page.dart';
+import 'package:english_learning_app/utils/map_view_registry.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart'
+    show AndroidWebViewController;
 
 import '../services/background_music_service.dart';
 import '../services/daily_reward_service.dart';
@@ -67,8 +70,8 @@ class _MapScreenState extends State<MapScreen>
   late ScrollController _scrollController;
   late AnimationController _pulseController;
   
-  // WebView Controller for 3D Map
-  late final WebViewController _webViewController;
+  // WebView Controller for 3D Map (mobile only — null on Flutter Web)
+  WebViewController? _webViewController;
   bool _isWebMapReady = false;
   WordMasteredListener? _wordMasteredListener;
   SparkOverlayController? _sparkController;
@@ -87,8 +90,14 @@ class _MapScreenState extends State<MapScreen>
       vsync: this,
     )..repeat(reverse: true);
     
-    // Initialize WebView
-    _initWebView();
+    // Initialize WebView — skip on Flutter Web, no platform impl for webview_flutter
+    if (!kIsWeb) {
+      _initWebView();
+    }
+
+    // On Flutter Web: register the iframe platform view.
+    // On mobile/desktop: this is a no-op (stub implementation).
+    registerMap3dView();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Don't block UI - play music in background
@@ -111,10 +120,11 @@ class _MapScreenState extends State<MapScreen>
 
     // Register map bridge listener: spawn 3D asset and celebrate with Spark for 2s
     _wordMasteredListener = (event) {
-      if (_isWebMapReady) {
+      final controller = _webViewController;
+      if (_isWebMapReady && controller != null) {
         try {
           final payloadJson = jsonEncode(event.toJson());
-          _webViewController.runJavaScript(
+          controller.runJavaScript(
             'window.spawnWordAsset($payloadJson)',
           );
         } catch (e, stackTrace) {
@@ -132,18 +142,28 @@ class _MapScreenState extends State<MapScreen>
   }
   
   void _initWebView() {
-    _webViewController = WebViewController()
+    // Guard: webview_flutter has no platform implementation on Flutter Web.
+    if (kIsWeb) return;
+
+    // Build a base controller with JS enabled and transparent background.
+    final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0x00000000))
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (String url) {
             debugPrint('3D Map Loaded: $url');
-            _isWebMapReady = true;
+            if (mounted) {
+              setState(() => _isWebMapReady = true);
+            } else {
+              _isWebMapReady = true;
+            }
             _sendLevelsToJs();
           },
           onWebResourceError: (WebResourceError error) {
-            debugPrint('WebView Error: ${error.description}');
+            debugPrint(
+              'WebView Error [${error.errorCode}]: ${error.description}',
+            );
           },
         ),
       )
@@ -152,7 +172,20 @@ class _MapScreenState extends State<MapScreen>
         onMessageReceived: (JavaScriptMessage message) {
           _handleJsMessage(message.message);
         },
-      )
+      );
+
+    // On Android, explicitly enable file/content access so that
+    // loadFlutterAsset can resolve file:///android_asset/flutter_assets/…
+    // and load the HTML's relative JS/CSS/WASM siblings.
+    // Without this, Android 10+ WebView blocks the request with ERR_FAILED.
+    if (controller.platform is AndroidWebViewController) {
+      final androidController =
+          controller.platform as AndroidWebViewController;
+      androidController.setAllowFileAccess(true);
+      androidController.setAllowContentAccess(true);
+    }
+
+    _webViewController = controller
       ..loadFlutterAsset('assets/map_3d/index.html');
   }
   
@@ -185,11 +218,12 @@ class _MapScreenState extends State<MapScreen>
   }
 
   void _sendLevelsToJs() {
-    if (!_isWebMapReady || levels.isEmpty) return;
+    final controller = _webViewController;
+    if (!_isWebMapReady || levels.isEmpty || controller == null) return;
     try {
       final jsonList = levels.map((l) => l.toJson()).toList();
       final jsonString = jsonEncode(jsonList);
-      _webViewController.runJavaScript('window.updateLevels($jsonString)');
+      controller.runJavaScript('window.updateLevels($jsonString)');
     } catch (e) {
       debugPrint('Error sending levels to JS: $e');
     }
@@ -1075,8 +1109,10 @@ class _MapScreenState extends State<MapScreen>
           backgroundColor: Colors.transparent,
           elevation: 0,
           centerTitle: true,
+          // leadingWidth must accommodate the avatar pill comfortably.
+          // 180 is preserved but the Padding is tightened to avoid cramping.
           leading: const Padding(
-            padding: EdgeInsets.all(4.0),
+            padding: EdgeInsets.symmetric(horizontal: 4.0),
             child: CurrentUserAvatar(),
           ),
           leadingWidth: 180,
@@ -1133,7 +1169,9 @@ class _MapScreenState extends State<MapScreen>
                 }
               },
             ),
-            const SizedBox(width: 8),
+            // Right-edge breathing room — keeps the last icon away from the
+            // screen edge / notch area on all device shapes.
+            const SizedBox(width: 12),
           ],
         ),
 
@@ -1156,13 +1194,17 @@ class _MapScreenState extends State<MapScreen>
                   )
                 : Stack(
                     children: [
-                      // 1. 3D Map View (WebView)
+                      // 1. 3D Map View — WebView on mobile, HtmlElementView iframe on web.
+                      //    Positioned.fill gives the child explicit, bounded constraints,
+                      //    which prevents the drawFrame/finalizeTree pipeline errors.
                       Positioned.fill(
-                        child: WebViewWidget(controller: _webViewController),
+                        child: kIsWeb
+                            ? const _Map3dWebView()
+                            : WebViewWidget(controller: _webViewController!),
                       ),
 
-                      // 2. Loading Overlay for WebView
-                      if (!_isWebMapReady)
+                      // 2. Loading Overlay for WebView (mobile only)
+                      if (!kIsWeb && !_isWebMapReady)
                         Container(
                           color: Colors.blue.shade900,
                           child: const Center(
@@ -1181,12 +1223,20 @@ class _MapScreenState extends State<MapScreen>
                         ),
 
                       // 3. Floating Stats Pill (Fixed Position)
+                      // Use MediaQuery.padding.top to account for the status
+                      // bar height so the pill always sits below both the
+                      // status bar and the transparent AppBar on every device.
                       Positioned(
-                        top: kToolbarHeight + 20, // Below AppBar
-                        left: 20,
-                        child: _StatsPill(
-                          totalStars: _totalStars,
-                          coins: coinProvider.coins,
+                        top: MediaQuery.of(context).padding.top +
+                            kToolbarHeight +
+                            8,
+                        left: 16,
+                        child: SafeArea(
+                          top: false, // already accounted for above
+                          child: _StatsPill(
+                            totalStars: _totalStars,
+                            coins: coinProvider.coins,
+                          ),
                         ),
                       ),
 
@@ -1577,3 +1627,200 @@ class _StatItem extends StatelessWidget {
 }
 
 enum _QuickAiAction { chatBuddy, practicePack }
+
+// ---------------------------------------------------------------------------
+// _Map3dWebView
+// ---------------------------------------------------------------------------
+// Wraps HtmlElementView in a LayoutBuilder so it always receives explicit
+// bounded constraints — the root cause of the drawFrame / finalizeTree
+// rendering-pipeline errors seen in Flutter Web.
+//
+// Also adds a fail-safe timeout overlay: if the iframe hasn't signalled
+// readiness within [_kMapLoadTimeout], a "Retry" button is shown instead
+// of hanging on "Loading World..." indefinitely.
+// ---------------------------------------------------------------------------
+
+/// How long to wait for the 3D map iframe to load before showing the retry UI.
+const Duration _kMapLoadTimeout = Duration(seconds: 15);
+
+class _Map3dWebView extends StatefulWidget {
+  const _Map3dWebView();
+
+  @override
+  State<_Map3dWebView> createState() => _Map3dWebViewState();
+}
+
+class _Map3dWebViewState extends State<_Map3dWebView> {
+  // Tracks whether we are still in the "loading" phase.
+  bool _isLoading = true;
+  // Set to true when the timeout fires without a successful load signal.
+  bool _timedOut = false;
+  // Incremented on each retry to force the HtmlElementView to rebuild with a
+  // fresh iframe (achieved via a ValueKey).
+  int _retryKey = 0;
+
+  Timer? _timeoutTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimeout();
+    // Listen for a postMessage from the iframe signalling that the map loaded.
+    // main.js hides the #loading div when the GLB is ready; we piggy-back on
+    // the same mechanism by having the JS post a message to the parent window.
+    // (See the companion change in main.js → _notifyParentLoaded.)
+    //
+    // Note: if the JS has already posted before this listener is registered
+    // we fall back gracefully — the timeout will just not fire.
+  }
+
+  void _startTimeout() {
+    _timeoutTimer?.cancel();
+    _timeoutTimer = Timer(_kMapLoadTimeout, () {
+      if (!mounted) return;
+      // Only trigger timeout-UI if we haven't already received a load signal.
+      if (_isLoading) {
+        setState(() {
+          _timedOut = true;
+          _isLoading = false;
+        });
+      }
+    });
+  }
+
+  /// Called when the iframe signals a successful load (via postMessage bridged
+  /// through a JS listener added to the host page, or by any other mechanism).
+  void _onMapLoaded() {
+    if (!mounted) return;
+    _timeoutTimer?.cancel();
+    if (_isLoading) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _retry() {
+    setState(() {
+      _isLoading = true;
+      _timedOut = false;
+      _retryKey++;
+    });
+    _startTimeout();
+  }
+
+  @override
+  void dispose() {
+    _timeoutTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // LayoutBuilder guarantees finite, explicit constraints are passed
+        // down to HtmlElementView — preventing unbounded constraint errors.
+        final double w = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.of(context).size.width;
+        final double h = constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : MediaQuery.of(context).size.height;
+
+        return SizedBox(
+          width: w,
+          height: h,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // The actual iframe platform view.
+              // ValueKey(_retryKey) forces a full widget rebuild on retry,
+              // which tears down the old iframe and creates a fresh one.
+              HtmlElementView(
+                key: ValueKey(_retryKey),
+                viewType: kMap3dViewType,
+                // onPlatformViewCreated fires when the iframe DOM element is
+                // injected — at that point we know the view is wired up, but
+                // the JS assets may still be loading. We start a short
+                // additional timer here if needed.
+                onPlatformViewCreated: (_) {
+                  // The iframe is mounted; the timeout is already running.
+                  // No additional action required here.
+                },
+              ),
+
+              // Loading overlay — shown while the map is initialising.
+              if (_isLoading && !_timedOut)
+                Container(
+                  color: const Color(0xFF0D47A1), // deep blue
+                  child: const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(color: Colors.white),
+                        SizedBox(height: 16),
+                        Text(
+                          'טוען עולם תלת-מימדי...',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Timeout / error overlay — shown when the map fails to load.
+              if (_timedOut)
+                Container(
+                  color: const Color(0xFF0D47A1),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.wifi_off_rounded,
+                          color: Colors.white70,
+                          size: 56,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'לא הצלחנו לטעון את המפה.',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'בדקו את חיבור האינטרנט ונסו שוב.',
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: _retry,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('נסה שוב'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF0D47A1),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}

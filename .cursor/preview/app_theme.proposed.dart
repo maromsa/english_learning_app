@@ -44,44 +44,6 @@ class AppTheme {
     ).copyWith(fontFamilyFallback: const ['Baloo 2']);
   }
 
-  static TextTheme _lightTextTheme() {
-    return TextTheme(
-      displayLarge: _display(40, FontWeight.w900, color: AuroraTokens.ink),
-      displayMedium: _display(32, FontWeight.w800, color: AuroraTokens.ink),
-      displaySmall: _display(26, FontWeight.w800, color: AuroraTokens.ink),
-      headlineMedium: _display(22, FontWeight.w700, color: AuroraTokens.ink),
-      headlineSmall: _display(20, FontWeight.w700, color: AuroraTokens.ink),
-      titleLarge: _display(20, FontWeight.w700, color: AuroraTokens.ink),
-      titleMedium: _display(18, FontWeight.w700, color: AuroraTokens.ink),
-      titleSmall: _display(16, FontWeight.w600, color: AuroraTokens.inkSoft),
-      bodyLarge: _body(18, FontWeight.w500, color: AuroraTokens.ink),
-      bodyMedium: _body(16, FontWeight.w400, color: AuroraTokens.inkSoft),
-      bodySmall: _body(14, FontWeight.w400, color: AuroraTokens.inkMute),
-      labelLarge: _display(18, FontWeight.w800),
-      labelMedium: _display(14, FontWeight.w700, color: AuroraTokens.ink),
-      labelSmall: _display(12, FontWeight.w600, color: AuroraTokens.inkMute),
-    );
-  }
-
-  static TextTheme _darkTextTheme() {
-    return TextTheme(
-      displayLarge: _display(40, FontWeight.w900, color: AuroraTokens.paper),
-      displayMedium: _display(32, FontWeight.w800, color: AuroraTokens.paper),
-      displaySmall: _display(26, FontWeight.w800, color: AuroraTokens.paper),
-      headlineMedium: _display(22, FontWeight.w700, color: AuroraTokens.paper),
-      headlineSmall: _display(20, FontWeight.w700, color: AuroraTokens.paper),
-      titleLarge: _display(20, FontWeight.w700, color: AuroraTokens.paper),
-      titleMedium: _display(18, FontWeight.w700, color: AuroraTokens.paper),
-      titleSmall: _display(16, FontWeight.w600, color: AuroraTokens.paper2),
-      bodyLarge: _body(18, FontWeight.w500, color: AuroraTokens.paper),
-      bodyMedium: _body(16, FontWeight.w400, color: AuroraTokens.paper2),
-      bodySmall: _body(14, FontWeight.w400, color: AuroraTokens.inkMute),
-      labelLarge: _display(18, FontWeight.w800),
-      labelMedium: _display(14, FontWeight.w700, color: AuroraTokens.paper),
-      labelSmall: _display(12, FontWeight.w600, color: AuroraTokens.inkMute),
-    );
-  }
-
   /// Light theme optimized for children
   static ThemeData get lightTheme {
     final baseTheme = ThemeData(
@@ -99,7 +61,17 @@ class AppTheme {
     );
 
     return baseTheme.copyWith(
-      textTheme: _lightTextTheme(),
+      textTheme: TextTheme(
+        displayLarge: _display(40, FontWeight.w900, color: AuroraTokens.ink),
+        displayMedium: _display(32, FontWeight.w800, color: AuroraTokens.ink),
+        displaySmall: _display(26, FontWeight.w800, color: AuroraTokens.ink),
+        headlineMedium: _display(22, FontWeight.w700, color: AuroraTokens.ink),
+        titleLarge: _display(20, FontWeight.w700, color: AuroraTokens.ink),
+        bodyLarge: _body(18, FontWeight.w500, color: AuroraTokens.ink),
+        bodyMedium: _body(16, FontWeight.w400, color: AuroraTokens.inkSoft),
+        bodySmall: _body(14, FontWeight.w400, color: AuroraTokens.inkMute),
+        labelLarge: _display(18, FontWeight.w800),
+      ),
 
       // AppBar theme
       appBarTheme: AppBarTheme(
@@ -238,7 +210,19 @@ class AppTheme {
     );
 
     return baseTheme.copyWith(
-      textTheme: _darkTextTheme(),
+      textTheme: TextTheme(
+        displayLarge: _display(40, FontWeight.w900, color: AuroraTokens.paper),
+        displayMedium:
+            _display(32, FontWeight.w800, color: AuroraTokens.paper),
+        displaySmall: _display(26, FontWeight.w800, color: AuroraTokens.paper),
+        headlineMedium:
+            _display(22, FontWeight.w700, color: AuroraTokens.paper),
+        titleLarge: _display(20, FontWeight.w700, color: AuroraTokens.paper),
+        bodyLarge: _body(18, FontWeight.w500, color: AuroraTokens.paper),
+        bodyMedium: _body(16, FontWeight.w400, color: AuroraTokens.paper2),
+        bodySmall: _body(14, FontWeight.w400, color: AuroraTokens.inkMute),
+        labelLarge: _display(18, FontWeight.w800),
+      ),
 
       // AppBar theme
       appBarTheme: AppBarTheme(
