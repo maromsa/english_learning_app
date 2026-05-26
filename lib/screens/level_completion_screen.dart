@@ -140,19 +140,20 @@ class _LevelCompletionScreenState extends State<LevelCompletionScreen>
                         children: [
                           Text(
                             'כל הכבוד!',
-                            style: TextStyle(
-                              fontSize: 40,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              shadows: [
-                                Shadow(
-                                  blurRadius: 10,
-                                  color: Colors.black.withValues(alpha: 0.3),
-                                  offset: const Offset(0, 4),
+                            style: Theme.of(context)
+                                .textTheme
+                                .displayLarge
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  shadows: [
+                                    Shadow(
+                                      blurRadius: 10,
+                                      color: Colors.black
+                                          .withValues(alpha: 0.3),
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                              fontFamily: 'Nunito',
-                            ),
                           ),
                           const SizedBox(height: 8),
                           Container(
@@ -488,11 +489,9 @@ class _StatPill extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 20,
-            fontFamily: 'Nunito',
-          ),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
         ),
         Text(
           label,

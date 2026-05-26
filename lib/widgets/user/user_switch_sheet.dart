@@ -104,13 +104,9 @@ class _UserSwitchSheetState extends State<UserSwitchSheet> {
               ),
             ),
           ),
-          const Text(
+          Text(
             "מי משחק עכשיו?",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Nunito',
-            ),
+            style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
           if (_isLoading)

@@ -52,12 +52,9 @@ class CurrentUserAvatar extends StatelessWidget {
                 Flexible(
                   child: Text(
                     user.name,
-                    style: const TextStyle(
-                      fontFamily: 'Nunito',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.black87,
-                    ),
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: Colors.black87,
+                        ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
