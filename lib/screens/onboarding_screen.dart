@@ -1,10 +1,12 @@
 // lib/screens/onboarding_screen.dart
+import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/onboarding_personalizer.dart';
 import '../services/telemetry_service.dart';
 import '../widgets/spark_overlay_suppressor.dart';
+import '../widgets/ui/_barrel.dart';
 import 'map_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -89,7 +91,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'ברוכים הבאים למסע המילים!',
+                  SparkStrings.welcomeTitle,
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -97,7 +99,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'אספנו כמה טיפים שיעזרו לכם ללמוד באנגלית בקצב שמתאים לכם.',
+                  SparkStrings.welcomeBody,
                   style: theme.textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
@@ -132,16 +134,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                ElevatedButton.icon(
+                KidButton.primary(
+                  label: SparkStrings.welcomeGo,
                   onPressed: _completeOnboarding,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  icon: const Icon(Icons.rocket_launch),
-                  label: const Text('קדימה!'),
+                  leadingIcon: Icons.rocket_launch,
+                  fullWidth: true,
                 ),
               ],
             ),

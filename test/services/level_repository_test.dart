@@ -69,4 +69,23 @@ void main() {
 
     expect(levels, isEmpty);
   });
+
+  test('isLastOfChapter returns false until P-09 chapter metadata', () async {
+    const assetPath = 'assets/data/levels.json';
+    final bundle = _FakeBundle({
+      assetPath: '''
+{
+  "levels": [
+    {"id": "level_a", "name": "A", "words": [{"word": "X"}]},
+    {"id": "level_b", "name": "B", "words": [{"word": "Y"}]}
+  ]
+}
+''',
+    });
+
+    final repository = LevelRepository(bundle: bundle);
+    expect(await repository.isLastOfChapter('level_a'), isFalse);
+    expect(await repository.isLastOfChapter('level_b'), isFalse);
+    expect(await repository.isLastOfChapter('missing'), isFalse);
+  });
 }

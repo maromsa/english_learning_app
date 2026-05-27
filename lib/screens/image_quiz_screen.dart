@@ -12,11 +12,12 @@ import 'package:english_learning_app/services/spark_voice_service.dart';
 import 'package:english_learning_app/services/word_mastery_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
-import 'package:english_learning_app/widgets/ui/spark_button.dart';
+import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:provider/provider.dart';
+import 'package:english_learning_app/l10n/spark_strings.dart';
 
 /// Image Quiz mini-game integrated with the Living World: uses WordRepository +
 /// WordMasteryService for spaced repetition, LevelProgressService for
@@ -133,7 +134,7 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _loadError = 'לא ניתן לטעון מילים. נסו שוב.';
+          _loadError = SparkStrings.quizLoadFailed;
         });
       }
     }
@@ -221,9 +222,10 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
         // Play success sound — fire-and-forget, does not block UI thread.
         SoundService().playSuccessSound();
         sparkController.markCelebrating();
+        final compliment = SparkStrings.randomCompliment();
         setState(() {
           _streak += 1;
-          _feedbackMessage = 'כל הכבוד! הרווחת $reward מטבעות';
+          _feedbackMessage = SparkStrings.quizCorrectCoins(compliment, reward);
         });
         context.read<AchievementService>().checkForAchievements(streak: _streak);
       }
@@ -231,7 +233,7 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
       if (mounted) {
         setState(() {
           _streak = 0;
-          _feedbackMessage = 'לא הפעם. המילה הנכונה: ${target.word}';
+          _feedbackMessage = SparkStrings.quizWrongAnswer(target.word);
         });
       }
     }
@@ -262,7 +264,7 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              _loadError ?? 'נדרשות לפחות $_minWordsForQuiz מילים ברמה כדי לשחק.',
+              _loadError ?? SparkStrings.quizNeedMoreWords,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyLarge,
             ),
@@ -350,13 +352,11 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
                         ),
                   ),
                 ),
-              SparkButton(
+              KidButton.primary(
                 label: _answered ? 'שאלה הבאה' : 'בחר תמונה',
-                onPressed: _answered ? _nextQuestion : () {},
-                backgroundColor: _answered
-                    ? null
-                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-                icon: Icons.arrow_forward,
+                onPressed: _answered ? _nextQuestion : null,
+                leadingIcon: Icons.arrow_forward,
+                fullWidth: true,
               ),
             ],
           ),

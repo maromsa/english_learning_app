@@ -27,4 +27,16 @@ class LevelRepository {
       return const <LevelData>[];
     }
   }
+
+  /// True when [levelId] is the last level in its chapter.
+  ///
+  /// Placeholder until P-09 adds chapter metadata to [levels.json].
+  Future<bool> isLastOfChapter(String levelId) async {
+    final levels = await loadLevels();
+    if (levels.isEmpty || !levels.any((l) => l.id == levelId)) {
+      return false;
+    }
+    // P-09: group by chapterId and return true for the final level in each chapter.
+    return false;
+  }
 }

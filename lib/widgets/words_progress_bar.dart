@@ -1,4 +1,5 @@
 // lib/widgets/words_progress_bar.dart
+import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:flutter/material.dart';
 
 class WordsProgressBar extends StatelessWidget {
@@ -21,7 +22,7 @@ class WordsProgressBar extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            '$completedWords מתוך $totalWords מילים',
+            SparkStrings.wordsProgress(completedWords, totalWords),
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),

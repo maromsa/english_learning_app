@@ -18,6 +18,9 @@ import '../services/level_repository.dart';
 import '../services/telemetry_service.dart';
 import '../services/word_mastery_service.dart';
 import '../services/word_repository.dart';
+import '../services/spark_voice_service.dart';
+import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/widgets/ui/_barrel.dart';
 
 /// Legacy Image Quiz mini-game — Phase 3 refactor.
 ///
@@ -231,7 +234,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _loadError = 'לא ניתן לטעון מילים. נסו שוב.';
+        _loadError = SparkStrings.quizLoadFailed;
       });
     }
   }
@@ -288,7 +291,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
     setState(() {
       _currentOptions = List<WordData>.from(_currentOptions)..remove(toRemove);
       _hintUsed = true;
-      _feedbackMessage = 'הסרתי אפשרות שגויה אחת 😉';
+      _feedbackMessage = SparkStrings.quizRemovedWrong;
     });
 
     telemetry?.logHintUsed(
@@ -317,7 +320,8 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       newStreak = _streak + 1;
       reward = _baseReward + (newStreak - 1) * _streakBonusStep;
       newScore += reward;
-      feedback = 'כל הכבוד! הרווחת +$reward מטבעות';
+      final compliment = SparkStrings.randomCompliment();
+      feedback = SparkStrings.quizCorrectCoins(compliment, reward);
 
       if (mounted) {
         await context.read<CoinProvider>().addCoins(reward);
@@ -336,7 +340,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       }
     } else {
       newStreak = 0;
-      feedback = 'לא הפעם. המילה הנכונה: ${target.word}.';
+      feedback = SparkStrings.quizWrongAnswer(target.word);
     }
 
     setState(() {
@@ -427,15 +431,15 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
                 const SizedBox(height: 16),
                 Text(
                   _loadError ??
-                      'נדרשות לפחות $_minWords מילים כדי לשחק בבוחן התמונות.',
+                      SparkStrings.quizNeedMoreWords,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 24),
-                ElevatedButton.icon(
+                KidButton.warning(
+                  label: SparkStrings.tryAgain,
                   onPressed: _loadAndSortWords,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('נסו שוב'),
+                  leadingIcon: Icons.refresh,
                 ),
               ],
             ),
@@ -532,30 +536,13 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
               const SizedBox(height: 12),
 
               // ── Next question button ────────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _answered
-                        ? Colors.green.shade700
-                        : Colors.grey.shade400,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 6,
-                  ),
-                  onPressed: _answered ? _nextQuestion : null,
-                  child: Text(
-                    _answered
-                        ? 'Next question'
-                        : 'Choose an answer to continue',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+              KidButton.success(
+                label: _answered
+                    ? SparkStrings.quizNextQuestion
+                    : SparkStrings.quizPickAnswer,
+                onPressed: _answered ? _nextQuestion : null,
+                leadingIcon: Icons.arrow_forward,
+                fullWidth: true,
               ),
             ],
           ),

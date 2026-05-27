@@ -1,5 +1,6 @@
+import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:flutter/material.dart';
-import 'package:confetti/confetti.dart';
 import 'dart:math' as math;
 
 /// Screen shown when a level is completed
@@ -28,7 +29,6 @@ class LevelCompletionScreen extends StatefulWidget {
 
 class _LevelCompletionScreenState extends State<LevelCompletionScreen>
     with TickerProviderStateMixin {
-  late ConfettiController _confettiController;
   late AnimationController _entranceController;
   late AnimationController _pulseController;
 
@@ -40,11 +40,10 @@ class _LevelCompletionScreenState extends State<LevelCompletionScreen>
   void initState() {
     super.initState();
 
-    // 1. Confetti Controller
-    _confettiController = ConfettiController(duration: const Duration(seconds: 3));
-    _confettiController.play();
+    // TODO(P-09): trigger Celebration.fire(tier: epic) when this level closes a chapter.
+    // Requires levelId in route args + chapter metadata in levels.json (added in P-09).
 
-    // 2. Entrance Animations
+    // Entrance Animations
     _entranceController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
@@ -79,7 +78,6 @@ class _LevelCompletionScreenState extends State<LevelCompletionScreen>
 
   @override
   void dispose() {
-    _confettiController.dispose();
     _entranceController.dispose();
     _pulseController.dispose();
     super.dispose();
@@ -96,28 +94,7 @@ class _LevelCompletionScreenState extends State<LevelCompletionScreen>
           // 2. Floating Background Particles
           const _FloatingParticles(),
 
-          // 3. Confetti Layer (Behind content)
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirection: math.pi / 2,
-              maxBlastForce: 5,
-              minBlastForce: 2,
-              emissionFrequency: 0.05,
-              numberOfParticles: 30, // Increased
-              gravity: 0.1,
-              colors: const [
-                Colors.green,
-                Colors.blue,
-                Colors.pink,
-                Colors.orange,
-                Colors.purple
-              ],
-            ),
-          ),
-
-          // 4. Main Content
+          // Main Content
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -139,7 +116,7 @@ class _LevelCompletionScreenState extends State<LevelCompletionScreen>
                       child: Column(
                         children: [
                           Text(
-                            'כל הכבוד!',
+                            SparkStrings.levelCompleteTitle,
                             style: Theme.of(context)
                                 .textTheme
                                 .displayLarge
@@ -166,7 +143,7 @@ class _LevelCompletionScreenState extends State<LevelCompletionScreen>
                                   color: Colors.white.withValues(alpha: 0.3)),
                             ),
                             child: Text(
-                              'סיימת את ${widget.levelName}',
+                              SparkStrings.levelCompleteNamed(widget.levelName),
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -581,38 +558,21 @@ class _ActionButtons extends StatelessWidget {
           builder: (context, child) {
             return Transform.scale(
               scale: 1.0 + (pulseController.value * 0.05),
-              child: FilledButton.icon(
+              child: KidButton.primary(
+                label: SparkStrings.levelCompleteMap,
                 onPressed: onContinue,
-                icon: const Icon(Icons.arrow_back, size: 28), // RTL arrow
-                label: const Text(
-                  'המשך למפה',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.deepPurple,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 40, vertical: 16),
-                  elevation: 8,
-                  shadowColor: Colors.black.withValues(alpha: 0.4),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30)),
-                ),
+                leadingIcon: Icons.arrow_back,
+                fullWidth: true,
               ),
             );
           },
         ),
         const SizedBox(height: 16),
-        TextButton.icon(
-          onPressed: () {
-            // For now, just continue (replay can be implemented later)
-            onContinue();
-          },
-          icon: const Icon(Icons.replay, color: Colors.white70),
-          label: const Text(
-            'שחק שוב',
-            style: TextStyle(color: Colors.white70, fontSize: 16),
-          ),
+        KidButton.warning(
+          label: SparkStrings.levelPlayAgain,
+          onPressed: onContinue,
+          leadingIcon: Icons.replay,
+          fullWidth: true,
         ),
       ],
     );

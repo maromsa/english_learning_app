@@ -22,11 +22,13 @@ import 'package:webview_flutter_android/webview_flutter_android.dart'
     show AndroidWebViewController;
 
 import '../services/background_music_service.dart';
+import 'package:english_learning_app/l10n/spark_strings.dart';
 import '../services/daily_reward_service.dart';
 import '../services/level_repository.dart';
 import '../services/local_user_data_service.dart';
 import '../services/level_progress_service.dart';
 import '../services/map_bridge_service.dart';
+import '../widgets/ui/_barrel.dart';
 import '../providers/user_session_provider.dart';
 import '../utils/page_transitions.dart';
 import '../utils/route_observer.dart';
@@ -809,7 +811,7 @@ class _MapScreenState extends State<MapScreen>
     if (levelIndex <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('השלב הזה נעול.'),
+          content: Text(SparkStrings.levelLocked),
           backgroundColor: Colors.black87,
         ),
       );
@@ -838,8 +840,11 @@ class _MapScreenState extends State<MapScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'סיימו את ${previousLevel.name} כדי לפתוח את ${level.name}.\n'
-              'נותרו ${remaining} מילים להשלמה.',
+              SparkStrings.levelUnlockNeed(
+                previousLevel.name,
+                level.name,
+                remaining,
+              ),
             ),
             backgroundColor: Colors.orange.shade700,
             duration: const Duration(seconds: 4),
@@ -857,7 +862,11 @@ class _MapScreenState extends State<MapScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              'סיימו את ${previousLevel.name} כדי לפתוח את ${level.name}.'),
+            SparkStrings.levelUnlockNeedShort(
+              previousLevel.name,
+              level.name,
+            ),
+          ),
           backgroundColor: Colors.orange.shade700,
         ),
       );
@@ -1183,7 +1192,7 @@ class _MapScreenState extends State<MapScreen>
             : levels.isEmpty
                 ? const Center(
                     child: Text(
-                      'אין שלבים זמינים כרגע. נסו שוב מאוחר יותר.',
+                      SparkStrings.mapNoLevels,
                       style: TextStyle(
                         fontSize: 18,
                         color: Colors.white,
@@ -1214,7 +1223,7 @@ class _MapScreenState extends State<MapScreen>
                                 CircularProgressIndicator(color: Colors.white),
                                 SizedBox(height: 16),
                                 Text(
-                                  'טוען עולם תלת-מימדי...',
+                                  SparkStrings.mapLoading3d,
                                   style: TextStyle(color: Colors.white),
                                 ),
                               ],
@@ -1264,17 +1273,19 @@ class _MapScreenState extends State<MapScreen>
                 const Icon(Icons.error_outline, size: 64, color: Colors.red),
                 const SizedBox(height: 16),
                 const Text(
-                  'שגיאה בטעינת המפה',
+                  SparkStrings.mapLoadFailed,
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'נסו לסגור ולפתוח את האפליקציה שוב.',
+                const Text(
+                  SparkStrings.offline,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade700),
+                  style: TextStyle(color: Colors.grey),
                 ),
                 const SizedBox(height: 24),
-                ElevatedButton(
+                KidButton.warning(
+                  label: SparkStrings.tryAgain,
                   onPressed: () {
                     if (mounted) {
                       setState(() {
@@ -1284,7 +1295,6 @@ class _MapScreenState extends State<MapScreen>
                       _initialize();
                     }
                   },
-                  child: const Text('נסה שוב'),
                 ),
               ],
             ),
@@ -1759,7 +1769,7 @@ class _Map3dWebViewState extends State<_Map3dWebView> {
                         CircularProgressIndicator(color: Colors.white),
                         SizedBox(height: 16),
                         Text(
-                          'טוען עולם תלת-מימדי...',
+                          SparkStrings.mapLoading3d,
                           style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
                       ],
@@ -1782,7 +1792,7 @@ class _Map3dWebViewState extends State<_Map3dWebView> {
                         ),
                         const SizedBox(height: 16),
                         const Text(
-                          'לא הצלחנו לטעון את המפה.',
+                          SparkStrings.mapLoadFailed,
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 18,
@@ -1792,26 +1802,15 @@ class _Map3dWebViewState extends State<_Map3dWebView> {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'בדקו את חיבור האינטרנט ונסו שוב.',
+                          SparkStrings.offline,
                           style: TextStyle(color: Colors.white70, fontSize: 14),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 24),
-                        ElevatedButton.icon(
+                        KidButton.warning(
+                          label: SparkStrings.tryAgain,
                           onPressed: _retry,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('נסה שוב'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF0D47A1),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 14,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                          ),
+                          leadingIcon: Icons.refresh,
                         ),
                       ],
                     ),

@@ -1,3 +1,4 @@
+import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -70,7 +71,10 @@ class _UserSwitchSheetState extends State<UserSwitchSheet> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('היי ${newUser.name}, כיף שחזרת!', textAlign: TextAlign.center),
+        content: Text(
+          SparkStrings.welcomeBackUser(newUser.name),
+          textAlign: TextAlign.center,
+        ),
         backgroundColor: Colors.green,
         duration: const Duration(seconds: 2),
       ),

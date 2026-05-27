@@ -127,6 +127,23 @@ class SparkOverlayController extends ChangeNotifier {
     setEmotion(SparkEmotion.neutral);
   }
 
+  @visibleForTesting
+  int debugFlashCount = 0;
+
+  /// Brief emotion flash (e.g. micro celebration wink).
+  Future<void> flash(
+    SparkEmotion emotion, {
+    Duration duration = const Duration(milliseconds: 600),
+  }) async {
+    debugFlashCount++;
+    final previousEmotion = _emotion;
+    final previousAnimation = _animationState;
+    setEmotion(emotion);
+    await Future<void>.delayed(duration);
+    setEmotion(previousEmotion);
+    setAnimationState(previousAnimation);
+  }
+
   /// Called when the user navigates to a new screen. Spark briefly reacts
   /// (e.g. happy) then returns to idle so the overlay feels responsive to
   /// navigation (Map, Shop, Missions, etc.) without blocking interaction.

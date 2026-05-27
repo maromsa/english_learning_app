@@ -18,6 +18,8 @@ import '../services/level_progress_service.dart';
 import '../services/sound_service.dart';
 import '../services/telemetry_service.dart';
 import '../services/word_mastery_service.dart';
+import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/widgets/ui/_barrel.dart';
 
 /// Lightning-round practice screen — Phase 3 edition.
 ///
@@ -274,7 +276,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _loadError = 'שגיאה בטעינת המילים. נסו שוב.';
+        _loadError = SparkStrings.lightningLoadFailed;
       });
     }
   }
@@ -330,7 +332,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       setState(() {
         _sessionActive = false;
         _sessionEnded = true;
-        _feedback = 'אין מספיק מילים כדי להתחיל ריצת ברק. הוסיפו עוד מילים בשלב!';
+        _feedback = SparkStrings.lightningNeedWords;
       });
       return;
     }
@@ -467,7 +469,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       reward = 5 + ((_currentStreak - 1) * 2);
       _score += reward;
       _correctAnswers += 1;
-      feedback = 'מעולה! הרווחתם $reward מטבעות ⚡️';
+      feedback = SparkStrings.lightningWinCoins(reward);
 
       if (mounted) {
         await context.read<CoinProvider>().addCoins(reward);
@@ -485,7 +487,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     } else {
       _currentStreak = 0;
       _incorrectAnswers += 1;
-      feedback = 'כמעט! התשובה הנכונה: "${_currentWord!.word}".';
+      feedback = SparkStrings.lightningWrong(_currentWord!.word);
     }
 
     final int elapsed = _sessionSeconds - _remainingSeconds;
@@ -572,7 +574,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
 
     if (triggeredByTimer && mounted) {
       setState(() {
-        _feedback = _feedback ?? 'הזמן נגמר! בואו נסקור את ההצלחה שלכם.';
+        _feedback = _feedback ?? SparkStrings.lightningTimeUp;
       });
     }
   }
@@ -852,15 +854,15 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
               ],
             ),
             const SizedBox(height: 28),
-            FilledButton.icon(
+            KidButton.primary(
+              label: SparkStrings.levelPlayAgain,
               onPressed: _loadAndSortWords,
-              icon: const Icon(Icons.refresh),
-              label: const Text('שחקו שוב'),
+              leadingIcon: Icons.refresh,
             ),
             const SizedBox(height: 8),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('חזרה למסע'),
+              child: const Text(SparkStrings.backToJourney),
             ),
           ],
         ),
@@ -902,7 +904,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
               Icon(Icons.psychology, size: 64, color: Colors.deepOrange.shade300),
               const SizedBox(height: 16),
               const Text(
-                'זקוקים לעוד מילים כדי להתחיל את ריצת הברק!',
+                SparkStrings.lightningNeedWords,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),

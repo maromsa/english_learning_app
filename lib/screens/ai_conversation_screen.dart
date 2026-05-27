@@ -1,4 +1,5 @@
 import 'package:english_learning_app/app_config.dart';
+import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
@@ -10,6 +11,7 @@ import 'package:english_learning_app/services/local_user_service.dart';
 import 'package:english_learning_app/models/local_user.dart';
 import 'package:english_learning_app/services/background_music_service.dart';
 import 'package:english_learning_app/utils/route_observer.dart';
+import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:just_audio/just_audio.dart';
@@ -26,7 +28,7 @@ class AiConversationScreen extends StatefulWidget {
 }
 
 class _AiConversationScreenState extends State<AiConversationScreen>
-    with TickerProviderStateMixin, RouteAware {
+    with RouteAware {
   late final ConversationCoachService _service;
   late final FlutterTts _tts;
   GoogleTtsService? _googleTts;
@@ -45,15 +47,13 @@ class _AiConversationScreenState extends State<AiConversationScreen>
   bool _isListening = false;
   bool _isBusy = false;
   bool _sessionStarted = false;
+  double _soundLevel = 0.0;
 
   String? _errorMessage;
 
   String _selectedTopic = _topics.first.id;
   String _selectedSkill = _skills.first.id;
   String _selectedEnergy = _energies.first.id;
-
-  // New animation controller for mic pulse - Redesigned by Gemini 3 Pro
-  late AnimationController _micPulseController;
 
   @override
   void initState() {
@@ -84,11 +84,6 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       TelemetryService.maybeOf(context)?.startScreenSession('ai_conversation');
     });
 
-    // Initialize mic pulse animation - Redesigned by Gemini 3 Pro
-    _micPulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true);
   }
 
   Future<void> _initSpeech() async {
@@ -165,7 +160,6 @@ class _AiConversationScreenState extends State<AiConversationScreen>
     _speechToText.stop();
     _speechToText.cancel();
     _googleTts?.dispose();
-    _micPulseController.dispose(); // Redesigned by Gemini 3 Pro
     super.dispose();
   }
 
@@ -354,22 +348,12 @@ class _AiConversationScreenState extends State<AiConversationScreen>
             _buildFocusWordsPreview(),
           ],
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _isBusy ? null : _startConversation,
-              icon: const Icon(Icons.chat_bubble_outline),
-              label: Text(
-                _sessionStarted ? 'התחילו שיחה חדשה' : 'צאו לשיחה קסומה',
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.deepPurple,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
+          KidButton.primary(
+            label: _sessionStarted ? 'התחילו שיחה חדשה' : 'צאו לשיחה קסומה',
+            onPressed: _isBusy ? null : _startConversation,
+            leadingIcon: Icons.chat_bubble_outline,
+            isLoading: _isBusy,
+            fullWidth: true,
           ),
         ],
       ),
@@ -501,12 +485,12 @@ class _AiConversationScreenState extends State<AiConversationScreen>
               ],
             ),
             const SizedBox(height: 16),
-            FilledButton.icon(
+            KidButton.primary(
+              label: _sessionStarted ? 'התחילו שיחה חדשה' : 'צאו לשיחה קסומה',
               onPressed: _isBusy ? null : _startConversation,
-              icon: const Icon(Icons.auto_awesome),
-              label: Text(
-                _sessionStarted ? 'התחילו שיחה חדשה' : 'צאו לשיחה קסומה',
-              ),
+              leadingIcon: Icons.auto_awesome,
+              isLoading: _isBusy,
+              fullWidth: true,
             ),
           ],
         ),
@@ -666,36 +650,15 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       ),
       child: Row(
         children: [
-          // Microphone Button
-          GestureDetector(
+          SparkOrb(
+            state: _isListening
+                ? OrbState.listening
+                : _isBusy
+                    ? OrbState.thinking
+                    : OrbState.idle,
+            soundLevel: _soundLevel,
             onTap: !_speechReady || _isBusy ? null : _toggleListening,
-            child: AnimatedBuilder(
-              animation: _micPulseController,
-              builder: (context, child) {
-                return Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color:
-                        _isListening ? Colors.redAccent : Colors.grey.shade100,
-                    shape: BoxShape.circle,
-                    boxShadow: _isListening
-                        ? [
-                            BoxShadow(
-                              color: Colors.redAccent.withValues(alpha: 0.4),
-                              blurRadius: 10 + (_micPulseController.value * 10),
-                              spreadRadius: _micPulseController.value * 4,
-                            )
-                          ]
-                        : [],
-                  ),
-                  child: Icon(
-                    _isListening ? Icons.mic : Icons.mic_none,
-                    color: _isListening ? Colors.white : Colors.grey.shade700,
-                    size: 24,
-                  ),
-                );
-              },
-            ),
+            size: 88,
           ),
           const SizedBox(width: 12),
           // Text Input
@@ -819,7 +782,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       sparkController.markIdle();
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'משהו השתבש. נסו שוב בעוד רגע.';
+        _errorMessage = SparkStrings.aiChatRetry;
         _isBusy = false;
       });
       debugPrint('Unexpected conversation start error: $error');
@@ -833,7 +796,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
     }
     if (!_sessionStarted) {
       setState(() {
-        _errorMessage = 'פתחו שיחה עם ספרק לפני שאתם עונים.';
+        _errorMessage = SparkStrings.aiChatStartFirst;
       });
       return;
     }
@@ -924,7 +887,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       sparkController.markIdle();
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'ספרק נתקע בתשובה. נסו שוב.';
+        _errorMessage = SparkStrings.aiChatStuck;
         _isBusy = false;
       });
       debugPrint('Unexpected conversation turn error: $error');
@@ -1007,6 +970,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       if (mounted) {
         setState(() {
           _isListening = false;
+          _soundLevel = 0.0;
         });
       }
       return;
@@ -1016,6 +980,10 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       await _speechToText.listen(
         localeId: 'en_US',
         listenFor: const Duration(seconds: 10),
+        onSoundLevelChange: (level) {
+          if (!mounted) return;
+          setState(() => _soundLevel = level);
+        },
         onResult: (result) {
           if (!mounted) return;
           setState(() {
@@ -1025,6 +993,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
             );
             if (result.finalResult) {
               _isListening = false;
+              _soundLevel = 0.0;
             }
           });
         },
@@ -1039,7 +1008,8 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       if (mounted) {
         setState(() {
           _isListening = false;
-          _errorMessage = 'לא הצלחנו לשמוע אתכם. נסו שוב או הקלידו.';
+          _soundLevel = 0.0;
+          _errorMessage = SparkStrings.aiChatCantHear;
         });
       }
     }

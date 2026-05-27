@@ -1,13 +1,11 @@
-import 'dart:math' as math;
-
+import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:confetti/confetti.dart';
 
 import '../models/shop_item.dart';
 import '../providers/coin_provider.dart';
-import '../services/sound_service.dart';
 import '../utils/app_theme.dart';
+import '../widgets/ui/_barrel.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -19,30 +17,7 @@ class ShopScreen extends StatefulWidget {
 class _ShopScreenState extends State<ShopScreen>
     with SingleTickerProviderStateMixin {
   ShopItemType? _selectedType;
-  late final ConfettiController _confettiController;
-  bool _confettiInitialized = false;
   bool _isPurchasing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    try {
-      _confettiController = ConfettiController(
-        duration: const Duration(seconds: 2),
-      );
-      _confettiInitialized = true;
-    } catch (e) {
-      debugPrint('Error initializing confetti: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    if (_confettiInitialized) {
-      _confettiController.dispose();
-    }
-    super.dispose();
-  }
 
   Future<void> _handlePurchase(ShopItem item) async {
     final coinProvider = Provider.of<CoinProvider>(context, listen: false);
@@ -62,7 +37,7 @@ class _ShopScreenState extends State<ShopScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('אופס! אין מספיק מטבעות 🪙'),
+            content: const Text(SparkStrings.shopNotEnoughCoins),
             backgroundColor: AppTheme.primaryOrange,
             behavior: SnackBarBehavior.floating,
           ),
@@ -80,15 +55,8 @@ class _ShopScreenState extends State<ShopScreen>
     setState(() => _isPurchasing = false);
 
     if (success) {
-      if (_confettiInitialized) {
-        try {
-          _confettiController.play();
-        } catch (e) {
-          debugPrint('Error playing confetti: $e');
-        }
-      }
-      // Play success sound — fire-and-forget via SoundService (non-blocking).
-      SoundService().playSuccessSound();
+      await Celebration.fire(context, tier: CelebrationTier.small);
+      if (!mounted) return;
       Navigator.pop(context);
       _showSuccessDialog(item);
     }
@@ -134,27 +102,6 @@ class _ShopScreenState extends State<ShopScreen>
         children: [
           // Whimsical background
           const _WhimsicalBackground(),
-
-          if (_confettiInitialized)
-            Align(
-              alignment: Alignment.topCenter,
-              child: ConfettiWidget(
-                confettiController: _confettiController,
-                blastDirection: math.pi / 2,
-                maxBlastForce: 5,
-                minBlastForce: 2,
-                emissionFrequency: 0.05,
-                numberOfParticles: 20,
-                gravity: 0.1,
-                colors: const [
-                  Color(0xFF50C878),
-                  Color(0xFF4A90E2),
-                  Color(0xFFFFD93D),
-                  Color(0xFFFF6B6B),
-                  Color(0xFF7B68EE),
-                ],
-              ),
-            ),
 
           SafeArea(
             child: Column(
@@ -645,35 +592,25 @@ class _ItemDetailsSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: isOwned
-                ? OutlinedButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('כבר בבעלותך'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey.shade700,
-                      side: BorderSide(color: Colors.grey.shade400),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+          isOwned
+              ? OutlinedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text('כבר בבעלותך'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.grey.shade700,
+                    side: BorderSide(color: Colors.grey.shade400),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  )
-                : FilledButton.icon(
-                    onPressed: onPurchase,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppTheme.primaryGreen,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    icon: const Icon(Icons.shopping_bag_outlined),
-                    label: Text('קנה עכשיו - ${item.cost}'),
                   ),
-          ),
+                )
+              : KidButton.success(
+                  label: 'קנה עכשיו - ${item.cost}',
+                  onPressed: onPurchase,
+                  leadingIcon: Icons.shopping_bag_outlined,
+                  fullWidth: true,
+                ),
         ],
       ),
     );
@@ -787,17 +724,10 @@ class _PurchaseSuccessDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            FilledButton(
+            KidButton.primary(
+              label: 'איזה כיף!',
               onPressed: () => Navigator.pop(context),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primaryGreen,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: const Text('איזה כיף!'),
+              fullWidth: true,
             ),
           ],
         ),

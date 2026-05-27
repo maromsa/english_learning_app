@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Animated microphone widget that pulses when listening
+@Deprecated('Use SparkOrb from lib/widgets/ui/spark_orb.dart')
 class AnimatedMicrophone extends StatefulWidget {
   const AnimatedMicrophone({
     super.key,

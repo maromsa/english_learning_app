@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import '../models/daily_mission.dart';
 import '../providers/daily_mission_provider.dart';
 import '../services/ai_image_validator.dart';
+import 'package:english_learning_app/l10n/spark_strings.dart';
 
 /// A full-screen camera UI that optionally validates captured images via AI.
 ///
@@ -123,7 +124,8 @@ class _CameraScreenState extends State<CameraScreen> {
 
         setState(() {
           _isValidating = false;
-          _validationMessage = '✅ מצוין! זיהינו את "${widget.targetWord}"';
+          _validationMessage =
+              SparkStrings.cameraSuccessBadge(widget.targetWord!);
         });
 
         // Brief pause so the user sees the success feedback, then pop.
@@ -133,7 +135,7 @@ class _CameraScreenState extends State<CameraScreen> {
         setState(() {
           _isValidating = false;
           _validationMessage =
-              '❌ לא זיהינו "${widget.targetWord}". נסו שוב!';
+              SparkStrings.cameraTryAgainTarget(widget.targetWord!);
         });
       }
     } catch (e) {
@@ -141,7 +143,7 @@ class _CameraScreenState extends State<CameraScreen> {
       if (mounted) {
         setState(() {
           _isValidating = false;
-          _validationMessage = 'שגיאה בצילום. נסו שוב.';
+          _validationMessage = SparkStrings.cameraGenericFail;
         });
       }
     }
@@ -177,7 +179,7 @@ class _CameraScreenState extends State<CameraScreen> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
-                          'צלמו: ${widget.targetWord}',
+                          SparkStrings.cameraShootTarget(widget.targetWord!),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
@@ -223,7 +225,7 @@ class _CameraScreenState extends State<CameraScreen> {
                           CircularProgressIndicator(color: Colors.white),
                           SizedBox(height: 16),
                           Text(
-                            'בודק תמונה…',
+                            SparkStrings.cameraValidating,
                             style: TextStyle(color: Colors.white, fontSize: 16),
                           ),
                         ],

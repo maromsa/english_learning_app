@@ -25,12 +25,12 @@ import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/level_completion_screen.dart';
 import 'package:english_learning_app/utils/page_transitions.dart';
 import 'package:english_learning_app/widgets/bouncy_button.dart';
+import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:english_learning_app/widgets/living_spark.dart';
 import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/services/spark_voice_service.dart';
+import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/services/kid_speech_service.dart';
-import 'package:confetti/confetti.dart';
-import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -56,9 +56,7 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage>
-    with SingleTickerProviderStateMixin {
-  late final ConfettiController _confettiController;
+class _MyHomePageState extends State<MyHomePage> {
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   late final FlutterTts flutterTts;
@@ -76,8 +74,9 @@ class _MyHomePageState extends State<MyHomePage>
   bool _isLoading = true;
   List<WordData> _words = [];
   int _currentIndex = 0;
+  int _attemptsForCurrentWord = 0;
   bool _isListening = false;
-  String _feedbackText = 'לחצו על המיקרופון כדי לדבר';
+  String _feedbackText = SparkStrings.micPrompt;
   String _recognizedWords = '';
   bool _speechEnabled = false;
   double _soundLevel = 0.0; // For visual feedback
@@ -89,10 +88,9 @@ class _MyHomePageState extends State<MyHomePage>
   // AI features are always enabled since geminiProxyEndpoint always returns a valid endpoint
   Uri get proxyEndpoint => AppConfig.geminiProxyEndpoint;
 
-  // New visual state for redesigned UI - Redesigned by Gemini 3 Pro
-  late AnimationController _micPulseController;
   bool _showFeedback = false;
   bool _lastResultSuccess = false;
+  DateTime? _lastResultAt;
   
   // Spark emotion state
   SparkEmotion _sparkEmotion = SparkEmotion.neutral;
@@ -100,28 +98,9 @@ class _MyHomePageState extends State<MyHomePage>
   // Sound service
   final SoundService _soundService = SoundService();
   
-  // Random compliments for success
-  static final List<String> _successCompliments = [
-    'מעולה!',
-    'וואו!',
-    'אלוף!',
-    'מדהים!',
-    'כל הכבוד!',
-    'נהדר!',
-    'מצוין!',
-    'פנטסטי!',
-  ];
-  
-  String _getRandomCompliment() {
-    return _successCompliments[math.Random().nextInt(_successCompliments.length)];
-  }
-
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(
-      duration: const Duration(seconds: 1),
-    );
     _words = widget.wordsForLevel;
     _initializeServices().then((_) async {
       // Load progress after services are initialized
@@ -132,11 +111,6 @@ class _MyHomePageState extends State<MyHomePage>
       telemetry?.startScreenSession('home');
     });
 
-    // Initialize mic pulse animation - Redesigned by Gemini 3 Pro
-    _micPulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true);
   }
 
   @override
@@ -151,13 +125,11 @@ class _MyHomePageState extends State<MyHomePage>
     );
     flutterTts.stop();
     _kidSpeechService.stop();
-    _confettiController.dispose();
     _audioPlayer.dispose();
     _httpImageValidator?.dispose();
     _webImageService?.dispose();
     _geminiProxy?.dispose();
     _googleTts?.dispose();
-    _micPulseController.dispose(); // Redesigned by Gemini 3 Pro
     super.dispose();
   }
 
@@ -225,7 +197,7 @@ class _MyHomePageState extends State<MyHomePage>
         debugPrint("FlutterTts fallback also failed: $fallbackError");
         if (mounted) {
           setState(() {
-            _feedbackText = 'שגיאה בהשמעת הקול. אנא נסו שוב.';
+            _feedbackText = SparkStrings.ttsError;
           });
         }
       }
@@ -312,9 +284,7 @@ class _MyHomePageState extends State<MyHomePage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'שגיאה באתחול שירות ה-AI. אנא נסו שוב.',
-            ),
+            content: Text(SparkStrings.aiUnavailable),
           ),
         );
       }
@@ -331,7 +301,7 @@ class _MyHomePageState extends State<MyHomePage>
     }
 
     setState(() {
-      _feedbackText = 'מנתחים את התמונה שלכם...';
+      _feedbackText = SparkStrings.imageAnalyzing;
     });
 
     try {
@@ -357,9 +327,9 @@ class _MyHomePageState extends State<MyHomePage>
           confidence: null,
         );
         setState(() {
-          _feedbackText = 'לא הצלחתי לראות ברור. נסו לצלם מחדש.';
+          _feedbackText = SparkStrings.cameraUnclearUi;
         });
-        await _speak('לא ראיתי ברור. בואו ננסה שוב.', languageCode: 'he-IL');
+        await _speak(SparkStrings.cameraUnclearSpeak, languageCode: 'he-IL');
       } else {
         final bool validationPassed = await _cameraValidator.validate(
           imageBytes,
@@ -373,8 +343,7 @@ class _MyHomePageState extends State<MyHomePage>
         if (!validationPassed) {
           if (mounted) {
             setState(() {
-              _feedbackText =
-                  'התמונה עדיין לא נראית כמו $identifiedWord. נסו למקם את הפריט במרכז ולצלם שוב.';
+              _feedbackText = SparkStrings.cameraCenterWord(identifiedWord);
             });
           }
           telemetry?.logCameraValidation(
@@ -384,7 +353,7 @@ class _MyHomePageState extends State<MyHomePage>
             confidence: _currentValidationConfidence(),
           );
           await _speak(
-            'בואו ננסה שוב. שמרו את $identifiedWord במרכז התמונה וצלמו עוד פעם.',
+            SparkStrings.cameraCenterWord(identifiedWord),
             languageCode: 'he-IL',
           );
           return;
@@ -397,8 +366,7 @@ class _MyHomePageState extends State<MyHomePage>
         setState(() {
           _words.add(newWord);
           _currentIndex = _words.length - 1;
-          _feedbackText =
-              'איזה יופי! אני רואה ${newWord.word}. בואו נלמד אותה יחד!';
+          _feedbackText = SparkStrings.cameraFoundWord(newWord.word);
         });
         await _wordRepository.cacheWords(
           _words,
@@ -410,7 +378,10 @@ class _MyHomePageState extends State<MyHomePage>
             listen: false,
           ).checkForAchievements(streak: _streak, wordAdded: true);
         }
-        await _speak('מצוין! אני רואה ${newWord.word}.', languageCode: 'he-IL');
+        await _speak(
+          SparkStrings.cameraSpeakFound(newWord.word),
+          languageCode: 'he-IL',
+        );
         await flutterTts.setLanguage('en-US');
         await flutterTts.speak(newWord.word);
         telemetry?.logCameraValidation(
@@ -424,9 +395,9 @@ class _MyHomePageState extends State<MyHomePage>
       debugPrint('Error identifying image: $e');
       if (mounted) {
         setState(() {
-          _feedbackText = "מצטער, משהו השתבש. אנא נסו שוב.";
+          _feedbackText = SparkStrings.cameraGenericFail;
         });
-        await _speak('אוי, משהו השתבש. נסו שוב.', languageCode: 'he-IL');
+        await _speak(SparkStrings.cameraGenericFail, languageCode: 'he-IL');
       }
       rethrow;
     }
@@ -547,10 +518,12 @@ class _MyHomePageState extends State<MyHomePage>
       _isEvaluating = false;
       if (!mounted) return;
       setState(() {
-        _feedbackText = "לא שמעתי כלום. בוא ננסה שוב.";
+        _feedbackText = SparkStrings.micHeardNothing;
       });
       return;
     }
+
+    _attemptsForCurrentWord++;
 
     // First check if it's close enough using fuzzy matching
     bool isCorrect = _kidSpeechService.isCloseEnough(
@@ -582,29 +555,33 @@ class _MyHomePageState extends State<MyHomePage>
           .incrementByType(DailyMissionType.speakPractice);
       if (!mounted) return;
 
-      // Use random compliment for variety
-      final compliment = _getRandomCompliment();
-      feedback = "$compliment +10 מטבעות";
-      
-      // Play success sound
-      _soundService.playSound('success');
-      
-      // Update Spark emotion
+      final compliment = SparkStrings.randomCompliment();
+      feedback = SparkStrings.quizCorrectCoins(compliment, pointsToAdd);
+
       if (mounted) {
         setState(() {
-          _sparkEmotion = SparkEmotion.excited;
           currentWordObject.isCompleted = true;
         });
-        _confettiController.play();
-        
-        // Reset Spark to happy after celebration
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            setState(() {
-              _sparkEmotion = SparkEmotion.happy;
-            });
-          }
-        });
+
+        final levelJustFinished = _isLevelComplete;
+        final CelebrationTier tier;
+        if (levelJustFinished) {
+          tier = CelebrationTier.big;
+        } else if (_attemptsForCurrentWord == 1) {
+          tier = CelebrationTier.micro;
+        } else {
+          tier = CelebrationTier.small;
+        }
+
+        await Celebration.fire(
+          context,
+          tier: tier,
+          word: currentWordObject.word,
+          compliment: tier == CelebrationTier.big ? compliment : null,
+          coinsEarned: tier == CelebrationTier.big ? pointsToAdd : 0,
+          starsEarned: tier == CelebrationTier.big ? _starsForLevel() : 0,
+        );
+        if (!mounted) return;
 
         // Save word completion
         final sessionProvider =
@@ -644,7 +621,7 @@ class _MyHomePageState extends State<MyHomePage>
     } else {
       _streak = 0;
       // Empathetic failure message - never make child feel bad
-      feedback = "כמעט! זה נשמע כמו '$recognizedWord'. בוא ננסה שוב יחד!";
+      feedback = SparkStrings.wrongAlmostHeard(recognizedWord);
       
       // Play gentle error sound (not harsh)
       _soundService.playSound('error');
@@ -673,8 +650,14 @@ class _MyHomePageState extends State<MyHomePage>
     setState(() {
       _feedbackText = feedback;
       _lastResultSuccess = isCorrect;
+      _lastResultAt = DateTime.now();
       _showFeedback = true;
     });
+    if (isCorrect) {
+      Future<void>.delayed(const Duration(milliseconds: 1200), () {
+        if (mounted) setState(() {});
+      });
+    }
 
     if (!mounted) {
       _isEvaluating = false;
@@ -699,14 +682,14 @@ class _MyHomePageState extends State<MyHomePage>
   void _startListening() async {
     if (!_speechEnabled) {
       setState(() {
-        _feedbackText = "הרשאת מיקרופון לא זמינה. אנא בדוק את ההגדרות.";
+        _feedbackText = SparkStrings.micPermissionAsk;
       });
       return;
     }
 
     setState(() {
       _isListening = true;
-      _feedbackText = 'מקשיב...';
+      _feedbackText = SparkStrings.micListening;
       _recognizedWords = '';
       _isEvaluating =
           false; // Reset evaluation flag when starting new listening session
@@ -732,7 +715,8 @@ class _MyHomePageState extends State<MyHomePage>
               if (mounted) {
                 setState(() {
                   _isListening = false;
-                  _feedbackText = 'סיימתי להקשיב. בודק...';
+                  _soundLevel = 0.0;
+                  _feedbackText = SparkStrings.micChecking;
                 });
 
                 // Evaluate speech immediately after stopping
@@ -760,7 +744,8 @@ class _MyHomePageState extends State<MyHomePage>
       if (mounted) {
         setState(() {
           _isListening = false;
-          _feedbackText = "לא הצלחתי להתחיל להקשיב. אנא נסה שוב.";
+          _soundLevel = 0.0;
+          _feedbackText = SparkStrings.micStartFailed;
         });
       }
     }
@@ -770,7 +755,10 @@ class _MyHomePageState extends State<MyHomePage>
     try {
       await _kidSpeechService.stop();
       if (mounted) {
-        setState(() => _isListening = false);
+        setState(() {
+          _isListening = false;
+          _soundLevel = 0.0;
+        });
       }
       // Only evaluate if not already evaluating (to prevent double evaluation)
       // The onResult callback will handle evaluation
@@ -783,7 +771,7 @@ class _MyHomePageState extends State<MyHomePage>
       } else if (_recognizedWords.isEmpty) {
         if (mounted) {
           setState(() {
-            _feedbackText = "לא שמעתי כלום. בוא ננסה שוב.";
+            _feedbackText = SparkStrings.micHeardNothing;
           });
         }
       }
@@ -792,7 +780,8 @@ class _MyHomePageState extends State<MyHomePage>
       if (mounted) {
         setState(() {
           _isListening = false;
-          _feedbackText = "שגיאה. אנא נסה שוב.";
+          _soundLevel = 0.0;
+          _feedbackText = SparkStrings.micRetry;
         });
       }
     }
@@ -809,9 +798,10 @@ class _MyHomePageState extends State<MyHomePage>
 
   void _nextWord() {
     if (_words.isNotEmpty) {
-      _soundService.playSound('pop');
+      _soundService.playPopSound();
       setState(() {
         _currentIndex = (_currentIndex + 1) % _words.length;
+        _attemptsForCurrentWord = 0;
         _feedbackText = '';
         _showFeedback = false;
         _sparkEmotion = SparkEmotion.neutral;
@@ -821,15 +811,19 @@ class _MyHomePageState extends State<MyHomePage>
 
   void _previousWord() {
     if (_words.isNotEmpty) {
-      _soundService.playSound('pop');
+      _soundService.playPopSound();
       setState(() {
         _currentIndex = (_currentIndex - 1 + _words.length) % _words.length;
+        _attemptsForCurrentWord = 0;
         _feedbackText = '';
         _showFeedback = false;
         _sparkEmotion = SparkEmotion.neutral;
       });
     }
   }
+
+  /// Stars shown on level-complete celebration (refine with mastery in P-09).
+  int _starsForLevel() => 3;
 
   void _openGameMenu() {
     showModalBottomSheet(
@@ -900,7 +894,7 @@ class _MyHomePageState extends State<MyHomePage>
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          'הוסיפו לפחות שתי מילים כדי להתחיל ריצת ברק!',
+                          SparkStrings.homeNeedWordsLightning,
                         ),
                       ),
                     );
@@ -1050,7 +1044,7 @@ class _MyHomePageState extends State<MyHomePage>
                                 )
                               : const Center(
                                   child: Text(
-                                    "אין עדיין מילים לתרגול. לחץ על המצלמה כדי להוסיף אחת חדשה!",
+                                    SparkStrings.homeNoWordsYet,
                                     style: TextStyle(fontSize: 22, color: Colors.white),
                                     textAlign: TextAlign.center,
                                   ),
@@ -1071,30 +1065,19 @@ class _MyHomePageState extends State<MyHomePage>
                       const SizedBox(height: 20),
                       // 4. Controls Area
                       SizedBox(
-                        height: 100,
+                        height: 188,
                         child: Center(
                           child: _SmartMicButton(
                             isListening: _isListening,
                             isEvaluating: _isEvaluating,
+                            lastResultWasSuccess: _lastResultSuccess,
+                            lastResultAt: _lastResultAt,
+                            soundLevel: _soundLevel,
                             onPressed: _handleSpeech,
-                            animation: _micPulseController,
                           ),
                         ),
                       ),
                       const SizedBox(height: 20),
-                    ],
-                  ),
-                  // Confetti widget
-                  ConfettiWidget(
-                    confettiController: _confettiController,
-                    blastDirectionality: BlastDirectionality.explosive,
-                    shouldLoop: false,
-                    colors: const [
-                      Colors.green,
-                      Colors.blue,
-                      Colors.pink,
-                      Colors.orange,
-                      Colors.purple,
                     ],
                   ),
                 ],
@@ -1151,7 +1134,9 @@ class _MyHomePageState extends State<MyHomePage>
       debugPrint('=== Level Progress Loaded ===');
 
       if (mounted) {
-        setState(() {});
+        setState(() {
+          _attemptsForCurrentWord = 0;
+        });
       }
     } catch (e, stackTrace) {
       debugPrint('Error loading level progress: $e');
@@ -1255,7 +1240,7 @@ class _MissionNudgeCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'משימה יומית',
+                          SparkStrings.dailyMissionTitle,
                           style: TextStyle(
                             fontSize: 12,
                             color: accent,
@@ -1326,8 +1311,10 @@ class _MissionNudgeCard extends StatelessWidget {
                   else
                     Text(
                       mission.remaining > 0
-                          ? 'עוד ${mission.remaining} כדי לנצח'
-                          : 'המשיכו להצליח!',
+                          ? SparkStrings.dailyMissionRemaining(
+                              mission.remaining,
+                            )
+                          : SparkStrings.dailyMissionKeepGoing,
                       style: TextStyle(
                         color: accent,
                         fontWeight: FontWeight.w600,
@@ -1623,85 +1610,64 @@ class _HeroWordDisplay extends StatelessWidget {
 class _SmartMicButton extends StatelessWidget {
   final bool isListening;
   final bool isEvaluating;
+  final bool lastResultWasSuccess;
+  final DateTime? lastResultAt;
+  final double soundLevel;
   final VoidCallback onPressed;
-  final Animation<double> animation;
 
   const _SmartMicButton({
     required this.isListening,
     required this.isEvaluating,
+    required this.lastResultWasSuccess,
+    required this.lastResultAt,
+    required this.soundLevel,
     required this.onPressed,
-    required this.animation,
   });
+
+  OrbState _orbState() {
+    final now = DateTime.now();
+    if (isListening) return OrbState.listening;
+    if (isEvaluating) return OrbState.thinking;
+    if (lastResultWasSuccess &&
+        lastResultAt != null &&
+        now.difference(lastResultAt!).inMilliseconds < 1200) {
+      return OrbState.success;
+    }
+    return OrbState.idle;
+  }
+
+  String _label() {
+    if (isListening) return SparkStrings.micListening;
+    if (isEvaluating) return SparkStrings.micChecking;
+    return SparkStrings.micSpeakBtn;
+  }
 
   @override
   Widget build(BuildContext context) {
-    Color bgColor = Colors.blue; // Default
-    IconData icon = Icons.mic_rounded;
-    String label = "דבר";
-
-    if (isListening) {
-      bgColor = Colors.redAccent;
-      icon = Icons.graphic_eq;
-      label = "מקשיב...";
-    } else if (isEvaluating) {
-      bgColor = Colors.purpleAccent;
-      icon = Icons.auto_awesome;
-      label = "בודק...";
-    }
-
-    final buttonContent = AnimatedBuilder(
-      animation: animation,
-      builder: (context, child) {
-        double scale = isListening ? 1.0 + (animation.value * 0.1) : 1.0;
-        return Transform.scale(
-          scale: scale,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 72,
-                width: 72,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: bgColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: bgColor.withValues(alpha: 0.4),
-                      blurRadius: 16,
-                      spreadRadius: 4,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: isEvaluating
-                    ? const Padding(
-                        padding: EdgeInsets.all(20.0),
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 3,
-                        ),
-                      )
-                    : Icon(icon, color: Colors.white, size: 36),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
-                ),
-              )
-            ],
+    final buttonContent = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SparkOrb(
+          state: _orbState(),
+          soundLevel: soundLevel,
+          onTap: null,
+          size: 144,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _label(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
           ),
-        );
-      },
+        ),
+      ],
     );
 
-    // Wrap in BouncyButton for satisfying tactile feedback
     if (isListening || isEvaluating) {
-      return buttonContent; // Disable bounce when active
+      return buttonContent;
     }
 
     return BouncyButton(

@@ -1,4 +1,5 @@
 // lib/widgets/achievement_notification.dart
+import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:english_learning_app/models/achievement.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
@@ -82,7 +83,7 @@ class _AchievementNotificationState extends State<AchievementNotification>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '🎉 הישג חדש! 🎉',
+                        SparkStrings.achievementNew,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,

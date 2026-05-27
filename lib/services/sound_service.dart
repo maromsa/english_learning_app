@@ -10,16 +10,40 @@ class SoundService {
 
   bool _initialized = false;
 
+  @visibleForTesting
+  VoidCallback? debugOnPlaySoftChime;
+
+  @visibleForTesting
+  VoidCallback? debugOnPlayPop;
+
+  @visibleForTesting
+  VoidCallback? debugOnPlayFanfare;
+
+  @visibleForTesting
+  VoidCallback? debugOnPlayEpic;
+
   /// Initialize the sound service
   Future<void> initialize() async {
     if (_initialized) return;
     _initialized = true;
   }
 
+  /// Celebration-tier SFX identifiers.
+  static const String softChime = 'softChime';
+  static const String pop = 'pop';
+  static const String fanfare = 'fanfare';
+  static const String epic = 'epic';
+
   String? _getSoundAsset(String type) {
     switch (type) {
-      case 'pop':
-        return 'assets/audio/bubble_pop.mp3'; // Soft UI sound
+      case softChime:
+        return 'assets/sfx/soft_chime.mp3';
+      case pop:
+        return 'assets/sfx/pop.mp3';
+      case fanfare:
+        return 'assets/sfx/fanfare.mp3';
+      case epic:
+        return 'assets/sfx/epic.mp3';
       case 'success':
         return 'assets/audio/magic_chime_C_major.mp3'; // Major key, upward scale
       case 'error':
@@ -38,62 +62,114 @@ class SoundService {
     }
   }
 
+  String? _fallbackSoundAsset(String type) {
+    switch (type) {
+      case softChime:
+        return 'assets/audio/magic_chime_C_major.mp3';
+      case pop:
+        return 'assets/audio/bubble_pop.mp3';
+      case fanfare:
+        return 'assets/audio/fanfare_short.mp3';
+      case epic:
+        return 'assets/audio/tada.mp3';
+      default:
+        return null;
+    }
+  }
+
   double _getVolume(String type) {
     switch (type) {
-      case 'pop':
+      case pop:
         return 0.3; // Quiet UI sound
+      case softChime:
+        return 0.5;
       case 'try_again':
       case 'error':
         return 0.6; // Gentle error sound
       case 'success':
       case 'confetti':
       case 'unlock':
+      case fanfare:
+      case epic:
         return 1.0; // Full volume for celebrations
       default:
         return 0.8;
     }
   }
 
-  /// Play a sound effect with appropriate volume
-  /// Types: 'pop', 'success', 'error', 'try_again', 'confetti', 'unlock', 'whoosh', 'ding'
+  /// Play a sound effect with appropriate volume.
+  ///
+  /// Types include [softChime], [pop], [fanfare], [epic], plus legacy keys:
+  /// `success`, `error`, `try_again`, `confetti`, `unlock`, `whoosh`, `ding`.
   Future<void> playSound(String type) async {
     if (!_initialized) {
       await initialize();
     }
 
-    final asset = _getSoundAsset(type);
-    if (asset == null) {
+    final primary = _getSoundAsset(type);
+    if (primary == null) {
       debugPrint('Unknown sound type: $type');
       return;
     }
 
+    final played = await _tryPlayAsset(type, primary);
+    if (played) return;
+
+    final fallback = _fallbackSoundAsset(type);
+    if (fallback == null) return;
+
+    debugPrint(
+      'SoundService: missing asset $primary for $type, trying fallback $fallback',
+    );
+    await _tryPlayAsset(type, fallback);
+  }
+
+  Future<bool> _tryPlayAsset(String type, String asset) async {
     try {
-      // Create a momentary player for overlapping sounds
-      // This allows multiple sounds to play simultaneously
       final player = AudioPlayer();
       await player.setAsset(asset);
       await player.setVolume(_getVolume(type));
-      
-      player.play().then((_) {
-        // Dispose player after sound finishes
-        Future.delayed(const Duration(seconds: 2), () {
-          player.dispose();
-        });
-      }).catchError((e) {
-        debugPrint('SoundService play error for $type: $e');
+      await player.play();
+      Future<void>.delayed(const Duration(seconds: 2), () {
         player.dispose();
       });
+      return true;
     } catch (e) {
-      debugPrint('SoundService error for $type: $e');
-      // Fail silently - don't break the app if sounds don't work
+      debugPrint('SoundService: could not play $asset for $type: $e');
+      return false;
     }
   }
 
   /// Play a short "pop" sound — suitable for button taps and UI interactions.
   /// Fire-and-forget: never blocks the calling widget's build / event cycle.
   void playPopSound() {
-    playSound('pop').catchError((Object e) {
+    debugOnPlayPop?.call();
+    playSound(pop).catchError((Object e) {
       debugPrint('SoundService.playPopSound error: $e');
+    });
+  }
+
+  /// Soft chime for micro celebrations (first-try correct).
+  void playSoftChime() {
+    debugOnPlaySoftChime?.call();
+    playSound(softChime).catchError((Object e) {
+      debugPrint('SoundService.playSoftChime error: $e');
+    });
+  }
+
+  /// Fanfare for level-complete celebrations.
+  void playFanfare() {
+    debugOnPlayFanfare?.call();
+    playSound(fanfare).catchError((Object e) {
+      debugPrint('SoundService.playFanfare error: $e');
+    });
+  }
+
+  /// Epic sting for chapter-complete celebrations.
+  void playEpic() {
+    debugOnPlayEpic?.call();
+    playSound(epic).catchError((Object e) {
+      debugPrint('SoundService.playEpic error: $e');
     });
   }
 

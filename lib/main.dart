@@ -159,6 +159,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: characterProvider),
         ChangeNotifierProvider.value(value: dailyMissionProvider),
         ChangeNotifierProvider.value(value: sparkOverlayController),
+        Provider<SoundService>.value(value: soundService),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         Provider<TelemetryService>.value(value: telemetryService),
       ],

@@ -1,11 +1,10 @@
+import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:confetti/confetti.dart';
-import 'dart:math' as math;
-
 import '../models/daily_mission.dart';
 import '../providers/coin_provider.dart';
 import '../providers/daily_mission_provider.dart';
+import '../widgets/ui/_barrel.dart';
 
 class DailyMissionsScreen extends StatefulWidget {
   const DailyMissionsScreen({super.key});
@@ -15,29 +14,6 @@ class DailyMissionsScreen extends StatefulWidget {
 }
 
 class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
-  late ConfettiController _confettiController;
-  bool _isInitialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    try {
-      _confettiController = ConfettiController(duration: const Duration(seconds: 2));
-      _isInitialized = true;
-    } catch (e) {
-      debugPrint('Error initializing confetti: $e');
-      _isInitialized = false;
-    }
-  }
-
-  @override
-  void dispose() {
-    if (_isInitialized) {
-      _confettiController.dispose();
-    }
-    super.dispose();
-  }
-
   Future<void> _handleClaim(
       BuildContext context, DailyMission mission, DailyMissionProvider provider) async {
     final coinProvider = context.read<CoinProvider>();
@@ -50,22 +26,16 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
     if (!mounted) return;
 
     if (success) {
-      if (_isInitialized) {
-        try {
-          _confettiController.play();
-        } catch (e) {
-          debugPrint('Error playing confetti: $e');
-        }
-      }
-      // Show snackbar or custom toast
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      final compliment = SparkStrings.randomCompliment();
+      await Celebration.fire(context, tier: CelebrationTier.small);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 const Icon(Icons.celebration, color: Colors.white),
                 const SizedBox(width: 12),
-                Text('כל הכבוד! הרווחת ${mission.reward} מטבעות!'),
+                Text(SparkStrings.quizCorrectCoins(compliment, mission.reward)),
               ],
             ),
             backgroundColor: Colors.green.shade600,
@@ -73,7 +43,6 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
-      }
     }
   }
 
@@ -112,27 +81,6 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
       ),
       body: Stack(
         children: [
-          // Confetti Overlay (Top z-index logic handled by Stack order)
-          if (_isInitialized)
-            Align(
-              alignment: Alignment.topCenter,
-              child: ConfettiWidget(
-                confettiController: _confettiController,
-                blastDirection: math.pi / 2,
-                maxBlastForce: 5,
-                minBlastForce: 2,
-                emissionFrequency: 0.05,
-                numberOfParticles: 20,
-                gravity: 0.1,
-                colors: const [
-                  Colors.green,
-                  Colors.blue,
-                  Colors.pink,
-                  Colors.orange
-                ],
-              ),
-            ),
-
           Consumer<DailyMissionProvider>(
             builder: (context, missionsProvider, _) {
               if (!missionsProvider.isInitialized) {
@@ -564,47 +512,23 @@ class _QuestActionButton extends StatelessWidget {
         width: double.infinity,
         child: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: FilledButton.icon(
+          child: KidButton.success(
+            label: 'אסוף פרס!',
             onPressed: onClaim,
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.amber.shade600,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              elevation: 4,
-            ),
-            icon: const Icon(Icons.card_giftcard),
-            label: const Text("אסוף פרס!",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            leadingIcon: Icons.card_giftcard,
+            fullWidth: true,
           ),
         ),
       );
     }
 
     // 3. In Progress (Navigation Button)
-    return InkWell(
-      onTap: onNavigate,
-      borderRadius:
-          const BorderRadius.vertical(bottom: Radius.circular(20)),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: config.color.withValues(alpha: 0.1),
-          borderRadius:
-              const BorderRadius.vertical(bottom: Radius.circular(20)),
-        ),
-        child: Center(
-          child: Text(
-            "המשך במשימה",
-            style: TextStyle(
-              color: config.color,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: KidButton.primary(
+        label: 'המשך במשימה',
+        onPressed: onNavigate,
+        fullWidth: true,
       ),
     );
   }

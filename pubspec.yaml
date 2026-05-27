@@ -71,6 +71,8 @@ flutter:
     - assets/images/map/
     - assets/images/words/
     - assets/audio/
+    - assets/sfx/
+    - assets/rive/
     - assets/data/levels.json
     - assets/models/
     - assets/map_3d/
