@@ -70,6 +70,33 @@ void main() {
     expect(levels, isEmpty);
   });
 
+  test('loadLevels with lazyWords defers word hydration', () async {
+    const assetPath = 'assets/data/levels.json';
+    final bundle = _FakeBundle({
+      assetPath: '''
+{
+  "levels": [
+    {
+      "id": "level_lazy",
+      "name": "Lazy",
+      "words": [{"word": "Cat"}, {"word": "Dog"}]
+    }
+  ]
+}
+''',
+    });
+
+    final repository = LevelRepository(bundle: bundle);
+    final levels = await repository.loadLevels(
+      assetPath: assetPath,
+      lazyWords: true,
+    );
+
+    expect(levels.single.words, isEmpty);
+    final words = await repository.loadWordsForLevel('level_lazy');
+    expect(words.map((w) => w.word), ['Cat', 'Dog']);
+  });
+
   test('isLastOfChapter returns false until P-09 chapter metadata', () async {
     const assetPath = 'assets/data/levels.json';
     final bundle = _FakeBundle({

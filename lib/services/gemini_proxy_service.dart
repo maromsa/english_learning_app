@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show Uint8List, debugPrint;
 
+import 'gemini_proxy_response_cache.dart';
 import 'network/app_http_client.dart';
 
 class GeminiProxyService {
@@ -11,16 +12,22 @@ class GeminiProxyService {
     Uri endpoint, {
     AppHttpClient? httpClient,
     Duration timeout = const Duration(seconds: 12),
+    GeminiProxyResponseCache? responseCache,
+    bool enableResponseCache = true,
   })  : _endpoint = endpoint,
         _httpClient = httpClient ??
             AppHttpClient(
               connectTimeout: timeout,
               receiveTimeout: timeout,
               sendTimeout: timeout,
-            );
+            ),
+        _responseCache = responseCache ?? GeminiProxyResponseCache(),
+        _enableResponseCache = enableResponseCache;
 
   final Uri _endpoint;
   final AppHttpClient _httpClient;
+  final GeminiProxyResponseCache _responseCache;
+  final bool _enableResponseCache;
 
   /// Asks Gemini to identify the main object in an image, returning a short
   /// natural-language description (usually a noun phrase).
@@ -211,6 +218,18 @@ class GeminiProxyService {
   }
 
   Future<Map<String, dynamic>?> _postJson(Map<String, dynamic> payload) async {
+    final cacheKey = _enableResponseCache
+        ? GeminiProxyResponseCache.cacheKeyForPayload(payload)
+        : null;
+
+    if (cacheKey != null) {
+      final cached = _responseCache.get(cacheKey);
+      if (cached != null) {
+        debugPrint('[GeminiProxyService] Cache hit for mode=${payload['mode']}');
+        return cached;
+      }
+    }
+
     try {
       debugPrint('[GeminiProxyService] POST to $_endpoint');
       debugPrint('[GeminiProxyService] Request body: ${jsonEncode(payload)}');
@@ -234,6 +253,9 @@ class GeminiProxyService {
 
       final decoded = response.data;
       if (decoded is Map<String, dynamic>) {
+        if (cacheKey != null) {
+          _responseCache.put(cacheKey, decoded);
+        }
         return decoded;
       }
       return null;
@@ -298,6 +320,8 @@ class GeminiProxyService {
       return null;
     }
   }
+
+  void clearResponseCache() => _responseCache.clear();
 
   void dispose() {
     _httpClient.close();

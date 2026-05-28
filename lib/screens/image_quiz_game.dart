@@ -633,14 +633,18 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
   }
 
   Widget _buildOptionGrid(WordData target) {
-    return GridView.count(
+    return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 0.95,
-      children: _currentOptions.map((option) {
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.95,
+      ),
+      itemCount: _currentOptions.length,
+      itemBuilder: (context, index) {
+        final option = _currentOptions[index];
         final imageUrl = _resolveImageUrl(option);
         return _ImageOptionTile(
           key: ValueKey(option.word),
@@ -651,7 +655,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
           answered: _answered,
           onTap: () => _answerQuestion(option.word),
         );
-      }).toList(),
+      },
     );
   }
 

@@ -31,6 +31,7 @@ import '../services/map_bridge_service.dart';
 import '../widgets/ui/_barrel.dart';
 import '../providers/user_session_provider.dart';
 import '../utils/aurora_tokens.dart';
+import '../utils/hero_tags.dart';
 import '../utils/page_transitions.dart';
 import '../utils/parent_dashboard_navigation.dart';
 import '../utils/route_observer.dart';
@@ -81,6 +82,7 @@ class _MapScreenState extends State<MapScreen>
   bool _isWebMapReady = false;
   WordMasteredListener? _wordMasteredListener;
   SparkOverlayController? _sparkController;
+  String? _levelHeroTransitionId;
 
   @override
   void initState() {
@@ -329,7 +331,7 @@ class _MapScreenState extends State<MapScreen>
     try {
       // Add timeout to prevent hanging
       final loadedLevels = await _levelRepository
-          .loadLevels()
+          .loadLevels(lazyWords: true)
           .timeout(const Duration(seconds: 10), onTimeout: () {
         debugPrint('Level loading timed out, using fallback levels');
         return <LevelData>[];
@@ -358,6 +360,7 @@ class _MapScreenState extends State<MapScreen>
         });
         
         _sendLevelsToJs(); // Send levels to 3D map
+        unawaited(_prefetchLevelWords());
         
         // Scroll to current level after build
         // Use a small delay to ensure scroll controller is ready
@@ -912,6 +915,24 @@ class _MapScreenState extends State<MapScreen>
     }
   }
 
+  Future<void> _prefetchLevelWords() async {
+    for (final level in levels) {
+      if (level.words.isNotEmpty) {
+        continue;
+      }
+      final words = await _levelRepository.loadWordsForLevel(level.id);
+      if (!mounted) {
+        return;
+      }
+      if (words.isNotEmpty) {
+        level.words.addAll(words);
+      }
+    }
+    if (mounted && _isWebMapReady) {
+      _sendLevelsToJs();
+    }
+  }
+
   void _navigateToLevel(LevelData level, int levelIndex) async {
     final coinProvider = Provider.of<CoinProvider>(context, listen: false);
     final backgroundMusic = BackgroundMusicService();
@@ -928,16 +949,35 @@ class _MapScreenState extends State<MapScreen>
     }
 
     if (!mounted) return;
+
+    var wordsForLevel = level.words;
+    if (wordsForLevel.isEmpty) {
+      wordsForLevel = await _levelRepository.loadWordsForLevel(level.id);
+      if (wordsForLevel.isNotEmpty) {
+        level.words.addAll(wordsForLevel);
+      }
+    }
+
+    if (!mounted) return;
+
+    setState(() => _levelHeroTransitionId = level.id);
+    await Future<void>.delayed(Duration.zero);
+
+    if (!mounted) return;
     await Navigator.push(
       context,
       PageTransitions.fadeScale(
         MyHomePage(
           title: level.name,
           levelId: level.id,
-          wordsForLevel: level.words,
+          wordsForLevel: List<WordData>.from(wordsForLevel),
         ),
       ),
     );
+
+    if (mounted) {
+      setState(() => _levelHeroTransitionId = null);
+    }
 
     // Music will be resumed automatically by RouteAware when returning to map
 
@@ -1331,6 +1371,54 @@ class _MapScreenState extends State<MapScreen>
                           bottom: 96,
                           child: _AdventureLabMapEntry(
                             onTap: _openAdventureLab,
+                          ),
+                        ),
+
+                      // Shared-element source while entering a level
+                      if (_levelHeroTransitionId != null)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: Align(
+                              alignment: Alignment.center,
+                              child: Hero(
+                                tag: HeroTags.level(_levelHeroTransitionId!),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.92),
+                                      borderRadius: BorderRadius.circular(24),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.15),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      () {
+                                        final match = levels.where(
+                                          (l) => l.id == _levelHeroTransitionId,
+                                        );
+                                        return match.isEmpty
+                                            ? ''
+                                            : match.first.name;
+                                      }(),
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.indigo,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                     ],

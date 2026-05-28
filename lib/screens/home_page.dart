@@ -26,6 +26,7 @@ import 'package:english_learning_app/utils/offline_word_loader.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/level_completion_screen.dart';
+import 'package:english_learning_app/utils/hero_tags.dart';
 import 'package:english_learning_app/utils/page_transitions.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:english_learning_app/widgets/living_spark.dart';
@@ -676,12 +677,16 @@ class _MyHomePageState extends State<MyHomePage> {
             ? null
             : () {
                 Navigator.pop(context);
+                final heroWord = _words.isNotEmpty
+                    ? _words[_currentIndex].word
+                    : null;
                 Navigator.push(
                   context,
                   PageTransitions.fadeScale(
                     ImageQuizScreen(
                       levelId: widget.levelId,
                       wordsForLevel: widget.wordsForLevel,
+                      heroWord: heroWord,
                     ),
                   ),
                 );
@@ -787,7 +792,13 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () => Navigator.of(context).pop(),
             ),
             centerTitle: true,
-            title: _LevelHeader(title: widget.title),
+            title: Hero(
+              tag: HeroTags.level(widget.levelId),
+              child: Material(
+                color: Colors.transparent,
+                child: _LevelHeader(title: widget.title),
+              ),
+            ),
             actions: [
               IconButton(
                 icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 32),
@@ -857,6 +868,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           child: currentWordData != null
                               ? _HeroWordDisplay(
+                                  levelId: widget.levelId,
                                   wordData: currentWordData,
                                   onNext: _speechBusy ? null : _nextWord,
                                   onPrev: _speechBusy ? null : _previousWord,
@@ -1265,6 +1277,7 @@ class _SegmentedProgressBar extends StatelessWidget {
 
 // 3. Hero Word Display
 class _HeroWordDisplay extends StatelessWidget {
+  final String levelId;
   final WordData wordData;
   final VoidCallback? onNext;
   final VoidCallback? onPrev;
@@ -1273,6 +1286,7 @@ class _HeroWordDisplay extends StatelessWidget {
   final bool canGoPrev;
 
   const _HeroWordDisplay({
+    required this.levelId,
     required this.wordData,
     required this.onNext,
     required this.onPrev,
@@ -1330,8 +1344,13 @@ class _HeroWordDisplay extends StatelessWidget {
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            // Use WordDisplayCard's image building logic
-                            _buildImage(context),
+                            Hero(
+                              tag: HeroTags.wordImage(levelId, wordData.word),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: _buildImage(context),
+                              ),
+                            ),
                             if (wordData.isCompleted)
                               Container(
                                 color: Colors.green.withValues(alpha: 0.2),
@@ -1353,12 +1372,18 @@ class _HeroWordDisplay extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        wordData.word,
-                        style: const TextStyle(
-                          fontSize: 42,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF4A4A4A),
+                      Hero(
+                        tag: HeroTags.wordTitle(levelId, wordData.word),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Text(
+                            wordData.word,
+                            style: const TextStyle(
+                              fontSize: 42,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF4A4A4A),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),

@@ -10,12 +10,16 @@ class WordDisplayCard extends StatelessWidget {
   final WordData wordData;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
+  final String? heroImageTag;
+  final String? heroTitleTag;
 
   const WordDisplayCard({
     super.key,
     required this.wordData,
     this.onPrevious,
     this.onNext,
+    this.heroImageTag,
+    this.heroTitleTag,
   });
 
   @override
@@ -44,10 +48,13 @@ class WordDisplayCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(20.0),
-                  child: _buildImage(
-                    imageUrl,
-                    isLocalFile: isLocalFile,
-                    isAssetImage: isAssetImage,
+                  child: _wrapHero(
+                    heroImageTag,
+                    _buildImage(
+                      imageUrl,
+                      isLocalFile: isLocalFile,
+                      isAssetImage: isAssetImage,
+                    ),
                   ),
                 ),
                 Positioned(
@@ -106,20 +113,36 @@ class WordDisplayCard extends StatelessWidget {
                   ),
                 );
               },
-              child: Text(
-                wordData.word,
-                key: ValueKey(wordData.word),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.indigo,
-                  letterSpacing: 1.2,
+              child: _wrapHero(
+                heroTitleTag,
+                Text(
+                  wordData.word,
+                  key: ValueKey(wordData.word),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.indigo,
+                    letterSpacing: 1.2,
+                  ),
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _wrapHero(String? tag, Widget child) {
+    if (tag == null) {
+      return child;
+    }
+    return Hero(
+      tag: tag,
+      child: Material(
+        color: Colors.transparent,
+        child: child,
       ),
     );
   }

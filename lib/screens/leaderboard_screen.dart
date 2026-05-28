@@ -5,6 +5,7 @@ import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/leaderboard_service.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
+import 'package:english_learning_app/utils/list_performance.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -147,21 +148,38 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     final currentOutsideList = _result?.currentUserEntry != null &&
         !entries.any((e) => e.isCurrentUser);
 
+    final listEntries =
+        entries.length >= 3 ? entries.skip(3).toList(growable: false) : entries;
+    final headerCount = entries.length >= 3 ? 1 : 0;
+    final footerCount =
+        currentOutsideList && _result!.currentUserEntry != null ? 1 : 0;
+    final itemCount = headerCount + listEntries.length + footerCount;
+
     return RefreshIndicator(
       onRefresh: _loadLeaderboard,
-      child: ListView(
+      child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        children: [
-          if (entries.length >= 3) _PodiumRow(topThree: entries.take(3).toList()),
-          if (entries.length < 3)
-            ...entries.map((e) => _LeaderboardTile(entry: e)),
-          if (entries.length >= 3)
-            ...entries.skip(3).map((e) => _LeaderboardTile(entry: e)),
-          if (currentOutsideList && _result!.currentUserEntry != null) ...[
-            const SizedBox(height: 12),
-            _YourRankBanner(entry: _result!.currentUserEntry!),
-          ],
-        ],
+        cacheExtent: ListPerformance.defaultCacheExtent,
+        itemCount: itemCount,
+        itemBuilder: (context, index) {
+          if (entries.length >= 3 && index == 0) {
+            return _PodiumRow(topThree: entries.take(3).toList(growable: false));
+          }
+
+          final listIndex = index - headerCount;
+          if (listIndex >= 0 && listIndex < listEntries.length) {
+            return _LeaderboardTile(entry: listEntries[listIndex]);
+          }
+
+          if (footerCount == 1 && index == itemCount - 1) {
+            return Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: _YourRankBanner(entry: _result!.currentUserEntry!),
+            );
+          }
+
+          return const SizedBox.shrink();
+        },
       ),
     );
   }

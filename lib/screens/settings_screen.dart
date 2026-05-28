@@ -1,3 +1,4 @@
+import 'package:english_learning_app/utils/list_performance.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../widgets/character_avatar.dart';
@@ -43,6 +44,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         elevation: 0,
       ),
       body: ListView(
+        cacheExtent: ListPerformance.defaultCacheExtent,
         padding: const EdgeInsets.all(16),
         children: [
           // 1. Hero Profile Header

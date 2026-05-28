@@ -1,4 +1,5 @@
 import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/utils/list_performance.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/daily_mission.dart';
@@ -117,49 +118,54 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
 
               return RefreshIndicator(
                 onRefresh: missionsProvider.refreshMissions,
-                child: ListView(
+                child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                  children: [
-                    // 1. Hero Header
-                    _MissionBoardHeader(
-                      completedCount: completedCount,
-                      totalCount: missions.length,
-                      earnedRewards: earnedRewards,
-                      totalPossibleRewards: totalRewards,
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // 2. Section Label
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8.0, bottom: 12.0),
-                      child: Text(
-                        "רשימת המשימות",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ),
-
-                    // 3. Mission List
-                    ...missions.map((mission) => Padding(
-                          padding: const EdgeInsets.only(bottom: 16.0),
-                          child: _QuestCard(
-                            mission: mission,
-                            onClaim: () => _handleClaim(
-                                context, mission, missionsProvider),
-                            onNavigate: () =>
-                                _handleNavigation(context, mission.type),
+                  cacheExtent: ListPerformance.defaultCacheExtent,
+                  itemCount: missions.length + 3,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return _MissionBoardHeader(
+                        completedCount: completedCount,
+                        totalCount: missions.length,
+                        earnedRewards: earnedRewards,
+                        totalPossibleRewards: totalRewards,
+                      );
+                    }
+                    if (index == 1) {
+                      return const SizedBox(height: 24);
+                    }
+                    if (index == 2) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0, bottom: 12.0),
+                        child: Text(
+                          'רשימת המשימות',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade700,
                           ),
-                        )),
+                        ),
+                      );
+                    }
+                    if (index == missions.length + 2) {
+                      return const Padding(
+                        padding: EdgeInsets.only(top: 20),
+                        child: _DailyTipCard(),
+                      );
+                    }
 
-                    const SizedBox(height: 20),
-
-                    // 4. Tips
-                    const _DailyTipCard(),
-                  ],
+                    final mission = missions[index - 3];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: _QuestCard(
+                        mission: mission,
+                        onClaim: () =>
+                            _handleClaim(context, mission, missionsProvider),
+                        onNavigate: () =>
+                            _handleNavigation(context, mission.type),
+                      ),
+                    );
+                  },
                 ),
               );
             },

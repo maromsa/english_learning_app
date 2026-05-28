@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:provider/provider.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/utils/hero_tags.dart';
 
 /// Image Quiz mini-game integrated with the Living World: uses WordRepository +
 /// WordMasteryService for spaced repetition, LevelProgressService for
@@ -29,6 +30,7 @@ class ImageQuizScreen extends StatefulWidget {
     super.key,
     required this.levelId,
     required this.wordsForLevel,
+    this.heroWord,
     this.wordRepository,
     this.wordMasteryService,
     this.levelProgressService,
@@ -36,6 +38,7 @@ class ImageQuizScreen extends StatefulWidget {
 
   final String levelId;
   final List<WordData> wordsForLevel;
+  final String? heroWord;
   final WordRepository? wordRepository;
   final WordMasteryService? wordMasteryService;
   final LevelProgressService? levelProgressService;
@@ -307,13 +310,7 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                 child: Column(
                   children: [
-                    Text(
-                      target.word,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                      textAlign: TextAlign.center,
-                    ),
+                    _buildHeroWordTitle(context, target.word),
                     const SizedBox(height: 12),
                     IconButton.filled(
                       onPressed: () => _playWord(target.word),
@@ -324,25 +321,30 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              GridView.count(
+              GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.95,
-                children: _currentOptions.map((option) {
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 0.95,
+                ),
+                itemCount: _currentOptions.length,
+                itemBuilder: (context, index) {
+                  final option = _currentOptions[index];
+                  final imageUrl = _imageUrlForWord(option);
                   return _OptionTile(
                     key: Key('option_${option.word}'),
                     word: option,
-                    imageUrl: _imageUrlForWord(option),
-                    isAsset: _isAssetUrl(_imageUrlForWord(option)),
+                    imageUrl: imageUrl,
+                    isAsset: _isAssetUrl(imageUrl),
                     isSelected: _selectedOption?.word == option.word,
                     isCorrect: option.word == target.word,
                     answered: _answered,
                     onTap: () => _onOptionSelected(option),
                   );
-                }).toList(),
+                },
               ),
               const SizedBox(height: 16),
               if (_feedbackMessage != null)
@@ -367,6 +369,29 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeroWordTitle(BuildContext context, String word) {
+    final title = Text(
+      word,
+      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+      textAlign: TextAlign.center,
+    );
+
+    final heroWord = widget.heroWord;
+    if (heroWord == null || heroWord != word) {
+      return title;
+    }
+
+    return Hero(
+      tag: HeroTags.wordTitle(widget.levelId, word),
+      child: Material(
+        color: Colors.transparent,
+        child: title,
       ),
     );
   }
