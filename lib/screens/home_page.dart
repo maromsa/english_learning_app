@@ -6,7 +6,7 @@ import 'package:english_learning_app/models/daily_mission.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
-import 'package:english_learning_app/screens/ai_conversation_screen.dart';
+import 'package:english_learning_app/screens/chat_buddy_screen.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/image_quiz_screen.dart';
 import 'package:english_learning_app/screens/daily_missions_screen.dart';
@@ -688,7 +688,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 Navigator.push(
                   context,
                   PageTransitions.slideFromRight(
-                    AiConversationScreen(focusWords: focusWords),
+                    ChatBuddyScreen(focusWords: focusWords),
                   ),
                 );
               },

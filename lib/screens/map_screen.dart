@@ -8,7 +8,7 @@ import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
-import 'package:english_learning_app/screens/ai_conversation_screen.dart';
+import 'package:english_learning_app/screens/chat_buddy_screen.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/home_page.dart';
 import 'package:english_learning_app/utils/map_view_registry.dart';
@@ -30,6 +30,7 @@ import '../services/level_progress_service.dart';
 import '../services/map_bridge_service.dart';
 import '../widgets/ui/_barrel.dart';
 import '../providers/user_session_provider.dart';
+import '../utils/aurora_tokens.dart';
 import '../utils/page_transitions.dart';
 import '../utils/parent_dashboard_navigation.dart';
 import '../utils/route_observer.dart';
@@ -1081,7 +1082,7 @@ class _MapScreenState extends State<MapScreen>
       case _QuickAiAction.chatBuddy:
         await Navigator.push(
           context,
-          PageTransitions.slideFromRight(const AiConversationScreen()),
+          PageTransitions.slideFromRight(const ChatBuddyScreen()),
         );
         break;
       case _QuickAiAction.practicePack:
@@ -1313,7 +1314,17 @@ class _MapScreenState extends State<MapScreen>
                           child: _InfoBanner(message: _errorMessage!),
                         ),
 
-                      // Spark's Adventure Lab — prominent map entry
+                      // Spark Chat Buddy — map entry (left)
+                      if (!_isLoading && levels.isNotEmpty)
+                        Positioned(
+                          left: 16,
+                          bottom: 96,
+                          child: _ChatBuddyMapEntry(
+                            onTap: _openChatBuddy,
+                          ),
+                        ),
+
+                      // Spark's Adventure Lab — prominent map entry (right)
                       if (!_isLoading && levels.isNotEmpty)
                         Positioned(
                           right: 16,
@@ -1467,6 +1478,16 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
+  void _openChatBuddy() {
+    BackgroundMusicService().stop().catchError((error) {
+      debugPrint('Failed to stop music before Chat Buddy: $error');
+    });
+    Navigator.push(
+      context,
+      PageTransitions.slideFromRight(const ChatBuddyScreen()),
+    );
+  }
+
   void _openAdventureLab() {
     BackgroundMusicService().stop().catchError((error) {
       debugPrint('Failed to stop music before Adventure Lab: $error');
@@ -1500,11 +1521,7 @@ class _MapScreenState extends State<MapScreen>
                 subtitle: const Text('שיחה אינטראקטיבית עם AI'),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    PageTransitions.slideFromRight(
-                        const AiConversationScreen()),
-                  );
+                  _openChatBuddy();
                 },
               ),
               ListTile(
@@ -1592,6 +1609,83 @@ class _InfoBanner extends StatelessWidget {
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Floating chat entry for Spark Chat Buddy on the map.
+class _ChatBuddyMapEntry extends StatefulWidget {
+  const _ChatBuddyMapEntry({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  State<_ChatBuddyMapEntry> createState() => _ChatBuddyMapEntryState();
+}
+
+class _ChatBuddyMapEntryState extends State<_ChatBuddyMapEntry>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1700),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: Tween<double>(begin: 0.94, end: 1.05).animate(
+        CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onTap,
+          customBorder: const CircleBorder(),
+          child: Tooltip(
+            message: 'חבר שיחה של ספרק',
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [AuroraTokens.coral, AuroraTokens.plum],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AuroraTokens.coral.withValues(alpha: 0.5),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  width: 2,
+                ),
+              ),
+              child: const Icon(
+                Icons.chat_bubble_rounded,
+                color: Colors.white,
+                size: 30,
+              ),
+            ),
           ),
         ),
       ),
