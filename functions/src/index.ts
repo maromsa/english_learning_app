@@ -46,24 +46,88 @@ const storySchema = z.object({
   mode: z.literal("story"),
   prompt: z.string().min(1),
   system_instruction: z.string().optional(),
-}).transform((data) => ({
-  ...data,
-  ...(data.system_instruction !== undefined && {systemInstruction: data.system_instruction}), // Map to camelCase for internal use (optional)
-}));
+  systemInstruction: z.string().optional(),
+}).transform((data) => mapSystemInstruction({
+  mode: data.mode,
+  prompt: data.prompt,
+}, data));
 
 const textSchema = z.object({
   mode: z.literal("text"),
   prompt: z.string().min(1),
   system_instruction: z.string().optional(),
-}).transform((data) => ({
-  ...data,
-  ...(data.system_instruction !== undefined && {systemInstruction: data.system_instruction}), // Map to camelCase for internal use (optional)
-}));
+  systemInstruction: z.string().optional(),
+}).transform((data) => mapSystemInstruction({
+  mode: data.mode,
+  prompt: data.prompt,
+}, data));
+
+const sceneDescriptionSchema = z.object({
+  mode: z.literal("scene_description"),
+  prompt: z.string().min(1),
+  mimeType: z.string().default("image/jpeg"),
+  imageBase64: z.string().min(1),
+  system_instruction: z.string().optional(),
+  systemInstruction: z.string().optional(),
+}).transform((data) => mapSystemInstruction({
+  mode: data.mode,
+  prompt: data.prompt,
+  mimeType: data.mimeType,
+  imageBase64: data.imageBase64,
+}, data));
+
+function mapSystemInstruction<T extends Record<string, unknown>>(
+    base: T,
+    data: {system_instruction?: string; systemInstruction?: string},
+): T & {systemInstruction?: string} {
+  const systemInstruction = data.system_instruction ?? data.systemInstruction;
+  if (systemInstruction === undefined) {
+    return base;
+  }
+  return {...base, systemInstruction};
+}
 
 type IdentifyPayload = z.infer<typeof identifySchema>;
 type ValidatePayload = z.infer<typeof validateSchema>;
 type StoryPayload = z.infer<typeof storySchema>;
 type TextPayload = z.infer<typeof textSchema>;
+type SceneDescriptionPayload = z.infer<typeof sceneDescriptionSchema>;
+
+/**
+ * Firebase/Express may deliver JSON as a string, Buffer, or (rarely) a
+ * single-element array. Normalize to a plain object before Zod validation.
+ */
+function parseRequestBody(body: unknown): Record<string, unknown> {
+  let value: unknown = body;
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    value = JSON.parse(value);
+  } else if (Buffer.isBuffer(value)) {
+    value = JSON.parse(value.toString("utf8"));
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 1 && typeof value[0] === "object" && value[0] !== null && !Array.isArray(value[0])) {
+      value = value[0];
+    } else {
+      throw new z.ZodError([{
+        code: "custom",
+        path: [],
+        message: "Request body must be a JSON object, not an array",
+      }]);
+    }
+  }
+
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new z.ZodError([{
+      code: "custom",
+      path: [],
+      message: "Request body must be a JSON object",
+    }]);
+  }
+
+  return value as Record<string, unknown>;
+}
 
 const safetySettings = [
   {category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
@@ -347,13 +411,18 @@ async function runWithModelFallback<T>({
   throw new Error(`Gemini model not available after trying ${attempts.length} attempt(s).`);
 }
 
-async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
-  logger.info("🔍 handleIdentify called");
+async function generateMultimodalContent(
+    payload: {prompt: string; mimeType: string; imageBase64: string},
+    apiKey: string,
+    mode: string,
+    systemInstruction?: string,
+) {
   const result = await runWithModelFallback({
     apiKey,
-    mode: "identify",
+    systemInstruction,
+    mode,
     action: async (model) => {
-      logger.info("📤 Calling generateContent for identify");
+      logger.info(`📤 Calling generateContent for ${mode}`);
       return model.generateContent({
         contents: [{
           role: "user",
@@ -370,9 +439,24 @@ async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
       });
     },
   });
-  logger.info("✅ generateContent completed for identify");
+  logger.info(`✅ generateContent completed for ${mode}`);
   const text = result.response.text()?.trim() ?? "";
   return {text};
+}
+
+async function handleIdentify(payload: IdentifyPayload, apiKey: string) {
+  logger.info("🔍 handleIdentify called");
+  return generateMultimodalContent(payload, apiKey, "identify");
+}
+
+async function handleSceneDescription(payload: SceneDescriptionPayload, apiKey: string) {
+  logger.info("🔍 handleSceneDescription called");
+  return generateMultimodalContent(
+      payload,
+      apiKey,
+      "scene_description",
+      payload.systemInstruction,
+  );
 }
 
 async function handleValidate(payload: ValidatePayload, apiKey: string) {
@@ -495,7 +579,7 @@ async function handleText(payload: TextPayload | StoryPayload, apiKey: string) {
 }
 
 // Export for testing
-export {handleText, getModel};
+export {handleText, getModel, parseRequestBody, handleSceneDescription};
 
 // Note: Fetch override is now set up at module level (see top of file)
 // This ensures it's active before any SDK calls are made
@@ -505,6 +589,7 @@ export const geminiProxy = functions.onRequest(
     (req, res) => {
       corsHandler(req, res, async () => {
         // Fetch override is already active at module level
+        let requestMode: unknown;
         try {
           if (req.method !== "POST") {
             res.set("Allow", "POST");
@@ -518,23 +603,33 @@ export const geminiProxy = functions.onRequest(
             return;
           }
 
+          const body = parseRequestBody(req.body);
+          requestMode = body.mode;
+
           logger.info("📥 geminiProxy received request", {
             method: req.method,
-            body: JSON.stringify(req.body),
-            bodyKeys: Object.keys(req.body || {}),
-            hasSystemInstruction: req.body?.system_instruction !== undefined || req.body?.systemInstruction !== undefined,
-            systemInstructionType: typeof (req.body?.system_instruction ?? req.body?.systemInstruction),
+            body: JSON.stringify(body),
+            bodyKeys: Object.keys(body),
+            hasSystemInstruction: body.system_instruction !== undefined || body.systemInstruction !== undefined,
+            systemInstructionType: typeof (body.system_instruction ?? body.systemInstruction),
           });
 
-          if (req.body?.mode === "identify") {
-            const payload = identifySchema.parse(req.body);
+          if (body.mode === "identify") {
+            const payload = identifySchema.parse(body);
             const response = await handleIdentify(payload, apiKey);
             res.json(response);
             return;
           }
 
-          if (req.body?.mode === "story" || req.body?.mode === "text") {
-            const payload = (req.body.mode === "story" ? storySchema : textSchema).parse(req.body);
+          if (body.mode === "scene_description") {
+            const payload = sceneDescriptionSchema.parse(body);
+            const response = await handleSceneDescription(payload, apiKey);
+            res.json(response);
+            return;
+          }
+
+          if (body.mode === "story" || body.mode === "text") {
+            const payload = (body.mode === "story" ? storySchema : textSchema).parse(body);
             logger.info("📝 Parsed payload for text/story mode", {
               mode: payload.mode,
               promptLength: payload.prompt.length,
@@ -548,7 +643,7 @@ export const geminiProxy = functions.onRequest(
           }
 
           // Default to validation payload for compatibility with existing client.
-          const payload = validateSchema.parse(req.body);
+          const payload = validateSchema.parse(body);
           const response = await handleValidate(payload, apiKey);
           res.json(response);
         } catch (error) {
@@ -567,9 +662,10 @@ export const geminiProxy = functions.onRequest(
             if (errorMessage.includes("v1beta") && errorMessage.includes("not found")) {
               logger.error("🚨 API version mismatch detected - SDK is using v1beta but model requires v1 API", {
                 errorMessage,
-                modelId: req.body?.mode === "identify" ? "gemini-1.5" :
-                         req.body?.mode === "validate" ? "gemini-1.5" :
-                         req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5" : "unknown",
+                modelId: requestMode === "identify" ? "gemini-1.5" :
+                         requestMode === "scene_description" ? "gemini-1.5" :
+                         requestMode === "validate" ? "gemini-1.5" :
+                         requestMode === "text" || requestMode === "story" ? "gemini-1.5" : "unknown",
                 note: "This should not happen when using the v1 API",
                 recommendation: "Verify the Cloud Function is deployed with apiVersion set to v1 and using gemini-2.0-flash.",
               });
@@ -579,9 +675,10 @@ export const geminiProxy = functions.onRequest(
             if (errorMessage.includes("gemini-1.5-flash") && errorMessage.includes("not found")) {
               logger.error("🚨 Repeated gemini-1.5-flash not found error detected", {
                 errorMessage,
-                modelId: req.body?.mode === "identify" ? "gemini-1.5" : 
-                         req.body?.mode === "validate" ? "gemini-1.5" :
-                         req.body?.mode === "text" || req.body?.mode === "story" ? "gemini-1.5" : "unknown",
+                modelId: requestMode === "identify" ? "gemini-1.5" :
+                         requestMode === "scene_description" ? "gemini-1.5" :
+                         requestMode === "validate" ? "gemini-1.5" :
+                         requestMode === "text" || requestMode === "story" ? "gemini-1.5" : "unknown",
                 apiVersion: errorMessage.includes("v1beta") ? "v1beta" : "unknown",
                 recommendation: "Model name may need to be gemini-2.0-flash for v1 API, or API version needs to be v1 instead of v1beta",
               });

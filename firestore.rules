@@ -18,6 +18,14 @@ service cloud.firestore {
       allow read: if isOwner(userId) || isAdmin();
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
+
+      match /childProfiles/{profileId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /gameData/{docId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     match /{document=**} {

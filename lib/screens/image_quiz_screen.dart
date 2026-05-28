@@ -11,6 +11,8 @@ import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/services/spark_voice_service.dart';
 import 'package:english_learning_app/services/word_mastery_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
+import 'package:english_learning_app/utils/device_connectivity.dart';
+import 'package:english_learning_app/utils/offline_word_loader.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -48,6 +50,7 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
   static const int _rewardPerStreak = 2;
 
   late final WordRepository _wordRepository;
+  late final OfflineWordLoader _offlineWordLoader;
   late final WordMasteryService _wordMasteryService;
   late final LevelProgressService _levelProgressService;
   late final SparkVoiceService _sparkVoiceService;
@@ -68,6 +71,7 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
   void initState() {
     super.initState();
     _wordRepository = widget.wordRepository ?? WordRepository();
+    _offlineWordLoader = OfflineWordLoader(wordRepository: _wordRepository);
     _wordMasteryService = widget.wordMasteryService ?? WordMasteryService();
     _levelProgressService =
         widget.levelProgressService ?? LevelProgressService();
@@ -98,8 +102,8 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
     final userId = session.currentUser?.id ?? 'local_guest';
 
     try {
-      final words = await _wordRepository.loadWords(
-        remoteEnabled: true,
+      final words = await _offlineWordLoader.loadWords(
+        remoteCapable: AppConfig.hasCloudinary,
         fallbackWords: widget.wordsForLevel,
         cloudName: AppConfig.cloudinaryCloudName,
         tagName: 'english_kids_app',
@@ -162,10 +166,12 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
     if (word.isEmpty) return;
     try {
       if (AppConfig.hasGoogleTts) {
+        final online = await DeviceConnectivity.current.isOnline();
         await _sparkVoiceService.speak(
           text: word,
           isEnglish: true,
           emotion: SparkEmotion.happy,
+          networkAllowed: online,
         );
       } else {
         await _flutterTts.setLanguage('en-US');

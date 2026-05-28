@@ -67,6 +67,32 @@ void main() {
     expect(words.map((w) => w.word), ['Apple']);
   });
 
+  test('preferCacheOnly never calls remote even when cloudinary is configured',
+      () async {
+    final prefs = await SharedPreferences.getInstance();
+    final remoteWords = [WordData(word: 'RemoteOnly')];
+    final repository = WordRepository(
+      prefs: prefs,
+      cloudinaryService: _FakeCloudinaryService(remoteWords),
+    );
+
+    await repository.cacheWords(
+      [WordData(word: 'Cached')],
+      cacheNamespace: 'level_x',
+    );
+
+    final words = await repository.loadWords(
+      remoteEnabled: true,
+      fallbackWords: [WordData(word: 'Fallback')],
+      cloudName: 'demo',
+      tagName: 'tag',
+      cacheNamespace: 'level_x',
+      preferCacheOnly: true,
+    );
+
+    expect(words.map((w) => w.word), ['Cached']);
+  });
+
   test('caches remote words and reuses them when offline', () async {
     final prefs = await SharedPreferences.getInstance();
     final remoteWords = [

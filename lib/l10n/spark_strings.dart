@@ -86,6 +86,42 @@ class SparkStrings {
   static String cameraTryAgainTarget(String word) =>
       'עוד לא $word. בואו נצלם שוב?';
 
+  // ─── Scavenger hunt (Living-World camera) ─────
+  static const String scavengerTitle = 'מצאדון עם ספרק';
+  static const String scavengerLoading = 'מכינים את המצלמה...';
+  static const String scavengerRoundLabel = 'אתגר';
+  static const String scavengerValidating = 'ספרק בודקת...';
+  static const String scavengerNetworkFail =
+      'לא הצלחנו לבדוק עכשיו. ננסה שוב?';
+  static const String scavengerSessionComplete =
+      'סיימתם את כל האתגרים! אתם גיבורי מצלמה! 🏆';
+  static const String scavengerNextRound = 'אתגר הבא!';
+  static const String scavengerTapToCapture = 'לחצו לצילום';
+  static const String scavengerUsePicker = 'בחרו תמונה מהמצלמה';
+
+  static String scavengerSparkIntro(String prompt) =>
+      'היי! $prompt צלמו ותראו לי!';
+
+  static String scavengerSuccess(String emoji) =>
+      '${randomCompliment()} מצאתם $emoji';
+
+  static String scavengerTryAgain(String promptHebrew) =>
+      'עוד לא... $promptHebrew נסו שוב!';
+
+  static const String scavengerTeachingTitle = 'ספרק מלמדת! 📸';
+  static const String scavengerTeachingLoading =
+      'ספרק מסתכלת על התמונה שלכם...';
+  static const String scavengerTeachingTipsLabel = 'טיפים מספרק:';
+  static const String scavengerTeachingObjectsLabel = 'עוד מילים בתמונה:';
+  static const String scavengerTeachingContinue = 'לאתגר הבא!';
+  static const String scavengerTeachingFinish = 'סיום המצאדון';
+  static const String scavengerTeachingSkipHint =
+      'אפשר להמשיך — נלמד שוב בפעם הבאה!';
+  static const String scavengerTeachingSkipWhileLoading = 'המשיכו בינתיים';
+
+  static String scavengerTeachingFallback(String emoji, String promptHebrew) =>
+      '${randomCompliment()} מצאתם $emoji — $promptHebrew';
+
   // ─── Map / load ───────────────────────────────
   static const String mapLoading3d = 'טוענת את העולם... ✨';
   static const String mapLoadFailed = 'לא הצלחנו לטעון. ננסה שוב?';
@@ -154,4 +190,56 @@ class SparkStrings {
   static const String skipForNow = 'נדלג בינתיים';
   static const String backToMap = 'חזרה למפה';
   static const String backToJourney = 'חזרה למסע';
+
+  // ─── Parent / teacher area ────────────────────
+  static const String parentsAreaButton = 'אזור הורים';
+  static const String parentsAreaSubtitle = 'לוח בקרה להורים ומורים';
+
+  static const String parentGateTitle = 'אזור מבוגרים';
+  static String parentGateQuestion(int a, int b) => 'מה התשובה ל-$a × $b?';
+  static const String parentGateAnswerLabel = 'תשובה';
+  static const String parentGateWrong = 'לא נכון. ננסה שוב?';
+  static const String parentGateCancel = 'ביטול';
+  static const String parentGateContinue = 'המשך';
+
+  static const String parentDashboardTitle = 'לוח בקרה להורים';
+  static const String parentDashboardNoUser = 'אין משתמש פעיל';
+  static const String parentDashboardDefaultChild = 'הלומד/ת';
+  static const String parentDashboardOverview = 'סיכום מהיר';
+  static const String parentDashboardProgress = 'התקדמות';
+  static const String parentDashboardTotalStars = 'כוכבים';
+  static const String parentDashboardDailyStreak = 'רצף יומי';
+  static const String parentDashboardWordsPracticed = 'מילים שתרגלו';
+  static const String parentDashboardCoins = 'מטבעות';
+  static const String parentDashboardAchievements = 'הישגים';
+  static const String parentDashboardLevelsDone = 'שלבים שהושלמו';
+  static const String parentDashboardWordsLabel = 'מילים באנגלית';
+  static String parentDashboardWordsSubtitle(int done, int total) =>
+      '$done מתוך $total במסלול';
+  static String parentDashboardMastered(int count) => '$count בשליטה מלאה';
+  static const String parentDashboardLevelsLabel = 'שלבים במפה';
+  static String parentDashboardLevelsSubtitle(int done, int total) =>
+      '$done מתוך $total שלבים';
+  static const String parentDashboardMissionsLabel = 'משימות היום';
+  static String parentDashboardMissionsSubtitle(int done, int total) =>
+      '$done מתוך $total הושלמו';
+  static const String parentDashboardLastPlayedUnknown = 'עדיין לא שיחקו הפעם';
+  static String parentDashboardLastPlayed(String when) => 'שיחקו לאחרונה: $when';
+  static const String parentDashboardNote =
+      'הנתונים נשמרים במכשיר זה. ברצף יומי — לכל המשפחה במכשיר משותף.';
+
+  // ─── Offline practice packs (parent) ──────────
+  static const String offlineDownloadsTitle = 'הורדה לאופליין';
+  static const String offlineDownloadsDescription =
+      'חבילות תרגול לטיסות ונסיעות — מילים, תמונות וקול';
+  static const String offlineDownloadsButton = 'הורידו את כל התוכן הפתוח';
+  static const String offlineDownloadsHint =
+      'עדיין לא הורדתם חבילה. מומלץ לפני נסיעה';
+  static const String offlineDownloadsDownloading = 'מורידים תוכן...';
+  static const String offlineDownloadsComplete = 'מוכן לתרגול בלי אינטרנט';
+  static const String offlineDownloadsFailed = 'ההורדה נכשלה';
+  static String offlineDownloadsLastDownload(String when, int levels) =>
+      'עודכן $when · $levels שלבים';
+  static String offlineDownloadsProgress(int done, int total) =>
+      '$done מתוך $total פריטים';
 }

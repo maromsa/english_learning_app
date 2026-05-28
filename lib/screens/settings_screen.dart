@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../widgets/character_avatar.dart';
 import '../widgets/optimized_avatar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,11 +9,13 @@ import '../providers/auth_provider.dart';
 import '../providers/character_provider.dart';
 import '../providers/coin_provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/offline_practice_service.dart';
 import '../services/word_repository.dart';
-import '../services/local_user_service.dart';
-import '../widgets/character_avatar.dart';
+import '../l10n/spark_strings.dart';
+import '../utils/parent_dashboard_navigation.dart';
 import 'character_selection_screen.dart';
-import 'user_selection_screen.dart';
+import 'child_profile_selection_screen.dart';
+import '../providers/child_profile_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -23,30 +26,10 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isBusy = false;
-  final LocalUserService _localUserService = LocalUserService();
-  String? _localUserName;
-  int? _localUserAge;
-  String? _localUserPhotoUrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadLocalUser();
-  }
-
-  Future<void> _loadLocalUser() async {
-    final localUser = await _localUserService.getActiveUser();
-    if (mounted) {
-      setState(() {
-        _localUserName = localUser?.name;
-        _localUserAge = localUser?.age;
-        _localUserPhotoUrl = localUser?.photoUrl;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    final activeProfile = context.watch<ChildProfileProvider>().activeProfile;
     final themeProvider = context.watch<ThemeProvider>();
     final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
 
@@ -64,20 +47,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           // 1. Hero Profile Header
           _ProfileHeroCard(
-            name: _localUserName,
-            age: _localUserAge,
-            photoUrl: _localUserPhotoUrl,
+            name: activeProfile?.displayName,
+            age: null,
+            photoUrl: activeProfile?.avatarUrl,
+            avatarColor: activeProfile?.avatarColor,
             onTap: () async {
-              final result = await Navigator.push(
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const UserSelectionScreen(),
+                  builder: (_) => const ChildProfileSelectionScreen(),
                 ),
               );
-              if (result == true && mounted) {
-                await _loadLocalUser();
-                setState(() {});
-              }
             },
           ),
 
@@ -135,6 +115,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           const SizedBox(height: 24),
+          const _SectionHeader(title: 'הורים ומורים'),
+          const SizedBox(height: 8),
+
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.grey.shade200),
+            ),
+            child: _SettingsTile(
+              icon: Icons.supervisor_account,
+              iconColor: Colors.indigo,
+              title: SparkStrings.parentsAreaButton,
+              subtitle: SparkStrings.parentsAreaSubtitle,
+              onTap: _isBusy ? null : () => _openParentDashboard(context),
+            ),
+          ),
+
+          const SizedBox(height: 24),
           const _SectionHeader(title: "חשבון ונתונים"),
           const SizedBox(height: 8),
 
@@ -158,23 +157,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _SettingsTile(
                   icon: Icons.swap_horiz,
                   iconColor: Colors.green,
-                  title: 'החלפת משתמש',
-                  subtitle: 'עבור לפרופיל אחר',
+                  title: 'החלפת פרופיל',
+                  subtitle: 'בחרו מי משחק עכשיו',
                   onTap: _isBusy
                       ? null
                       : () async {
-                          final result = await Navigator.push(
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const UserSelectionScreen(),
+                              builder: (_) =>
+                                  const ChildProfileSelectionScreen(),
                             ),
                           );
-                          if (mounted) {
-                            await _loadLocalUser();
-                            if (result == true) {
-                              Navigator.of(context).pop();
-                            }
-                          }
                         },
                 ),
                 const Divider(height: 1, indent: 60),
@@ -204,6 +198,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _openParentDashboard(BuildContext context) async {
+    await openParentDashboard(context);
   }
 
   Future<void> _confirmResetProgress(BuildContext context) async {
@@ -259,6 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isBusy = true);
     final repository = WordRepository();
     await repository.clearCache();
+    await OfflinePracticeService().clearAll();
 
     if (!mounted) return;
     setState(() => _isBusy = false);
@@ -328,12 +327,14 @@ class _ProfileHeroCard extends StatelessWidget {
   final String? name;
   final int? age;
   final String? photoUrl;
+  final int? avatarColor;
   final VoidCallback onTap;
 
   const _ProfileHeroCard({
     this.name,
     this.age,
     this.photoUrl,
+    this.avatarColor,
     required this.onTap,
   });
 
@@ -379,7 +380,9 @@ class _ProfileHeroCard extends StatelessWidget {
               child: OptimizedAvatar(
                 imageUrl: displayPhoto,
                 radius: 32,
-                backgroundColor: Colors.white,
+                backgroundColor: avatarColor != null
+                    ? Color(avatarColor!)
+                    : Colors.white,
                 fallbackText: displayName.isNotEmpty ? displayName : '?',
               ),
             ),

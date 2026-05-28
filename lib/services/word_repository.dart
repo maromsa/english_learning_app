@@ -37,6 +37,7 @@ class WordRepository {
     String tagName = '',
     int maxResults = 50,
     String cacheNamespace = _defaultNamespace,
+    bool preferCacheOnly = false,
   }) async {
     final prefs = await _prefsFuture;
     final namespacedCacheKey = _cacheKey(cacheNamespace);
@@ -55,12 +56,27 @@ class WordRepository {
           await _saveCache(prefs, hydrated, cacheNamespace);
         }
       }
-      if (cachedWords != null &&
-          cachedTimestamp != null &&
-          now.difference(DateTime.fromMillisecondsSinceEpoch(cachedTimestamp)) <
-              _cacheDuration) {
+      if (cachedWords != null) {
+        final cacheFresh = cachedTimestamp != null &&
+            now.difference(
+                  DateTime.fromMillisecondsSinceEpoch(cachedTimestamp),
+                ) <
+                _cacheDuration;
+
+        if (preferCacheOnly || !remoteEnabled) {
+          return cachedWords;
+        }
+        if (cacheFresh) {
+          return cachedWords;
+        }
+      }
+    }
+
+    if (preferCacheOnly) {
+      if (cachedWords != null) {
         return cachedWords;
       }
+      return List<WordData>.from(fallbackWords);
     }
 
     if (remoteEnabled && cloudName.isNotEmpty && tagName.isNotEmpty) {

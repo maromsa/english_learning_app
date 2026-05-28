@@ -11,6 +11,7 @@ import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/image_quiz_screen.dart';
 import 'package:english_learning_app/screens/daily_missions_screen.dart';
 import 'package:english_learning_app/screens/lightning_practice_screen.dart';
+import 'package:english_learning_app/screens/scavenger_hunt_screen.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
@@ -20,6 +21,8 @@ import 'package:english_learning_app/services/google_tts_service.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
+import 'package:english_learning_app/utils/device_connectivity.dart';
+import 'package:english_learning_app/utils/offline_word_loader.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/level_completion_screen.dart';
@@ -65,6 +68,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final SparkVoiceService _sparkVoiceService = SparkVoiceService();
   final ImagePicker _picker = ImagePicker();
   late final WordRepository _wordRepository;
+  late final OfflineWordLoader _offlineWordLoader;
   final LevelProgressService _levelProgressService = LevelProgressService();
   WebImageService? _webImageService;
   final AiImageValidator _cameraValidator = const PassthroughAiImageValidator();
@@ -161,8 +165,9 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     _wordRepository = WordRepository(webImageProvider: _webImageService);
+    _offlineWordLoader = OfflineWordLoader(wordRepository: _wordRepository);
 
-    await _loadWords(remoteEnabled: cloudinaryAvailable);
+    await _loadWords(remoteCapable: cloudinaryAvailable);
 
     if (mounted) {
       setState(() {
@@ -177,10 +182,12 @@ class _MyHomePageState extends State<MyHomePage> {
     try {
       // Try SparkVoiceService first (uses Google TTS with SSML)
       if (AppConfig.hasGoogleTts) {
+        final online = await DeviceConnectivity.current.isOnline();
         await _sparkVoiceService.speak(
           text: text,
           isEnglish: languageCode == 'en-US',
           emotion: emotion,
+          networkAllowed: online,
         );
         return;
       }
@@ -219,11 +226,11 @@ class _MyHomePageState extends State<MyHomePage> {
     await flutterTts.speak(text);
   }
 
-  Future<void> _loadWords({required bool remoteEnabled}) async {
-    debugPrint('--- Loading lesson words (remoteEnabled=$remoteEnabled) ---');
+  Future<void> _loadWords({required bool remoteCapable}) async {
+    debugPrint('--- Loading lesson words (remoteCapable=$remoteCapable) ---');
     try {
-      final words = await _wordRepository.loadWords(
-        remoteEnabled: remoteEnabled,
+      final words = await _offlineWordLoader.loadWords(
+        remoteCapable: remoteCapable,
         fallbackWords: widget.wordsForLevel,
         cloudName: AppConfig.cloudinaryCloudName,
         tagName: 'english_kids_app',
@@ -443,9 +450,30 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _openDailyMissionsFromHome() async {
-    await Navigator.push(
+    final result = await Navigator.push<Object?>(
       context,
       PageTransitions.slideFromRight(const DailyMissionsScreen()),
+    );
+    if (!mounted) return;
+    if (result == 'camera') {
+      await openScavengerHunt(context);
+    }
+  }
+
+  Future<void> _openScavengerHunt() async {
+    if (_geminiProxy == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(SparkStrings.aiUnavailable)),
+        );
+      }
+      return;
+    }
+    await Navigator.push(
+      context,
+      PageTransitions.fadeScale(
+        ScavengerHuntScreen(geminiProxy: _geminiProxy!),
+      ),
     );
   }
 
@@ -833,6 +861,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       builder: (context) => _GameMenuSheet(
         onAddWord: _isListening ? null : _takePictureAndIdentify,
+        onScavengerHunt: _isListening ? null : _openScavengerHunt,
         onShop: _isListening
             ? null
             : () {
@@ -1756,6 +1785,7 @@ class _LevelHeader extends StatelessWidget {
 // 7. Menu Sheet (Clean way to handle secondary actions)
 class _GameMenuSheet extends StatelessWidget {
   final VoidCallback? onAddWord;
+  final VoidCallback? onScavengerHunt;
   final VoidCallback? onShop;
   final VoidCallback? onImageQuiz;
   final VoidCallback? onChatBuddy;
@@ -1764,6 +1794,7 @@ class _GameMenuSheet extends StatelessWidget {
 
   const _GameMenuSheet({
     this.onAddWord,
+    this.onScavengerHunt,
     this.onShop,
     this.onImageQuiz,
     this.onChatBuddy,
@@ -1794,6 +1825,15 @@ class _GameMenuSheet extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 onAddWord?.call();
+              },
+            ),
+          if (onScavengerHunt != null)
+            ListTile(
+              leading: const Icon(Icons.explore_rounded, color: Colors.teal),
+              title: const Text(SparkStrings.scavengerTitle),
+              onTap: () {
+                Navigator.pop(context);
+                onScavengerHunt?.call();
               },
             ),
           if (onShop != null)

@@ -141,9 +141,16 @@ class AchievementService with ChangeNotifier {
     _achievementUnlockedCallback = callback;
   }
 
+  String _achievementKey(String id) {
+    if (_currentUserId != null) {
+      return 'user_${_currentUserId}_achievement_$id';
+    }
+    return 'achievement_$id';
+  }
+
   Future<void> _saveAchievement(String id, bool value) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('achievement_$id', value);
+    await prefs.setBool(_achievementKey(id), value);
     if (_currentUserId != null && value) {
       await _userDataService.unlockAchievement(_currentUserId!, id);
     }
@@ -152,8 +159,9 @@ class AchievementService with ChangeNotifier {
   Future<void> loadAchievements() async {
     final prefs = await SharedPreferences.getInstance();
     for (final achievement in achievements) {
-      achievement.isUnlocked =
-          prefs.getBool('achievement_${achievement.id}') ?? false;
+      achievement.isUnlocked = prefs.getBool(_achievementKey(achievement.id)) ??
+          prefs.getBool('achievement_${achievement.id}') ??
+          false;
     }
     notifyListeners();
   }

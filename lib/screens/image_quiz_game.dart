@@ -18,6 +18,7 @@ import '../services/level_repository.dart';
 import '../services/telemetry_service.dart';
 import '../services/word_mastery_service.dart';
 import '../services/word_repository.dart';
+import '../utils/offline_word_loader.dart';
 import '../services/spark_voice_service.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
@@ -82,6 +83,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
   final math.Random _random = math.Random();
 
   late final WordRepository _wordRepository;
+  late final OfflineWordLoader _offlineWordLoader;
   late final WordMasteryService _wordMasteryService;
   late final LevelProgressService _levelProgressService;
   late final LevelRepository _levelRepository;
@@ -113,6 +115,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
   void initState() {
     super.initState();
     _wordRepository = widget.wordRepository ?? WordRepository();
+    _offlineWordLoader = OfflineWordLoader(wordRepository: _wordRepository);
     _wordMasteryService = widget.wordMasteryService ?? WordMasteryService();
     _levelProgressService = widget.levelProgressService ?? LevelProgressService();
     _levelRepository = widget.levelRepository ?? LevelRepository();
@@ -190,8 +193,8 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
 
       // ── Step 2: Optionally enrich with Cloudinary images ───────────────
       // WordRepository.loadWords handles caching and fallback gracefully.
-      final List<WordData> enrichedWords = await _wordRepository.loadWords(
-        remoteEnabled: AppConfig.hasCloudinary,
+      final List<WordData> enrichedWords = await _offlineWordLoader.loadWords(
+        remoteCapable: AppConfig.hasCloudinary,
         fallbackWords: baseWords,
         cloudName: AppConfig.cloudinaryCloudName,
         tagName: 'english_kids_app',

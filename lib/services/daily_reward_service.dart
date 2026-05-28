@@ -20,8 +20,21 @@ class DailyRewardService {
     : _now = now ?? DateTime.now,
       _random = random ?? math.Random();
 
-  static const String _lastClaimKey = 'daily_reward_last_claim';
-  static const String _streakKey = 'daily_reward_streak';
+  static const String _legacyLastClaimKey = 'daily_reward_last_claim';
+  static const String _legacyStreakKey = 'daily_reward_streak';
+
+  String? _userId;
+
+  void setUserId(String? userId) {
+    _userId = userId;
+  }
+
+  String get _lastClaimKey => _userId == null
+      ? _legacyLastClaimKey
+      : 'user_${_userId}_daily_reward_last_claim';
+
+  String get _streakKey =>
+      _userId == null ? _legacyStreakKey : 'user_${_userId}_daily_reward_streak';
 
   static const int minReward = 10;
   static const int maxReward = 20;
@@ -30,6 +43,12 @@ class DailyRewardService {
 
   final DateTime Function() _now;
   final math.Random _random;
+
+  /// Current daily-login streak (device-local; see [claimReward]).
+  Future<int> getCurrentStreak() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_streakKey) ?? 0;
+  }
 
   Future<DailyRewardResult> claimReward() async {
     final prefs = await SharedPreferences.getInstance();

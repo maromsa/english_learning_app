@@ -24,6 +24,36 @@ class GeminiProxyService {
 
   /// Asks Gemini to identify the main object in an image, returning a short
   /// natural-language description (usually a noun phrase).
+  /// Validates whether an image matches a target word (proxy default `validate` mode).
+  ///
+  /// Returns `approved` and optional `confidence` from the Firebase Function.
+  Future<({bool approved, double? confidence})?> validateImageMatch(
+    Uint8List imageBytes,
+    String word, {
+    String mimeType = 'image/jpeg',
+  }) async {
+    final response = await _postJson({
+      'word': word.trim(),
+      'mimeType': mimeType,
+      'imageBase64': base64Encode(imageBytes),
+    });
+
+    if (response == null) return null;
+
+    final approved = response['approved'];
+    if (approved is! bool) return null;
+
+    double? confidence;
+    final rawConfidence = response['confidence'];
+    if (rawConfidence is num) {
+      confidence = rawConfidence.toDouble();
+    } else if (rawConfidence is String) {
+      confidence = double.tryParse(rawConfidence);
+    }
+
+    return (approved: approved, confidence: confidence);
+  }
+
   Future<String?> identifyMainObject(
     Uint8List imageBytes, {
     required String prompt,

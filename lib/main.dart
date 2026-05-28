@@ -27,6 +27,7 @@ import 'utils/app_theme.dart';
 import 'utils/route_observer.dart';
 import 'utils/spark_route_observer.dart';
 import 'providers/user_session_provider.dart';
+import 'providers/child_profile_provider.dart';
 import 'widgets/living_spark.dart';
 
 Future<void> main() async {
@@ -147,11 +148,13 @@ Future<void> main() async {
   // Create UserSessionProvider and load active user
   final userSessionProvider = UserSessionProvider();
   await userSessionProvider.loadActiveUser();
+  final childProfileProvider = ChildProfileProvider();
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: userSessionProvider),
+        ChangeNotifierProvider.value(value: childProfileProvider),
         ChangeNotifierProvider.value(value: coinProvider),
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider.value(value: achievementService),

@@ -8,11 +8,28 @@ import '../models/daily_mission.dart';
 class DailyMissionProvider with ChangeNotifier {
   DailyMissionProvider();
 
-  static const String _prefDateKey = 'daily_missions_date';
-  static const String _prefMissionsKey = 'daily_missions_payload';
+  static const String _legacyDateKey = 'daily_missions_date';
+  static const String _legacyMissionsKey = 'daily_missions_payload';
 
+  String? _userId;
   bool _initialized = false;
   List<DailyMission> _missions = <DailyMission>[];
+
+  void setUserId(String? userId) {
+    if (_userId == userId) {
+      return;
+    }
+    _userId = userId;
+    _initialized = false;
+  }
+
+  String get _prefDateKey => _userId == null
+      ? _legacyDateKey
+      : 'user_${_userId}_daily_missions_date';
+
+  String get _prefMissionsKey => _userId == null
+      ? _legacyMissionsKey
+      : 'user_${_userId}_daily_missions_payload';
 
   bool get isInitialized => _initialized;
   List<DailyMission> get missions => List<DailyMission>.unmodifiable(_missions);

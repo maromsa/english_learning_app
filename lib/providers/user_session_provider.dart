@@ -111,6 +111,22 @@ class UserSessionProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Active child profile under a signed-in parent account.
+  Future<void> switchToChildProfile({
+    required String profileId,
+    required String displayName,
+    String? photoUrl,
+  }) async {
+    _currentUser = AppSessionUser(
+      id: profileId,
+      name: displayName,
+      photoUrl: photoUrl,
+      isGoogle: false,
+    );
+    await _saveSessionState();
+    notifyListeners();
+  }
+
   Future<void> _saveSessionState() async {
     if (_currentUser == null) return;
     final prefs = await SharedPreferences.getInstance();

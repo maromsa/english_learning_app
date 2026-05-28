@@ -23,11 +23,49 @@ class SparkVoiceService {
   String? get _apiKey => AppConfig.hasGoogleTts ? AppConfig.googleTtsApiKey : null;
   final String _endpoint = "https://texttospeech.googleapis.com/v1/text:synthesize";
 
+  /// Pre-download TTS audio for offline practice packs.
+  Future<bool> prefetch({
+    required String text,
+    bool isEnglish = false,
+    SparkEmotion emotion = SparkEmotion.neutral,
+    bool networkAllowed = true,
+  }) async {
+    if (text.trim().isEmpty || _apiKey == null) {
+      return false;
+    }
+
+    final languageCode = isEnglish ? 'en-US' : 'he-IL';
+    final voiceName =
+        isEnglish ? 'en-US-Neural2-F' : 'he-IL-Neural2-A';
+    var speakingRate = 0.85;
+    var pitch = 2.0;
+    final ssmlText = _generateSSML(text, emotion, speakingRate, pitch);
+    final filePath =
+        await _getCachePath(ssmlText, voiceName, pitch, speakingRate);
+    final file = File(filePath);
+    if (await file.exists()) {
+      return true;
+    }
+    if (!networkAllowed) {
+      return false;
+    }
+
+    return _fetchAndCacheTts(
+      ssmlText: ssmlText,
+      languageCode: languageCode,
+      voiceName: voiceName,
+      speakingRate: speakingRate,
+      pitch: pitch,
+      file: file,
+    );
+  }
+
   /// Speak text with emotion and language context
   Future<void> speak({
     required String text,
     bool isEnglish = false,
     SparkEmotion emotion = SparkEmotion.neutral,
+    bool networkAllowed = true,
   }) async {
     if (text.trim().isEmpty) return;
 
@@ -61,7 +99,39 @@ class SparkVoiceService {
         return;
       }
 
+      if (!networkAllowed) {
+        debugPrint('SparkVoiceService: offline, no cached audio for "$text"');
+        return;
+      }
+
       // 5. Fetch from Google API if not cached
+      final cached = await _fetchAndCacheTts(
+        ssmlText: ssmlText,
+        languageCode: languageCode,
+        voiceName: voiceName,
+        speakingRate: speakingRate,
+        pitch: pitch,
+        file: file,
+      );
+      if (cached) {
+        await _player.setFilePath(filePath);
+        await _player.play();
+      }
+    } catch (e) {
+      debugPrint("SparkVoiceService Error: $e");
+      // Fallback will be handled by caller
+    }
+  }
+
+  Future<bool> _fetchAndCacheTts({
+    required String ssmlText,
+    required String languageCode,
+    required String voiceName,
+    required double speakingRate,
+    required double pitch,
+    required File file,
+  }) async {
+    try {
       final response = await _dio.post(
         '$_endpoint?key=$_apiKey',
         data: {
@@ -87,19 +157,17 @@ class SparkVoiceService {
       );
 
       if (response.statusCode == 200) {
-        String? audioContent = response.data?['audioContent'] as String?;
+        final audioContent = response.data?['audioContent'] as String?;
         if (audioContent != null && audioContent.isNotEmpty) {
-          List<int> bytes = base64.decode(audioContent);
+          final bytes = base64.decode(audioContent);
           await file.writeAsBytes(bytes);
-
-          await _player.setFilePath(filePath);
-          await _player.play();
+          return true;
         }
       }
     } catch (e) {
-      debugPrint("SparkVoiceService Error: $e");
-      // Fallback will be handled by caller
+      debugPrint('SparkVoiceService TTS fetch failed: $e');
     }
+    return false;
   }
 
   /// Generate SSML with emotional prosody

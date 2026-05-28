@@ -51,5 +51,10 @@ void main() {
       expect(result.claimed, true);
       expect(result.streak, 1);
     });
+
+    test('getCurrentStreak reads stored value', () async {
+      await service.claimReward();
+      expect(await service.getCurrentStreak(), 1);
+    });
   });
 }

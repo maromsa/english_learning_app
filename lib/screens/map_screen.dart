@@ -31,12 +31,14 @@ import '../services/map_bridge_service.dart';
 import '../widgets/ui/_barrel.dart';
 import '../providers/user_session_provider.dart';
 import '../utils/page_transitions.dart';
+import '../utils/parent_dashboard_navigation.dart';
 import '../utils/route_observer.dart';
 import '../widgets/character_avatar.dart';
 import '../widgets/user/current_user_avatar.dart';
 import 'ai_adventure_screen.dart';
 import 'achievements_screen.dart';
 import 'daily_missions_screen.dart';
+import 'scavenger_hunt_screen.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
 import 'character_selection_screen.dart';
@@ -805,6 +807,10 @@ class _MapScreenState extends State<MapScreen>
     await _loadProgress();
   }
 
+  Future<void> _openParentDashboard() async {
+    await openParentDashboard(context);
+  }
+
   void _showLockedMessage(LevelData level) async {
     // Find previous level
     final levelIndex = levels.indexWhere((l) => l.id == level.id);
@@ -1059,6 +1065,8 @@ class _MapScreenState extends State<MapScreen>
           backgroundColor: Colors.blueGrey.shade700,
         ),
       );
+    } else if (result == 'camera') {
+      await openScavengerHunt(context);
     }
   }
 
@@ -1154,6 +1162,25 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 );
               },
+            ),
+            const SizedBox(width: 4),
+            // ── Parents area (gated) ─────────────────────────────────────────
+            Tooltip(
+              message: SparkStrings.parentsAreaButton,
+              child: IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.supervisor_account,
+                    color: Colors.indigo,
+                  ),
+                ),
+                onPressed: _openParentDashboard,
+              ),
             ),
             const SizedBox(width: 4),
             // ── Settings button ───────────────────────────────────────────────

@@ -8,13 +8,15 @@ import '../providers/shop_provider.dart';
 import '../providers/spark_overlay_controller.dart';
 import '../services/achievement_service.dart';
 import '../services/player_data_sync_service.dart';
-import '../services/local_user_service.dart';
+import '../providers/child_profile_provider.dart';
+import '../services/child_profile_sync_service.dart';
 import '../widgets/achievement_notification.dart';
 import '../widgets/spark_overlay_suppressor.dart';
+import 'child_profile_selection_screen.dart';
 import 'map_screen.dart';
+import '../utils/active_profile_scope.dart';
 import 'onboarding_screen.dart';
 import 'sign_in_screen.dart';
-import 'user_selection_screen.dart';
 
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key, required this.hasSeenOnboarding});
@@ -27,13 +29,13 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   final _syncService = PlayerDataSyncService();
-  final _localUserService = LocalUserService();
+  final _childProfileSyncService = ChildProfileSyncService();
   bool _syncing = false;
   bool _hasSynced = false;
   bool _checkingCharacter = false;
   bool _hasCharacter = false;
-  bool _checkingLocalUser = false;
-  bool _hasLocalUser = false;
+  bool _profilesInitialized = false;
+  bool _initializingProfiles = false;
 
   Future<void> _syncPlayerData(BuildContext context) async {
     if (_syncing || _hasSynced) return;
@@ -182,63 +184,40 @@ class _AuthGateState extends State<AuthGate> {
     }
   }
 
-  Future<void> _checkLocalUser() async {
-    if (_checkingLocalUser) return;
+  Future<void> _initializeChildProfiles(BuildContext context) async {
+    if (_initializingProfiles || _profilesInitialized) {
+      return;
+    }
 
-    if (!mounted) return;
-    setState(() => _checkingLocalUser = true);
+    if (!mounted) {
+      return;
+    }
+    setState(() => _initializingProfiles = true);
 
     try {
-      final activeUser = await _localUserService.getActiveUser();
-      if (mounted) {
-        setState(() {
-          _hasLocalUser = activeUser != null;
-          _checkingLocalUser = false;
-        });
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final profileProvider =
+          Provider.of<ChildProfileProvider>(context, listen: false);
+      final parentUid = authProvider.firebaseUser?.uid;
 
-        // Update providers with local user ID
-        if (activeUser != null) {
-          // If user is linked to Google, sign in automatically
-          if (activeUser.isLinkedToGoogle && activeUser.googleUid != null) {
-            final authProvider =
-                Provider.of<AuthProvider>(context, listen: false);
-            if (!authProvider.isAuthenticated) {
-              try {
-                await authProvider.signInWithGoogle();
-                // Verify it's the same Google account
-                if (authProvider.firebaseUser?.uid != activeUser.googleUid) {
-                  debugPrint(
-                    'Warning: Google account mismatch. Expected: ${activeUser.googleUid}, Got: ${authProvider.firebaseUser?.uid}',
-                  );
-                }
-              } catch (e) {
-                debugPrint('Error auto-signing in with Google: $e');
-                // Continue without Google sign-in
-              }
-            }
-          }
+      await profileProvider.initialize(parentUid: parentUid);
 
-          final coinProvider =
-              Provider.of<CoinProvider>(context, listen: false);
-          final shopProvider =
-              Provider.of<ShopProvider>(context, listen: false);
-          final achievementService =
-              Provider.of<AchievementService>(context, listen: false);
-
-          coinProvider.setUserId(activeUser.id, isLocalUser: true);
-          shopProvider.setUserId(activeUser.id);
-          achievementService.setUserId(activeUser.id);
-
-          // Load coins for local user
-          await coinProvider.loadCoins();
-        }
+      final activeProfile = profileProvider.activeProfile;
+      if (activeProfile != null) {
+        await ActiveProfileScope.apply(
+          context,
+          activeProfile,
+          parentUid: parentUid,
+          syncService: _childProfileSyncService,
+        );
       }
     } catch (e) {
-      debugPrint('Error checking local user: $e');
+      debugPrint('Error initializing child profiles: $e');
+    } finally {
       if (mounted) {
         setState(() {
-          _hasLocalUser = false;
-          _checkingLocalUser = false;
+          _initializingProfiles = false;
+          _profilesInitialized = true;
         });
       }
     }
@@ -246,10 +225,10 @@ class _AuthGateState extends State<AuthGate> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, _) {
+    return Consumer2<AuthProvider, ChildProfileProvider>(
+      builder: (context, authProvider, profileProvider, _) {
         try {
-          // Sync when user becomes authenticated
+          // Sync legacy player data when user becomes authenticated
           if (authProvider.isAuthenticated && !_hasSynced && !_syncing) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
@@ -258,28 +237,23 @@ class _AuthGateState extends State<AuthGate> {
             });
           }
 
-          // Check for local user if not authenticated
-          if (!authProvider.isAuthenticated &&
-              !_checkingLocalUser &&
-              !_hasLocalUser) {
+          if (!_profilesInitialized && !_initializingProfiles) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
-                _checkLocalUser();
+                _initializeChildProfiles(context);
               }
             });
           }
 
-          if (authProvider.initializing || _syncing || _checkingLocalUser) {
+          if (authProvider.initializing ||
+              _syncing ||
+              _initializingProfiles ||
+              !profileProvider.initialized) {
             return const SparkOverlaySuppressor(
               child: Scaffold(
                 body: Center(child: CircularProgressIndicator()),
               ),
             );
-          }
-
-          // Show user selection if no auth and no local user
-          if (!authProvider.isAuthenticated && !_hasLocalUser) {
-            return const UserSelectionScreen();
           }
 
           if (!authProvider.isAuthenticated) {
@@ -288,6 +262,10 @@ class _AuthGateState extends State<AuthGate> {
 
           if (!widget.hasSeenOnboarding) {
             return const OnboardingScreen();
+          }
+
+          if (!profileProvider.hasActiveProfile) {
+            return const ChildProfileSelectionScreen();
           }
 
           // Check if user has selected a character (non-blocking, with timeout)
@@ -299,23 +277,6 @@ class _AuthGateState extends State<AuthGate> {
             });
           }
 
-          // Show character selection only if we're sure there's no character and not checking
-          // Skip character selection for now - allow app to work without it
-          // User can select character later from settings
-          // if (_hasSynced && !_hasCharacter && authProvider.firebaseUser != null && !_checkingCharacter) {
-          //   return CharacterSelectionScreen(
-          //     userId: authProvider.firebaseUser!.uid,
-          //     onCharacterSelected: (character) {
-          //       if (mounted) {
-          //         final characterProvider = Provider.of<CharacterProvider>(context, listen: false);
-          //         characterProvider.setCharacter(character);
-          //         setState(() => _hasCharacter = true);
-          //       }
-          //     },
-          //   );
-          // }
-
-          // Wrap MapScreen in error boundary and achievement overlay scope
           return Builder(
             builder: (context) {
               try {

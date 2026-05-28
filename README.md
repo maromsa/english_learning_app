@@ -85,8 +85,9 @@ Keep your Gemini key on the server by deploying the bundled proxy under `functio
    For Cloud Run, package `functions/src/index.ts` into your service entrypoint (the code exports `geminiProxy` as an HTTP handler).
 5. Confirm the published HTTPS URL. The Flutter app automatically targets `https://us-central1-<project-id>.cloudfunctions.net/geminiProxy`, so no extra flags are needed unless you front the function with a custom domain. In that case set both `GEMINI_PROXY_URL` and (optionally) `AI_IMAGE_VALIDATION_URL` to your public URL.
 
-The proxy supports three operations:
+The proxy supports these operations:
 - **Image identification** (`mode: "identify"`): returns the primary object name for camera capture.
+- **Scene description** (`mode: "scene_description"`): multimodal JSON lesson for the living-world camera flow.
 - **Image validation** (default payload): answers whether an image matches a requested word and returns confidence.
 - **Text generation** (`mode: "text"` / `"story"`): powers Spark's adventure stories and other Gemini prompts on the server.
 
