@@ -1,5 +1,7 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:provider/provider.dart';
@@ -236,6 +238,13 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                 TextFormField(
                   controller: _nameController,
                   keyboardType: TextInputType.text,
+                  maxLength: 30,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                      RegExp(r"[֐-׿a-zA-Z\s\-']"),
+                    ),
+                    LengthLimitingTextInputFormatter(30),
+                  ],
                   decoration: InputDecoration(
                     labelText: 'שם הילד/ה',
                     hintText: 'איך קוראים לך?',
@@ -257,6 +266,12 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                     }
                     if (value.trim().length < 2) {
                       return 'השם חייב להכיל לפחות 2 תווים';
+                    }
+                    if (value.trim().length > 30) {
+                      return 'השם לא יכול להכיל יותר מ-30 תווים';
+                    }
+                    if (value.contains(RegExp(r'[<>{}\[\]\\\/]'))) {
+                      return 'השם מכיל תווים לא חוקיים';
                     }
                     return null;
                   },

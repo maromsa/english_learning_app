@@ -14,18 +14,24 @@ class DailyMissionsScreen extends StatefulWidget {
 }
 
 class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
+  bool _isClaiming = false;
+
   Future<void> _handleClaim(
       BuildContext context, DailyMission mission, DailyMissionProvider provider) async {
+    if (_isClaiming) return;
+
+    setState(() => _isClaiming = true);
     final coinProvider = context.read<CoinProvider>();
 
-    final success = await provider.claimReward(
-      mission.id,
-      (reward) => coinProvider.addCoins(reward),
-    );
+    try {
+      final success = await provider.claimReward(
+        mission.id,
+        (reward) => coinProvider.addCoins(reward),
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (success) {
+      if (success) {
       final compliment = SparkStrings.randomCompliment();
       await Celebration.fire(context, tier: CelebrationTier.small);
       if (!mounted) return;
@@ -43,6 +49,13 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isClaiming = false);
+      } else {
+        _isClaiming = false;
+      }
     }
   }
 

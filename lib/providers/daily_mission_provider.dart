@@ -140,11 +140,20 @@ class DailyMissionProvider with ChangeNotifier {
       return false;
     }
 
+    // Optimistic lock: mark claimed before any await so double-taps exit early.
     mission.rewardClaimed = true;
-    await rewardCallback(mission.reward);
-    await _persist();
     notifyListeners();
-    return true;
+
+    try {
+      await rewardCallback(mission.reward);
+      await _persist();
+      return true;
+    } catch (e) {
+      mission.rewardClaimed = false;
+      notifyListeners();
+      debugPrint('claimReward failed, rolled back: $e');
+      return false;
+    }
   }
 
   Future<void> refreshMissions() async {

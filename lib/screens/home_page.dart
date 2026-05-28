@@ -63,7 +63,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final AudioPlayer _audioPlayer = AudioPlayer();
 
-  late final FlutterTts flutterTts;
+  FlutterTts? flutterTts;
   GoogleTtsService? _googleTts;
   SpeechFeedbackService? _speechFeedbackService;
   final SparkVoiceService _sparkVoiceService = SparkVoiceService();
@@ -121,7 +121,7 @@ class _MyHomePageState extends State<MyHomePage> {
         'streak': _streak,
       },
     );
-    flutterTts.stop();
+    flutterTts?.stop();
     unawaited(_speechFeedbackService?.cancelListening());
     _audioPlayer.dispose();
     _httpImageValidator?.dispose();
@@ -209,15 +209,18 @@ class _MyHomePageState extends State<MyHomePage> {
     String text, {
     required String languageCode,
   }) async {
-    await flutterTts.setLanguage(languageCode);
+    final tts = flutterTts;
+    if (tts == null) return;
+
+    await tts.setLanguage(languageCode);
     if (languageCode == 'he-IL') {
-      await flutterTts.setSpeechRate(0.4);
-      await flutterTts.setPitch(1.1);
+      await tts.setSpeechRate(0.4);
+      await tts.setPitch(1.1);
     } else {
-      await flutterTts.setSpeechRate(0.9);
-      await flutterTts.setPitch(1.0);
+      await tts.setSpeechRate(0.9);
+      await tts.setPitch(1.0);
     }
-    await flutterTts.speak(text);
+    await tts.speak(text);
   }
 
   Future<void> _loadWords({required bool remoteCapable}) async {
@@ -248,8 +251,11 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _configureTts() async {
+    final tts = flutterTts;
+    if (tts == null) return;
+
     try {
-      await flutterTts.setLanguage("en-US");
+      await tts.setLanguage("en-US");
     } catch (error, stackTrace) {
       debugPrint('TTS setLanguage failed: $error');
       debugPrint('$stackTrace');
@@ -257,7 +263,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     try {
       // Set slower speech rate for children (0.4-0.45 is ideal for kids learning)
-      await flutterTts.setSpeechRate(0.4);
+      await tts.setSpeechRate(0.4);
     } catch (error, stackTrace) {
       debugPrint('TTS setSpeechRate failed: $error');
       debugPrint('$stackTrace');
@@ -265,7 +271,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     try {
       // Set pitch for friendly, child-appropriate voice (slightly higher for warmth)
-      await flutterTts.setPitch(1.1);
+      await tts.setPitch(1.1);
     } catch (error, stackTrace) {
       debugPrint('TTS setPitch failed: $error');
       debugPrint('$stackTrace');
@@ -273,7 +279,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     try {
       // Set volume to comfortable level
-      await flutterTts.setVolume(0.9);
+      await tts.setVolume(0.9);
     } catch (error, stackTrace) {
       debugPrint('TTS setVolume failed: $error');
       debugPrint('$stackTrace');
@@ -383,8 +389,11 @@ class _MyHomePageState extends State<MyHomePage> {
           SparkStrings.cameraSpeakFound(newWord.word),
           languageCode: 'he-IL',
         );
-        await flutterTts.setLanguage('en-US');
-        await flutterTts.speak(newWord.word);
+        final tts = flutterTts;
+        if (tts != null) {
+          await tts.setLanguage('en-US');
+          await tts.speak(newWord.word);
+        }
         telemetry?.logCameraValidation(
           word: identifiedWord,
           accepted: true,
@@ -855,10 +864,12 @@ class _MyHomePageState extends State<MyHomePage> {
                                       ? null
                                       : () async {
                                           _soundService.playSound('pop');
-                                          await flutterTts.setLanguage("en-US");
-                                          await flutterTts.setSpeechRate(0.4);
-                                          await flutterTts.setPitch(1.1);
-                                          await flutterTts.speak(currentWordData.word);
+                                          final tts = flutterTts;
+                                          if (tts == null) return;
+                                          await tts.setLanguage("en-US");
+                                          await tts.setSpeechRate(0.4);
+                                          await tts.setPitch(1.1);
+                                          await tts.speak(currentWordData.word);
                                         },
                                   canGoNext: _currentIndex < _words.length - 1,
                                   canGoPrev: _currentIndex > 0,

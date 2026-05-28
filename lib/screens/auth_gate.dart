@@ -112,7 +112,11 @@ class _AuthGateState extends State<AuthGate> {
       debugPrint('Error syncing player data: $e');
     } finally {
       if (mounted) {
-        setState(() => _syncing = false);
+        setState(() {
+          _syncing = false;
+          // Unblock UI after sync attempt (success, timeout, or error).
+          _hasSynced = true;
+        });
       }
     }
   }
@@ -248,7 +252,8 @@ class _AuthGateState extends State<AuthGate> {
           if (authProvider.initializing ||
               _syncing ||
               _initializingProfiles ||
-              !profileProvider.initialized) {
+              !profileProvider.initialized ||
+              (authProvider.isAuthenticated && !_hasSynced)) {
             return const SparkOverlaySuppressor(
               child: Scaffold(
                 body: Center(child: CircularProgressIndicator()),

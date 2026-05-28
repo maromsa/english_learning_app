@@ -19,6 +19,7 @@ class CoinProvider with ChangeNotifier {
   int _coinsAtLevelStart = 0;
   String? _currentUserId;
   bool _isLocalUser = false;
+  bool _pendingCloudSync = false;
   final List<String> _ownedShopItemIds = [];
 
   Future<SharedPreferences> get _sharedPrefs async =>
@@ -43,6 +44,21 @@ class CoinProvider with ChangeNotifier {
   void setUserId(String? userId, {bool isLocalUser = false}) {
     _currentUserId = userId;
     _isLocalUser = isLocalUser;
+  }
+
+  /// Retries a deferred Firestore coin write after a prior cloud failure.
+  Future<void> flushPendingCloudSync() async {
+    if (!_pendingCloudSync || _currentUserId == null || _isLocalUser) {
+      return;
+    }
+
+    try {
+      await _userDataService.updateCoins(_currentUserId!, _coins);
+      _pendingCloudSync = false;
+    } catch (e) {
+      debugPrint('Cloud coin sync retry failed: $e');
+      _pendingCloudSync = true;
+    }
   }
 
   Future<void> loadCoins() async {
@@ -75,6 +91,7 @@ class CoinProvider with ChangeNotifier {
         _ownedShopItemIds.addAll(
           prefs.getStringList('user_${_currentUserId}_owned_shop_items') ?? [],
         );
+        await flushPendingCloudSync();
       }
       notifyListeners();
     } catch (e) {
@@ -110,6 +127,7 @@ class CoinProvider with ChangeNotifier {
   }
 
   Future<void> _saveCoins() async {
+    final previous = _coins;
     try {
       if (_currentUserId == null) {
         // Fallback to global coins if no user is set
@@ -121,15 +139,23 @@ class CoinProvider with ChangeNotifier {
       if (_isLocalUser) {
         // Save for local user
         await _localUserDataService.saveCoins(_currentUserId!, _coins);
-      } else {
-        // Save locally for Firebase user
-        final prefs = await _sharedPrefs;
-        await prefs.setInt('user_${_currentUserId}_coins', _coins);
-        // Also save to cloud
+        return;
+      }
+
+      // Firebase user: persist locally first, then cloud (defer on cloud failure).
+      final prefs = await _sharedPrefs;
+      await prefs.setInt('user_${_currentUserId}_coins', _coins);
+      try {
         await _userDataService.updateCoins(_currentUserId!, _coins);
+        _pendingCloudSync = false;
+      } catch (cloudError) {
+        debugPrint('Cloud coin sync deferred: $cloudError');
+        _pendingCloudSync = true;
       }
     } catch (e) {
-      debugPrint('Error saving coins: $e');
+      debugPrint('Critical: coin save failed, rolling back: $e');
+      _coins = previous;
+      notifyListeners();
     }
   }
 

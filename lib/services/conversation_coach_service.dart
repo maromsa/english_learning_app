@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../app_config.dart';
 import '../providers/user_session_provider.dart';
 import '../models/local_user.dart';
+import '../utils/safe_display_name.dart';
 import 'gemini_proxy_service.dart';
 
 typedef _ConversationGenerator = Future<String?> Function(String prompt);
@@ -159,11 +160,11 @@ class ConversationCoachService {
     AppSessionUser? user,
     LocalUser? localUser,
   }) {
-    final userName = user?.name ?? localUser?.name;
+    final userName = sanitizeDisplayName(user?.name ?? localUser?.name);
     final userAge = localUser?.age;
     
     final contextMap = setup.toMap();
-    if (userName != null && userName.isNotEmpty) {
+    if (userName.isNotEmpty) {
       contextMap['learnerName'] = userName;
     }
     if (userAge != null) {
@@ -171,7 +172,7 @@ class ConversationCoachService {
     }
     
     final contextJson = jsonEncode(contextMap);
-    final greetingInstruction = userName != null && userName.isNotEmpty
+    final greetingInstruction = userName.isNotEmpty
         ? 'Start by greeting the learner by name: "שלום $userName!" or "היי $userName!"'
         : 'Start with a warm greeting.';
     
@@ -202,11 +203,11 @@ Output JSON (no markdown fences) with keys:
     AppSessionUser? user,
     LocalUser? localUser,
   }) {
-    final userName = user?.name ?? localUser?.name;
+    final userName = sanitizeDisplayName(user?.name ?? localUser?.name);
     final userAge = localUser?.age;
     
     final setupMap = setup.toMap();
-    if (userName != null && userName.isNotEmpty) {
+    if (userName.isNotEmpty) {
       setupMap['learnerName'] = userName;
     }
     if (userAge != null) {

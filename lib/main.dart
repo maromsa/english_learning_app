@@ -48,6 +48,11 @@ Future<void> main() async {
 
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Cap decoded image cache to reduce memory pressure on low-end devices.
+  final imageCache = PaintingBinding.instance.imageCache;
+  imageCache.maximumSize = 100;
+  imageCache.maximumSizeBytes = 50 << 20;
+
   if (!kIsWeb) {
     try {
       await dotenv.load(fileName: '.env');

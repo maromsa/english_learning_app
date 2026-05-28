@@ -226,7 +226,10 @@ class WordRepository {
             stickerUnlocked: word.stickerUnlocked,
           ),
         );
-      } catch (_) {
+      } catch (e) {
+        debugPrint(
+          'WordRepository: web image fetch failed for "${word.word}": $e',
+        );
         results.add(word);
       }
     }

@@ -200,23 +200,26 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
 
       if (!mounted) return;
       setState(() {
-        _isEvaluating = false;
         _lastFeedback = feedback;
         _lastAttemptSuccess = feedback.isStrongAttempt;
         _lastSuccessAt =
             feedback.isStrongAttempt ? DateTime.now() : null;
         _statusHint = null;
       });
-      widget.onEvaluatingChanged?.call(false);
 
       widget.onFeedback?.call(feedback, heard);
     } catch (error) {
       debugPrint('PronunciationMicButton evaluate error: $error');
       if (!mounted) return;
       setState(() {
-        _isEvaluating = false;
         _statusHint = SparkStrings.micRetry;
       });
+    } finally {
+      if (mounted) {
+        setState(() => _isEvaluating = false);
+      } else {
+        _isEvaluating = false;
+      }
       widget.onEvaluatingChanged?.call(false);
     }
   }
