@@ -2,6 +2,8 @@
 
 Gamified English-learning Flutter app with optional AI coaching and camera powered vocabulary building.
 
+**🚀 Live Demo: [Play on GitHub Pages](https://maromsa.github.io/english_learning_app/)**
+
 ## Getting Started
 
 This project targets families and teachers who want fun English vocabulary
@@ -109,7 +111,7 @@ dart run scripts/upload_words.dart \
 
 The fallback lesson artwork is generated from OpenMoji icons with a small set of custom illustrations. Run `python3 scripts/generate_word_images.py` whenever you need to rebuild the assets under `assets/images/words/`. See `docs/ICON_ATTRIBUTION.md` for licence details.
 
-## Continuous Integration
+## 🌍 Try it Live (Deployment)
 
 ### GitHub Pages preview (free)
 
@@ -132,3 +134,7 @@ Set these repository secrets to enable it (Appetize offers a limited free tier):
 - `APPETIZE_PUBLIC_KEY` (optional but recommended): The public key of the Appetize app you want to overwrite. Leave it empty the first time you run the workflow; copy the `publicKey` output from the workflow run and add it as the secret so subsequent runs update the same hosted build.
 
 Both workflows also support manual triggers via the `workflow_dispatch` event.
+
+## Continuous Integration
+
+Workflow definitions live under [`.github/workflows/`](.github/workflows/) (tests, GitHub Pages deploy, and optional Appetize upload).
