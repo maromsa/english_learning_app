@@ -1,6 +1,8 @@
 // test/providers/coin_provider_test.dart
-import 'package:flutter_test/flutter_test.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/services/user_data_service.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -9,7 +11,9 @@ void main() {
 
     setUp(() {
       SharedPreferences.setMockInitialValues({});
-      coinProvider = CoinProvider();
+      coinProvider = CoinProvider(
+        userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
+      );
     });
 
     test('initial coins should be 0', () {
@@ -72,7 +76,7 @@ void main() {
 
     test('startLevel should track level start coins', () async {
       await coinProvider.setCoins(50);
-      coinProvider.startLevel();
+      await coinProvider.startLevel('test_level');
       await coinProvider.addCoins(20);
       expect(coinProvider.levelCoins, 20);
       expect(coinProvider.coins, 70);
@@ -82,7 +86,9 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('totalCoins', 75);
 
-      final newProvider = CoinProvider();
+      final newProvider = CoinProvider(
+        userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
+      );
       await newProvider.loadCoins();
       expect(newProvider.coins, 75);
     });

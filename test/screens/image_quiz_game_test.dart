@@ -14,15 +14,20 @@
 // override parameters on `ImageQuizGame` so no network or SharedPreferences
 // access is required.
 
+import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/word_data.dart';
+import 'package:english_learning_app/widgets/ui/kid_button.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/image_quiz_game.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
+import 'package:english_learning_app/services/user_data_service.dart';
+import 'package:english_learning_app/utils/device_connectivity.dart';
 import 'package:english_learning_app/services/word_mastery_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -31,6 +36,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 // ---------------------------------------------------------------------------
 // Minimal fake implementations — only the behaviour the widget actually calls.
 // ---------------------------------------------------------------------------
+
+class _FakeConnectivity extends DeviceConnectivity {
+  const _FakeConnectivity({required this.online});
+
+  final bool online;
+
+  @override
+  Future<bool> isOnline({Duration timeout = const Duration(seconds: 3)}) async =>
+      online;
+}
 
 /// A [WordRepository] stub that immediately returns [words] without touching
 /// SharedPreferences, Cloudinary, or the network.
@@ -47,6 +62,7 @@ class _FakeWordRepository extends WordRepository {
     String tagName = '',
     int maxResults = 50,
     String cacheNamespace = 'default',
+    bool preferCacheOnly = false,
   }) async {
     return words;
   }
@@ -123,7 +139,12 @@ Future<_FakeLevelProgressService> _pumpQuiz(
   await tester.pumpWidget(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => CoinProvider()),
+        ChangeNotifierProvider(
+          create: (_) => CoinProvider(
+            userDataService:
+                UserDataService(firestore: FakeFirebaseFirestore()),
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => SparkOverlayController()),
         ChangeNotifierProvider(create: (_) => UserSessionProvider()),
         ChangeNotifierProvider(create: (_) => DailyMissionProvider()),
@@ -152,6 +173,14 @@ Future<_FakeLevelProgressService> _pumpQuiz(
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    DeviceConnectivity.testOverride = const _FakeConnectivity(online: false);
+  });
+
+  tearDown(() {
+    DeviceConnectivity.testOverride = null;
+  });
 
   // ── Sorting guarantee ──────────────────────────────────────────────────────
   group('Spaced-repetition sort order', () {
@@ -216,7 +245,7 @@ void main() {
 
       // Expect the insufficient-words message, not a quiz card.
       expect(
-        find.textContaining('נדרשות לפחות'),
+        find.text(SparkStrings.quizNeedMoreWords),
         findsOneWidget,
         reason: 'Should show the "not enough words" message',
       );
@@ -259,17 +288,25 @@ void main() {
       );
       expect(tiles, findsNWidgets(4));
 
-      // Tap the first tile (may be correct or wrong — we just need a tap).
-      await tester.tap(tiles.first, warnIfMissed: false);
+      // Tap the correct option (first question target is Apple).
+      final appleOption = find.byKey(const ValueKey('Apple'));
+      await tester.ensureVisible(appleOption);
+      await tester.tap(
+        find.descendant(of: appleOption, matching: find.byType(InkWell)),
+      );
       await tester.pumpAndSettle();
 
-      // "Next question" button should now be enabled.
-      final nextBtn = find.widgetWithText(ElevatedButton, 'Next question');
-      expect(nextBtn, findsOneWidget);
-      final ElevatedButton btn = tester.widget(nextBtn);
+      // Next-question button should now be enabled.
+      expect(find.text(SparkStrings.quizNextQuestion), findsOneWidget);
+      final nextButtons = tester
+          .widgetList<KidButton>(find.byType(KidButton))
+          .where(
+            (b) =>
+                b.label == SparkStrings.quizNextQuestion && b.onPressed != null,
+          );
       expect(
-        btn.onPressed,
-        isNotNull,
+        nextButtons.length,
+        1,
         reason: 'Next question button should be enabled after an answer',
       );
     });
@@ -308,9 +345,8 @@ void main() {
         }
 
         // Wrong — tap "Next question" and try again with the next question.
-        final next = find.widgetWithText(ElevatedButton, 'Next question');
-        if (next.evaluate().isNotEmpty) {
-          await tester.tap(next, warnIfMissed: false);
+        if (find.text(SparkStrings.quizNextQuestion).evaluate().isNotEmpty) {
+          await tester.tap(find.text(SparkStrings.quizNextQuestion));
           await tester.pumpAndSettle();
         }
       }
@@ -417,18 +453,16 @@ void main() {
       final firstWordTexts =
           firstWordFinder.evaluate().map((e) => (e.widget as Text).data).toList();
 
-      // Tap any tile to answer.
-      final gridFinder = find.byType(GridView);
-      final tile = find.descendant(
-        of: gridFinder,
-        matching: find.byType(InkWell),
-      ).first;
-      await tester.tap(tile, warnIfMissed: false);
+      // Tap the correct option for the first question.
+      final appleOption = find.byKey(const ValueKey('Apple'));
+      await tester.ensureVisible(appleOption);
+      await tester.tap(
+        find.descendant(of: appleOption, matching: find.byType(InkWell)),
+      );
       await tester.pumpAndSettle();
 
-      // Tap "Next question".
-      final nextBtn = find.widgetWithText(ElevatedButton, 'Next question');
-      await tester.tap(nextBtn, warnIfMissed: false);
+      // Tap next question.
+      await tester.tap(find.text(SparkStrings.quizNextQuestion));
       await tester.pumpAndSettle();
 
       // A new question card is displayed (we just verify the screen is still live).

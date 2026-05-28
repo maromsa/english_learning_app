@@ -46,6 +46,8 @@ void main() {
     },
     skip: proxyUrl.isEmpty
         ? 'GEMINI_PROXY_URL not set'
-        : false,
+        : (Platform.environment['CI'] == 'true'
+            ? 'Skipped in CI (live integration)'
+            : false),
   );
 }

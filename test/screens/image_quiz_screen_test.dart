@@ -1,11 +1,13 @@
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/image_quiz_screen.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
+import 'package:english_learning_app/utils/device_connectivity.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,6 +44,16 @@ List<WordData> _testWords() => [
       WordData(word: 'Grape', publicId: 'grape', imageUrl: null),
     ];
 
+class _FakeConnectivity extends DeviceConnectivity {
+  const _FakeConnectivity({required this.online});
+
+  final bool online;
+
+  @override
+  Future<bool> isOnline({Duration timeout = const Duration(seconds: 3)}) async =>
+      online;
+}
+
 /// Returns words immediately for tests (no network/cache).
 class FakeWordRepository extends WordRepository {
   FakeWordRepository(this.words, {SharedPreferences? prefs})
@@ -57,6 +69,7 @@ class FakeWordRepository extends WordRepository {
     String tagName = '',
     int maxResults = 50,
     String cacheNamespace = 'default',
+    bool preferCacheOnly = false,
   }) async => List<WordData>.from(words);
 }
 
@@ -65,16 +78,23 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    DeviceConnectivity.testOverride = const _FakeConnectivity(online: false);
+  });
+
+  tearDown(() {
+    DeviceConnectivity.testOverride = null;
   });
 
   testWidgets('ImageQuizScreen shows loading then content when words loaded',
       (tester) async {
     SharedPreferences.setMockInitialValues({});
-    final coinProvider = CoinProvider(
-      userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
-    );
+    final userDataService =
+        UserDataService(firestore: FakeFirebaseFirestore());
+    final coinProvider = CoinProvider(userDataService: userDataService);
     final sparkController = SparkOverlayController();
     final userSession = UserSessionProvider();
+    final achievementService =
+        AchievementService(userDataService: userDataService);
 
     await tester.pumpWidget(
       MultiProvider(
@@ -84,6 +104,9 @@ void main() {
             value: sparkController,
           ),
           ChangeNotifierProvider<UserSessionProvider>.value(value: userSession),
+          ChangeNotifierProvider<AchievementService>.value(
+            value: achievementService,
+          ),
         ],
         child: MaterialApp(
           home: ImageQuizScreen(
@@ -95,22 +118,22 @@ void main() {
       ),
     );
 
-    await tester.pump();
-    // With FakeWordRepository load may complete in same frame; allow one more frame for async
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpAndSettle(const Duration(seconds: 3));
 
-    // After load we should see the question area (target word)
-    expect(find.text('Apple'), findsWidgets);
+    // After load we should see at least one answer option.
+    expect(find.byKey(const Key('option_Apple')), findsOneWidget);
   });
 
   testWidgets('correct answer calls markWordCompleted and addCoins', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final fakeProgress = FakeLevelProgressService();
-    final coinProvider = CoinProvider(
-      userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
-    );
+    final userDataService =
+        UserDataService(firestore: FakeFirebaseFirestore());
+    final coinProvider = CoinProvider(userDataService: userDataService);
     final sparkController = SparkOverlayController();
     final userSession = UserSessionProvider();
+    final achievementService =
+        AchievementService(userDataService: userDataService);
 
     await tester.pumpWidget(
       MultiProvider(
@@ -120,6 +143,9 @@ void main() {
             value: sparkController,
           ),
           ChangeNotifierProvider<UserSessionProvider>.value(value: userSession),
+          ChangeNotifierProvider<AchievementService>.value(
+            value: achievementService,
+          ),
         ],
         child: MaterialApp(
           home: ImageQuizScreen(
@@ -132,8 +158,7 @@ void main() {
       ),
     );
 
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle(const Duration(seconds: 3));
 
     final initialCoins = coinProvider.coins;
 

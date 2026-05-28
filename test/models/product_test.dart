@@ -8,8 +8,12 @@ void main() {
       final product = Product(
         id: 'test_id',
         name: 'Test Product',
+        englishName: 'Test Product',
         price: 100,
         assetImagePath: 'assets/test.jpg',
+        category: ProductCategory.accessories,
+        rarity: ProductRarity.common,
+        description: 'A test product',
       );
       expect(product.id, 'test_id');
       expect(product.name, 'Test Product');
@@ -21,8 +25,12 @@ void main() {
       final product = Product(
         id: 'magic_hat',
         name: 'Magic Hat',
+        englishName: 'Magic Hat',
         price: 50,
         assetImagePath: 'assets/images/magic_hat.jpg',
+        category: ProductCategory.magical,
+        rarity: ProductRarity.rare,
+        description: 'A magical hat',
       );
       expect(product.id, 'magic_hat');
       expect(product.name, 'Magic Hat');
