@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "childProfiles",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "coins",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "dailyStreak",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
