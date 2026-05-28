@@ -116,7 +116,8 @@ class KidButton extends StatefulWidget {
   State<KidButton> createState() => _KidButtonState();
 }
 
-class _KidButtonState extends State<KidButton> with SingleTickerProviderStateMixin {
+class _KidButtonState extends State<KidButton>
+    with SingleTickerProviderStateMixin {
   static const double _idleShadowOffset = 8;
   static const double _pressedShadowOffset = 2;
   static const double _pressedTranslateY = 6;
@@ -199,10 +200,11 @@ class _KidButtonState extends State<KidButton> with SingleTickerProviderStateMix
     Widget buttonFace = AnimatedBuilder(
       animation: _pressAnimation,
       builder: (context, child) {
-        final pressT = _isEnabled && !reduceMotion ? _pressAnimation.value : 0.0;
+        final pressT =
+            _isEnabled && !reduceMotion ? _pressAnimation.value : 0.0;
         final translateY = _pressedTranslateY * pressT;
-        final shadowOffsetY =
-            _idleShadowOffset + ((_pressedShadowOffset - _idleShadowOffset) * pressT);
+        final shadowOffsetY = _idleShadowOffset +
+            ((_pressedShadowOffset - _idleShadowOffset) * pressT);
 
         return Transform.translate(
           offset: Offset(0, translateY),
@@ -245,7 +247,8 @@ class _KidButtonState extends State<KidButton> with SingleTickerProviderStateMix
                       ],
                       Text(
                         widget.label,
-                        style: theme.textTheme.labelLarge?.copyWith(color: labelColor),
+                        style: theme.textTheme.labelLarge
+                            ?.copyWith(color: labelColor),
                       ),
                     ],
                   ),

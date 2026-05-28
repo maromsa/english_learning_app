@@ -1,8 +1,8 @@
 // lib/widgets/achievement_notification.dart
 import 'package:english_learning_app/l10n/spark_strings.dart';
-import 'package:flutter/material.dart';
 import 'package:english_learning_app/models/achievement.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
+import 'package:flutter/material.dart';
 
 /// Glassmorphism toast for a newly unlocked achievement. Auto-dismisses after 3 seconds.
 class AchievementNotification extends StatefulWidget {
@@ -100,7 +100,8 @@ class _AchievementNotificationState extends State<AchievementNotification>
                       Text(
                         widget.achievement.description,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.8),
                         ),
                       ),
                     ],

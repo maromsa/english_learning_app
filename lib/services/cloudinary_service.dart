@@ -1,11 +1,8 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-import 'network/app_http_client.dart';
-
 import '../models/word_data.dart';
+import 'network/app_http_client.dart';
 
 class CloudinaryService {
   CloudinaryService({AppHttpClient? httpClient})
@@ -50,7 +47,9 @@ class CloudinaryService {
           continue;
         }
 
-        final tags = List<String>.from(resource['tags'] ?? []);
+        final tags = List<String>.from(
+          (resource['tags'] as List<dynamic>?) ?? const <dynamic>[],
+        );
         final wordTag = tags.firstWhere(
           (tag) => tag != tagName,
           orElse: () => '',

@@ -46,7 +46,8 @@ void main() {
       expect(quest.title, 'הפתעת ספרק');
     });
 
-    test('throws when the generator reports an unavailable connection', () async {
+    test('throws when the generator reports an unavailable connection',
+        () async {
       final service = AdventureLabService(generator: (_) async => null);
 
       expect(

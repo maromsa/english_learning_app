@@ -78,4 +78,3 @@ class CharacterAvatar extends StatelessWidget {
     return avatar;
   }
 }
-

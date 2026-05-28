@@ -169,8 +169,7 @@ class ChildProfile {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       totalStars: totalStars ?? this.totalStars,
       dailyStreak: dailyStreak ?? this.dailyStreak,
-      completedWordsCount:
-          completedWordsCount ?? this.completedWordsCount,
+      completedWordsCount: completedWordsCount ?? this.completedWordsCount,
       achievements: achievements ?? this.achievements,
       coins: coins ?? this.coins,
       createdAt: createdAt ?? this.createdAt,

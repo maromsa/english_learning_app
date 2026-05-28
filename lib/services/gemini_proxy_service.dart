@@ -117,12 +117,15 @@ class GeminiProxyService {
     };
     debugPrint('[GeminiProxyService] Sending payload: ${jsonEncode(payload)}');
     debugPrint(
-        '[GeminiProxyService] systemInstruction present: ${systemInstruction != null}');
+      '[GeminiProxyService] systemInstruction present: ${systemInstruction != null}',
+    );
     if (systemInstruction != null) {
       debugPrint(
-          '[GeminiProxyService] systemInstruction length: ${systemInstruction.length}');
+        '[GeminiProxyService] systemInstruction length: ${systemInstruction.length}',
+      );
       debugPrint(
-          '[GeminiProxyService] systemInstruction preview: ${systemInstruction.substring(0, systemInstruction.length > 100 ? 100 : systemInstruction.length)}...');
+        '[GeminiProxyService] systemInstruction preview: ${systemInstruction.substring(0, systemInstruction.length > 100 ? 100 : systemInstruction.length)}...',
+      );
     }
     final response = await _postJson(payload);
 
@@ -155,38 +158,48 @@ class GeminiProxyService {
   }) async {
     final promptBuffer = StringBuffer()
       ..writeln(
-          'You are Spark, an energetic AI guide helping Hebrew-speaking kids aged 5–10 learn English vocabulary.')
+        'You are Spark, an energetic AI guide helping Hebrew-speaking kids aged 5–10 learn English vocabulary.',
+      )
       ..writeln(
-          'You see a single image that represents the child\\\'s surroundings. Describe the scene in friendly Hebrew, while gently teaching English words.')
+        'You see a single image that represents the child\\\'s surroundings. Describe the scene in friendly Hebrew, while gently teaching English words.',
+      )
       ..writeln()
       ..writeln('GOALS:')
       ..writeln('- Give a short, vivid description of what you see.')
       ..writeln(
-          '- Highlight 2–5 important objects using their English names (single words), and explain them in simple Hebrew.')
+        '- Highlight 2–5 important objects using their English names (single words), and explain them in simple Hebrew.',
+      )
       ..writeln(
-          '- Ask the learner to find or point to specific objects and say their names in English.')
+        '- Ask the learner to find or point to specific objects and say their names in English.',
+      )
       ..writeln()
       ..writeln('OUTPUT JSON (no markdown, no extra text):')
       ..writeln('{')
       ..writeln('  "description": string,')
       ..writeln(
-          '  "targetObjects": string[],        // 2–5 English nouns that appear clearly in the image')
+        '  "targetObjects": string[],        // 2–5 English nouns that appear clearly in the image',
+      )
       ..writeln(
-          '  "hebrewTeachingPoints": string[], // 2–4 short Hebrew tips about how to say or remember the English words')
+        '  "hebrewTeachingPoints": string[], // 2–4 short Hebrew tips about how to say or remember the English words',
+      )
       ..writeln(
-          '  "quizQuestions": string[],        // 2–4 short Hebrew questions asking the learner to find or name things in English')
+        '  "quizQuestions": string[],        // 2–4 short Hebrew questions asking the learner to find or name things in English',
+      )
       ..writeln(
-          '  "safetyNote": string             // optional: very short note confirming the scene looks safe for a child')
+        '  "safetyNote": string             // optional: very short note confirming the scene looks safe for a child',
+      )
       ..writeln('}');
 
     if (learnerName != null && learnerName.trim().isNotEmpty) {
       promptBuffer.writeln();
       promptBuffer.writeln(
-          'Use the learner\\\'s name "$learnerName" once in the description or a quiz question.');
+        'Use the learner\\\'s name "$learnerName" once in the description or a quiz question.',
+      );
     }
     if (learnerAge != null) {
       promptBuffer.writeln(
-          'Adapt explanations to a child about $learnerAge years old (keep language simple and positive).');
+        'Adapt explanations to a child about $learnerAge years old (keep language simple and positive).',
+      );
     }
 
     final response = await _postJson({
@@ -225,7 +238,8 @@ class GeminiProxyService {
     if (cacheKey != null) {
       final cached = _responseCache.get(cacheKey);
       if (cached != null) {
-        debugPrint('[GeminiProxyService] Cache hit for mode=${payload['mode']}');
+        debugPrint(
+            '[GeminiProxyService] Cache hit for mode=${payload['mode']}');
         return cached;
       }
     }
@@ -244,7 +258,8 @@ class GeminiProxyService {
       );
 
       debugPrint(
-          '[GeminiProxyService] Response status: ${response.statusCode}');
+        '[GeminiProxyService] Response status: ${response.statusCode}',
+      );
       debugPrint('[GeminiProxyService] Response body: ${response.data}');
 
       if (response.statusCode != 200) {
@@ -297,7 +312,8 @@ class GeminiProxyService {
             '[GeminiProxyService] 🔥 Transient server error $statusCode — '
             'the proxy or Gemini backend returned a 5xx response.',
           );
-          debugPrint('[GeminiProxyService] Response body: ${error.response?.data}');
+          debugPrint(
+              '[GeminiProxyService] Response body: ${error.response?.data}');
           return null;
         }
 
@@ -306,7 +322,8 @@ class GeminiProxyService {
           '[GeminiProxyService] ❌ Unrecoverable HTTP $statusCode error — '
           'message: ${error.message}',
         );
-        debugPrint('[GeminiProxyService] Response body: ${error.response?.data}');
+        debugPrint(
+            '[GeminiProxyService] Response body: ${error.response?.data}');
         debugPrint('$stackTrace');
         return null;
       }

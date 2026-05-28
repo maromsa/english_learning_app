@@ -40,14 +40,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (mounted) {
       final telemetry = TelemetryService.maybeOf(context);
       telemetry?.logOnboardingCompleted(
-      tipIds:
-          personalization?.insights.map((tip) => tip.id).toList() ??
-          const <String>[],
-      returningLearner: personalization?.isReturningLearner ?? false,
-      appliedRules: personalization?.appliedRules ?? const <String>[],
-      millisecondsToComplete: DateTime.now()
-          .difference(_viewStartedAt)
-          .inMilliseconds,
+        tipIds: personalization?.insights.map((tip) => tip.id).toList() ??
+            const <String>[],
+        returningLearner: personalization?.isReturningLearner ?? false,
+        appliedRules: personalization?.appliedRules ?? const <String>[],
+        millisecondsToComplete:
+            DateTime.now().difference(_viewStartedAt).inMilliseconds,
       );
     }
 

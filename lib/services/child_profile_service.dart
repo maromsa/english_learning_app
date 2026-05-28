@@ -12,13 +12,15 @@ class ChildProfileService {
   ChildProfileService({
     SharedPreferences? prefs,
     LocalUserService? localUserService,
-  })  : _prefsFuture =
-            prefs != null ? Future.value(prefs) : SharedPreferences.getInstance(),
+  })  : _prefsFuture = prefs != null
+            ? Future.value(prefs)
+            : SharedPreferences.getInstance(),
         _localUserService = localUserService ?? LocalUserService();
 
   static const String _profilesKey = 'child_profiles_v1';
   static const String _activeProfileIdKey = 'active_child_profile_id';
-  static const String _migrationKey = 'child_profiles_migrated_from_local_users';
+  static const String _migrationKey =
+      'child_profiles_migrated_from_local_users';
 
   final Future<SharedPreferences> _prefsFuture;
   final LocalUserService _localUserService;
@@ -125,8 +127,7 @@ class ChildProfileService {
       profile.copyWith(
         totalStars: totalStars ?? profile.totalStars,
         dailyStreak: dailyStreak ?? profile.dailyStreak,
-        completedWordsCount:
-            completedWordsCount ?? profile.completedWordsCount,
+        completedWordsCount: completedWordsCount ?? profile.completedWordsCount,
         achievements: achievements ?? profile.achievements,
         coins: coins ?? profile.coins,
         updatedAt: DateTime.now(),
@@ -222,7 +223,8 @@ class ChildProfileService {
 
   Future<void> _writeProfiles(List<ChildProfile> profiles) async {
     final prefs = await _prefsFuture;
-    final encoded = jsonEncode(profiles.map((profile) => profile.toMap()).toList());
+    final encoded =
+        jsonEncode(profiles.map((profile) => profile.toMap()).toList());
     await prefs.setString(_profilesKey, encoded);
   }
 

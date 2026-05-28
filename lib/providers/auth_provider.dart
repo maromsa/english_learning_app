@@ -29,15 +29,16 @@ class AuthProvider extends ChangeNotifier {
     FirebaseAuth? auth,
     GoogleSignIn? googleSignIn,
     AuthService? authService,
-  }) : _auth = auth ?? FirebaseAuth.instance,
-       _googleSignIn = googleSignIn ?? GoogleSignIn.instance,
-       _authService = authService ?? AuthService() {
+  })  : _auth = auth ?? FirebaseAuth.instance,
+        _googleSignIn = googleSignIn ?? GoogleSignIn.instance,
+        _authService = authService ?? AuthService() {
     // Check current auth state immediately
     final currentUser = _auth.currentUser;
     if (currentUser != null) {
       _firebaseUser = currentUser;
       // Load user profile asynchronously with timeout
-      _authService.getUser(currentUser.uid)
+      _authService
+          .getUser(currentUser.uid)
           .timeout(const Duration(seconds: 3))
           .then((user) {
         _appUser = user;
@@ -52,11 +53,11 @@ class AuthProvider extends ChangeNotifier {
       _initializing = false;
       notifyListeners();
     }
-    
+
     _authSubscription = _auth.authStateChanges().listen(
-      _handleAuthStateChanged,
-    );
-    
+          _handleAuthStateChanged,
+        );
+
     // Set a timeout to prevent infinite loading
     Future.delayed(const Duration(seconds: 3), () {
       if (_initializing) {
@@ -114,7 +115,7 @@ class AuthProvider extends ChangeNotifier {
 
         // Get authentication tokens
         final googleAuth = googleUser.authentication;
-        
+
         // Get access token via authorization client if needed
         String? accessToken;
         try {
@@ -128,7 +129,7 @@ class AuthProvider extends ChangeNotifier {
           debugPrint('Failed to get access token: $e');
           // Continue with just idToken
         }
-        
+
         final credential = GoogleAuthProvider.credential(
           accessToken: accessToken,
           idToken: googleAuth.idToken,
@@ -137,13 +138,15 @@ class AuthProvider extends ChangeNotifier {
         await _auth.signInWithCredential(credential).timeout(
           const Duration(seconds: 15),
           onTimeout: () {
-            throw TimeoutException('Sign-in credential verification timed out. Please try again.');
+            throw TimeoutException(
+                'Sign-in credential verification timed out. Please try again.');
           },
         );
       }
     } on TimeoutException catch (e) {
       debugPrint('Sign-in timeout: $e');
-      _errorMessage = e.message ?? 'Sign-in timed out. Please check your internet connection and try again.';
+      _errorMessage = e.message ??
+          'Sign-in timed out. Please check your internet connection and try again.';
       notifyListeners();
     } on FirebaseAuthException catch (e) {
       debugPrint('Firebase auth error: ${e.code} - ${e.message}');
@@ -200,15 +203,15 @@ class AuthProvider extends ChangeNotifier {
     try {
       // Add timeout to prevent hanging on user sync
       _appUser = await _authService.upsertUser(user).timeout(
-        const Duration(seconds: 5),
-      );
+            const Duration(seconds: 5),
+          );
     } on TimeoutException {
       debugPrint('User sync timed out, continuing without sync');
       // If timeout occurs, try to get existing user or leave _appUser as null
       try {
         _appUser = await _authService.getUser(user.uid).timeout(
-          const Duration(seconds: 2),
-        );
+              const Duration(seconds: 2),
+            );
       } catch (e) {
         debugPrint('Failed to get existing user: $e');
         // Leave _appUser as null if we can't get it

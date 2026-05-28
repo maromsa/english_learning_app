@@ -91,7 +91,8 @@ void main() {
       },
     );
 
-    test('should have coin_collector and map_builder with requirementValue', () {
+    test('should have coin_collector and map_builder with requirementValue',
+        () {
       final coinCollector = achievementService.achievements
           .firstWhere((a) => a.id == 'coin_collector');
       final mapBuilder = achievementService.achievements

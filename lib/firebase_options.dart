@@ -64,7 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '923322418087',
     projectId: 'englishkidsapp-916be',
     storageBucket: 'englishkidsapp-916be.firebasestorage.app',
-    iosClientId: '923322418087-j8334mtruusn6r166hmsf3vd2gcq4iug.apps.googleusercontent.com',
+    iosClientId:
+        '923322418087-j8334mtruusn6r166hmsf3vd2gcq4iug.apps.googleusercontent.com',
     iosBundleId: 'com.example.englishAppFinal',
   );
 
@@ -74,7 +75,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '923322418087',
     projectId: 'englishkidsapp-916be',
     storageBucket: 'englishkidsapp-916be.firebasestorage.app',
-    iosClientId: '923322418087-j8334mtruusn6r166hmsf3vd2gcq4iug.apps.googleusercontent.com',
+    iosClientId:
+        '923322418087-j8334mtruusn6r166hmsf3vd2gcq4iug.apps.googleusercontent.com',
     iosBundleId: 'com.example.englishAppFinal',
   );
 
@@ -87,5 +89,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'englishkidsapp-916be.firebasestorage.app',
     measurementId: 'G-GFV3QLCJ5K',
   );
-
 }

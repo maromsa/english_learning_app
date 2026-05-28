@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:english_learning_app/firebase_options.dart';
 import 'package:english_learning_app/providers/auth_provider.dart';
@@ -6,20 +7,20 @@ import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/shop_provider.dart';
-import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
+import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/speech_feedback_service.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'dart:ui';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'providers/child_profile_provider.dart';
+import 'providers/user_session_provider.dart';
 import 'screens/auth_gate.dart';
 import 'services/background_music_service.dart';
 import 'services/sound_service.dart';
@@ -27,8 +28,6 @@ import 'services/telemetry_service.dart';
 import 'utils/app_theme.dart';
 import 'utils/route_observer.dart';
 import 'utils/spark_route_observer.dart';
-import 'providers/user_session_provider.dart';
-import 'providers/child_profile_provider.dart';
 import 'widgets/living_spark.dart';
 
 Future<void> main() async {
@@ -103,41 +102,46 @@ Future<void> main() async {
   final soundService = SoundService();
 
   // Load persisted data in parallel with timeouts to prevent hanging
-  await Future.wait([
-    coinProvider.loadCoins().timeout(
-      const Duration(seconds: 3),
-      onTimeout: () {
-        debugPrint('Coin loading timed out, continuing with default value');
-      },
-    ).catchError((e) {
-      debugPrint('Error loading coins: $e');
-    }),
-    themeProvider.loadTheme().timeout(
-      const Duration(seconds: 3),
-      onTimeout: () {
-        debugPrint('Theme loading timed out, continuing with default theme');
-      },
-    ).catchError((e) {
-      debugPrint('Error loading theme: $e');
-    }),
-    shopProvider.loadPurchasedItems().timeout(
-      const Duration(seconds: 3),
-      onTimeout: () {
-        debugPrint('Shop items loading timed out, continuing with empty list');
-      },
-    ).catchError((e) {
-      debugPrint('Error loading shop items: $e');
-    }),
-    dailyMissionProvider.initialize().timeout(
-      const Duration(seconds: 3),
-      onTimeout: () {
-        debugPrint(
-            'Daily missions initialization timed out, continuing anyway');
-      },
-    ).catchError((e) {
-      debugPrint('Error initializing daily missions: $e');
-    }),
-  ], eagerError: false); // Don't fail if one fails
+  await Future.wait(
+    [
+      coinProvider.loadCoins().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('Coin loading timed out, continuing with default value');
+        },
+      ).catchError((e) {
+        debugPrint('Error loading coins: $e');
+      }),
+      themeProvider.loadTheme().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('Theme loading timed out, continuing with default theme');
+        },
+      ).catchError((e) {
+        debugPrint('Error loading theme: $e');
+      }),
+      shopProvider.loadPurchasedItems().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint(
+              'Shop items loading timed out, continuing with empty list');
+        },
+      ).catchError((e) {
+        debugPrint('Error loading shop items: $e');
+      }),
+      dailyMissionProvider.initialize().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint(
+            'Daily missions initialization timed out, continuing anyway',
+          );
+        },
+      ).catchError((e) {
+        debugPrint('Error initializing daily missions: $e');
+      }),
+    ],
+    eagerError: false,
+  ); // Don't fail if one fails
 
   // Initialize background music service (music will only play on MapScreen)
   backgroundMusicService.initialize().catchError((error) {
@@ -188,7 +192,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final sparkController = Provider.of<SparkOverlayController>(context, listen: false);
+    final sparkController =
+        Provider.of<SparkOverlayController>(context, listen: false);
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (_) {

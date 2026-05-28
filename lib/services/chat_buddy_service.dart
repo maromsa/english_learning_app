@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:permission_handler/permission_handler.dart' as permission_handler;
+import 'package:permission_handler/permission_handler.dart'
+    as permission_handler;
 
 import '../app_config.dart';
 import '../models/local_user.dart';
@@ -65,8 +66,7 @@ class ChatBuddyService {
     return MicrophoneAccessStatus.denied;
   }
 
-  Future<bool> openSystemSettings() =>
-      permission_handler.openAppSettings();
+  Future<bool> openSystemSettings() => permission_handler.openAppSettings();
 
   Future<bool> initializeSpeech() async {
     if (_speechReady) return true;
@@ -117,7 +117,8 @@ class ChatBuddyService {
     AppSessionUser? user,
     LocalUser? localUser,
   }) async {
-    final prompt = _buildOpeningPrompt(context, user: user, localUser: localUser);
+    final prompt =
+        _buildOpeningPrompt(context, user: user, localUser: localUser);
 
     try {
       final raw = await _geminiGenerator(
@@ -181,8 +182,7 @@ class ChatBuddyService {
       return _parseResponse(
         raw,
         isOpening: false,
-        fallbackMessage:
-            'איזו תשובה יפה! רוצים לנסות עוד משפט קצר באנגלית?',
+        fallbackMessage: 'איזו תשובה יפה! רוצים לנסות עוד משפט קצר באנגלית?',
       );
     } on TimeoutException {
       throw const ChatBuddyGenerationException(
@@ -289,9 +289,7 @@ Rules for scaffoldingWords:
       setupMap['learnerAge'] = userAge;
     }
 
-    final historyMaps = history
-        .map((m) => m.toMap())
-        .toList(growable: false);
+    final historyMaps = history.map((m) => m.toMap()).toList(growable: false);
     final payload = {
       'context': setupMap,
       'history': historyMaps,

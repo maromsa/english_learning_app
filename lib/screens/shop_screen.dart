@@ -36,8 +36,8 @@ class _ShopScreenState extends State<ShopScreen>
     if (coinProvider.coins < item.cost) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(SparkStrings.shopNotEnoughCoins),
+          const SnackBar(
+            content: Text(SparkStrings.shopNotEnoughCoins),
             backgroundColor: AppTheme.primaryOrange,
             behavior: SnackBarBehavior.floating,
           ),
@@ -115,7 +115,8 @@ class _ShopScreenState extends State<ShopScreen>
                 // Category chips (stickers / upgrades)
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
                     children: [
                       _TypeChip(
@@ -129,16 +130,16 @@ class _ShopScreenState extends State<ShopScreen>
                         label: 'סטיקרים',
                         icon: Icons.emoji_emotions_outlined,
                         isSelected: _selectedType == ShopItemType.sticker,
-                        onTap: () =>
-                            setState(() => _selectedType = ShopItemType.sticker),
+                        onTap: () => setState(
+                            () => _selectedType = ShopItemType.sticker),
                       ),
                       const SizedBox(width: 10),
                       _TypeChip(
                         label: 'שדרוגים',
                         icon: Icons.bolt,
                         isSelected: _selectedType == ShopItemType.upgrade,
-                        onTap: () =>
-                            setState(() => _selectedType = ShopItemType.upgrade),
+                        onTap: () => setState(
+                            () => _selectedType = ShopItemType.upgrade),
                       ),
                     ],
                   ),
@@ -166,8 +167,7 @@ class _ShopScreenState extends State<ShopScreen>
                               item: item,
                               isOwned: isOwned,
                               canBuy: canBuy,
-                              onTap: () =>
-                                  _showItemDetailsSheet(context, item),
+                              onTap: () => _showItemDetailsSheet(context, item),
                             );
                           },
                         ),
@@ -216,7 +216,7 @@ class _ShopHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'חנות הקסמים',
                   style: TextStyle(
                     fontSize: 22,
@@ -471,9 +471,8 @@ class _ShopItemCard extends StatelessWidget {
                           Icon(
                             Icons.monetization_on,
                             size: 14,
-                            color: isOwned
-                                ? Colors.grey
-                                : Colors.amber.shade800,
+                            color:
+                                isOwned ? Colors.grey : Colors.amber.shade800,
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -481,9 +480,7 @@ class _ShopItemCard extends StatelessWidget {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
-                              color: isOwned
-                                  ? Colors.grey
-                                  : Colors.black87,
+                              color: isOwned ? Colors.grey : Colors.black87,
                             ),
                           ),
                         ],
@@ -757,7 +754,7 @@ class _WhimsicalBackground extends StatelessWidget {
           ],
         ),
       ),
-        child: Opacity(
+      child: Opacity(
         opacity: 0.06,
         child: GridView.builder(
           physics: const NeverScrollableScrollPhysics(),

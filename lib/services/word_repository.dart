@@ -13,12 +13,12 @@ class WordRepository {
     CloudinaryService? cloudinaryService,
     WebImageProvider? webImageProvider,
     Duration cacheDuration = const Duration(hours: 12),
-  }) : _prefsFuture = prefs != null
-           ? Future.value(prefs)
-           : SharedPreferences.getInstance(),
-       _cloudinaryService = cloudinaryService ?? CloudinaryService(),
-       _webImageProvider = webImageProvider,
-       _cacheDuration = cacheDuration;
+  })  : _prefsFuture = prefs != null
+            ? Future.value(prefs)
+            : SharedPreferences.getInstance(),
+        _cloudinaryService = cloudinaryService ?? CloudinaryService(),
+        _webImageProvider = webImageProvider,
+        _cacheDuration = cacheDuration;
 
   static const String cacheKey = 'word_repository.cache.words.v2';
   static const String cacheTimestampKey = 'word_repository.cache.timestamp.v2';

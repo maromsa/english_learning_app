@@ -18,8 +18,7 @@ class SparkStrings {
   static const String micListening = 'אני מקשיבה...';
   static const String micRetry = 'אופס, לא שמעתי. ננסה שוב?';
   static const String micTooQuiet = 'קצת יותר חזק? אני כאן 💛';
-  static const String micPermissionAsk =
-      'צריך הרשאת מיקרופון כדי לדבר איתי';
+  static const String micPermissionAsk = 'צריך הרשאת מיקרופון כדי לדבר איתי';
   static const String micChecking = 'רגע, בודקת מה שמעתם...';
   static const String micHeardNothing = 'לא שמעתי. בואו נדבר שוב?';
   static const String micStartFailed = 'אופס, לא הצלחתי. ננסה שוב?';
@@ -42,14 +41,12 @@ class SparkStrings {
   // ─── Network / Gemini failures ────────────────
   static const String offline = 'אין אינטרנט כרגע. ננסה עוד רגע?';
   static const String aiTimeout = 'לקח לי קצת. בואו ננסה שוב?';
-  static const String aiUnavailable =
-      'אני קצת עייפה עכשיו. נחזור עוד מעט?';
+  static const String aiUnavailable = 'אני קצת עייפה עכשיו. נחזור עוד מעט?';
 
   // ─── Wrong-answer ladder (3 strikes, soft) ────
   static const String wrong1 = 'כמעט! ננסה עוד פעם?';
   static const String wrong2 = 'בואו נשמע איך זה נשמע באנגלית 👂';
-  static const String wrong3 =
-      'נמשיך הלאה — נחזור למילה הזאת אחר כך 💛';
+  static const String wrong3 = 'נמשיך הלאה — נחזור למילה הזאת אחר כך 💛';
 
   /// When fuzzy match hears something close (home pronunciation).
   static String wrongAlmostHeard(String heard) =>
@@ -74,8 +71,7 @@ class SparkStrings {
 
   // ─── Camera / photo identify ──────────────────
   static const String cameraUnclearUi = 'לא רואה ברור. בואו נצלם שוב?';
-  static const String cameraUnclearSpeak =
-      'לא ראיתי ברור. בואו ננסה שוב!';
+  static const String cameraUnclearSpeak = 'לא ראיתי ברור. בואו ננסה שוב!';
   static String cameraCenterWord(String word) =>
       'שימו את $word במרכז וצלמו שוב?';
   static String cameraFoundWord(String word) => 'וואו! רואה $word. בואו נלמד!';
@@ -94,8 +90,7 @@ class SparkStrings {
   static const String scavengerLoading = 'מכינים את המצלמה...';
   static const String scavengerRoundLabel = 'אתגר';
   static const String scavengerValidating = 'ספרק בודקת...';
-  static const String scavengerNetworkFail =
-      'לא הצלחנו לבדוק עכשיו. ננסה שוב?';
+  static const String scavengerNetworkFail = 'לא הצלחנו לבדוק עכשיו. ננסה שוב?';
   static const String scavengerSessionComplete =
       'סיימתם את כל האתגרים! אתם גיבורי מצלמה! 🏆';
   static const String scavengerNextRound = 'אתגר הבא!';
@@ -227,7 +222,8 @@ class SparkStrings {
   static String parentDashboardMissionsSubtitle(int done, int total) =>
       '$done מתוך $total הושלמו';
   static const String parentDashboardLastPlayedUnknown = 'עדיין לא שיחקו הפעם';
-  static String parentDashboardLastPlayed(String when) => 'שיחקו לאחרונה: $when';
+  static String parentDashboardLastPlayed(String when) =>
+      'שיחקו לאחרונה: $when';
   static const String parentDashboardNote =
       'הנתונים נשמרים במכשיר זה. ברצף יומי — לכל המשפחה במכשיר משותף.';
 

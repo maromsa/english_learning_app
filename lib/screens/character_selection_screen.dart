@@ -15,7 +15,8 @@ class CharacterSelectionScreen extends StatefulWidget {
   final Function(PlayerCharacter)? onCharacterSelected;
 
   @override
-  State<CharacterSelectionScreen> createState() => _CharacterSelectionScreenState();
+  State<CharacterSelectionScreen> createState() =>
+      _CharacterSelectionScreenState();
 }
 
 class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
@@ -257,7 +258,8 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide(
-                          color: Color(selectedOption.color).withValues(alpha: 0.5),
+                          color: Color(selectedOption.color)
+                              .withValues(alpha: 0.5),
                           width: 2,
                         ),
                       ),
@@ -298,7 +300,8 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
                                 width: 24,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
                                 ),
                               )
                             : Text(
@@ -311,9 +314,11 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextButton(
-                        onPressed: _isSaving ? null : () {
-                          Navigator.of(context).pop();
-                        },
+                        onPressed: _isSaving
+                            ? null
+                            : () {
+                                Navigator.of(context).pop();
+                              },
                         child: Text(
                           'דלג לעת עתה',
                           style: GoogleFonts.assistant(
@@ -332,4 +337,3 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
     );
   }
 }
-

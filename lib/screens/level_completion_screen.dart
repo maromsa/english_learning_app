@@ -1,7 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 
 /// Screen shown when a level is completed
 class LevelCompletionScreen extends StatefulWidget {
@@ -62,10 +63,12 @@ class _LevelCompletionScreenState extends State<LevelCompletionScreen>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.2),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _entranceController,
-      curve: const Interval(0.4, 1.0, curve: Curves.easeOutBack),
-    ));
+    ).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.4, 1.0, curve: Curves.easeOutBack),
+      ),
+    );
 
     // 3. Pulse Animation for Button/Trophy
     _pulseController = AnimationController(
@@ -121,26 +124,28 @@ class _LevelCompletionScreenState extends State<LevelCompletionScreen>
                                 .textTheme
                                 .displayLarge
                                 ?.copyWith(
-                                  color: Colors.white,
-                                  shadows: [
-                                    Shadow(
-                                      blurRadius: 10,
-                                      color: Colors.black
-                                          .withValues(alpha: 0.3),
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
+                              color: Colors.white,
+                              shadows: [
+                                Shadow(
+                                  blurRadius: 10,
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  offset: const Offset(0, 4),
                                 ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 6),
+                              horizontal: 16,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.3)),
+                                color: Colors.white.withValues(alpha: 0.3),
+                              ),
                             ),
                             child: Text(
                               SparkStrings.levelCompleteNamed(widget.levelName),
@@ -235,12 +240,21 @@ class _AnimatedGradientBackgroundState
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color.lerp(Colors.purple.shade400, Colors.blue.shade500,
-                    _controller.value)!,
-                Color.lerp(Colors.blue.shade400, Colors.teal.shade300,
-                    _controller.value)!,
-                Color.lerp(Colors.green.shade400, Colors.purple.shade300,
-                    _controller.value)!,
+                Color.lerp(
+                  Colors.purple.shade400,
+                  Colors.blue.shade500,
+                  _controller.value,
+                )!,
+                Color.lerp(
+                  Colors.blue.shade400,
+                  Colors.teal.shade300,
+                  _controller.value,
+                )!,
+                Color.lerp(
+                  Colors.green.shade400,
+                  Colors.purple.shade300,
+                  _controller.value,
+                )!,
               ],
             ),
           ),
@@ -298,10 +312,10 @@ class _HeroTrophy extends StatelessWidget {
             ],
             border: Border.all(color: Colors.amber.shade300, width: 6),
           ),
-          child: Stack(
+          child: const Stack(
             alignment: Alignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.emoji_events_rounded,
                 size: 100,
                 color: Colors.amber,
@@ -391,16 +405,19 @@ class _AchievementCard extends StatelessWidget {
               _StatPill(
                 icon: Icons.check_circle,
                 color: Colors.green,
-                value: "$completedWords/$totalWords",
-                label: "מילים",
+                value: '$completedWords/$totalWords',
+                label: 'מילים',
               ),
               Container(
-                  width: 1, height: 40, color: Colors.grey.shade300),
+                width: 1,
+                height: 40,
+                color: Colors.grey.shade300,
+              ),
               _StatPill(
                 icon: Icons.monetization_on,
                 color: Colors.yellow.shade700,
-                value: "+$coinsEarned",
-                label: "מטבעות",
+                value: '+$coinsEarned',
+                label: 'מטבעות',
               ),
             ],
           ),
@@ -412,11 +429,12 @@ class _AchievementCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               const Text(
-                "התקדמות בשלב",
+                'התקדמות בשלב',
                 style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.bold),
+                  fontSize: 12,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               ClipRRect(
@@ -519,8 +537,11 @@ class _PulsingStarState extends State<_PulsingStar>
   @override
   Widget build(BuildContext context) {
     if (_controller == null) {
-      return const Icon(Icons.auto_awesome,
-          color: Colors.yellowAccent, size: 24);
+      return const Icon(
+        Icons.auto_awesome,
+        color: Colors.yellowAccent,
+        size: 24,
+      );
     }
 
     return AnimatedBuilder(
@@ -530,8 +551,11 @@ class _PulsingStarState extends State<_PulsingStar>
           scale: 0.8 + (_controller!.value * 0.4),
           child: Opacity(
             opacity: 0.6 + (_controller!.value * 0.4),
-            child: const Icon(Icons.auto_awesome,
-                color: Colors.yellowAccent, size: 24),
+            child: const Icon(
+              Icons.auto_awesome,
+              color: Colors.yellowAccent,
+              size: 24,
+            ),
           ),
         );
       },
@@ -589,21 +613,29 @@ class _FloatingParticles extends StatelessWidget {
     return Stack(
       children: [
         Positioned(
-            top: 50,
-            left: 30,
-            child: Icon(Icons.star, color: Colors.white.withValues(alpha: 0.24), size: 20)),
+          top: 50,
+          left: 30,
+          child: Icon(Icons.star,
+              color: Colors.white.withValues(alpha: 0.24), size: 20),
+        ),
         Positioned(
-            top: 150,
-            right: 50,
-            child: Icon(Icons.circle, color: Colors.white.withValues(alpha: 0.12), size: 15)),
+          top: 150,
+          right: 50,
+          child: Icon(Icons.circle,
+              color: Colors.white.withValues(alpha: 0.12), size: 15),
+        ),
         Positioned(
-            bottom: 200,
-            left: 80,
-            child: Icon(Icons.star, color: Colors.white.withValues(alpha: 0.24), size: 25)),
+          bottom: 200,
+          left: 80,
+          child: Icon(Icons.star,
+              color: Colors.white.withValues(alpha: 0.24), size: 25),
+        ),
         Positioned(
-            bottom: 100,
-            right: 40,
-            child: Icon(Icons.favorite, color: Colors.white.withValues(alpha: 0.12), size: 20)),
+          bottom: 100,
+          right: 40,
+          child: Icon(Icons.favorite,
+              color: Colors.white.withValues(alpha: 0.12), size: 20),
+        ),
       ],
     );
   }

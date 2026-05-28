@@ -17,8 +17,8 @@ class DailyRewardResult {
 
 class DailyRewardService {
   DailyRewardService({DateTime Function()? now, math.Random? random})
-    : _now = now ?? DateTime.now,
-      _random = random ?? math.Random();
+      : _now = now ?? DateTime.now,
+        _random = random ?? math.Random();
 
   static const String _legacyLastClaimKey = 'daily_reward_last_claim';
   static const String _legacyStreakKey = 'daily_reward_streak';
@@ -33,8 +33,9 @@ class DailyRewardService {
       ? _legacyLastClaimKey
       : 'user_${_userId}_daily_reward_last_claim';
 
-  String get _streakKey =>
-      _userId == null ? _legacyStreakKey : 'user_${_userId}_daily_reward_streak';
+  String get _streakKey => _userId == null
+      ? _legacyStreakKey
+      : 'user_${_userId}_daily_reward_streak';
 
   static const int minReward = 10;
   static const int maxReward = 20;

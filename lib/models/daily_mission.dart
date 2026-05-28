@@ -48,15 +48,15 @@ class DailyMission {
   }
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'title': title,
-    'description': description,
-    'target': target,
-    'reward': reward,
-    'type': type.name,
-    'progress': progress,
-    'rewardClaimed': rewardClaimed,
-  };
+        'id': id,
+        'title': title,
+        'description': description,
+        'target': target,
+        'reward': reward,
+        'type': type.name,
+        'progress': progress,
+        'rewardClaimed': rewardClaimed,
+      };
 
   factory DailyMission.fromMap(Map<String, dynamic> map) {
     return DailyMission(

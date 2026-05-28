@@ -29,7 +29,8 @@ void registerMap3dView() {
   ui_web.platformViewRegistry.registerViewFactory(
     kMap3dViewType,
     (int viewId) {
-      final iframe = web.document.createElement('iframe') as web.HTMLIFrameElement
+      final iframe = web.document.createElement('iframe')
+          as web.HTMLIFrameElement
         // Correct web asset path: Flutter Web serves pubspec assets at /assets/<path>.
         // Use 'assets/map_3d/index.html' (single 'assets/' prefix).
         ..src = 'assets/map_3d/index.html'

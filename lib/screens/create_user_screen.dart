@@ -1,13 +1,13 @@
 import 'dart:io';
 
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:provider/provider.dart';
 
-import '../services/local_user_service.dart';
 import '../providers/auth_provider.dart';
+import '../services/local_user_service.dart';
 
 class CreateUserScreen extends StatefulWidget {
   const CreateUserScreen({super.key});
@@ -205,12 +205,16 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                           image: _selectedImage != null
                               ? DecorationImage(
                                   image: FileImage(_selectedImage!),
-                                  fit: BoxFit.cover)
+                                  fit: BoxFit.cover,
+                                )
                               : null,
                         ),
                         child: _selectedImage == null
-                            ? Icon(Icons.camera_alt_rounded,
-                                size: 50, color: Colors.grey.shade400)
+                            ? Icon(
+                                Icons.camera_alt_rounded,
+                                size: 50,
+                                color: Colors.grey.shade400,
+                              )
                             : null,
                       ),
                       Container(
@@ -220,15 +224,18 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2),
                         ),
-                        child: const Icon(Icons.edit,
-                            color: Colors.white, size: 20),
+                        child: const Icon(
+                          Icons.edit,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  "הוסיפו תמונה כדי שיהיה קל לזהות אתכם",
+                  'הוסיפו תמונה כדי שיהיה קל לזהות אתכם',
                   style: TextStyle(color: Colors.grey, fontSize: 14),
                 ),
 
@@ -339,7 +346,8 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                             ? const SizedBox(
                                 width: 24,
                                 height: 24,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               )
                             : Icon(
                                 _googleUid != null
@@ -359,7 +367,8 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                               _googleUid != null
                                   ? 'מחובר ל-Google'
                                   : 'חיבור לחשבון Google',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             ),
                             Text(
                               _googleUid != null

@@ -33,7 +33,8 @@ class PlayerDataSyncService {
       if (cloudData == null) {
         debugPrint('No cloud data found, creating initial player data');
         // Create initial player data from local state
-        await _createInitialPlayerData(userId, coinProvider, shopProvider, achievementService);
+        await _createInitialPlayerData(
+            userId, coinProvider, shopProvider, achievementService);
         return;
       }
 
@@ -48,7 +49,8 @@ class PlayerDataSyncService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setStringList('purchased_items', cloudData.purchasedItems);
         await shopProvider.loadPurchasedItems();
-        debugPrint('Synced purchased items from cloud: ${cloudData.purchasedItems.length}');
+        debugPrint(
+            'Synced purchased items from cloud: ${cloudData.purchasedItems.length}');
       }
 
       // Sync achievements
@@ -60,13 +62,15 @@ class PlayerDataSyncService {
           }
         }
         await achievementService.loadAchievements();
-        debugPrint('Synced achievements from cloud: ${cloudData.achievements.length}');
+        debugPrint(
+            'Synced achievements from cloud: ${cloudData.achievements.length}');
       }
 
       // Sync character
       if (cloudData.character != null && characterProvider != null) {
         await characterProvider.setCharacter(cloudData.character!);
-        debugPrint('Synced character from cloud: ${cloudData.character!.characterName}');
+        debugPrint(
+            'Synced character from cloud: ${cloudData.character!.characterName}');
       }
 
       debugPrint('Cloud sync completed successfully');
@@ -93,7 +97,8 @@ class PlayerDataSyncService {
 
       // Load achievements
       for (final achievement in achievementService.achievements) {
-        final isUnlocked = prefs.getBool('achievement_${achievement.id}') ?? false;
+        final isUnlocked =
+            prefs.getBool('achievement_${achievement.id}') ?? false;
         if (isUnlocked) {
           achievements[achievement.id] = true;
         }
@@ -136,7 +141,8 @@ class PlayerDataSyncService {
 
       // Load achievements
       for (final achievement in achievementService.achievements) {
-        final isUnlocked = prefs.getBool('achievement_${achievement.id}') ?? false;
+        final isUnlocked =
+            prefs.getBool('achievement_${achievement.id}') ?? false;
         if (isUnlocked) {
           achievements[achievement.id] = true;
         }
@@ -144,22 +150,23 @@ class PlayerDataSyncService {
 
       // Load existing cloud data or create new
       final cloudData = await _userDataService.loadPlayerData(userId);
-      final playerData = cloudData ?? PlayerData(
-        userId: userId,
-        coins: coins,
-        purchasedItems: purchasedItems,
-        achievements: achievements,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+      final playerData = cloudData ??
+          PlayerData(
+            userId: userId,
+            coins: coins,
+            purchasedItems: purchasedItems,
+            achievements: achievements,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
 
       // Merge with local data (local wins for now, but we can improve this)
       final mergedData = playerData.copyWith(
         coins: coins > playerData.coins ? coins : playerData.coins,
-        purchasedItems: [
+        purchasedItems: <String>{
           ...playerData.purchasedItems,
           ...purchasedItems,
-        ].toSet().toList(),
+        }.toList(),
         achievements: {
           ...playerData.achievements,
           ...achievements,
@@ -174,4 +181,3 @@ class PlayerDataSyncService {
     }
   }
 }
-

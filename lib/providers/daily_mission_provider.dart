@@ -23,9 +23,8 @@ class DailyMissionProvider with ChangeNotifier {
     _initialized = false;
   }
 
-  String get _prefDateKey => _userId == null
-      ? _legacyDateKey
-      : 'user_${_userId}_daily_missions_date';
+  String get _prefDateKey =>
+      _userId == null ? _legacyDateKey : 'user_${_userId}_daily_missions_date';
 
   String get _prefMissionsKey => _userId == null
       ? _legacyMissionsKey
@@ -299,9 +298,8 @@ class DailyMissionProvider with ChangeNotifier {
     final prefs = existingPrefs ?? await SharedPreferences.getInstance();
     final String todayKey = overrideDate ?? _todayKey();
 
-    final List<String> serialized = _missions
-        .map((mission) => mission.toJson())
-        .toList(growable: false);
+    final List<String> serialized =
+        _missions.map((mission) => mission.toJson()).toList(growable: false);
     await prefs.setString(_prefDateKey, todayKey);
     await prefs.setStringList(_prefMissionsKey, serialized);
   }

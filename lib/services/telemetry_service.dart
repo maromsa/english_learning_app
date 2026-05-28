@@ -171,7 +171,7 @@ class TelemetryService {
       if (value is bool) {
         sanitized[key] = value ? 1 : 0;
       } else {
-        sanitized[key] = value as Object;
+        sanitized[key] = value;
       }
     });
 

@@ -19,8 +19,11 @@ class LevelProgressService {
   final MapBridgeService _mapBridgeService;
 
   /// Get completed words for a specific level and user
-  Future<Set<String>> getCompletedWords(String userId, String levelId,
-      {bool isLocalUser = false}) async {
+  Future<Set<String>> getCompletedWords(
+    String userId,
+    String levelId, {
+    bool isLocalUser = false,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final key = isLocalUser
@@ -31,10 +34,11 @@ class LevelProgressService {
         debugPrint('No completed words found for level $levelId (key: $key)');
         return <String>{};
       }
-      final List<dynamic> wordsList = jsonDecode(wordsJson);
+      final wordsList = jsonDecode(wordsJson) as List<dynamic>;
       final words = wordsList.map((w) => w as String).toSet();
       debugPrint(
-          'Loaded completed words for level $levelId: $words (key: $key)');
+        'Loaded completed words for level $levelId: $words (key: $key)',
+      );
       return words;
     } catch (e) {
       debugPrint('Error loading completed words for level $levelId: $e');
@@ -93,8 +97,12 @@ class LevelProgressService {
   }
 
   /// Check if a word is completed
-  Future<bool> isWordCompleted(String userId, String levelId, String word,
-      {bool isLocalUser = false}) async {
+  Future<bool> isWordCompleted(
+    String userId,
+    String levelId,
+    String word, {
+    bool isLocalUser = false,
+  }) async {
     final completedWords =
         await getCompletedWords(userId, levelId, isLocalUser: isLocalUser);
     return completedWords.contains(word);
@@ -102,8 +110,11 @@ class LevelProgressService {
 
   /// Get completion percentage for a level
   Future<double> getCompletionPercentage(
-      String userId, String levelId, int totalWords,
-      {bool isLocalUser = false}) async {
+    String userId,
+    String levelId,
+    int totalWords, {
+    bool isLocalUser = false,
+  }) async {
     if (totalWords == 0) return 0.0;
     final completedWords =
         await getCompletedWords(userId, levelId, isLocalUser: isLocalUser);
@@ -111,8 +122,12 @@ class LevelProgressService {
   }
 
   /// Check if level is fully completed (all words done)
-  Future<bool> isLevelCompleted(String userId, String levelId, int totalWords,
-      {bool isLocalUser = false}) async {
+  Future<bool> isLevelCompleted(
+    String userId,
+    String levelId,
+    int totalWords, {
+    bool isLocalUser = false,
+  }) async {
     final completedWords =
         await getCompletedWords(userId, levelId, isLocalUser: isLocalUser);
     return completedWords.length >= totalWords;
@@ -120,8 +135,11 @@ class LevelProgressService {
 
   /// Save completed words for a level
   Future<void> _saveCompletedWords(
-      String userId, String levelId, Set<String> words,
-      {bool isLocalUser = false}) async {
+    String userId,
+    String levelId,
+    Set<String> words, {
+    bool isLocalUser = false,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final key = isLocalUser
@@ -130,7 +148,8 @@ class LevelProgressService {
       final wordsJson = jsonEncode(words.toList());
       await prefs.setString(key, wordsJson);
       debugPrint(
-          'Saved completed words for level $levelId: $words (key: $key)');
+        'Saved completed words for level $levelId: $words (key: $key)',
+      );
     } catch (e) {
       debugPrint('Error saving completed words: $e');
       rethrow;
@@ -138,8 +157,11 @@ class LevelProgressService {
   }
 
   /// Reset progress for a level (for testing/debugging)
-  Future<void> resetLevelProgress(String userId, String levelId,
-      {bool isLocalUser = false}) async {
+  Future<void> resetLevelProgress(
+    String userId,
+    String levelId, {
+    bool isLocalUser = false,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final key = isLocalUser
@@ -152,13 +174,15 @@ class LevelProgressService {
   }
 
   /// Get all completed levels for a user
-  Future<List<String>> getCompletedLevels(String userId,
-      {bool isLocalUser = false}) async {
+  Future<List<String>> getCompletedLevels(
+    String userId, {
+    bool isLocalUser = false,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final prefix =
           isLocalUser ? 'local_user_${userId}_level_' : 'user_${userId}_level_';
-      final suffix = '_completed_words';
+      const suffix = '_completed_words';
       final keys = prefs
           .getKeys()
           .where((key) => key.startsWith(prefix) && key.endsWith(suffix));

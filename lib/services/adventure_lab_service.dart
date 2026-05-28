@@ -162,8 +162,7 @@ Do not include markdown code fences around the JSON.''';
       title: 'הפתעת ספרק',
       scene: cleaned,
       challenge: 'הציגו את ההרפתקה ושבצו את המילים החדשות שלמדתם.',
-      pepTalk:
-          'אתם נהדרים! ספרק מתרגש לראות אתכם ממשיכים לחקור וללמוד.',
+      pepTalk: 'אתם נהדרים! ספרק מתרגש לראות אתכם ממשיכים לחקור וללמוד.',
       vocabulary: const [],
       rawText: cleaned,
       prompt: prompt,
@@ -218,8 +217,7 @@ class AdventureLabContext {
         'totalStars': totalStars,
         'coins': coins,
         'mood': mood,
-        if (unlockedWorldNames.isNotEmpty)
-          'unlockedWorlds': unlockedWorldNames,
+        if (unlockedWorldNames.isNotEmpty) 'unlockedWorlds': unlockedWorldNames,
         if (playerName != null && playerName!.trim().isNotEmpty)
           'playerName': playerName!.trim(),
       };
@@ -287,5 +285,5 @@ class AdventureLabGenerationException implements Exception {
 }
 
 class AdventureLabUnavailableException extends AdventureLabGenerationException {
-  const AdventureLabUnavailableException(String message) : super(message);
+  const AdventureLabUnavailableException(super.message);
 }

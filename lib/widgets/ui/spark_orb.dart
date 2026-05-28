@@ -46,7 +46,8 @@ class SparkOrb extends StatefulWidget {
   State<SparkOrb> createState() => _SparkOrbState();
 }
 
-class _SparkOrbState extends State<SparkOrb> with SingleTickerProviderStateMixin {
+class _SparkOrbState extends State<SparkOrb>
+    with SingleTickerProviderStateMixin {
   static const Color _highlight = Color(0xFFFFE7E0);
 
   late AnimationController _orbitController;

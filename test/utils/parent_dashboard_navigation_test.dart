@@ -7,9 +7,7 @@ int _answerFromGateQuestion(WidgetTester tester) {
   final question = tester.widget<Text>(
     find.byWidgetPredicate(
       (widget) =>
-          widget is Text &&
-          widget.data != null &&
-          widget.data!.contains('×'),
+          widget is Text && widget.data != null && widget.data!.contains('×'),
     ),
   );
   final match =

@@ -1,14 +1,14 @@
 // test/widgets/score_display_test.dart
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/material.dart';
 import 'package:english_learning_app/widgets/score_display.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('ScoreDisplay', () {
     testWidgets('should display coins with labels',
         (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: ScoreDisplay(coins: 100))),
+        const MaterialApp(home: Scaffold(body: ScoreDisplay(coins: 100))),
       );
 
       expect(find.text('100'), findsOneWidget);
@@ -21,7 +21,7 @@ void main() {
 
     testWidgets('should display zero coins', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: ScoreDisplay(coins: 0))),
+        const MaterialApp(home: Scaffold(body: ScoreDisplay(coins: 0))),
       );
 
       expect(find.text('0'), findsOneWidget);

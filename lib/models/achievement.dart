@@ -7,6 +7,7 @@ class Achievement {
   final String description;
   final IconData icon;
   bool isUnlocked;
+
   /// Target value for progress-style achievements (e.g. 500 coins, 10 map items).
   final int? requirementValue;
 

@@ -194,4 +194,3 @@ class _SparkBubble extends StatelessWidget {
     );
   }
 }
-

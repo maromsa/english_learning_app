@@ -58,9 +58,11 @@ class BackgroundMusicService with WidgetsBindingObserver {
               unawaited(_prepareBackgroundLoopForWebAfterStartup());
             }
           } else {
-            unawaited(_player.setLoopMode(LoopMode.one).catchError((e) {
-              debugPrint('Failed to set loop mode in stream: $e');
-            }));
+            unawaited(
+              _player.setLoopMode(LoopMode.one).catchError((e) {
+                debugPrint('Failed to set loop mode in stream: $e');
+              }),
+            );
           }
         }
       });
@@ -217,7 +219,8 @@ class BackgroundMusicService with WidgetsBindingObserver {
     return normalized.toLowerCase();
   }
 
-  Future<void> fadeOut({Duration duration = const Duration(milliseconds: 600)}) {
+  Future<void> fadeOut(
+      {Duration duration = const Duration(milliseconds: 600)}) {
     return _player
         .setVolume(0)
         .timeout(duration, onTimeout: () {})

@@ -16,7 +16,6 @@
 
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/word_data.dart';
-import 'package:english_learning_app/widgets/ui/kid_button.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
@@ -24,9 +23,10 @@ import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/image_quiz_game.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
-import 'package:english_learning_app/utils/device_connectivity.dart';
 import 'package:english_learning_app/services/word_mastery_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
+import 'package:english_learning_app/utils/device_connectivity.dart';
+import 'package:english_learning_app/widgets/ui/kid_button.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -43,7 +43,8 @@ class _FakeConnectivity extends DeviceConnectivity {
   final bool online;
 
   @override
-  Future<bool> isOnline({Duration timeout = const Duration(seconds: 3)}) async =>
+  Future<bool> isOnline(
+          {Duration timeout = const Duration(seconds: 3)}) async =>
       online;
 }
 
@@ -119,7 +120,8 @@ final List<WordData> _testWords = [
   WordData(word: 'Banana', searchHint: 'A yellow fruit', masteryLevel: 0.1),
   WordData(word: 'Cat', searchHint: 'A furry animal', masteryLevel: 0.3),
   WordData(word: 'Dog', searchHint: 'Man\'s best friend', masteryLevel: 0.5),
-  WordData(word: 'Elephant', searchHint: 'A big grey animal', masteryLevel: 0.75),
+  WordData(
+      word: 'Elephant', searchHint: 'A big grey animal', masteryLevel: 0.75),
 ];
 
 // ---------------------------------------------------------------------------
@@ -131,7 +133,7 @@ Future<_FakeLevelProgressService> _pumpQuiz(
   List<WordData>? words,
 }) async {
   SharedPreferences.setMockInitialValues({});
-  final prefs = await SharedPreferences.getInstance();
+  await SharedPreferences.getInstance();
 
   final testWords = words ?? _testWords;
   final fakeProgress = _FakeLevelProgressService();
@@ -276,7 +278,9 @@ void main() {
 
   // ── Answer handling ────────────────────────────────────────────────────────
   group('Answering questions', () {
-    testWidgets('tapping a tile locks further taps and shows the "Next question" button', (
+    testWidgets(
+        'tapping a tile locks further taps and shows the "Next question" button',
+        (
       tester,
     ) async {
       await _pumpQuiz(tester);
@@ -444,14 +448,6 @@ void main() {
   group('Navigation', () {
     testWidgets('Next question advances to a new word', (tester) async {
       await _pumpQuiz(tester);
-
-      // Record the first target word shown.
-      final firstWordFinder = find.descendant(
-        of: find.byType(Card),
-        matching: find.byType(Text),
-      );
-      final firstWordTexts =
-          firstWordFinder.evaluate().map((e) => (e.widget as Text).data).toList();
 
       // Tap the correct option for the first question.
       final appleOption = find.byKey(const ValueKey('Apple'));

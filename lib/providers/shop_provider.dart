@@ -14,6 +14,7 @@ class ShopProvider with ChangeNotifier {
   void setUserId(String? userId) {
     _currentUserId = userId;
   }
+
   final List<Product> _products = [
     // Accessories
     Product(

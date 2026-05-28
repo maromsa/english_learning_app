@@ -56,7 +56,8 @@ class OptimizedAvatar extends StatelessWidget {
           // Critical: Resize to display size to save RAM
           memCacheWidth: memCacheSize,
           memCacheHeight: memCacheSize,
-          placeholder: (context, url) => placeholder ??
+          placeholder: (context, url) =>
+              placeholder ??
               Container(
                 width: radius * 2,
                 height: radius * 2,
@@ -87,5 +88,3 @@ class OptimizedAvatar extends StatelessWidget {
     );
   }
 }
-
-

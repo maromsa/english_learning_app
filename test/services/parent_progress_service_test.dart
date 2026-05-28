@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:english_learning_app/services/level_repository.dart';
 import 'package:english_learning_app/services/parent_progress_service.dart';
@@ -51,7 +50,8 @@ void main() {
           jsonEncode({'progress': 3, 'target': 3}),
           jsonEncode({'progress': 1, 'target': 5}),
         ],
-        'user_child1_level_fruits_completed_words': jsonEncode(['Apple', 'Banana']),
+        'user_child1_level_fruits_completed_words':
+            jsonEncode(['Apple', 'Banana']),
       });
       prefs = await SharedPreferences.getInstance();
     });

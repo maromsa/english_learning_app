@@ -30,8 +30,11 @@ class ScoreDisplay extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.monetization_on,
-                    color: Colors.amber.shade700, size: 30),
+                Icon(
+                  Icons.monetization_on,
+                  color: Colors.amber.shade700,
+                  size: 30,
+                ),
                 const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,14 +63,14 @@ class ScoreDisplay extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.blue.shade200, width: 1),
             ),
-            child: Column(
+            child: const Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.star, color: Colors.amber, size: 20),
-                    const SizedBox(width: 8),
-                    const Text(
+                    Icon(Icons.star, color: Colors.amber, size: 20),
+                    SizedBox(width: 8),
+                    Text(
                       'כיצד לקבל כוכבים:',
                       style: TextStyle(
                         fontSize: 14,
@@ -77,8 +80,8 @@ class ScoreDisplay extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                const Text(
+                SizedBox(height: 8),
+                Text(
                   '10 מטבעות = 1 כוכב\n20 מטבעות = 2 כוכבים\n30 מטבעות = 3 כוכבים (מקסימום)',
                   textAlign: TextAlign.center,
                   style: TextStyle(

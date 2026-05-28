@@ -452,7 +452,9 @@ class _StarRevealRow extends StatelessWidget {
         final star = Icon(
           Icons.star_rounded,
           size: 48,
-          color: earned ? AuroraTokens.butter : AuroraTokens.inkMute.withValues(alpha: 0.35),
+          color: earned
+              ? AuroraTokens.butter
+              : AuroraTokens.inkMute.withValues(alpha: 0.35),
         );
 
         if (reduceMotion) {
@@ -531,7 +533,8 @@ class _CoinShowerState extends State<_CoinShower>
           children: List<Widget>.generate(widget.coinCount, (index) {
             final stagger = index / widget.coinCount;
             final t = ((_controller.value - stagger * 0.4).clamp(0.0, 1.0));
-            final x = _random.nextDouble() * size.width * 0.7 + size.width * 0.1;
+            final x =
+                _random.nextDouble() * size.width * 0.7 + size.width * 0.1;
             final y = 40 + t * (size.height * 0.35);
             return Positioned(
               left: x,

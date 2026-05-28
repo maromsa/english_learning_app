@@ -39,7 +39,8 @@ void main() {
 
     test('migrates legacy local users once', () async {
       SharedPreferences.setMockInitialValues({
-        'local_users': '[{"id":"legacy1","name":"Legacy","age":6,"isActive":true}]',
+        'local_users':
+            '[{"id":"legacy1","name":"Legacy","age":6,"isActive":true}]',
         'active_local_user_id': 'legacy1',
       });
       prefs = await SharedPreferences.getInstance();

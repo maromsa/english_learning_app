@@ -81,6 +81,10 @@ class ChildProfileProvider with ChangeNotifier {
     await _profileService.updateLastPlayed(profile.id);
     _activeProfile = profile;
 
+    if (!context.mounted) {
+      return;
+    }
+
     await ActiveProfileScope.apply(
       context,
       profile,

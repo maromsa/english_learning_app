@@ -9,7 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class _OfflineConnectivity extends DeviceConnectivity {
   @override
-  Future<bool> isOnline({Duration timeout = const Duration(seconds: 3)}) async =>
+  Future<bool> isOnline(
+          {Duration timeout = const Duration(seconds: 3)}) async =>
       false;
 }
 

@@ -1,15 +1,15 @@
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/models/local_user.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/audio/bytes_audio_source.dart';
+import 'package:english_learning_app/services/background_music_service.dart';
 import 'package:english_learning_app/services/conversation_coach_service.dart';
 import 'package:english_learning_app/services/google_tts_service.dart';
-import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/services/local_user_service.dart';
-import 'package:english_learning_app/models/local_user.dart';
-import 'package:english_learning_app/services/background_music_service.dart';
+import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/utils/route_observer.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:flutter/material.dart';
@@ -138,7 +138,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
   Future<void> _configureTts() async {
     await _tts.setLanguage('he-IL');
     await _tts.setSpeechRate(
-        0.5); // Slower rate for children - clear and understandable
+        0.5,); // Slower rate for children - clear and understandable
     await _tts.setPitch(1.0); // Natural pitch
   }
 
@@ -247,7 +247,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
                   : ListView.builder(
                       controller: _scrollController,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 20),
+                          horizontal: 16, vertical: 20,),
                       itemCount: _entries.length + (_isBusy ? 1 : 0),
                       itemBuilder: (context, index) {
                         // Loading Indicator at the end
@@ -293,7 +293,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       child: Column(
         children: [
           const Text(
-            "בואו נתכונן לשיחה!",
+            'בואו נתכונן לשיחה!',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
@@ -303,7 +303,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
                 child: _ConfigChip(
                   icon: Icons.topic,
                   label:
-                      "נושא: ${_topics.firstWhere((t) => t.id == _selectedTopic).label}",
+                      'נושא: ${_topics.firstWhere((t) => t.id == _selectedTopic).label}',
                   color: Colors.orange.shade100,
                   textColor: Colors.orange.shade900,
                   onTap: () {
@@ -316,7 +316,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
                 child: _ConfigChip(
                   icon: Icons.bar_chart,
                   label:
-                      "מיומנות: ${_skills.firstWhere((s) => s.id == _selectedSkill).label}",
+                      'מיומנות: ${_skills.firstWhere((s) => s.id == _selectedSkill).label}',
                   color: Colors.green.shade100,
                   textColor: Colors.green.shade900,
                   onTap: () {
@@ -333,7 +333,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
                 child: _ConfigChip(
                   icon: Icons.energy_savings_leaf,
                   label:
-                      "אנרגיה: ${_energies.firstWhere((e) => e.id == _selectedEnergy).label}",
+                      'אנרגיה: ${_energies.firstWhere((e) => e.id == _selectedEnergy).label}',
                   color: Colors.purple.shade100,
                   textColor: Colors.purple.shade900,
                   onTap: () {
@@ -426,151 +426,6 @@ class _AiConversationScreenState extends State<AiConversationScreen>
     );
   }
 
-  Widget _buildConfiguratorCard() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      elevation: 6,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'בחרו עם מי ספרק מתאמן היום',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'שם הלומד/ת (לא חובה)',
-                prefixIcon: Icon(Icons.person_outline),
-                border: OutlineInputBorder(),
-              ),
-              textDirection: TextDirection.rtl,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildDropdown(
-                    _topics,
-                    _selectedTopic,
-                    (value) => setState(() => _selectedTopic = value),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildDropdown(
-                    _skills,
-                    _selectedSkill,
-                    (value) => setState(() => _selectedSkill = value),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildDropdown(
-                    _energies,
-                    _selectedEnergy,
-                    (value) => setState(() => _selectedEnergy = value),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(child: _buildFocusWordsPreview()),
-              ],
-            ),
-            const SizedBox(height: 16),
-            KidButton.primary(
-              label: _sessionStarted ? 'התחילו שיחה חדשה' : 'צאו לשיחה קסומה',
-              onPressed: _isBusy ? null : _startConversation,
-              leadingIcon: Icons.auto_awesome,
-              isLoading: _isBusy,
-              fullWidth: true,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDropdown(
-    List<_Option> options,
-    String selected,
-    ValueChanged<String> onChanged,
-  ) {
-    return DropdownButtonFormField<String>(
-      initialValue: selected,
-      decoration: const InputDecoration(border: OutlineInputBorder()),
-      items: options
-          .map(
-            (option) => DropdownMenuItem<String>(
-              value: option.id,
-              child: Text(option.label, textDirection: TextDirection.rtl),
-            ),
-          )
-          .toList(growable: false),
-      onChanged: (value) {
-        if (value != null) {
-          onChanged(value);
-        }
-      },
-    );
-  }
-
-  /// Collapsed configurator shown when session is active
-  Widget _buildCollapsedConfigurator() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 2,
-        child: InkWell(
-          onTap: () {
-            setState(() {
-              _sessionStarted = false; // Expand configurator
-            });
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Icon(Icons.settings, color: Colors.deepPurple.shade400),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'הגדרות שיחה',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.deepPurple.shade700,
-                        ),
-                      ),
-                      Text(
-                        'לחץ לשינוי הגדרות',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.expand_more, color: Colors.grey.shade600),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildFocusWordsPreview() {
     final words = _resolveFocusWords();
@@ -618,7 +473,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
           const _SparkAvatar(size: 100),
           const SizedBox(height: 24),
           Text(
-            "שלום! אני ספרק",
+            'שלום! אני ספרק',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -627,7 +482,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
           ),
           const SizedBox(height: 8),
           const Text(
-            "בחר נושא והתחל לתרגל אנגלית בכיף",
+            'בחר נושא והתחל לתרגל אנגלית בכיף',
             style: TextStyle(color: Colors.grey, fontSize: 16),
           ),
         ],
@@ -672,7 +527,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
               child: TextField(
                 controller: _messageController,
                 decoration: const InputDecoration(
-                  hintText: "כתוב הודעה לספרק...",
+                  hintText: 'כתוב הודעה לספרק...',
                   border: InputBorder.none,
                   contentPadding:
                       EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -956,9 +811,9 @@ class _AiConversationScreenState extends State<AiConversationScreen>
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
-      SnackBar(
-        content: const Text('🌟 כל הכבוד! קיבלתם 3 מטבעות על תרגול באנגלית.'),
-        duration: const Duration(seconds: 2),
+      const SnackBar(
+        content: Text('🌟 כל הכבוד! קיבלתם 3 מטבעות על תרגול באנגלית.'),
+        duration: Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -1241,7 +1096,7 @@ class _SparkMessageBubble extends StatelessWidget {
                       Text(
                         entry.message,
                         style: const TextStyle(
-                            fontSize: 16, color: Colors.black87),
+                            fontSize: 16, color: Colors.black87,),
                         textDirection: TextDirection.rtl,
                       ),
                     ],
@@ -1255,7 +1110,7 @@ class _SparkMessageBubble extends StatelessWidget {
                       color: Colors.amber.shade50,
                       icon: Icons.lightbulb_outline,
                       iconColor: Colors.amber.shade800,
-                      title: "טיפ מספרק",
+                      title: 'טיפ מספרק',
                       content: response.sparkTip!,
                     ),
                   // 2. Vocabulary Card
@@ -1267,7 +1122,7 @@ class _SparkMessageBubble extends StatelessWidget {
                       color: Colors.green.shade50,
                       icon: Icons.flag_outlined,
                       iconColor: Colors.green.shade700,
-                      title: "אתגר קטן",
+                      title: 'אתגר קטן',
                       content: response.miniChallenge!,
                     ),
                   // 4. Follow-up Card
@@ -1276,7 +1131,7 @@ class _SparkMessageBubble extends StatelessWidget {
                       color: Colors.purple.shade50,
                       icon: Icons.question_answer,
                       iconColor: Colors.purple.shade700,
-                      title: "שאלת המשך",
+                      title: 'שאלת המשך',
                       content: response.followUp!,
                     ),
                   // 5. Suggestions (Quick Replies)
@@ -1392,7 +1247,7 @@ class _VocabularyCard extends StatelessWidget {
               Icon(Icons.book_outlined, color: Colors.blue.shade700, size: 18),
               const SizedBox(width: 6),
               Text(
-                "מילים חדשות",
+                'מילים חדשות',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Colors.blue.shade700,
@@ -1422,7 +1277,7 @@ class _VocabularyCard extends StatelessWidget {
                 ),
               );
             }).toList(),
-          )
+          ),
         ],
       ),
     );
@@ -1503,280 +1358,6 @@ class _TypingIndicatorState extends State<_TypingIndicator>
   }
 }
 
-// Keep old _SparkBubble for backward compatibility (will be removed)
-class _SparkBubble extends StatelessWidget {
-  const _SparkBubble({
-    required this.message,
-    this.response,
-    this.onSuggestionTap,
-  });
-
-  final String message;
-  final SparkCoachResponse? response;
-  final ValueChanged<String>? onSuggestionTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.only(
-              topRight: Radius.circular(22),
-              topLeft: Radius.circular(8),
-              bottomRight: Radius.circular(22),
-              bottomLeft: Radius.circular(22),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  message,
-                  style: theme.textTheme.bodyLarge?.copyWith(height: 1.4),
-                  textDirection: TextDirection.rtl,
-                ),
-                const SizedBox(height: 12),
-                if (response?.sparkTip != null &&
-                    response!.sparkTip!.isNotEmpty) ...[
-                  _InfoChip(
-                    icon: Icons.lightbulb_outline,
-                    label: 'טיפ של ספרק',
-                    text: response!.sparkTip!,
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (response?.vocabularyHighlights.isNotEmpty == true) ...[
-                  Text(
-                    'מילים באנגלית מהשיחה:',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: Colors.deepPurple.shade600,
-                    ),
-                    textDirection: TextDirection.rtl,
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: response!.vocabularyHighlights
-                        .map(
-                          (word) => Chip(
-                            avatar: const Icon(Icons.translate, size: 16),
-                            label: Text(word),
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (response?.miniChallenge != null &&
-                    response!.miniChallenge!.isNotEmpty) ...[
-                  _InfoChip(
-                    icon: Icons.sports_gymnastics,
-                    label: 'אתגר מהיר',
-                    text: response!.miniChallenge!,
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (response?.followUp != null &&
-                    response!.followUp!.isNotEmpty) ...[
-                  _InfoChip(
-                    icon: Icons.question_answer,
-                    label: 'שאלת המשך',
-                    text: response!.followUp!,
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (response?.celebration != null &&
-                    response!.celebration!.isNotEmpty)
-                  Text(
-                    response!.celebration!,
-                    style: const TextStyle(fontSize: 24),
-                    textDirection: TextDirection.rtl,
-                  ),
-                if (response?.suggestedLearnerReplies.isNotEmpty == true) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    'רעיונות לתשובה:',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: Colors.deepPurple.shade600,
-                    ),
-                    textDirection: TextDirection.rtl,
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: response!.suggestedLearnerReplies
-                        .map(
-                          (suggestion) => ActionChip(
-                            avatar: const Icon(
-                              Icons.record_voice_over,
-                              size: 18,
-                            ),
-                            label: Text(suggestion),
-                            onPressed: onSuggestionTap == null
-                                ? null
-                                : () => onSuggestionTap!(suggestion),
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LearnerBubble extends StatelessWidget {
-  const _LearnerBubble({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: Colors.lightBlue.shade100,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(22),
-              topRight: Radius.circular(8),
-              bottomLeft: Radius.circular(22),
-              bottomRight: Radius.circular(22),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              message,
-              style: theme.textTheme.bodyLarge?.copyWith(height: 1.4),
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-    required this.text,
-  });
-
-  final IconData icon;
-  final String label;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.deepPurple.shade50,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: Colors.deepPurple.shade500),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  text,
-                  style: theme.textTheme.bodyMedium,
-                  textDirection: TextDirection.rtl,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message, required this.onClose});
-
-  final String message;
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.red.shade600,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline, color: Colors.white),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-              textDirection: TextDirection.rtl,
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
-            onPressed: onClose,
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _Option {
   const _Option({required this.id, required this.label});

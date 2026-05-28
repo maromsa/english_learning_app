@@ -1,5 +1,5 @@
-import 'package:just_audio/just_audio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:just_audio/just_audio.dart';
 
 /// Enhanced audio feedback service optimized for children
 /// Uses child-friendly sounds that are pleasant and non-jarring
@@ -187,4 +187,3 @@ class SoundService {
     // This method is for any shared resources if needed
   }
 }
-

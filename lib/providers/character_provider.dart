@@ -68,7 +68,8 @@ class CharacterProvider with ChangeNotifier {
     // Save to cloud if user is authenticated
     if (_currentUserId != null) {
       try {
-        await _userDataService.updateCharacter(_currentUserId!, character.toMap());
+        await _userDataService.updateCharacter(
+            _currentUserId!, character.toMap());
       } catch (e) {
         debugPrint('Error saving character to cloud: $e');
       }
@@ -89,4 +90,3 @@ class CharacterProvider with ChangeNotifier {
     }
   }
 }
-

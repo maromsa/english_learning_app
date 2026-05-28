@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:permission_handler/permission_handler.dart' as permission_handler;
+import 'package:permission_handler/permission_handler.dart'
+    as permission_handler;
 
 import '../app_config.dart';
 import '../models/pronunciation_feedback.dart';
@@ -164,7 +165,8 @@ class SpeechFeedbackService {
       _evaluationCache[cacheKey] = feedback;
       return feedback;
     } catch (error, stackTrace) {
-      debugPrint('[SpeechFeedbackService] evaluation failed: $error\n$stackTrace');
+      debugPrint(
+          '[SpeechFeedbackService] evaluation failed: $error\n$stackTrace');
       final fallback = _localFallback(target, heard);
       return fallback;
     }

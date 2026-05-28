@@ -66,9 +66,9 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           SparkStrings.parentDashboardTitle,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
@@ -145,7 +145,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                   ),
                   value: stats.wordsProgressRatio,
                   trailing: stats.wordsMastered > 0
-                      ? SparkStrings.parentDashboardMastered(stats.wordsMastered)
+                      ? SparkStrings.parentDashboardMastered(
+                          stats.wordsMastered)
                       : null,
                 ),
                 const SizedBox(height: 12),
@@ -177,9 +178,10 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                 ),
                 const SizedBox(height: 12),
                 OfflineDownloadsCard(
-                  userId: context.read<ChildProfileProvider>().activeProfileId ??
-                      context.read<UserSessionProvider>().currentUserId ??
-                      '',
+                  userId:
+                      context.read<ChildProfileProvider>().activeProfileId ??
+                          context.read<UserSessionProvider>().currentUserId ??
+                          '',
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -310,8 +312,7 @@ class _StatGrid extends StatelessWidget {
             icon: Icons.emoji_events,
             color: Colors.deepPurple,
             label: SparkStrings.parentDashboardAchievements,
-            value:
-                '${stats.achievementsUnlocked}/${stats.achievementsTotal}',
+            value: '${stats.achievementsUnlocked}/${stats.achievementsTotal}',
           ),
           _StatTileData(
             icon: Icons.check_circle,
@@ -475,7 +476,7 @@ class _ErrorState extends StatelessWidget {
             const SizedBox(height: 16),
             FilledButton(
               onPressed: onRetry,
-              child: Text(SparkStrings.tryAgain),
+              child: const Text(SparkStrings.tryAgain),
             ),
           ],
         ),

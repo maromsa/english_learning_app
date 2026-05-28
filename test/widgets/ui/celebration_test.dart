@@ -1,6 +1,6 @@
 import 'package:english_learning_app/l10n/spark_strings.dart';
-import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
+import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/utils/app_theme.dart';
 import 'package:english_learning_app/widgets/ui/celebration.dart';
 import 'package:flutter/material.dart';

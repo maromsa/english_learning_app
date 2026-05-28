@@ -1,6 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/local_user.dart';
 import '../services/local_user_service.dart';
@@ -142,4 +142,3 @@ class UserSessionProvider with ChangeNotifier {
     notifyListeners();
   }
 }
-

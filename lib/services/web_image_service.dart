@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -69,7 +67,7 @@ class WebImageService implements WebImageProvider {
         continue;
       }
 
-      final matches = await _imageValidator!.validate(
+      final matches = await _imageValidator.validate(
         downloaded.bytes,
         inferredWord,
         mimeType: downloaded.mimeType,

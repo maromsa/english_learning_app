@@ -15,8 +15,9 @@ class OfflineImageCache {
     SharedPreferences? prefs,
     http.Client? httpClient,
     Future<Directory> Function()? directoryProvider,
-  })  : _prefsFuture =
-            prefs != null ? Future.value(prefs) : SharedPreferences.getInstance(),
+  })  : _prefsFuture = prefs != null
+            ? Future.value(prefs)
+            : SharedPreferences.getInstance(),
         _httpClient = httpClient ?? http.Client(),
         _directoryProvider = directoryProvider ?? _defaultImageDirectory;
 
@@ -111,7 +112,8 @@ class OfflineImageCache {
 
       final dir = await _directoryProvider();
       final hash = sha256.convert(utf8.encode(sourceUrl)).toString();
-      final extension = _extensionFromUrl(sourceUrl, response.headers['content-type']);
+      final extension =
+          _extensionFromUrl(sourceUrl, response.headers['content-type']);
       final file = File('${dir.path}/$hash$extension');
       await file.writeAsBytes(bytes, flush: true);
 

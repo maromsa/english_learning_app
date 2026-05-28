@@ -10,8 +10,7 @@ class OfflineWordLoader {
     OfflinePracticeService? offlinePracticeService,
     DeviceConnectivity? connectivity,
   })  : _wordRepository = wordRepository ?? WordRepository(),
-        _offlinePractice =
-            offlinePracticeService ?? OfflinePracticeService(),
+        _offlinePractice = offlinePracticeService ?? OfflinePracticeService(),
         _connectivity = connectivity ?? DeviceConnectivity.current;
 
   final WordRepository _wordRepository;

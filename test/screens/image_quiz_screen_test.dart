@@ -1,9 +1,9 @@
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
-import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/image_quiz_screen.dart';
+import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
@@ -28,12 +28,14 @@ class FakeLevelProgressService extends LevelProgressService {
     String word, {
     bool isLocalUser = false,
   }) async {
-    markWordCompletedCalls.add((
-      userId: userId,
-      levelId: levelId,
-      word: word,
-      isLocalUser: isLocalUser,
-    ));
+    markWordCompletedCalls.add(
+      (
+        userId: userId,
+        levelId: levelId,
+        word: word,
+        isLocalUser: isLocalUser,
+      ),
+    );
   }
 }
 
@@ -50,14 +52,14 @@ class _FakeConnectivity extends DeviceConnectivity {
   final bool online;
 
   @override
-  Future<bool> isOnline({Duration timeout = const Duration(seconds: 3)}) async =>
+  Future<bool> isOnline(
+          {Duration timeout = const Duration(seconds: 3)}) async =>
       online;
 }
 
 /// Returns words immediately for tests (no network/cache).
 class FakeWordRepository extends WordRepository {
-  FakeWordRepository(this.words, {SharedPreferences? prefs})
-      : super(prefs: prefs);
+  FakeWordRepository(this.words, {super.prefs});
 
   final List<WordData> words;
 
@@ -70,7 +72,8 @@ class FakeWordRepository extends WordRepository {
     int maxResults = 50,
     String cacheNamespace = 'default',
     bool preferCacheOnly = false,
-  }) async => List<WordData>.from(words);
+  }) async =>
+      List<WordData>.from(words);
 }
 
 void main() {
@@ -88,8 +91,7 @@ void main() {
   testWidgets('ImageQuizScreen shows loading then content when words loaded',
       (tester) async {
     SharedPreferences.setMockInitialValues({});
-    final userDataService =
-        UserDataService(firestore: FakeFirebaseFirestore());
+    final userDataService = UserDataService(firestore: FakeFirebaseFirestore());
     final coinProvider = CoinProvider(userDataService: userDataService);
     final sparkController = SparkOverlayController();
     final userSession = UserSessionProvider();
@@ -124,11 +126,11 @@ void main() {
     expect(find.byKey(const Key('option_Apple')), findsOneWidget);
   });
 
-  testWidgets('correct answer calls markWordCompleted and addCoins', (tester) async {
+  testWidgets('correct answer calls markWordCompleted and addCoins',
+      (tester) async {
     SharedPreferences.setMockInitialValues({});
     final fakeProgress = FakeLevelProgressService();
-    final userDataService =
-        UserDataService(firestore: FakeFirebaseFirestore());
+    final userDataService = UserDataService(firestore: FakeFirebaseFirestore());
     final coinProvider = CoinProvider(userDataService: userDataService);
     final sparkController = SparkOverlayController();
     final userSession = UserSessionProvider();

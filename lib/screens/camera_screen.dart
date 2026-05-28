@@ -4,13 +4,13 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
+import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/daily_mission.dart';
 import '../providers/daily_mission_provider.dart';
 import '../services/ai_image_validator.dart';
-import 'package:english_learning_app/l10n/spark_strings.dart';
 
 /// A full-screen camera UI that optionally validates captured images via AI.
 ///
@@ -171,9 +171,13 @@ class _CameraScreenState extends State<CameraScreen> {
                     child: SafeArea(
                       child: Container(
                         margin: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.55),
                           borderRadius: BorderRadius.circular(16),
@@ -197,7 +201,9 @@ class _CameraScreenState extends State<CameraScreen> {
                     child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: 24),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 14),
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.75),
                         borderRadius: BorderRadius.circular(16),
@@ -253,8 +259,7 @@ class _CameraScreenState extends State<CameraScreen> {
                             height: 70,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color:
-                                  _isValidating ? Colors.grey : Colors.white,
+                              color: _isValidating ? Colors.grey : Colors.white,
                               border: Border.all(color: Colors.grey, width: 3),
                             ),
                           ),
@@ -262,13 +267,10 @@ class _CameraScreenState extends State<CameraScreen> {
 
                         // Switch camera button
                         IconButton(
-                          onPressed:
-                              _isValidating ? null : _switchCamera,
+                          onPressed: _isValidating ? null : _switchCamera,
                           icon: Icon(
                             Icons.flip_camera_ios,
-                            color: _isValidating
-                                ? Colors.grey
-                                : Colors.white,
+                            color: _isValidating ? Colors.grey : Colors.white,
                             size: 35,
                           ),
                         ),

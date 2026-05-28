@@ -1,11 +1,11 @@
+import 'dart:async';
+
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/pronunciation_feedback.dart';
 import 'package:english_learning_app/services/speech_feedback_service.dart';
 import 'package:english_learning_app/utils/aurora_tokens.dart';
 import 'package:english_learning_app/widgets/bouncy_button.dart';
 import 'package:english_learning_app/widgets/ui/spark_orb.dart';
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -24,7 +24,8 @@ class PronunciationMicButton extends StatefulWidget {
 
   final String targetWord;
   final SpeechFeedbackService speechService;
-  final void Function(PronunciationFeedback feedback, String transcript)? onFeedback;
+  final void Function(PronunciationFeedback feedback, String transcript)?
+      onFeedback;
   final ValueChanged<bool>? onListeningChanged;
   final ValueChanged<bool>? onEvaluatingChanged;
   final bool enabled;
@@ -202,8 +203,7 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
       setState(() {
         _lastFeedback = feedback;
         _lastAttemptSuccess = feedback.isStrongAttempt;
-        _lastSuccessAt =
-            feedback.isStrongAttempt ? DateTime.now() : null;
+        _lastSuccessAt = feedback.isStrongAttempt ? DateTime.now() : null;
         _statusHint = null;
       });
 
@@ -255,7 +255,7 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
     if (messenger == null) return;
     messenger.showSnackBar(
       SnackBar(
-        content: Text(SparkStrings.micPermissionSettings),
+        content: const Text(SparkStrings.micPermissionSettings),
         action: SnackBarAction(
           label: SparkStrings.micOpenSettings,
           onPressed: () {
@@ -302,9 +302,8 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
               orbState: _orbState,
               soundLevel: _soundLevel,
               label: _actionLabel,
-              onTap: _isListening
-                  ? () => unawaited(_finishAndEvaluate())
-                  : null,
+              onTap:
+                  _isListening ? () => unawaited(_finishAndEvaluate()) : null,
             )
           else if (widget.enabled)
             BouncyButton(

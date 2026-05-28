@@ -20,7 +20,10 @@ class ChildProfileSyncService {
   CollectionReference<Map<String, dynamic>> _profilesCollection(
     String parentUid,
   ) {
-    return _firestore.collection('users').doc(parentUid).collection('childProfiles');
+    return _firestore
+        .collection('users')
+        .doc(parentUid)
+        .collection('childProfiles');
   }
 
   DocumentReference<Map<String, dynamic>> _profileDoc(
@@ -83,7 +86,8 @@ class ChildProfileSyncService {
     }
   }
 
-  Future<bool> syncProfileToCloud(String parentUid, ChildProfile profile) async {
+  Future<bool> syncProfileToCloud(
+      String parentUid, ChildProfile profile) async {
     try {
       final payload = profile.toMap(forCloud: true);
       payload.remove('pendingSync');
@@ -92,7 +96,8 @@ class ChildProfileSyncService {
         payload['createdAt'] = FieldValue.serverTimestamp();
       }
 
-      await _profileDoc(parentUid, profile.id).set(payload, SetOptions(merge: true));
+      await _profileDoc(parentUid, profile.id)
+          .set(payload, SetOptions(merge: true));
       await _profileService.markSynced(profile.id);
       return true;
     } catch (e) {

@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:english_learning_app/l10n/spark_strings.dart';
-import 'package:english_learning_app/models/scene_teaching_moment.dart';
 import 'package:english_learning_app/models/scavenger_hunt_challenge.dart';
+import 'package:english_learning_app/models/scene_teaching_moment.dart';
 import 'package:english_learning_app/services/gemini_proxy_service.dart';
 import 'package:flutter/foundation.dart';
 

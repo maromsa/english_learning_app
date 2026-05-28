@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:english_learning_app/app_config.dart';
+import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
@@ -12,15 +14,13 @@ import 'package:english_learning_app/services/spark_voice_service.dart';
 import 'package:english_learning_app/services/word_mastery_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
 import 'package:english_learning_app/utils/device_connectivity.dart';
+import 'package:english_learning_app/utils/hero_tags.dart';
 import 'package:english_learning_app/utils/offline_word_loader.dart';
-import 'package:english_learning_app/widgets/ui/glass_card.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:english_learning_app/widgets/ui/glass_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:provider/provider.dart';
-import 'package:english_learning_app/l10n/spark_strings.dart';
-import 'package:english_learning_app/utils/hero_tags.dart';
 
 /// Image Quiz mini-game integrated with the Living World: uses WordRepository +
 /// WordMasteryService for spaced repetition, LevelProgressService for
@@ -236,7 +236,9 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
           _streak += 1;
           _feedbackMessage = SparkStrings.quizCorrectCoins(compliment, reward);
         });
-        context.read<AchievementService>().checkForAchievements(streak: _streak);
+        context
+            .read<AchievementService>()
+            .checkForAchievements(streak: _streak);
       }
     } else {
       if (mounted) {
@@ -307,7 +309,8 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               GlassCard(
-                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                 child: Column(
                   children: [
                     _buildHeroWordTitle(context, target.word),
@@ -434,14 +437,16 @@ class _OptionTile extends StatelessWidget {
       imageWidget = CachedNetworkImage(
         imageUrl: imageUrl!,
         fit: BoxFit.cover,
-        placeholder: (_, __) => const Center(child: CircularProgressIndicator()),
+        placeholder: (_, __) =>
+            const Center(child: CircularProgressIndicator()),
         errorWidget: (_, __, ___) => const Icon(Icons.broken_image, size: 48),
       );
     }
 
     Color? borderColor;
     if (answered) {
-      borderColor = isCorrect ? Colors.green : (isSelected ? Colors.orange : null);
+      borderColor =
+          isCorrect ? Colors.green : (isSelected ? Colors.orange : null);
     } else if (isSelected) {
       borderColor = Colors.blue;
     }
@@ -481,7 +486,9 @@ class _OptionTile extends StatelessWidget {
                     word.word,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: isCorrect ? Colors.green.shade700 : Colors.orange.shade700,
+                          color: isCorrect
+                              ? Colors.green.shade700
+                              : Colors.orange.shade700,
                         ),
                   ),
                 ),

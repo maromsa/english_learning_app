@@ -3,9 +3,9 @@ import 'package:english_learning_app/models/leaderboard_entry.dart';
 import 'package:english_learning_app/providers/child_profile_provider.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/leaderboard_service.dart';
+import 'package:english_learning_app/utils/list_performance.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
-import 'package:english_learning_app/utils/list_performance.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -42,8 +42,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
     final profileProvider = context.read<ChildProfileProvider>();
     final session = context.read<UserSessionProvider>();
-    final currentId =
-        profileProvider.activeProfileId ?? session.currentUserId;
+    final currentId = profileProvider.activeProfileId ?? session.currentUserId;
 
     try {
       final result = await _service.fetchLeaderboard(
@@ -158,12 +157,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     return RefreshIndicator(
       onRefresh: _loadLeaderboard,
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         cacheExtent: ListPerformance.defaultCacheExtent,
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         itemCount: itemCount,
         itemBuilder: (context, index) {
           if (entries.length >= 3 && index == 0) {
-            return _PodiumRow(topThree: entries.take(3).toList(growable: false));
+            return _PodiumRow(
+                topThree: entries.take(3).toList(growable: false));
           }
 
           final listIndex = index - headerCount;
@@ -197,7 +197,8 @@ class _LeaderboardHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF5D4037)),
+            icon:
+                const Icon(Icons.arrow_back_rounded, color: Color(0xFF5D4037)),
             onPressed: onBack,
           ),
           const Icon(Icons.emoji_events, color: Color(0xFFFFB300), size: 36),
@@ -246,15 +247,18 @@ class _PodiumRow extends StatelessWidget {
         children: [
           Expanded(
             child: second != null
-                ? _PodiumPlace(entry: second, medal: LeaderboardMedal.silver, height: 88)
+                ? _PodiumPlace(
+                    entry: second, medal: LeaderboardMedal.silver, height: 88)
                 : const SizedBox.shrink(),
           ),
           Expanded(
-            child: _PodiumPlace(entry: first, medal: LeaderboardMedal.gold, height: 110),
+            child: _PodiumPlace(
+                entry: first, medal: LeaderboardMedal.gold, height: 110),
           ),
           Expanded(
             child: third != null
-                ? _PodiumPlace(entry: third, medal: LeaderboardMedal.bronze, height: 72)
+                ? _PodiumPlace(
+                    entry: third, medal: LeaderboardMedal.bronze, height: 72)
                 : const SizedBox.shrink(),
           ),
         ],
@@ -397,9 +401,8 @@ class _LeaderboardTile extends StatelessWidget {
                 entry.displayName,
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
-                  color: isYou
-                      ? const Color(0xFF6A1B9A)
-                      : const Color(0xFF37474F),
+                  color:
+                      isYou ? const Color(0xFF6A1B9A) : const Color(0xFF37474F),
                 ),
               ),
             ),

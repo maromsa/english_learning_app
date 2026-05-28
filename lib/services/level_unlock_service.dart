@@ -4,8 +4,7 @@ import 'level_progress_service.dart';
 /// Shared logic for which map levels are unlocked for a learner.
 class LevelUnlockService {
   LevelUnlockService({LevelProgressService? levelProgressService})
-      : _levelProgressService =
-            levelProgressService ?? LevelProgressService();
+      : _levelProgressService = levelProgressService ?? LevelProgressService();
 
   final LevelProgressService _levelProgressService;
 

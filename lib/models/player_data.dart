@@ -34,7 +34,8 @@ class PlayerData {
     }
 
     // Parse level progress
-    final levelProgressData = data['levelProgress'] as Map<String, dynamic>? ?? {};
+    final levelProgressData =
+        data['levelProgress'] as Map<String, dynamic>? ?? {};
     final levelProgress = <String, LevelProgress>{};
     levelProgressData.forEach((key, value) {
       if (value is Map<String, dynamic>) {
@@ -43,7 +44,8 @@ class PlayerData {
     });
 
     // Parse achievements
-    final achievementsData = data['achievements'] as Map<String, dynamic>? ?? {};
+    final achievementsData =
+        data['achievements'] as Map<String, dynamic>? ?? {};
     final achievements = <String, bool>{};
     achievementsData.forEach((key, value) {
       if (value is bool) {
@@ -165,7 +167,8 @@ class LevelProgress {
       return null;
     }
 
-    final wordsCompletedData = map['wordsCompleted'] as Map<String, dynamic>? ?? {};
+    final wordsCompletedData =
+        map['wordsCompleted'] as Map<String, dynamic>? ?? {};
     final wordsCompleted = <String, bool>{};
     wordsCompletedData.forEach((key, value) {
       if (value is bool) {
@@ -210,4 +213,3 @@ class LevelProgress {
     );
   }
 }
-

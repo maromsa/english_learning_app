@@ -3,10 +3,9 @@ import 'package:just_audio/just_audio.dart';
 class BytesAudioSource extends StreamAudioSource {
   BytesAudioSource(
     List<int> bytes, {
-    String tag = 'BytesAudioSource',
+    String super.tag = 'BytesAudioSource',
     this.contentType = 'audio/mpeg',
-  })  : _bytes = List<int>.unmodifiable(bytes),
-        super(tag: tag);
+  }) : _bytes = List<int>.unmodifiable(bytes);
 
   final List<int> _bytes;
   final String contentType;
@@ -26,4 +25,3 @@ class BytesAudioSource extends StreamAudioSource {
     );
   }
 }
-

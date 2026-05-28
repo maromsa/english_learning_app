@@ -39,8 +39,9 @@ class OfflinePracticeService {
         _sparkVoice = sparkVoice ?? SparkVoiceService(),
         _connectivity = connectivity ?? DeviceConnectivity.current,
         _ttsPrefetcher = ttsPrefetcher,
-        _prefsFuture =
-            prefs != null ? Future.value(prefs) : SharedPreferences.getInstance();
+        _prefsFuture = prefs != null
+            ? Future.value(prefs)
+            : SharedPreferences.getInstance();
 
   static const String manifestKey = 'offline_pack.manifest.v1';
 
@@ -128,8 +129,9 @@ class OfflinePracticeService {
       }
 
       final online = await _connectivity.isOnline();
-      final remoteEnabled =
-          online && AppConfig.hasCloudinary && AppConfig.cloudinaryCloudName.isNotEmpty;
+      final remoteEnabled = online &&
+          AppConfig.hasCloudinary &&
+          AppConfig.cloudinaryCloudName.isNotEmpty;
 
       var totalItems = 0;
       for (final level in unlocked) {

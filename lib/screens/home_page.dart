@@ -1,42 +1,41 @@
 import 'dart:async';
 import 'dart:io';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:english_learning_app/app_config.dart';
-import 'package:english_learning_app/models/achievement.dart';
+import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/daily_mission.dart';
+import 'package:english_learning_app/models/pronunciation_feedback.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
-import 'package:english_learning_app/screens/chat_buddy_screen.dart';
+import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
-import 'package:english_learning_app/screens/image_quiz_screen.dart';
+import 'package:english_learning_app/screens/chat_buddy_screen.dart';
 import 'package:english_learning_app/screens/daily_missions_screen.dart';
+import 'package:english_learning_app/screens/image_quiz_screen.dart';
+import 'package:english_learning_app/screens/level_completion_screen.dart';
 import 'package:english_learning_app/screens/lightning_practice_screen.dart';
 import 'package:english_learning_app/screens/scavenger_hunt_screen.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
-import 'package:english_learning_app/services/audio/bytes_audio_source.dart';
 import 'package:english_learning_app/services/gemini_proxy_service.dart';
 import 'package:english_learning_app/services/google_tts_service.dart';
+import 'package:english_learning_app/services/level_progress_service.dart';
+import 'package:english_learning_app/services/sound_service.dart';
+import 'package:english_learning_app/services/spark_voice_service.dart';
+import 'package:english_learning_app/services/speech_feedback_service.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
 import 'package:english_learning_app/utils/device_connectivity.dart';
-import 'package:english_learning_app/utils/offline_word_loader.dart';
-import 'package:english_learning_app/services/level_progress_service.dart';
-import 'package:english_learning_app/providers/user_session_provider.dart';
-import 'package:english_learning_app/screens/level_completion_screen.dart';
 import 'package:english_learning_app/utils/hero_tags.dart';
+import 'package:english_learning_app/utils/offline_word_loader.dart';
 import 'package:english_learning_app/utils/page_transitions.dart';
-import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:english_learning_app/widgets/living_spark.dart';
-import 'package:english_learning_app/services/sound_service.dart';
-import 'package:english_learning_app/services/spark_voice_service.dart';
-import 'package:english_learning_app/l10n/spark_strings.dart';
-import 'package:english_learning_app/models/pronunciation_feedback.dart';
-import 'package:english_learning_app/services/speech_feedback_service.dart';
 import 'package:english_learning_app/widgets/pronunciation_mic_button.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -90,13 +89,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
   bool _showFeedback = false;
   bool _lastResultSuccess = false;
-  
+
   // Spark emotion state
   SparkEmotion _sparkEmotion = SparkEmotion.neutral;
-  
+
   // Sound service
   final SoundService _soundService = SoundService();
-  
+
   @override
   void initState() {
     super.initState();
@@ -109,7 +108,6 @@ class _MyHomePageState extends State<MyHomePage> {
       final telemetry = TelemetryService.maybeOf(context);
       telemetry?.startScreenSession('home');
     });
-
   }
 
   @override
@@ -171,7 +169,9 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<void> _speak(String text, {String languageCode = "he-IL", SparkEmotion emotion = SparkEmotion.neutral}) async {
+  Future<void> _speak(String text,
+      {String languageCode = 'he-IL',
+      SparkEmotion emotion = SparkEmotion.neutral}) async {
     if (text.isEmpty) return;
 
     try {
@@ -188,15 +188,15 @@ class _MyHomePageState extends State<MyHomePage> {
       }
 
       // Fallback to FlutterTts if Google TTS is not available
-      debugPrint("Google TTS not available, using FlutterTts fallback");
+      debugPrint('Google TTS not available, using FlutterTts fallback');
       await _speakWithFlutterTts(text, languageCode: languageCode);
     } catch (e) {
-      debugPrint("Error in _speak function: $e");
+      debugPrint('Error in _speak function: $e');
       // Fallback to FlutterTts on error
       try {
         await _speakWithFlutterTts(text, languageCode: languageCode);
       } catch (fallbackError) {
-        debugPrint("FlutterTts fallback also failed: $fallbackError");
+        debugPrint('FlutterTts fallback also failed: $fallbackError');
         if (mounted) {
           setState(() {
             _feedbackText = SparkStrings.ttsError;
@@ -256,7 +256,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (tts == null) return;
 
     try {
-      await tts.setLanguage("en-US");
+      await tts.setLanguage('en-US');
     } catch (error, stackTrace) {
       debugPrint('TTS setLanguage failed: $error');
       debugPrint('$stackTrace');
@@ -443,7 +443,7 @@ class _MyHomePageState extends State<MyHomePage> {
           '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
       final savedImageFile = await File(imageFile.path).copy(newPath);
       imagePath = savedImageFile.path;
-      debugPrint("Saved new image to: ${savedImageFile.path}");
+      debugPrint('Saved new image to: ${savedImageFile.path}');
     }
 
     return WordData(
@@ -538,8 +538,7 @@ class _MyHomePageState extends State<MyHomePage> {
         if (!mounted) return;
 
         // Save word completion
-        final sessionProvider =
-            context.read<UserSessionProvider>();
+        final sessionProvider = context.read<UserSessionProvider>();
         final userId = sessionProvider.currentUserId;
         if (userId != null) {
           final isLocalUser = sessionProvider.isLocalUser;
@@ -577,16 +576,16 @@ class _MyHomePageState extends State<MyHomePage> {
       if (feedback.isEmpty) {
         feedback = SparkStrings.wrongAlmostHeard(recognizedWord);
       }
-      
+
       // Play gentle error sound (not harsh)
       _soundService.playSound('error');
-      
+
       // Update Spark emotion to be empathetic, not disappointed
       if (mounted) {
         setState(() {
           _sparkEmotion = SparkEmotion.empathetic;
         });
-        
+
         // Reset Spark to idle after a moment
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) {
@@ -614,7 +613,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     // Determine emotion based on result
     final emotion = isCorrect ? SparkEmotion.excited : SparkEmotion.empathetic;
-    await _speak(feedback, languageCode: "he-IL", emotion: emotion);
+    await _speak(feedback, languageCode: 'he-IL', emotion: emotion);
 
     // Auto-hide feedback after 3 seconds
     Future.delayed(const Duration(seconds: 3), () {
@@ -677,9 +676,8 @@ class _MyHomePageState extends State<MyHomePage> {
             ? null
             : () {
                 Navigator.pop(context);
-                final heroWord = _words.isNotEmpty
-                    ? _words[_currentIndex].word
-                    : null;
+                final heroWord =
+                    _words.isNotEmpty ? _words[_currentIndex].word : null;
                 Navigator.push(
                   context,
                   PageTransitions.fadeScale(
@@ -801,7 +799,8 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             actions: [
               IconButton(
-                icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 32),
+                icon: const Icon(Icons.menu_rounded,
+                    color: Colors.white, size: 32),
                 onPressed: _openGameMenu,
               ),
               const SizedBox(width: 8),
@@ -844,7 +843,8 @@ class _MyHomePageState extends State<MyHomePage> {
                             // Segmented Progress
                             Expanded(
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12.0),
                                 child: _SegmentedProgressBar(
                                   total: _words.length,
                                   current: _currentIndex,
@@ -878,7 +878,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                           _soundService.playSound('pop');
                                           final tts = flutterTts;
                                           if (tts == null) return;
-                                          await tts.setLanguage("en-US");
+                                          await tts.setLanguage('en-US');
                                           await tts.setSpeechRate(0.4);
                                           await tts.setPitch(1.1);
                                           await tts.speak(currentWordData.word);
@@ -889,7 +889,8 @@ class _MyHomePageState extends State<MyHomePage> {
                               : const Center(
                                   child: Text(
                                     SparkStrings.homeNoWordsYet,
-                                    style: TextStyle(fontSize: 22, color: Colors.white),
+                                    style: TextStyle(
+                                        fontSize: 22, color: Colors.white),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -949,8 +950,7 @@ class _MyHomePageState extends State<MyHomePage> {
       debugPrint('Level ID: ${widget.levelId}');
       debugPrint('Total words: ${_words.length}');
 
-      final sessionProvider =
-          context.read<UserSessionProvider>();
+      final sessionProvider = context.read<UserSessionProvider>();
       final userId = sessionProvider.currentUserId;
       debugPrint('User ID: $userId');
       if (userId == null) {
@@ -1000,8 +1000,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (!_isLevelComplete) return;
 
     try {
-      final sessionProvider =
-          context.read<UserSessionProvider>();
+      final sessionProvider = context.read<UserSessionProvider>();
       final userId = sessionProvider.currentUserId;
       if (userId == null) return;
 
@@ -1050,8 +1049,7 @@ class _MissionNudgeCard extends StatelessWidget {
   const _MissionNudgeCard({
     required this.mission,
     required this.isClaimable,
-    this.onTap,
-  });
+  }) : onTap = null;
 
   final DailyMission mission;
   final bool isClaimable;
@@ -1210,7 +1208,7 @@ class _CoinBadge extends StatelessWidget {
           Icon(Icons.monetization_on, color: Colors.yellow.shade700, size: 20),
           const SizedBox(width: 6),
           Text(
-            "$coins",
+            '$coins',
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
         ],
@@ -1239,8 +1237,8 @@ class _SegmentedProgressBar extends StatelessWidget {
       height: 8,
       child: Row(
         children: List.generate(total, (index) {
-          bool isActive = index == current;
-          bool isDone = completedIndices.contains(index);
+          final bool isActive = index == current;
+          final bool isDone = completedIndices.contains(index);
 
           Color color;
           if (isActive) {
@@ -1449,13 +1447,15 @@ class _HeroWordDisplay extends StatelessWidget {
       return Image.asset(
         imageUrl,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 64, color: Colors.grey),
+        errorBuilder: (_, __, ___) =>
+            const Icon(Icons.image, size: 64, color: Colors.grey),
       );
     } else if (isLocalFile) {
       return Image.file(
         File(imageUrl),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 64, color: Colors.grey),
+        errorBuilder: (_, __, ___) =>
+            const Icon(Icons.image, size: 64, color: Colors.grey),
       );
     } else {
       return CachedNetworkImage(
@@ -1464,7 +1464,8 @@ class _HeroWordDisplay extends StatelessWidget {
         placeholder: (context, url) => const Center(
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
-        errorWidget: (context, url, error) => const Icon(Icons.image, size: 64, color: Colors.grey),
+        errorWidget: (context, url, error) =>
+            const Icon(Icons.image, size: 64, color: Colors.grey),
       );
     }
   }
@@ -1578,14 +1579,14 @@ class _GameMenuSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
-            "תפריט משחק",
+            'תפריט משחק',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
           if (onAddWord != null)
             ListTile(
               leading: const Icon(Icons.camera_alt, color: Colors.blue),
-              title: const Text("הוסף מילה חדשה"),
+              title: const Text('הוסף מילה חדשה'),
               onTap: () {
                 Navigator.pop(context);
                 onAddWord?.call();
@@ -1603,7 +1604,7 @@ class _GameMenuSheet extends StatelessWidget {
           if (onShop != null)
             ListTile(
               leading: const Icon(Icons.store, color: Colors.purple),
-              title: const Text("חנות"),
+              title: const Text('חנות'),
               onTap: () {
                 Navigator.pop(context);
                 onShop?.call();
@@ -1612,7 +1613,7 @@ class _GameMenuSheet extends StatelessWidget {
           if (onImageQuiz != null)
             ListTile(
               leading: const Icon(Icons.image_search, color: Colors.orange),
-              title: const Text("חידון תמונות"),
+              title: const Text('חידון תמונות'),
               onTap: () {
                 Navigator.pop(context);
                 onImageQuiz?.call();
@@ -1621,7 +1622,7 @@ class _GameMenuSheet extends StatelessWidget {
           if (onChatBuddy != null)
             ListTile(
               leading: const Icon(Icons.chat, color: Colors.green),
-              title: const Text("חבר שיחה של ספרק"),
+              title: const Text('חבר שיחה של ספרק'),
               onTap: () {
                 Navigator.pop(context);
                 onChatBuddy?.call();
@@ -1630,7 +1631,7 @@ class _GameMenuSheet extends StatelessWidget {
           if (onPracticePack != null)
             ListTile(
               leading: const Icon(Icons.emoji_events, color: Colors.amber),
-              title: const Text("חבילת אימון AI"),
+              title: const Text('חבילת אימון AI'),
               onTap: () {
                 Navigator.pop(context);
                 onPracticePack?.call();
@@ -1639,7 +1640,7 @@ class _GameMenuSheet extends StatelessWidget {
           if (onLightning != null)
             ListTile(
               leading: const Icon(Icons.flash_on, color: Colors.orange),
-              title: const Text("ריצת ברק"),
+              title: const Text('ריצת ברק'),
               onTap: () {
                 Navigator.pop(context);
                 onLightning?.call();

@@ -18,7 +18,10 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
   bool _isClaiming = false;
 
   Future<void> _handleClaim(
-      BuildContext context, DailyMission mission, DailyMissionProvider provider) async {
+    BuildContext context,
+    DailyMission mission,
+    DailyMissionProvider provider,
+  ) async {
     if (_isClaiming) return;
 
     setState(() => _isClaiming = true);
@@ -33,10 +36,11 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
       if (!mounted) return;
 
       if (success) {
-      final compliment = SparkStrings.randomCompliment();
-      await Celebration.fire(context, tier: CelebrationTier.small);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+        final compliment = SparkStrings.randomCompliment();
+        if (!context.mounted) return;
+        await Celebration.fire(context, tier: CelebrationTier.small);
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
@@ -47,7 +51,8 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
             ),
             backgroundColor: Colors.green.shade600,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -82,8 +87,10 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('משימות יומיות',
-            style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text(
+          'משימות יומיות',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -105,7 +112,8 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
 
               if (missions.isEmpty) {
                 return _EmptyMissionsState(
-                    onRefresh: missionsProvider.refreshMissions);
+                  onRefresh: missionsProvider.refreshMissions,
+                );
               }
 
               final completedCount =
@@ -119,8 +127,8 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
               return RefreshIndicator(
                 onRefresh: missionsProvider.refreshMissions,
                 child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   cacheExtent: ListPerformance.defaultCacheExtent,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   itemCount: missions.length + 3,
                   itemBuilder: (context, index) {
                     if (index == 0) {
@@ -136,7 +144,8 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
                     }
                     if (index == 2) {
                       return Padding(
-                        padding: const EdgeInsets.only(right: 8.0, bottom: 12.0),
+                        padding:
+                            const EdgeInsets.only(right: 8.0, bottom: 12.0),
                         child: Text(
                           'רשימת המשימות',
                           style: TextStyle(
@@ -195,7 +204,7 @@ class _MissionBoardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    double progress = totalCount == 0 ? 0 : completedCount / totalCount;
+    final double progress = totalCount == 0 ? 0 : completedCount / totalCount;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -231,7 +240,7 @@ class _MissionBoardHeader extends StatelessWidget {
                 ),
                 Center(
                   child: Text(
-                    "${(progress * 100).toInt()}%",
+                    '${(progress * 100).toInt()}%',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -249,7 +258,7 @@ class _MissionBoardHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  "ההתקדמות היומית",
+                  'ההתקדמות היומית',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -260,8 +269,8 @@ class _MissionBoardHeader extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -269,21 +278,26 @@ class _MissionBoardHeader extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.check_circle,
-                              color: Colors.lightGreenAccent, size: 16),
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.lightGreenAccent,
+                            size: 16,
+                          ),
                           const SizedBox(width: 6),
                           Text(
-                            "$completedCount/$totalCount",
+                            '$completedCount/$totalCount',
                             style: const TextStyle(
-                                color: Colors.white, fontWeight: FontWeight.bold),
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -291,19 +305,24 @@ class _MissionBoardHeader extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.monetization_on,
-                              color: Colors.amberAccent, size: 16),
+                          const Icon(
+                            Icons.monetization_on,
+                            color: Colors.amberAccent,
+                            size: 16,
+                          ),
                           const SizedBox(width: 6),
                           Text(
-                            "$earnedRewards",
+                            '$earnedRewards',
                             style: const TextStyle(
-                                color: Colors.white, fontWeight: FontWeight.bold),
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),
@@ -401,11 +420,14 @@ class _QuestCard extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.monetization_on,
-                            color: Colors.amber.shade700, size: 16),
+                        Icon(
+                          Icons.monetization_on,
+                          color: Colors.amber.shade700,
+                          size: 16,
+                        ),
                         const SizedBox(width: 4),
                         Text(
-                          "+${mission.reward}",
+                          '+${mission.reward}',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.amber.shade800,
@@ -441,7 +463,7 @@ class _QuestCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      "${mission.progress} / ${mission.target}",
+                      '${mission.progress} / ${mission.target}',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -450,12 +472,13 @@ class _QuestCard extends StatelessWidget {
                     ),
                     Text(
                       isCompleted
-                          ? "הושלם!"
-                          : "${((mission.completionRatio) * 100).toInt()}%",
+                          ? 'הושלם!'
+                          : '${((mission.completionRatio) * 100).toInt()}%',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: isCompleted ? Colors.green : Colors.grey.shade600,
+                        color:
+                            isCompleted ? Colors.green : Colors.grey.shade600,
                       ),
                     ),
                   ],
@@ -516,9 +539,11 @@ class _QuestActionButton extends StatelessWidget {
             children: [
               Icon(Icons.check_circle, size: 18, color: Colors.green),
               SizedBox(width: 8),
-              Text("הפרס נאסף",
-                  style:
-                      TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+              Text(
+                'הפרס נאסף',
+                style:
+                    TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+              ),
             ],
           ),
         ),
@@ -574,7 +599,7 @@ class _DailyTipCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "טיפ יומי",
+                  'טיפ יומי',
                   style: TextStyle(
                     color: Colors.purple.shade800,
                     fontWeight: FontWeight.bold,
@@ -583,7 +608,7 @@ class _DailyTipCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "תרגול של 5 דקות ביום משפר את הביטחון העצמי בדיבור פלאים!",
+                  'תרגול של 5 דקות ביום משפר את הביטחון העצמי בדיבור פלאים!',
                   style: TextStyle(color: Colors.purple.shade700, fontSize: 13),
                 ),
               ],
@@ -609,7 +634,7 @@ class _EmptyMissionsState extends StatelessWidget {
           Icon(Icons.task_alt, size: 80, color: Colors.grey.shade300),
           const SizedBox(height: 16),
           Text(
-            "אין משימות כרגע",
+            'אין משימות כרגע',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 20,
@@ -621,8 +646,8 @@ class _EmptyMissionsState extends StatelessWidget {
           TextButton.icon(
             onPressed: () => onRefresh(),
             icon: const Icon(Icons.refresh),
-            label: const Text("רענן רשימה"),
-          )
+            label: const Text('רענן רשימה'),
+          ),
         ],
       ),
     );

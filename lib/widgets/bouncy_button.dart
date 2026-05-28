@@ -33,8 +33,8 @@ class _BouncyButtonState extends State<BouncyButton>
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: widget.scaleAmount)
-        .animate(
+    _scaleAnimation =
+        Tween<double>(begin: 1.0, end: widget.scaleAmount).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
   }
@@ -79,5 +79,3 @@ class _BouncyButtonState extends State<BouncyButton>
     );
   }
 }
-
-

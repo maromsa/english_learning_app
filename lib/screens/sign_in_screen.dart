@@ -30,9 +30,10 @@ class SignInScreen extends StatelessWidget {
                     Text(
                       'Sign in to continue',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -91,9 +92,9 @@ class SignInScreen extends StatelessWidget {
                       ),
                       icon: const Icon(Icons.mail_outline),
                       label: isBusy
-                          ? Row(
+                          ? const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 SizedBox(
                                   height: 16,
                                   width: 16,
@@ -112,9 +113,8 @@ class SignInScreen extends StatelessWidget {
                       'We use your Gmail only to authenticate and keep your learning journey safe.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                     ),
                   ],

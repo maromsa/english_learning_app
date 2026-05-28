@@ -103,10 +103,10 @@ class _OfflineDownloadsCardState extends State<OfflineDownloadsCard> {
               children: [
                 Icon(Icons.download_for_offline, color: Colors.teal.shade700),
                 const SizedBox(width: 12),
-                Expanded(
+                const Expanded(
                   child: Text(
                     SparkStrings.offlineDownloadsTitle,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -163,7 +163,7 @@ class _OfflineDownloadsCardState extends State<OfflineDownloadsCard> {
                         ),
                       )
                     : const Icon(Icons.cloud_download),
-                label: Text(SparkStrings.offlineDownloadsButton),
+                label: const Text(SparkStrings.offlineDownloadsButton),
               ),
             ),
           ],

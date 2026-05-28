@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../widgets/optimized_avatar.dart';
 
 import '../models/local_user.dart';
 import '../providers/auth_provider.dart';
@@ -8,6 +7,7 @@ import '../providers/coin_provider.dart';
 import '../providers/shop_provider.dart';
 import '../services/achievement_service.dart';
 import '../services/local_user_service.dart';
+import '../widgets/optimized_avatar.dart';
 import '../widgets/spark_overlay_suppressor.dart';
 import 'create_user_screen.dart';
 import 'map_screen.dart';
@@ -53,6 +53,8 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
     try {
       await _userService.setActiveUser(user.id);
       await _userService.updateLastPlayed(user.id);
+
+      if (!mounted) return;
 
       // If user is linked to Google, sign in automatically
       if (user.isLinkedToGoogle && user.googleUid != null) {
@@ -136,15 +138,14 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
           googleDisplayName: firebaseUser.displayName ?? '',
         );
 
-        if (mounted) {
-          await _loadUsers();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('המשתמש קושר בהצלחה לחשבון Google!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
+        await _loadUsers();
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('המשתמש קושר בהצלחה לחשבון Google!'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -210,7 +211,7 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
                 tooltip: 'התנתקות',
                 onPressed: () async {
                   await authProvider.signOut();
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   final navigator = Navigator.of(context);
                   navigator.pushReplacement(
                     MaterialPageRoute(builder: (_) => const SignInScreen()),
@@ -241,7 +242,6 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
                     children: [
                       if (authProvider.isAuthenticated)
                         _GoogleHeroCard(authProvider: authProvider),
-
                       Expanded(
                         child: _users.isEmpty
                             ? _buildEmptyState()
@@ -281,11 +281,14 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.sentiment_very_satisfied,
-              size: 80, color: Colors.blue.shade200),
+          Icon(
+            Icons.sentiment_very_satisfied,
+            size: 80,
+            color: Colors.blue.shade200,
+          ),
           const SizedBox(height: 16),
           Text(
-            "אף אחד עוד לא כאן!",
+            'אף אחד עוד לא כאן!',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -294,7 +297,7 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            "לחצו על הכפתור למטה כדי ליצור משתמש חדש",
+            'לחצו על הכפתור למטה כדי ליצור משתמש חדש',
             style: TextStyle(color: Colors.grey),
           ),
         ],
@@ -313,9 +316,8 @@ class _GoogleHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final appUser = authProvider.currentUser;
     final firebaseUser = authProvider.firebaseUser;
-    final name = appUser?.displayName ??
-        firebaseUser?.displayName ??
-        'משתמש Google';
+    final name =
+        appUser?.displayName ?? firebaseUser?.displayName ?? 'משתמש Google';
     final email = appUser?.email ?? firebaseUser?.email ?? '';
     final photoUrl = appUser?.photoUrl ?? firebaseUser?.photoURL;
 
@@ -453,8 +455,11 @@ class _UserCard extends StatelessWidget {
                           color: Colors.green,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.check,
-                            color: Colors.white, size: 12),
+                        child: const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 12,
+                        ),
                       ),
                     ),
                 ],
@@ -464,19 +469,26 @@ class _UserCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(user.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        )),
+                    Text(
+                      user.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
                     Row(
                       children: [
-                        Text('גיל: ${user.age}',
-                            style: TextStyle(color: Colors.grey.shade600)),
+                        Text(
+                          'גיל: ${user.age}',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
                         const SizedBox(width: 8),
                         if (user.isLinkedToGoogle)
-                          const Icon(Icons.cloud_done,
-                              color: Colors.blue, size: 16),
+                          const Icon(
+                            Icons.cloud_done,
+                            color: Colors.blue,
+                            size: 16,
+                          ),
                       ],
                     ),
                   ],
@@ -485,7 +497,7 @@ class _UserCard extends StatelessWidget {
               if (!user.isLinkedToGoogle)
                 IconButton(
                   icon: const Icon(Icons.link, color: Colors.blue),
-                  tooltip: "קשר ל-Google",
+                  tooltip: 'קשר ל-Google',
                   onPressed: onLink,
                 ),
               IconButton(

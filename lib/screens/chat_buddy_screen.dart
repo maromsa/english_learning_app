@@ -79,7 +79,8 @@ class _ChatBuddyScreenState extends State<ChatBuddyScreen> with RouteAware {
         .where((e) => !e.isLive && e.text.trim().isNotEmpty)
         .map(
           (e) => ChatBuddyMessage(
-            speaker: e.isSpark ? ChatBuddySpeaker.spark : ChatBuddySpeaker.learner,
+            speaker:
+                e.isSpark ? ChatBuddySpeaker.spark : ChatBuddySpeaker.learner,
             text: e.text,
           ),
         )
@@ -307,7 +308,7 @@ class _ChatBuddyScreenState extends State<ChatBuddyScreen> with RouteAware {
     if (messenger == null) return;
     messenger.showSnackBar(
       SnackBar(
-        content: Text(SparkStrings.micPermissionSettings),
+        content: const Text(SparkStrings.micPermissionSettings),
         action: SnackBarAction(
           label: SparkStrings.micOpenSettings,
           onPressed: () => _service.openSystemSettings(),
@@ -395,7 +396,8 @@ class _ChatBuddyScreenState extends State<ChatBuddyScreen> with RouteAware {
                 Container(
                   width: double.infinity,
                   margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.red.shade50,
                     borderRadius: BorderRadius.circular(12),
@@ -418,7 +420,8 @@ class _ChatBuddyScreenState extends State<ChatBuddyScreen> with RouteAware {
                 ),
               Expanded(
                 child: _entries.isEmpty && !_isThinking
-                    ? _EmptyChatState(onStart: geminiReady ? _startSession : null)
+                    ? _EmptyChatState(
+                        onStart: geminiReady ? _startSession : null)
                     : ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -546,7 +549,8 @@ class _SparkBubble extends StatelessWidget {
                 colors: [AuroraTokens.plum, AuroraTokens.coral],
               ),
             ),
-            child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+            child:
+                const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
           ),
           const SizedBox(width: 8),
           Flexible(
@@ -626,9 +630,8 @@ class _LearnerBubble extends StatelessWidget {
             bottomLeft: Radius.circular(18),
             bottomRight: Radius.circular(4),
           ),
-          border: isLive
-              ? Border.all(color: AuroraTokens.coral, width: 2)
-              : null,
+          border:
+              isLive ? Border.all(color: AuroraTokens.coral, width: 2) : null,
           boxShadow: [
             BoxShadow(
               color: AuroraTokens.plum.withValues(alpha: 0.25),
@@ -704,7 +707,8 @@ class _ThinkingBubble extends StatelessWidget {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: AuroraTokens.plum.withValues(alpha: 0.5 + i * 0.15),
+                        color:
+                            AuroraTokens.plum.withValues(alpha: 0.5 + i * 0.15),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -754,7 +758,8 @@ class _ScaffoldingBar extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.lightbulb_outline, color: AuroraTokens.butter, size: 20),
+              Icon(Icons.lightbulb_outline,
+                  color: AuroraTokens.butter, size: 20),
               SizedBox(width: 6),
               Text(
                 'מילים לנסות בהמשך',
@@ -772,7 +777,8 @@ class _ScaffoldingBar extends StatelessWidget {
             runSpacing: 6,
             children: words.map((word) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -781,7 +787,8 @@ class _ScaffoldingBar extends StatelessWidget {
                     ],
                   ),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AuroraTokens.coral.withValues(alpha: 0.5)),
+                  border: Border.all(
+                      color: AuroraTokens.coral.withValues(alpha: 0.5)),
                 ),
                 child: Text(
                   word,
@@ -859,7 +866,7 @@ class _MicPanel extends StatelessWidget {
               ),
             )
           else
-            SparkOrb(
+            const SparkOrb(
               state: OrbState.idle,
               size: 120,
             ),

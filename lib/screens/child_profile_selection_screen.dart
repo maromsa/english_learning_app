@@ -160,9 +160,9 @@ class _ChildProfileSelectionScreenState
                                 itemBuilder: (context, index) {
                                   final profile =
                                       profileProvider.profiles[index];
-                                  final isActive = profileProvider
-                                          .activeProfileId ==
-                                      profile.id;
+                                  final isActive =
+                                      profileProvider.activeProfileId ==
+                                          profile.id;
                                   return _ProfileCard(
                                     profile: profile,
                                     isActive: isActive,
@@ -182,8 +182,7 @@ class _ChildProfileSelectionScreenState
           label: const Text('פרופיל חדש'),
           backgroundColor: const Color(0xFF50C878),
         ),
-        floatingActionButtonLocation:
-            FloatingActionButtonLocation.centerFloat,
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
   }

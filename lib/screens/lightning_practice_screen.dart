@@ -4,6 +4,9 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/widgets/pronunciation_mic_button.dart';
+import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -21,9 +24,6 @@ import '../services/sound_service.dart';
 import '../services/speech_feedback_service.dart';
 import '../services/telemetry_service.dart';
 import '../services/word_mastery_service.dart';
-import 'package:english_learning_app/l10n/spark_strings.dart';
-import 'package:english_learning_app/widgets/pronunciation_mic_button.dart';
-import 'package:english_learning_app/widgets/ui/_barrel.dart';
 
 /// Lightning-round practice screen — Phase 3 edition.
 ///
@@ -196,7 +196,8 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
   void initState() {
     super.initState();
     _wordMasteryService = widget.wordMasteryService ?? WordMasteryService();
-    _levelProgressService = widget.levelProgressService ?? LevelProgressService();
+    _levelProgressService =
+        widget.levelProgressService ?? LevelProgressService();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _speechFeedbackService = context.read<SpeechFeedbackService>();
@@ -302,16 +303,18 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       final trimmed = w.word.trim();
       if (trimmed.isEmpty) continue;
       if (!seen.add(trimmed.toLowerCase())) continue;
-      out.add(WordData(
-        word: trimmed,
-        searchHint: w.searchHint,
-        imageUrl: w.imageUrl,
-        publicId: w.publicId,
-        isCompleted: w.isCompleted,
-        stickerUnlocked: w.stickerUnlocked,
-        masteryLevel: w.masteryLevel,
-        lastReviewed: w.lastReviewed,
-      ));
+      out.add(
+        WordData(
+          word: trimmed,
+          searchHint: w.searchHint,
+          imageUrl: w.imageUrl,
+          publicId: w.publicId,
+          isCompleted: w.isCompleted,
+          stickerUnlocked: w.stickerUnlocked,
+          masteryLevel: w.masteryLevel,
+          lastReviewed: w.lastReviewed,
+        ),
+      );
     }
     return out;
   }
@@ -326,12 +329,14 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     for (final entry in _fallbackWordEntries) {
       final word = entry['word']!;
       if (existing.contains(word.toLowerCase())) continue;
-      padded.add(WordData(
-        word: word,
-        searchHint: entry['hint'],
-        imageUrl: entry['asset'],
-        masteryLevel: 0.0, // Treat fallback words as unseen.
-      ));
+      padded.add(
+        WordData(
+          word: word,
+          searchHint: entry['hint'],
+          imageUrl: entry['asset'],
+          masteryLevel: 0.0, // Treat fallback words as unseen.
+        ),
+      );
       if (padded.length >= 8) break;
     }
     return padded;
@@ -403,7 +408,8 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     final List<WordData> candidates = _wordPool
         .where((w) => !_recentWords.contains(w.word))
         .toList(growable: false);
-    final List<WordData> source = candidates.isNotEmpty ? candidates : _wordPool;
+    final List<WordData> source =
+        candidates.isNotEmpty ? candidates : _wordPool;
 
     // Among candidates, bias toward lower-mastery words: pick from the first
     // half of the sorted list 70 % of the time to reinforce weak words.
@@ -450,7 +456,8 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     // Pad with fallback entries if the level pool is very small.
     while (options.length < 4) {
       final fallback =
-          _fallbackWordEntries[_random.nextInt(_fallbackWordEntries.length)]['word']!;
+          _fallbackWordEntries[_random.nextInt(_fallbackWordEntries.length)]
+              ['word']!;
       if (!options.contains(fallback)) options.add(fallback);
     }
 
@@ -664,8 +671,8 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
 
     try {
       context.read<DailyMissionProvider>().incrementByType(
-        DailyMissionType.lightningRound,
-      );
+            DailyMissionType.lightningRound,
+          );
     } catch (_) {}
 
     _telemetry?.logLightningSession(
@@ -781,9 +788,8 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
   }
 
   Widget _buildStatusRow() {
-    final double accuracy = _questionCount == 0
-        ? 0
-        : (_correctAnswers / _questionCount) * 100;
+    final double accuracy =
+        _questionCount == 0 ? 0 : (_correctAnswers / _questionCount) * 100;
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -845,9 +851,9 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
             Text(
               'רמז קסם:',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.deepOrange.shade700,
-              ),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.deepOrange.shade700,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -935,9 +941,9 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
               'סיכום ריצת הברק',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.deepOrange.shade600,
-              ),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.deepOrange.shade600,
+                  ),
             ),
             const SizedBox(height: 20),
             Wrap(
@@ -1052,7 +1058,8 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         OutlinedButton.icon(
-          onPressed: _sessionActive && !_speechBusy ? () => _endSession() : null,
+          onPressed:
+              _sessionActive && !_speechBusy ? () => _endSession() : null,
           icon: const Icon(Icons.flag_circle_outlined),
           label: const Text('סיימו מוקדם'),
         ),
@@ -1077,7 +1084,8 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.psychology, size: 64, color: Colors.deepOrange.shade300),
+              Icon(Icons.psychology,
+                  size: 64, color: Colors.deepOrange.shade300),
               const SizedBox(height: 16),
               const Text(
                 SparkStrings.lightningNeedWords,
@@ -1275,8 +1283,10 @@ class _StatusChip extends StatelessWidget {
           child: Icon(icon, color: color),
         ),
         const SizedBox(height: 6),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        Text(label,
+            style: const TextStyle(fontSize: 12, color: Colors.black54)),
+        Text(value,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
       ],
     );
   }
@@ -1311,10 +1321,12 @@ class _SummaryStat extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+              Text(label,
+                  style: const TextStyle(fontSize: 13, color: Colors.black54)),
               Text(
                 value,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ],
           ),

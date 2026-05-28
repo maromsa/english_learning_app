@@ -22,10 +22,10 @@ class ParentalGateDialog extends StatefulWidget {
   /// Returns `true` when the adult answered correctly.
   static Future<bool> show(BuildContext context) {
     return showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => const ParentalGateDialog(),
-        ).then((value) => value ?? false);
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const ParentalGateDialog(),
+    ).then((value) => value ?? false);
   }
 
   @override
@@ -73,7 +73,7 @@ class _ParentalGateDialogState extends State<ParentalGateDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(SparkStrings.parentGateTitle),
+      title: const Text(SparkStrings.parentGateTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -98,11 +98,11 @@ class _ParentalGateDialogState extends State<ParentalGateDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: Text(SparkStrings.parentGateCancel),
+          child: const Text(SparkStrings.parentGateCancel),
         ),
         FilledButton(
           onPressed: _submit,
-          child: Text(SparkStrings.parentGateContinue),
+          child: const Text(SparkStrings.parentGateContinue),
         ),
       ],
     );

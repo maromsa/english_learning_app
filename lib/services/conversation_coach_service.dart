@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../app_config.dart';
-import '../providers/user_session_provider.dart';
 import '../models/local_user.dart';
+import '../providers/user_session_provider.dart';
 import '../utils/safe_display_name.dart';
 import 'gemini_proxy_service.dart';
 
@@ -15,8 +15,8 @@ class ConversationCoachService {
   ConversationCoachService({
     Duration? timeout,
     _ConversationGenerator? generator,
-  }) : _timeout = timeout ?? const Duration(seconds: 12),
-       _generator = generator ?? _inferGenerator();
+  })  : _timeout = timeout ?? const Duration(seconds: 12),
+        _generator = generator ?? _inferGenerator();
 
   final _ConversationGenerator _generator;
   final Duration _timeout;
@@ -162,7 +162,7 @@ class ConversationCoachService {
   }) {
     final userName = sanitizeDisplayName(user?.name ?? localUser?.name);
     final userAge = localUser?.age;
-    
+
     final contextMap = setup.toMap();
     if (userName.isNotEmpty) {
       contextMap['learnerName'] = userName;
@@ -170,12 +170,12 @@ class ConversationCoachService {
     if (userAge != null) {
       contextMap['learnerAge'] = userAge;
     }
-    
+
     final contextJson = jsonEncode(contextMap);
     final greetingInstruction = userName.isNotEmpty
         ? 'Start by greeting the learner by name: "שלום $userName!" or "היי $userName!"'
         : 'Start with a warm greeting.';
-    
+
     return '''
 Start a playful conversation with a young learner based on the supplied JSON context.
 
@@ -205,7 +205,7 @@ Output JSON (no markdown fences) with keys:
   }) {
     final userName = sanitizeDisplayName(user?.name ?? localUser?.name);
     final userAge = localUser?.age;
-    
+
     final setupMap = setup.toMap();
     if (userName.isNotEmpty) {
       setupMap['learnerName'] = userName;
@@ -213,10 +213,9 @@ Output JSON (no markdown fences) with keys:
     if (userAge != null) {
       setupMap['learnerAge'] = userAge;
     }
-    
-    final historyMaps = history
-        .map((turn) => turn.toMap())
-        .toList(growable: false);
+
+    final historyMaps =
+        history.map((turn) => turn.toMap()).toList(growable: false);
     final payload = {
       'context': setupMap,
       'history': historyMaps,
@@ -349,14 +348,14 @@ class ConversationSetup {
   final int? age;
 
   Map<String, dynamic> toMap() => <String, dynamic>{
-    'topic': topic,
-    'skillFocus': skillFocus,
-    'energyLevel': energyLevel,
-    'focusWords': focusWords,
-    if (learnerName != null && learnerName!.trim().isNotEmpty)
-      'learnerName': learnerName!.trim(),
-    if (age != null) 'age': age,
-  };
+        'topic': topic,
+        'skillFocus': skillFocus,
+        'energyLevel': energyLevel,
+        'focusWords': focusWords,
+        if (learnerName != null && learnerName!.trim().isNotEmpty)
+          'learnerName': learnerName!.trim(),
+        if (age != null) 'age': age,
+      };
 
   String topicDescription() {
     switch (topic) {
@@ -394,9 +393,9 @@ class ConversationTurn {
   final String message;
 
   Map<String, String> toMap() => <String, String>{
-    'speaker': speaker == ConversationSpeaker.spark ? 'spark' : 'learner',
-    'message': message,
-  };
+        'speaker': speaker == ConversationSpeaker.spark ? 'spark' : 'learner',
+        'message': message,
+      };
 }
 
 enum ConversationSpeaker { spark, learner }
@@ -437,5 +436,5 @@ class ConversationGenerationException implements Exception {
 }
 
 class ConversationUnavailableException extends ConversationGenerationException {
-  const ConversationUnavailableException(String message) : super(message);
+  const ConversationUnavailableException(super.message);
 }

@@ -25,7 +25,7 @@ void main() {
           body,
           200,
           headers: {
-            Headers.contentTypeHeader: ['application/json']
+            Headers.contentTypeHeader: ['application/json'],
           },
         );
       });
@@ -70,7 +70,7 @@ void main() {
                   jsonEncode({'confidence': '0.73'}),
                   200,
                   headers: {
-                    Headers.contentTypeHeader: ['application/json']
+                    Headers.contentTypeHeader: ['application/json'],
                   },
                 ),
               ),
@@ -98,7 +98,7 @@ void main() {
                 jsonEncode({'confidence': 0.71}),
                 200,
                 headers: {
-                  Headers.contentTypeHeader: ['application/json']
+                  Headers.contentTypeHeader: ['application/json'],
                 },
               ),
             ),
@@ -129,7 +129,7 @@ void main() {
                 jsonEncode({'unexpected': true}),
                 200,
                 headers: {
-                  Headers.contentTypeHeader: ['application/json']
+                  Headers.contentTypeHeader: ['application/json'],
                 },
               );
             }),

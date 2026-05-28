@@ -12,7 +12,11 @@ class UserDataService {
 
   /// Get the player data document reference
   DocumentReference<Map<String, dynamic>> _playerDataDoc(String userId) {
-    return _firestore.collection('users').doc(userId).collection('gameData').doc('player');
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('gameData')
+        .doc('player');
   }
 
   /// Load player data from Firestore
@@ -41,8 +45,10 @@ class UserDataService {
         data['createdAt'] = Timestamp.fromDate(playerData.createdAt!);
       }
 
-      await _playerDataDoc(playerData.userId).set(data, SetOptions(merge: true));
-      debugPrint('Player data saved successfully for user: ${playerData.userId}');
+      await _playerDataDoc(playerData.userId)
+          .set(data, SetOptions(merge: true));
+      debugPrint(
+          'Player data saved successfully for user: ${playerData.userId}');
       return true;
     } catch (e) {
       debugPrint('Error saving player data: $e');
@@ -134,7 +140,8 @@ class UserDataService {
   }
 
   /// Increment statistics
-  Future<bool> incrementStat(String userId, String statName, {int amount = 1}) async {
+  Future<bool> incrementStat(String userId, String statName,
+      {int amount = 1}) async {
     try {
       await _playerDataDoc(userId).update({
         statName: FieldValue.increment(amount),
@@ -148,7 +155,8 @@ class UserDataService {
   }
 
   /// Update player character
-  Future<bool> updateCharacter(String userId, Map<String, dynamic> characterData) async {
+  Future<bool> updateCharacter(
+      String userId, Map<String, dynamic> characterData) async {
     try {
       await _playerDataDoc(userId).update({
         'character': characterData,
@@ -166,7 +174,7 @@ class UserDataService {
   Future<PlayerData?> syncWithCloud(String userId, PlayerData localData) async {
     try {
       final cloudData = await loadPlayerData(userId);
-      
+
       if (cloudData == null) {
         // No cloud data exists, save local data
         await savePlayerData(localData);
@@ -176,11 +184,13 @@ class UserDataService {
       // Merge strategy: take maximum values for stats, union for lists
       final merged = PlayerData(
         userId: userId,
-        coins: cloudData.coins > localData.coins ? cloudData.coins : localData.coins,
-        purchasedItems: [
+        coins: cloudData.coins > localData.coins
+            ? cloudData.coins
+            : localData.coins,
+        purchasedItems: <String>{
           ...cloudData.purchasedItems,
           ...localData.purchasedItems,
-        ].toSet().toList(),
+        }.toList(),
         achievements: {
           ...cloudData.achievements,
           ...localData.achievements,
@@ -194,15 +204,18 @@ class UserDataService {
             : localData.dailyStreak,
         lastDailyRewardClaim: cloudData.lastDailyRewardClaim != null &&
                 (localData.lastDailyRewardClaim == null ||
-                    cloudData.lastDailyRewardClaim!.isAfter(localData.lastDailyRewardClaim!))
+                    cloudData.lastDailyRewardClaim!
+                        .isAfter(localData.lastDailyRewardClaim!))
             ? cloudData.lastDailyRewardClaim
             : localData.lastDailyRewardClaim,
-        totalWordsCompleted: cloudData.totalWordsCompleted > localData.totalWordsCompleted
-            ? cloudData.totalWordsCompleted
-            : localData.totalWordsCompleted,
-        totalQuizzesPlayed: cloudData.totalQuizzesPlayed > localData.totalQuizzesPlayed
-            ? cloudData.totalQuizzesPlayed
-            : localData.totalQuizzesPlayed,
+        totalWordsCompleted:
+            cloudData.totalWordsCompleted > localData.totalWordsCompleted
+                ? cloudData.totalWordsCompleted
+                : localData.totalWordsCompleted,
+        totalQuizzesPlayed:
+            cloudData.totalQuizzesPlayed > localData.totalQuizzesPlayed
+                ? cloudData.totalQuizzesPlayed
+                : localData.totalQuizzesPlayed,
         bestQuizStreak: cloudData.bestQuizStreak > localData.bestQuizStreak
             ? cloudData.bestQuizStreak
             : localData.bestQuizStreak,
@@ -218,4 +231,3 @@ class UserDataService {
     }
   }
 }
-

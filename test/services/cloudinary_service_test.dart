@@ -38,7 +38,7 @@ void main() {
             body,
             200,
             headers: {
-              Headers.contentTypeHeader: ['application/json']
+              Headers.contentTypeHeader: ['application/json'],
             },
           );
         });
@@ -81,7 +81,7 @@ void main() {
           body,
           200,
           headers: {
-            Headers.contentTypeHeader: ['application/json']
+            Headers.contentTypeHeader: ['application/json'],
           },
         );
       });
@@ -138,7 +138,7 @@ void main() {
           body,
           200,
           headers: {
-            Headers.contentTypeHeader: ['application/json']
+            Headers.contentTypeHeader: ['application/json'],
           },
         );
       });

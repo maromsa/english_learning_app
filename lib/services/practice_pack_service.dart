@@ -4,16 +4,16 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../app_config.dart';
-import '../providers/user_session_provider.dart';
 import '../models/local_user.dart';
+import '../providers/user_session_provider.dart';
 import 'gemini_proxy_service.dart';
 
 typedef _PracticePackGenerator = Future<String?> Function(String prompt);
 
 class PracticePackService {
   PracticePackService({Duration? timeout, _PracticePackGenerator? generator})
-    : _timeout = timeout ?? const Duration(seconds: 12),
-      _generator = generator ?? _inferGenerator();
+      : _timeout = timeout ?? const Duration(seconds: 12),
+        _generator = generator ?? _inferGenerator();
 
   final _PracticePackGenerator _generator;
   final Duration _timeout;
@@ -110,7 +110,7 @@ class PracticePackService {
   }) {
     final userName = user?.name ?? localUser?.name;
     final userAge = localUser?.age;
-    
+
     final requestMap = request.toMap();
     if (userName != null && userName.isNotEmpty) {
       requestMap['learnerName'] = userName;
@@ -118,12 +118,12 @@ class PracticePackService {
     if (userAge != null) {
       requestMap['learnerAge'] = userAge;
     }
-    
+
     final jsonContext = jsonEncode(requestMap);
     final personalizationNote = userName != null && userName.isNotEmpty
         ? 'The learner\'s name is $userName. Use their name in the pep talk and example sentences.'
         : '';
-    
+
     return '''
 Craft a three-part micro practice plan for a young learner using the JSON context.
 
@@ -177,8 +177,7 @@ Ensure exactly three activities are returned.''';
 
     if (decoded != null) {
       try {
-        final activities =
-            (decoded['activities'] as List?)
+        final activities = (decoded['activities'] as List?)
                 ?.map(
                   (item) =>
                       PracticeActivity.fromJson(item as Map<String, dynamic>),
@@ -311,14 +310,14 @@ class PracticePackRequest {
   final String? learnerName;
 
   Map<String, dynamic> toMap() => <String, dynamic>{
-    'skillFocus': skillFocus,
-    'timeAvailable': timeAvailable,
-    'energyLevel': energyLevel,
-    'playMode': playMode,
-    'focusWords': focusWords,
-    if (learnerName != null && learnerName!.trim().isNotEmpty)
-      'learnerName': learnerName!.trim(),
-  };
+        'skillFocus': skillFocus,
+        'timeAvailable': timeAvailable,
+        'energyLevel': energyLevel,
+        'playMode': playMode,
+        'focusWords': focusWords,
+        if (learnerName != null && learnerName!.trim().isNotEmpty)
+          'learnerName': learnerName!.trim(),
+      };
 
   String skillFocusDescription() {
     switch (skillFocus) {
@@ -402,15 +401,13 @@ class PracticeActivity {
     return PracticeActivity(
       title: _sanitize(json['title']),
       goal: _sanitize(json['goal']),
-      steps:
-          (json['steps'] as List?)
+      steps: (json['steps'] as List?)
               ?.whereType<String>()
               .map((step) => step.trim())
               .where((step) => step.isNotEmpty)
               .toList(growable: false) ??
           const <String>[],
-      englishFocus:
-          (json['englishFocus'] as List?)
+      englishFocus: (json['englishFocus'] as List?)
               ?.whereType<String>()
               .map((word) => word.trim())
               .where((word) => word.isNotEmpty)
@@ -437,5 +434,5 @@ class PracticePackGenerationException implements Exception {
 }
 
 class PracticePackUnavailableException extends PracticePackGenerationException {
-  const PracticePackUnavailableException(String message) : super(message);
+  const PracticePackUnavailableException(super.message);
 }

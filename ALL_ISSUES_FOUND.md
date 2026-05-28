@@ -174,12 +174,12 @@
 ## 🛠️ הצעדים הבאים
 
 1. ✅ יצירת קובץ `ISSUES_FOUND.md` - ✅ הושלם
-2. ⏳ יצירת iOS entitlements file
-3. ⏳ תיקון deprecated methods
-4. ⏳ תיקון BuildContext issues
-5. ⏳ עדכון packages (בזהירות, לבדוק breaking changes)
-6. ⏳ ניקוי imports מיותרים
-7. ⏳ שיפור error handling
+2. ✅ יצירת iOS entitlements file + חיבור ב-Xcode (`CODE_SIGN_ENTITLEMENTS`)
+3. ✅ תיקון deprecated methods (`withOpacity` → `withValues`, וכו')
+4. ✅ תיקון BuildContext issues (`context.mounted` אחרי async)
+5. ✅ עדכון packages (כולל `camera` 0.12, `google_fonts` 8.x)
+6. ✅ ניקוי imports מיותרים ו-dead code
+7. ⏳ שיפור error handling (מתמשך)
 
 ---
 

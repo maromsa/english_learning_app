@@ -11,10 +11,10 @@ import 'package:english_learning_app/services/gemini_proxy_service.dart';
 import 'package:english_learning_app/services/scavenger_hunt_service.dart';
 import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/services/spark_voice_service.dart';
-import 'package:english_learning_app/widgets/scavenger_teaching_moment_sheet.dart';
-import 'package:english_learning_app/widgets/ui/glass_card.dart';
 import 'package:english_learning_app/widgets/living_spark.dart';
+import 'package:english_learning_app/widgets/scavenger_teaching_moment_sheet.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
+import 'package:english_learning_app/widgets/ui/glass_card.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -67,8 +67,7 @@ class _ScavengerHuntScreenState extends State<ScavengerHuntScreen> {
     super.initState();
     _huntService = ScavengerHuntService(widget.geminiProxy);
     _sparkVoice = SparkVoiceService();
-    _challenges =
-        _huntService.startSession(rounds: widget.roundsPerSession);
+    _challenges = _huntService.startSession(rounds: widget.roundsPerSession);
     _initCamera();
     WidgetsBinding.instance.addPostFrameCallback((_) => _announceChallenge());
   }
@@ -183,15 +182,21 @@ class _ScavengerHuntScreenState extends State<ScavengerHuntScreen> {
         imageBytes,
       );
     } else {
-      await _onRoundRetry(result.feedbackHebrew ?? SparkStrings.scavengerTryAgain(
-          _currentChallenge.promptHebrew));
+      await _onRoundRetry(
+        result.feedbackHebrew ??
+            SparkStrings.scavengerTryAgain(
+              _currentChallenge.promptHebrew,
+            ),
+      );
     }
   }
 
   Future<void> _onRoundSuccess(String message, Uint8List imageBytes) async {
     context.read<SoundService>().playSuccessSound();
     context.read<SparkOverlayController>().markCelebrating();
-    context.read<DailyMissionProvider>().incrementByType(DailyMissionType.camera);
+    context
+        .read<DailyMissionProvider>()
+        .incrementByType(DailyMissionType.camera);
 
     setState(() {
       _phase = _HuntPhase.success;
@@ -533,8 +538,7 @@ class _ScavengerHuntScreenState extends State<ScavengerHuntScreen> {
   }
 
   Widget _buildCaptureControl() {
-    final canCapture =
-        _phase == _HuntPhase.ready || _phase == _HuntPhase.retry;
+    final canCapture = _phase == _HuntPhase.ready || _phase == _HuntPhase.retry;
 
     return Column(
       children: [
@@ -565,9 +569,7 @@ class _ScavengerHuntScreenState extends State<ScavengerHuntScreen> {
               ),
             ),
           ),
-        )
-            .animate(target: canCapture ? 1 : 0)
-            .scale(
+        ).animate(target: canCapture ? 1 : 0).scale(
               begin: const Offset(1, 1),
               end: const Offset(1.06, 1.06),
               duration: 900.ms,

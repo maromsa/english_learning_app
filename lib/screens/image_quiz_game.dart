@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -15,13 +17,11 @@ import '../providers/spark_overlay_controller.dart';
 import '../providers/user_session_provider.dart';
 import '../services/level_progress_service.dart';
 import '../services/level_repository.dart';
+import '../services/spark_voice_service.dart';
 import '../services/telemetry_service.dart';
 import '../services/word_mastery_service.dart';
 import '../services/word_repository.dart';
 import '../utils/offline_word_loader.dart';
-import '../services/spark_voice_service.dart';
-import 'package:english_learning_app/l10n/spark_strings.dart';
-import 'package:english_learning_app/widgets/ui/_barrel.dart';
 
 /// Legacy Image Quiz mini-game — Phase 3 refactor.
 ///
@@ -117,7 +117,8 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
     _wordRepository = widget.wordRepository ?? WordRepository();
     _offlineWordLoader = OfflineWordLoader(wordRepository: _wordRepository);
     _wordMasteryService = widget.wordMasteryService ?? WordMasteryService();
-    _levelProgressService = widget.levelProgressService ?? LevelProgressService();
+    _levelProgressService =
+        widget.levelProgressService ?? LevelProgressService();
     _levelRepository = widget.levelRepository ?? LevelRepository();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _notifySparkHappy();
@@ -282,9 +283,8 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
   void _useHint() {
     if (_answered || _hintUsed) return;
     final target = _wordsWithMastery[_currentIndex];
-    final wrongOptions = _currentOptions
-        .where((w) => w.word != target.word)
-        .toList();
+    final wrongOptions =
+        _currentOptions.where((w) => w.word != target.word).toList();
     if (wrongOptions.isEmpty) return;
 
     final toRemove = wrongOptions[_random.nextInt(wrongOptions.length)];
@@ -337,6 +337,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
         await _markWordCompleted(target.word);
 
         // Spark celebrates the correct answer.
+        if (!mounted) return;
         try {
           context.read<SparkOverlayController>().markCelebrating();
         } catch (_) {}
@@ -367,8 +368,8 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
     try {
       if (mounted) {
         context.read<DailyMissionProvider>().incrementByType(
-          DailyMissionType.quizPlay,
-        );
+              DailyMissionType.quizPlay,
+            );
       }
     } on ProviderNotFoundException {
       // Standalone/test context without DailyMissionProvider — safe to ignore.
@@ -429,12 +430,14 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.image_search,
-                    size: 64, color: Colors.green.shade300),
+                Icon(
+                  Icons.image_search,
+                  size: 64,
+                  color: Colors.green.shade300,
+                ),
                 const SizedBox(height: 16),
                 Text(
-                  _loadError ??
-                      SparkStrings.quizNeedMoreWords,
+                  _loadError ?? SparkStrings.quizNeedMoreWords,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
@@ -488,10 +491,10 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: OutlinedButton.icon(
-                  onPressed: (!_answered && !_hintUsed &&
-                          _currentOptions.length > 2)
-                      ? _useHint
-                      : null,
+                  onPressed:
+                      (!_answered && !_hintUsed && _currentOptions.length > 2)
+                          ? _useHint
+                          : null,
                   icon: const Icon(Icons.lightbulb_outline),
                   label: Text(_hintUsed ? 'Hint used' : 'Get a hint'),
                 ),
@@ -528,8 +531,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: _answered &&
-                                    _selectedAnswer == target.word
+                            color: _answered && _selectedAnswer == target.word
                                 ? Colors.green.shade700
                                 : Colors.purple,
                           ),
@@ -617,8 +619,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            if (target.searchHint != null &&
-                target.searchHint!.isNotEmpty) ...[
+            if (target.searchHint != null && target.searchHint!.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
                 target.searchHint!,
@@ -701,8 +702,7 @@ class _MasteryProgressBar extends StatelessWidget {
             child: LinearProgressIndicator(
               value: total > 0 ? (currentIndex + 1) / total : 0,
               backgroundColor: Colors.green.shade100,
-              valueColor:
-                  AlwaysStoppedAnimation<Color>(Colors.green.shade600),
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade600),
               minHeight: 8,
             ),
           ),
@@ -716,8 +716,7 @@ class _MasteryProgressBar extends StatelessWidget {
                 : Colors.green.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color:
-                  isWeak ? Colors.orange.shade300 : Colors.green.shade300,
+              color: isWeak ? Colors.orange.shade300 : Colors.green.shade300,
             ),
           ),
           child: Text(
@@ -725,9 +724,7 @@ class _MasteryProgressBar extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: isWeak
-                  ? Colors.orange.shade700
-                  : Colors.green.shade700,
+              color: isWeak ? Colors.orange.shade700 : Colors.green.shade700,
             ),
           ),
         ),
@@ -801,8 +798,7 @@ class _ImageOptionTile extends StatelessWidget {
               ),
               // Always show word label, highlighted on answer reveal.
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                 child: Text(
                   answered ? word.word : '',
                   textAlign: TextAlign.center,

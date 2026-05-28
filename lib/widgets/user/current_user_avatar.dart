@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/user_session_provider.dart';
-import 'user_switch_sheet.dart';
 import '../optimized_avatar.dart';
+import 'user_switch_sheet.dart';
 
 class CurrentUserAvatar extends StatelessWidget {
   const CurrentUserAvatar({super.key});
@@ -34,7 +34,7 @@ class CurrentUserAvatar extends StatelessWidget {
                   color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
-                )
+                ),
               ],
             ),
             child: Row(
@@ -59,7 +59,8 @@ class CurrentUserAvatar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
-                Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey[600]),
+                Icon(Icons.keyboard_arrow_down,
+                    size: 16, color: Colors.grey[600]),
               ],
             ),
           ),
@@ -77,21 +78,3 @@ class CurrentUserAvatar extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

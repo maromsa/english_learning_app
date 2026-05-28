@@ -12,7 +12,8 @@ void main() {
 
   setUp(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(SystemChannels.platform, (MethodCall call) async {
+        .setMockMethodCallHandler(SystemChannels.platform,
+            (MethodCall call) async {
       return null;
     });
   });
@@ -45,16 +46,19 @@ void main() {
   }
 
   group('KidButton', () {
-    testWidgets('renders with minimum height >= 64', (WidgetTester tester) async {
+    testWidgets('renders with minimum height >= 64',
+        (WidgetTester tester) async {
       await pumpKidButton(tester, label: 'Tap me', onPressed: () {});
 
       final size = tester.getSize(find.byType(KidButton));
       expect(size.height, greaterThanOrEqualTo(64));
     });
 
-    testWidgets('tapping calls onPressed exactly once', (WidgetTester tester) async {
+    testWidgets('tapping calls onPressed exactly once',
+        (WidgetTester tester) async {
       var pressCount = 0;
-      await pumpKidButton(tester, label: 'Tap me', onPressed: () => pressCount++);
+      await pumpKidButton(tester,
+          label: 'Tap me', onPressed: () => pressCount++);
 
       await tester.tap(find.byType(KidButton));
       await tester.pumpAndSettle();
@@ -84,12 +88,14 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('when onPressed is null, tap does NOT crash and produces no haptic',
+    testWidgets(
+        'when onPressed is null, tap does NOT crash and produces no haptic',
         (WidgetTester tester) async {
       var hapticCount = 0;
 
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(SystemChannels.platform, (MethodCall call) async {
+          .setMockMethodCallHandler(SystemChannels.platform,
+              (MethodCall call) async {
         if (call.method == hapticMethod && call.arguments == hapticArg) {
           hapticCount++;
         }
@@ -121,7 +127,8 @@ void main() {
       var hapticCount = 0;
 
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(SystemChannels.platform, (MethodCall call) async {
+          .setMockMethodCallHandler(SystemChannels.platform,
+              (MethodCall call) async {
         if (call.method == hapticMethod && call.arguments == hapticArg) {
           hapticCount++;
         }

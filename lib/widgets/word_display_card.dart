@@ -27,7 +27,8 @@ class WordDisplayCard extends StatelessWidget {
     final String? imageUrl = wordData.imageUrl;
     final String normalizedUrl = imageUrl ?? '';
     final bool hasImageUrl = normalizedUrl.isNotEmpty;
-    final bool isAssetImage = hasImageUrl && normalizedUrl.startsWith('assets/');
+    final bool isAssetImage =
+        hasImageUrl && normalizedUrl.startsWith('assets/');
     final bool isLocalFile = !kIsWeb &&
         hasImageUrl &&
         !normalizedUrl.startsWith('http') &&
@@ -105,10 +106,12 @@ class WordDisplayCard extends StatelessWidget {
                     position: Tween<Offset>(
                       begin: const Offset(0, 0.3),
                       end: Offset.zero,
-                    ).animate(CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOut,
-                    )),
+                    ).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeOut,
+                      ),
+                    ),
                     child: child,
                   ),
                 );
@@ -162,31 +165,33 @@ class WordDisplayCard extends StatelessWidget {
       child: isAssetImage
           ? _buildAssetImage(imageUrl)
           : isLocalFile
-          ? Image.file(
-              File(imageUrl),
-              key: ValueKey(imageUrl),
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                debugPrint('Failed to load local image "$imageUrl": $error');
-                return _errorBuilder(context, error, stackTrace);
-              },
-            )
-          : CachedNetworkImage(
-              imageUrl: imageUrl,
-              key: ValueKey(imageUrl),
-              fit: BoxFit.cover,
-              placeholder: (context, url) => const Center(
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              errorWidget: (context, url, error) {
-                debugPrint('Failed to load network image "$imageUrl": $error');
-                return _errorBuilder(context, error, null);
-              },
-              memCacheWidth: 500, // Optimize memory usage
-              memCacheHeight: 500,
-              maxWidthDiskCache: 1000,
-              maxHeightDiskCache: 1000,
-            ),
+              ? Image.file(
+                  File(imageUrl),
+                  key: ValueKey(imageUrl),
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    debugPrint(
+                        'Failed to load local image "$imageUrl": $error');
+                    return _errorBuilder(context, error, stackTrace);
+                  },
+                )
+              : CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  key: ValueKey(imageUrl),
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  errorWidget: (context, url, error) {
+                    debugPrint(
+                        'Failed to load network image "$imageUrl": $error');
+                    return _errorBuilder(context, error, null);
+                  },
+                  memCacheWidth: 500, // Optimize memory usage
+                  memCacheHeight: 500,
+                  maxWidthDiskCache: 1000,
+                  maxHeightDiskCache: 1000,
+                ),
     );
   }
 
@@ -224,24 +229,23 @@ class WordDisplayCard extends StatelessWidget {
   }
 
   String _resolveWebAssetUrl(String assetPath) {
-    final normalized = assetPath.startsWith('/')
-        ? assetPath.substring(1)
-        : assetPath;
+    final normalized =
+        assetPath.startsWith('/') ? assetPath.substring(1) : assetPath;
     return Uri.base.resolve('assets/$normalized').toString();
   }
 
   Widget _buildPlaceholder() => Container(
-    width: 250,
-    height: 250,
-    color: Colors.grey.shade200,
-    child: const Center(
-      child: Icon(
-        Icons.image_not_supported_outlined,
-        size: 80,
-        color: Colors.grey,
-      ),
-    ),
-  );
+        width: 250,
+        height: 250,
+        color: Colors.grey.shade200,
+        child: const Center(
+          child: Icon(
+            Icons.image_not_supported_outlined,
+            size: 80,
+            color: Colors.grey,
+          ),
+        ),
+      );
 
   Widget _loadingBuilder(
     BuildContext context,
@@ -262,12 +266,13 @@ class WordDisplayCard extends StatelessWidget {
     BuildContext context,
     Object error,
     StackTrace? stackTrace,
-  ) => Container(
-    width: 250,
-    height: 250,
-    color: Colors.grey.shade200,
-    child: const Center(
-      child: Icon(Icons.broken_image, size: 80, color: Colors.grey),
-    ),
-  );
+  ) =>
+      Container(
+        width: 250,
+        height: 250,
+        color: Colors.grey.shade200,
+        child: const Center(
+          child: Icon(Icons.broken_image, size: 80, color: Colors.grey),
+        ),
+      );
 }

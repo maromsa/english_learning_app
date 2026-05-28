@@ -19,13 +19,12 @@ class ParentProgressService {
     DailyRewardService? dailyRewardService,
     SharedPreferences? prefs,
   })  : _levelRepository = levelRepository ?? LevelRepository(),
-        _levelProgressService =
-            levelProgressService ?? LevelProgressService(),
-        _localUserDataService =
-            localUserDataService ?? LocalUserDataService(),
+        _levelProgressService = levelProgressService ?? LevelProgressService(),
+        _localUserDataService = localUserDataService ?? LocalUserDataService(),
         _dailyRewardService = dailyRewardService ?? DailyRewardService(),
-        _prefsFuture =
-            prefs != null ? Future.value(prefs) : SharedPreferences.getInstance();
+        _prefsFuture = prefs != null
+            ? Future.value(prefs)
+            : SharedPreferences.getInstance();
 
   final LevelRepository _levelRepository;
   final LevelProgressService _levelProgressService;
@@ -65,8 +64,7 @@ class ParentProgressService {
     final totalWordsInCatalog =
         levels.fold<int>(0, (sum, level) => sum + level.words.length);
     final coins = await _coins(userId, isLocalUser, prefs);
-    final achievementsUnlocked =
-        _countUnlockedAchievements(prefs, userId);
+    final achievementsUnlocked = _countUnlockedAchievements(prefs, userId);
     final dailyMissions = _dailyMissionCounts(prefs, userId);
     final wordsMastered = _countMasteredWords(prefs, userId);
     _dailyRewardService.setUserId(userId);
@@ -175,8 +173,9 @@ class ParentProgressService {
   }
 
   (int, int) _dailyMissionCounts(SharedPreferences prefs, String userId) {
-    final stored = prefs.getStringList('user_${userId}_daily_missions_payload') ??
-        prefs.getStringList('daily_missions_payload');
+    final stored =
+        prefs.getStringList('user_${userId}_daily_missions_payload') ??
+            prefs.getStringList('daily_missions_payload');
     if (stored == null || stored.isEmpty) {
       return (0, 0);
     }
@@ -198,8 +197,7 @@ class ParentProgressService {
   }
 
   int _countMasteredWords(SharedPreferences prefs, String userId) {
-    final sanitizedUser =
-        userId.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
+    final sanitizedUser = userId.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
     final prefix = 'word_mastery.v1.$sanitizedUser.';
     var count = 0;
 

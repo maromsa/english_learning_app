@@ -5,21 +5,3 @@ class RouteObserverService {
   static final RouteObserver<ModalRoute<void>> routeObserver =
       RouteObserver<ModalRoute<void>>();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

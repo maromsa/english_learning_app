@@ -1,8 +1,8 @@
 import 'package:english_learning_app/l10n/spark_strings.dart';
-import 'package:english_learning_app/models/scene_teaching_moment.dart';
 import 'package:english_learning_app/models/scavenger_hunt_challenge.dart';
-import 'package:english_learning_app/services/scene_teaching_moment_service.dart';
+import 'package:english_learning_app/models/scene_teaching_moment.dart';
 import 'package:english_learning_app/services/gemini_proxy_service.dart';
+import 'package:english_learning_app/services/scene_teaching_moment_service.dart';
 import 'package:english_learning_app/services/spark_voice_service.dart';
 import 'package:english_learning_app/utils/english_word_emoji.dart';
 import 'package:english_learning_app/widgets/living_spark.dart';
@@ -279,7 +279,8 @@ class _ScavengerTeachingMomentSheetState
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFFD93D).withValues(alpha: 0.5)),
+        border:
+            Border.all(color: const Color(0xFFFFD93D).withValues(alpha: 0.5)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -314,7 +315,9 @@ class _ScavengerTeachingMomentSheetState
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
         child: KidButton.primary(
-          label: _isLoading ? SparkStrings.scavengerTeachingSkipWhileLoading : label,
+          label: _isLoading
+              ? SparkStrings.scavengerTeachingSkipWhileLoading
+              : label,
           onPressed: widget.onContinue,
           fullWidth: true,
         ),

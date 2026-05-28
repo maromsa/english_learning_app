@@ -64,7 +64,8 @@ class _ActionButtonState extends State<ActionButton>
           foregroundColor: Colors.white,
           backgroundColor: widget.color,
           disabledBackgroundColor: Colors.grey.shade400,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           elevation: 6.0,
           shadowColor: widget.color.withValues(alpha: 0.5),

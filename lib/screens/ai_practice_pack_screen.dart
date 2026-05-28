@@ -1,10 +1,10 @@
+import 'package:english_learning_app/models/local_user.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
-import 'package:english_learning_app/services/practice_pack_service.dart';
-import 'package:english_learning_app/services/local_user_service.dart';
-import 'package:english_learning_app/models/local_user.dart';
-import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/services/background_music_service.dart';
+import 'package:english_learning_app/services/local_user_service.dart';
+import 'package:english_learning_app/services/practice_pack_service.dart';
+import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/utils/route_observer.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

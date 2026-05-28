@@ -98,11 +98,13 @@ void main() {
   group('PronunciationFeedback', () {
     test('isStrongAttempt when stars >= 2', () {
       expect(
-        const PronunciationFeedback(stars: 2, feedbackMessage: 'x').isStrongAttempt,
+        const PronunciationFeedback(stars: 2, feedbackMessage: 'x')
+            .isStrongAttempt,
         isTrue,
       );
       expect(
-        const PronunciationFeedback(stars: 1, feedbackMessage: 'x').isStrongAttempt,
+        const PronunciationFeedback(stars: 1, feedbackMessage: 'x')
+            .isStrongAttempt,
         isFalse,
       );
     });

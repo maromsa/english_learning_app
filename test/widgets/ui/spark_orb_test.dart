@@ -56,7 +56,8 @@ void main() {
       await disposeTree(tester);
     });
 
-    testWidgets('renders mic icon for each OrbState', (WidgetTester tester) async {
+    testWidgets('renders mic icon for each OrbState',
+        (WidgetTester tester) async {
       for (final state in OrbState.values) {
         await pumpOrb(tester, state: state);
         expect(find.byIcon(Icons.mic_rounded), findsOneWidget);

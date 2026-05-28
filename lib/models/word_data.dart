@@ -59,9 +59,8 @@ class WordData {
     // If we have legacy data that only stored `isCompleted`, treat a completed
     // word with no explicit mastery as fully mastered. This keeps historical
     // progress meaningful when moving to mastery-based logic.
-    final masteryLevel = masteryFromJson == null && isCompleted
-        ? 1.0
-        : (masteryFromJson ?? 0.0);
+    final masteryLevel =
+        masteryFromJson == null && isCompleted ? 1.0 : (masteryFromJson ?? 0.0);
 
     final lastReviewed = _parseLastReviewed(json['lastReviewed']);
 
@@ -91,7 +90,8 @@ class WordData {
         'stickerUnlocked': stickerUnlocked,
         // Mastery fields are optional to keep older readers tolerant.
         if (masteryLevel > 0.0) 'masteryLevel': masteryLevel,
-        if (lastReviewed != null) 'lastReviewed': lastReviewed!.toIso8601String(),
+        if (lastReviewed != null)
+          'lastReviewed': lastReviewed!.toIso8601String(),
       };
 
   static double _clampMastery(double value) {

@@ -31,9 +31,9 @@ class OnboardingPersonalization {
 /// Generates lightweight heuristics to tailor onboarding messaging for each user.
 class OnboardingPersonalizer {
   OnboardingPersonalizer({SharedPreferences? preferences})
-    : _prefsFuture = preferences != null
-          ? Future.value(preferences)
-          : SharedPreferences.getInstance();
+      : _prefsFuture = preferences != null
+            ? Future.value(preferences)
+            : SharedPreferences.getInstance();
 
   final Future<SharedPreferences> _prefsFuture;
 
@@ -145,9 +145,8 @@ class OnboardingPersonalizer {
     }
 
     // Keep the insights concise—cap to three items for the onboarding carousel.
-    final List<OnboardingInsight> limited = insights
-        .take(3)
-        .toList(growable: false);
+    final List<OnboardingInsight> limited =
+        insights.take(3).toList(growable: false);
     return OnboardingPersonalization(
       insights: limited,
       isReturningLearner: appliedRules.any(

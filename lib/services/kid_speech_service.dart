@@ -20,7 +20,7 @@ class KidSpeechService {
   }
 
   /// Listen for speech with child-friendly settings
-  /// 
+  ///
   /// [onResult] - Called when speech is recognized
   /// [onSoundLevel] - Called with sound level (0.0-1.0) for visual feedback
   /// [onStatus] - Called when status changes (listening, done, etc.)
@@ -61,7 +61,7 @@ class KidSpeechService {
 
   /// Fuzzy matching helper: Kids make small pronunciation errors
   /// Don't fail them for small mistakes
-  /// 
+  ///
   /// Returns true if the recognized word is "close enough" to the target
   bool isCloseEnough(String target, String actual) {
     // Normalize strings
@@ -78,14 +78,14 @@ class KidSpeechService {
     // Allow 1-2 character difference for small mistakes
     final targetLength = target.length;
     final actualLength = actual.length;
-    
+
     // If lengths are very different, probably not a match
     if ((targetLength - actualLength).abs() > 2) return false;
 
     // Count character differences
     int differences = 0;
     final minLength = targetLength < actualLength ? targetLength : actualLength;
-    
+
     for (int i = 0; i < minLength; i++) {
       if (target[i] != actual[i]) {
         differences++;
@@ -110,5 +110,3 @@ class KidSpeechService {
   /// Check if currently listening
   bool get isListening => _speech.isListening;
 }
-
-

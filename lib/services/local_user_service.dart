@@ -18,7 +18,7 @@ class LocalUserService {
         return [];
       }
 
-      final List<dynamic> usersList = jsonDecode(usersJson);
+      final usersList = jsonDecode(usersJson) as List<dynamic>;
       return usersList
           .map((userMap) => LocalUser.fromMap(userMap as Map<String, dynamic>))
           .toList();

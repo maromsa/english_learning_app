@@ -1,22 +1,22 @@
 import 'package:english_learning_app/utils/list_performance.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../widgets/character_avatar.dart';
-import '../widgets/optimized_avatar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/spark_strings.dart';
 import '../models/player_character.dart';
 import '../providers/auth_provider.dart';
 import '../providers/character_provider.dart';
+import '../providers/child_profile_provider.dart';
 import '../providers/coin_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/offline_practice_service.dart';
 import '../services/word_repository.dart';
-import '../l10n/spark_strings.dart';
 import '../utils/parent_dashboard_navigation.dart';
+import '../widgets/character_avatar.dart';
+import '../widgets/optimized_avatar.dart';
 import 'character_selection_screen.dart';
 import 'child_profile_selection_screen.dart';
-import '../providers/child_profile_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -37,8 +37,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: isDarkMode ? null : Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('הגדרות',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'הגדרות',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -64,7 +66,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           const SizedBox(height: 24),
-          const _SectionHeader(title: "הדמות שלי"),
+          const _SectionHeader(title: 'הדמות שלי'),
           const SizedBox(height: 8),
 
           // 2. Character Section
@@ -80,7 +82,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           const SizedBox(height: 24),
-          const _SectionHeader(title: "הגדרות אפליקציה"),
+          const _SectionHeader(title: 'הגדרות אפליקציה'),
           const SizedBox(height: 8),
 
           // 3. App Settings Group
@@ -136,7 +138,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           const SizedBox(height: 24),
-          const _SectionHeader(title: "חשבון ונתונים"),
+          const _SectionHeader(title: 'חשבון ונתונים'),
           const SizedBox(height: 8),
 
           // 4. Account Actions Group
@@ -261,9 +263,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await repository.clearCache();
     await OfflinePracticeService().clearAll();
 
-    if (!mounted) return;
+    if (!context.mounted) return;
     setState(() => _isBusy = false);
-    if (mounted) {
+    if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('מטמון המילים נוקה. בפעם הבאה נטען תוכן חדש מהענן.'),
@@ -285,10 +287,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
 
-    if (character == null || !mounted) return;
+    if (character == null || !context.mounted) return;
     final characterProvider = context.read<CharacterProvider>();
     await characterProvider.setCharacter(character);
-    if (!mounted) return;
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('הדמות נשמרה בהצלחה!'),
@@ -310,10 +312,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
 
-    if (character == null || !mounted) return;
+    if (character == null || !context.mounted) return;
     final characterProvider = context.read<CharacterProvider>();
     await characterProvider.setCharacter(character);
-    if (!mounted) return;
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('הדמות עודכנה בהצלחה!'),
@@ -346,11 +348,10 @@ class _ProfileHeroCard extends StatelessWidget {
     final authProvider = context.watch<AuthProvider>();
     final appUser = authProvider.currentUser;
     final firebaseUser = authProvider.firebaseUser;
-    final displayPhoto = photoUrl ?? appUser?.photoUrl ?? firebaseUser?.photoURL;
-    final displayName = name ??
-        appUser?.displayName ??
-        firebaseUser?.displayName ??
-        'אורח';
+    final displayPhoto =
+        photoUrl ?? appUser?.photoUrl ?? firebaseUser?.photoURL;
+    final displayName =
+        name ?? appUser?.displayName ?? firebaseUser?.displayName ?? 'אורח';
 
     return GestureDetector(
       onTap: onTap,
@@ -382,9 +383,8 @@ class _ProfileHeroCard extends StatelessWidget {
               child: OptimizedAvatar(
                 imageUrl: displayPhoto,
                 radius: 32,
-                backgroundColor: avatarColor != null
-                    ? Color(avatarColor!)
-                    : Colors.white,
+                backgroundColor:
+                    avatarColor != null ? Color(avatarColor!) : Colors.white,
                 fallbackText: displayName.isNotEmpty ? displayName : '?',
               ),
             ),
@@ -474,9 +474,7 @@ class _CharacterCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      hasChar
-                          ? 'הדמות המלווה שלך'
-                          : 'לחצו כדי לבחור חבר למסע',
+                      hasChar ? 'הדמות המלווה שלך' : 'לחצו כדי לבחור חבר למסע',
                       style: TextStyle(
                         color: Colors.grey.shade600,
                         fontSize: 14,
@@ -485,8 +483,11 @@ class _CharacterCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios,
-                  size: 16, color: Colors.grey.shade400),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: Colors.grey.shade400,
+              ),
             ],
           ),
         ),
@@ -517,8 +518,7 @@ class _SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
@@ -537,8 +537,11 @@ class _SettingsTile extends StatelessWidget {
       subtitle: Text(subtitle),
       trailing: trailing ??
           (onTap != null
-              ? Icon(Icons.arrow_forward_ios,
-                  size: 16, color: Colors.grey.shade400)
+              ? Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.grey.shade400,
+                )
               : null),
       onTap: onTap,
     );

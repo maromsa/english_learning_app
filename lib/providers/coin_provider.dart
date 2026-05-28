@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/shop_item.dart';
-import '../services/user_data_service.dart';
 import '../services/local_user_data_service.dart';
+import '../services/user_data_service.dart';
 
 class CoinProvider with ChangeNotifier {
   CoinProvider({
@@ -35,7 +35,8 @@ class CoinProvider with ChangeNotifier {
   int get levelCoins {
     final earned = _coins - _coinsAtLevelStart;
     debugPrint(
-        'Level coins calculation: $_coins - $_coinsAtLevelStart = $earned');
+      'Level coins calculation: $_coins - $_coinsAtLevelStart = $earned',
+    );
     return earned;
   }
 
@@ -112,12 +113,14 @@ class CoinProvider with ChangeNotifier {
       if (_isLocalUser) {
         final prefs = await _sharedPrefs;
         _coinsAtLevelStart = prefs.getInt(
-                'user_${_currentUserId}_level_${levelId}_start_coins') ??
+              'user_${_currentUserId}_level_${levelId}_start_coins',
+            ) ??
             _coins;
       } else {
         final prefs = await _sharedPrefs;
         _coinsAtLevelStart = prefs.getInt(
-                'user_${_currentUserId}_level_${levelId}_start_coins') ??
+              'user_${_currentUserId}_level_${levelId}_start_coins',
+            ) ??
             _coins;
       }
     } catch (e) {
@@ -258,13 +261,15 @@ class CoinProvider with ChangeNotifier {
       if (_isLocalUser) {
         final prefs = await _sharedPrefs;
         await prefs.setInt(
-            'user_${_currentUserId}_level_${levelId}_start_coins',
-            _coinsAtLevelStart);
+          'user_${_currentUserId}_level_${levelId}_start_coins',
+          _coinsAtLevelStart,
+        );
       } else {
         final prefs = await _sharedPrefs;
         await prefs.setInt(
-            'user_${_currentUserId}_level_${levelId}_start_coins',
-            _coinsAtLevelStart);
+          'user_${_currentUserId}_level_${levelId}_start_coins',
+          _coinsAtLevelStart,
+        );
       }
     } catch (e) {
       debugPrint('Error saving level start coins: $e');

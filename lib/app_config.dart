@@ -84,7 +84,8 @@ class AppConfig {
     _defineAiImageValidationUrl,
   );
 
-  static bool get hasGeminiProxy => true; // Always available via geminiProxyEndpoint
+  static bool get hasGeminiProxy =>
+      true; // Always available via geminiProxyEndpoint
   static bool get hasPixabay => pixabayApiKey.isNotEmpty;
   static bool get hasCloudinary =>
       cloudinaryCloudName.isNotEmpty &&
@@ -120,7 +121,7 @@ class AppConfig {
       }
       // If invalid, fall through to construct from project ID
     }
-    
+
     // Always construct from Firebase project ID
     String projectId;
     try {
@@ -129,13 +130,13 @@ class AppConfig {
       debugPrint('Error getting Firebase project ID: $e');
       projectId = '';
     }
-    
+
     // Fallback to hardcoded project ID if needed
     if (projectId.isEmpty) {
       projectId = 'englishkidsapp-916be';
       debugPrint('Using fallback project ID: $projectId');
     }
-    
+
     // Always return a valid URI - this should never fail
     return Uri.parse(
       'https://us-central1-$projectId.cloudfunctions.net/geminiProxy',
@@ -149,13 +150,13 @@ class AppConfig {
 
   /// Provides a quick overview for debug logs/tests.
   static Map<String, bool> diagnostics() => {
-    'geminiProxy': hasGeminiProxy,
-    'pixabay': hasPixabay,
-    'cloudinary': hasCloudinary,
-    'googleTts': hasGoogleTts,
-    'firebaseUserId': hasFirebaseUserId,
-    'aiImageValidation': hasAiImageValidation,
-  };
+        'geminiProxy': hasGeminiProxy,
+        'pixabay': hasPixabay,
+        'cloudinary': hasCloudinary,
+        'googleTts': hasGoogleTts,
+        'firebaseUserId': hasFirebaseUserId,
+        'aiImageValidation': hasAiImageValidation,
+      };
 
   /// Logs helpful hints when a required secret is missing.
   static void debugWarnIfMissing(String feature, bool isAvailable) {

@@ -37,7 +37,7 @@ void main() {
           '{"hits":[{"webformatURL":"https://cdn.pixabay.com/photo1.jpg","tags":"Apple, Fruit"}]}',
           200,
           headers: {
-            Headers.contentTypeHeader: ['application/json']
+            Headers.contentTypeHeader: ['application/json'],
           },
         );
       }
@@ -46,7 +46,7 @@ void main() {
           List<int>.filled(4, 1),
           200,
           headers: {
-            Headers.contentTypeHeader: ['image/jpeg']
+            Headers.contentTypeHeader: ['image/jpeg'],
           },
         );
       }
@@ -78,7 +78,7 @@ void main() {
           '{"webformatURL":"https://cdn.pixabay.com/photo_good.jpg","tags":"Banana"}]}',
           200,
           headers: {
-            Headers.contentTypeHeader: ['application/json']
+            Headers.contentTypeHeader: ['application/json'],
           },
         );
       }
@@ -87,7 +87,7 @@ void main() {
           List<int>.filled(4, 2),
           200,
           headers: {
-            Headers.contentTypeHeader: ['image/jpeg']
+            Headers.contentTypeHeader: ['image/jpeg'],
           },
         );
       }
@@ -96,7 +96,7 @@ void main() {
           List<int>.filled(4, 3),
           200,
           headers: {
-            Headers.contentTypeHeader: ['image/jpeg']
+            Headers.contentTypeHeader: ['image/jpeg'],
           },
         );
       }

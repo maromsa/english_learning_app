@@ -30,7 +30,8 @@ class WordMasteryEntry {
 
   Map<String, dynamic> toJson() => {
         'masteryLevel': masteryLevel,
-        if (lastReviewed != null) 'lastReviewed': lastReviewed!.toIso8601String(),
+        if (lastReviewed != null)
+          'lastReviewed': lastReviewed!.toIso8601String(),
       };
 
   static WordMasteryEntry fromJson(Map<String, dynamic> json) {
@@ -77,8 +78,9 @@ class WordMasteryService {
   WordMasteryService({
     SharedPreferences? prefs,
     String? namespacePrefix,
-  })  : _prefsFuture =
-            prefs != null ? Future.value(prefs) : SharedPreferences.getInstance(),
+  })  : _prefsFuture = prefs != null
+            ? Future.value(prefs)
+            : SharedPreferences.getInstance(),
         _namespacePrefix = namespacePrefix ?? _defaultPrefix;
 
   static const String _defaultPrefix = 'word_mastery.v1';
@@ -231,4 +233,3 @@ class WordMasteryService {
     return value.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
   }
 }
-

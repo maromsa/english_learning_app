@@ -134,7 +134,9 @@ class LocalUserDataService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(
-          'user_${userId}_achievement_$achievementId', unlocked);
+        'user_${userId}_achievement_$achievementId',
+        unlocked,
+      );
     } catch (e) {
       debugPrint('Error saving achievement for user $userId: $e');
     }

@@ -1,51 +1,47 @@
 // lib/screens/map_screen.dart
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
 
+import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
-import 'package:english_learning_app/screens/chat_buddy_screen.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
+import 'package:english_learning_app/screens/chat_buddy_screen.dart';
 import 'package:english_learning_app/screens/home_page.dart';
 import 'package:english_learning_app/utils/map_view_registry.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart'
     show AndroidWebViewController;
 
+import '../providers/user_session_provider.dart';
 import '../services/background_music_service.dart';
-import 'package:english_learning_app/l10n/spark_strings.dart';
 import '../services/daily_reward_service.dart';
+import '../services/level_progress_service.dart';
 import '../services/level_repository.dart';
 import '../services/local_user_data_service.dart';
-import '../services/level_progress_service.dart';
 import '../services/map_bridge_service.dart';
-import '../widgets/ui/_barrel.dart';
-import '../providers/user_session_provider.dart';
 import '../utils/aurora_tokens.dart';
 import '../utils/hero_tags.dart';
 import '../utils/page_transitions.dart';
 import '../utils/parent_dashboard_navigation.dart';
 import '../utils/route_observer.dart';
-import '../widgets/character_avatar.dart';
+import '../widgets/ui/_barrel.dart';
 import '../widgets/user/current_user_avatar.dart';
-import 'adventure_lab_screen.dart';
 import 'achievements_screen.dart';
+import 'adventure_lab_screen.dart';
+import 'character_selection_screen.dart';
 import 'daily_missions_screen.dart';
+import 'leaderboard_screen.dart';
 import 'scavenger_hunt_screen.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
-import 'character_selection_screen.dart';
-import 'user_selection_screen.dart';
-import 'leaderboard_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -76,7 +72,7 @@ class _MapScreenState extends State<MapScreen>
 
   late ScrollController _scrollController;
   late AnimationController _pulseController;
-  
+
   // WebView Controller for 3D Map (mobile only — null on Flutter Web)
   WebViewController? _webViewController;
   bool _isWebMapReady = false;
@@ -97,7 +93,7 @@ class _MapScreenState extends State<MapScreen>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
-    
+
     // Initialize WebView — skip on Flutter Web, no platform impl for webview_flutter
     if (!kIsWeb) {
       _initWebView();
@@ -122,7 +118,8 @@ class _MapScreenState extends State<MapScreen>
         _userSessionProvider =
             Provider.of<UserSessionProvider>(context, listen: false);
         _userSessionProvider?.addListener(_onUserSessionChanged);
-        _sparkController = Provider.of<SparkOverlayController>(context, listen: false);
+        _sparkController =
+            Provider.of<SparkOverlayController>(context, listen: false);
       }
     });
 
@@ -148,7 +145,7 @@ class _MapScreenState extends State<MapScreen>
     MapBridgeService.instance
         .registerWordMasteredListener(_wordMasteredListener!);
   }
-  
+
   void _initWebView() {
     // Guard: webview_flutter has no platform implementation on Flutter Web.
     if (kIsWeb) return;
@@ -187,8 +184,7 @@ class _MapScreenState extends State<MapScreen>
     // and load the HTML's relative JS/CSS/WASM siblings.
     // Without this, Android 10+ WebView blocks the request with ERR_FAILED.
     if (controller.platform is AndroidWebViewController) {
-      final androidController =
-          controller.platform as AndroidWebViewController;
+      final androidController = controller.platform as AndroidWebViewController;
       androidController.setAllowFileAccess(true);
       androidController.setAllowContentAccess(true);
     }
@@ -196,13 +192,13 @@ class _MapScreenState extends State<MapScreen>
     _webViewController = controller
       ..loadFlutterAsset('assets/map_3d/index.html');
   }
-  
+
   void _handleJsMessage(String jsonMessage) {
     try {
       final data = jsonDecode(jsonMessage);
       final type = data['type'];
       final payload = data['data'];
-      
+
       switch (type) {
         case 'enter_level':
           final index = payload['index'] as int;
@@ -217,8 +213,8 @@ class _MapScreenState extends State<MapScreen>
           }
           break;
         case 'arrived_at_level':
-             // Optional: Show "Enter Level" button or similar
-             break;
+          // Optional: Show "Enter Level" button or similar
+          break;
       }
     } catch (e) {
       debugPrint('Error handling JS message: $e');
@@ -330,21 +326,25 @@ class _MapScreenState extends State<MapScreen>
   Future<void> _initialize() async {
     try {
       // Add timeout to prevent hanging
-      final loadedLevels = await _levelRepository
-          .loadLevels(lazyWords: true)
-          .timeout(const Duration(seconds: 10), onTimeout: () {
-        debugPrint('Level loading timed out, using fallback levels');
-        return <LevelData>[];
-      });
+      final loadedLevels =
+          await _levelRepository.loadLevels(lazyWords: true).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('Level loading timed out, using fallback levels');
+          return <LevelData>[];
+        },
+      );
       levels = loadedLevels.isEmpty ? _fallbackLevels() : loadedLevels;
 
       // Load progress with timeout - don't let it block
       try {
-        await _loadProgress().timeout(const Duration(seconds: 5),
-            onTimeout: () {
-          debugPrint('Progress loading timed out, continuing anyway');
-          _updateUnlockStatuses(); // Ensure unlock statuses are updated
-        });
+        await _loadProgress().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            debugPrint('Progress loading timed out, continuing anyway');
+            _updateUnlockStatuses(); // Ensure unlock statuses are updated
+          },
+        );
       } catch (e) {
         debugPrint('Error in _loadProgress: $e');
         _updateUnlockStatuses(); // Ensure unlock statuses are updated
@@ -358,10 +358,10 @@ class _MapScreenState extends State<MapScreen>
               ? 'נשתמש במסלול ברירת המחדל עד לחיבור לשרת.'
               : null;
         });
-        
+
         _sendLevelsToJs(); // Send levels to 3D map
         unawaited(_prefetchLevelWords());
-        
+
         // Scroll to current level after build
         // Use a small delay to ensure scroll controller is ready
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -571,7 +571,8 @@ class _MapScreenState extends State<MapScreen>
             try {
               // Try user-specific key first, then legacy keys
               final persistedStars = prefs.getInt(
-                      'user_${_currentUserId}_${_starsKey(level.id)}') ??
+                    'user_${_currentUserId}_${_starsKey(level.id)}',
+                  ) ??
                   prefs.getInt(_starsKey(level.id)) ??
                   prefs.getInt(_legacyStarsKey(i)) ??
                   0;
@@ -643,7 +644,8 @@ class _MapScreenState extends State<MapScreen>
         await prefs.setInt(_starsKey(level.id), level.stars);
         await prefs.remove(_legacyStarsKey(i));
         debugPrint(
-            'Saved ${level.name}: ${level.stars} stars (legacy, no user)');
+          'Saved ${level.name}: ${level.stars} stars (legacy, no user)',
+        );
       }
       return;
     }
@@ -657,7 +659,8 @@ class _MapScreenState extends State<MapScreen>
           level.stars,
         );
         debugPrint(
-            'Saved ${level.name}: ${level.stars} stars (local user: $_currentUserId)');
+          'Saved ${level.name}: ${level.stars} stars (local user: $_currentUserId)',
+        );
       }
     } else {
       // For Firebase users, save to SharedPreferences with user prefix
@@ -668,7 +671,8 @@ class _MapScreenState extends State<MapScreen>
         await prefs.setInt(key, level.stars);
         await prefs.remove(_legacyStarsKey(i));
         debugPrint(
-            'Saved ${level.name}: ${level.stars} stars (Firebase user: $_currentUserId, key: $key)');
+          'Saved ${level.name}: ${level.stars} stars (Firebase user: $_currentUserId, key: $key)',
+        );
       }
     }
     debugPrint('=== Progress Saved ===');
@@ -693,7 +697,8 @@ class _MapScreenState extends State<MapScreen>
       // This happens when coins were earned but stars weren't saved properly
       if (totalCoins > 0 && totalStars < (totalCoins / 30).ceil()) {
         debugPrint(
-            'User has $totalCoins coins but only $totalStars stars. Recalculating...');
+          'User has $totalCoins coins but only $totalStars stars. Recalculating...',
+        );
 
         // Distribute coins to levels: each level can get up to 30 coins (3 stars max)
         int remainingCoins = totalCoins;
@@ -712,7 +717,8 @@ class _MapScreenState extends State<MapScreen>
             level.stars = starsForThisLevel;
             updatedAny = true;
             debugPrint(
-                'Updated ${level.name}: ${level.stars} stars (from $coinsForThisLevel coins)');
+              'Updated ${level.name}: ${level.stars} stars (from $coinsForThisLevel coins)',
+            );
           }
 
           remainingCoins -= coinsForThisLevel;
@@ -728,7 +734,8 @@ class _MapScreenState extends State<MapScreen>
         }
       } else {
         debugPrint(
-            'No recalculation needed: $totalCoins coins, $totalStars stars');
+          'No recalculation needed: $totalCoins coins, $totalStars stars',
+        );
       }
     } catch (e) {
       debugPrint('Error recalculating stars from coins: $e');
@@ -848,6 +855,7 @@ class _MapScreenState extends State<MapScreen>
         );
         final remaining = previousLevel.words.length - completedWords.length;
 
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -862,6 +870,7 @@ class _MapScreenState extends State<MapScreen>
           ),
         );
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${level.name} נעול.'),
@@ -991,7 +1000,8 @@ class _MapScreenState extends State<MapScreen>
     debugPrint('Previous stars: $previousStars');
     debugPrint('Total coins: ${coinProvider.coins}');
     debugPrint(
-        'Coins at level start: ${coinProvider.coins - coinsEarnedInLevel}');
+      'Coins at level start: ${coinProvider.coins - coinsEarnedInLevel}',
+    );
 
     // Calculate stars: 10 coins = 1 star, max 3 stars per level
     final starsEarned = ((coinsEarnedInLevel / 10).floor()).clamp(0, 3).toInt();
@@ -1010,7 +1020,8 @@ class _MapScreenState extends State<MapScreen>
       debugPrint('Updated stars to: ${levelData.stars}');
     } else {
       debugPrint(
-          'No star update needed (earned: $starsEarned, previous: $previousStars)');
+        'No star update needed (earned: $starsEarned, previous: $previousStars)',
+      );
     }
 
     // Force save even if stars didn't change but we have coins
@@ -1224,8 +1235,10 @@ class _MapScreenState extends State<MapScreen>
                       ),
                       child: charProvider.hasCharacter
                           ? const Icon(Icons.face, color: Colors.deepPurple)
-                          : const Icon(Icons.person_add_alt_1,
-                              color: Colors.deepPurple),
+                          : const Icon(
+                              Icons.person_add_alt_1,
+                              color: Colors.deepPurple,
+                            ),
                     ),
                     onPressed: _navigateToCharacterSelection,
                   ),
@@ -1390,11 +1403,13 @@ class _MapScreenState extends State<MapScreen>
                                       vertical: 12,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.92),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.92),
                                       borderRadius: BorderRadius.circular(24),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.15),
+                                          color: Colors.black
+                                              .withValues(alpha: 0.15),
                                           blurRadius: 12,
                                           offset: const Offset(0, 4),
                                         ),
@@ -1630,12 +1645,14 @@ class _MapScreenState extends State<MapScreen>
                   // Stop music before navigating to AI screen
                   BackgroundMusicService().stop().catchError((error) {
                     debugPrint(
-                        'Failed to stop music before AI practice pack: $error');
+                      'Failed to stop music before AI practice pack: $error',
+                    );
                   });
                   Navigator.push(
                     context,
                     PageTransitions.slideFromRight(
-                        const AiPracticePackScreen()),
+                      const AiPracticePackScreen(),
+                    ),
                   );
                 },
               ),
@@ -1751,7 +1768,7 @@ class _ChatBuddyMapEntryState extends State<_ChatBuddyMapEntry>
               height: 64,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
+                gradient: const LinearGradient(
                   colors: [AuroraTokens.coral, AuroraTokens.plum],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -1840,7 +1857,8 @@ class _AdventureLabMapEntryState extends State<_AdventureLabMapEntry>
                     offset: const Offset(0, 4),
                   ),
                 ],
-                border: Border.all(color: Colors.white.withValues(alpha: 0.85), width: 2),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.85), width: 2),
               ),
               child: const Icon(
                 Icons.auto_stories_rounded,
@@ -1873,8 +1891,8 @@ class _MapTitleCard extends StatelessWidget {
           ),
           child: Text(
             provider.hasCharacter
-                ? "המסע של ${provider.character!.characterName}"
-                : "מסע המילים",
+                ? 'המסע של ${provider.character!.characterName}'
+                : 'מסע המילים',
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,

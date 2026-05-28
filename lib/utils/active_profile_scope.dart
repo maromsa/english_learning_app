@@ -1,3 +1,4 @@
+import 'package:english_learning_app/providers/shop_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -10,7 +11,6 @@ import '../services/child_profile_service.dart';
 import '../services/child_profile_sync_service.dart';
 import '../services/daily_reward_service.dart';
 import '../services/parent_progress_service.dart';
-import 'package:english_learning_app/providers/shop_provider.dart';
 
 /// Reconfigures app providers when the active child profile changes.
 class ActiveProfileScope {
@@ -52,7 +52,8 @@ class ActiveProfileScope {
     final service = profileService ?? ChildProfileService();
     final rewardService = dailyRewardService ?? DailyRewardService();
     rewardService.setUserId(profile.id);
-    final progress = progressService ?? ParentProgressService(dailyRewardService: rewardService);
+    final progress = progressService ??
+        ParentProgressService(dailyRewardService: rewardService);
 
     final stats = await progress.loadStats(
       userId: profile.id,
@@ -61,17 +62,20 @@ class ActiveProfileScope {
       lastPlayedAt: profile.lastPlayedAt,
     );
 
+    final achievements = _achievementMap(achievementService);
+
     await service.updateProgressSnapshot(
       profileId: profile.id,
       totalStars: stats.totalStars,
       dailyStreak: stats.dailyStreak,
       completedWordsCount: stats.wordsPracticed,
-      achievements: _achievementMap(context, achievementService),
+      achievements: achievements,
       coins: stats.coins,
     );
 
     if (parentUid != null) {
-      final sync = syncService ?? ChildProfileSyncService(profileService: service);
+      final sync =
+          syncService ?? ChildProfileSyncService(profileService: service);
       final updated = await service.getProfileById(profile.id);
       if (updated != null) {
         await sync.syncProfileToCloud(parentUid, updated);
@@ -80,7 +84,6 @@ class ActiveProfileScope {
   }
 
   static Map<String, bool> _achievementMap(
-    BuildContext context,
     AchievementService achievementService,
   ) {
     return {

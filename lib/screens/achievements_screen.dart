@@ -1,9 +1,9 @@
 // lib/screens/achievements_screen.dart
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:english_learning_app/models/achievement.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 /// The Trophy Room: scrollable grid of achievements.
 /// Unlocked = colorful; locked = grayscale with lock icon.

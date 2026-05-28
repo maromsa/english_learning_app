@@ -3,18 +3,18 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/character_provider.dart';
+import '../providers/child_profile_provider.dart';
 import '../providers/coin_provider.dart';
 import '../providers/shop_provider.dart';
 import '../providers/spark_overlay_controller.dart';
 import '../services/achievement_service.dart';
-import '../services/player_data_sync_service.dart';
-import '../providers/child_profile_provider.dart';
 import '../services/child_profile_sync_service.dart';
+import '../services/player_data_sync_service.dart';
+import '../utils/active_profile_scope.dart';
 import '../widgets/achievement_notification.dart';
 import '../widgets/spark_overlay_suppressor.dart';
 import 'child_profile_selection_screen.dart';
 import 'map_screen.dart';
-import '../utils/active_profile_scope.dart';
 import 'onboarding_screen.dart';
 import 'sign_in_screen.dart';
 
@@ -207,7 +207,7 @@ class _AuthGateState extends State<AuthGate> {
       await profileProvider.initialize(parentUid: parentUid);
 
       final activeProfile = profileProvider.activeProfile;
-      if (activeProfile != null) {
+      if (activeProfile != null && context.mounted) {
         await ActiveProfileScope.apply(
           context,
           activeProfile,
@@ -285,8 +285,8 @@ class _AuthGateState extends State<AuthGate> {
           return Builder(
             builder: (context) {
               try {
-                return _AchievementOverlayScope(
-                  child: const MapScreen(),
+                return const _AchievementOverlayScope(
+                  child: MapScreen(),
                 );
               } catch (e, stackTrace) {
                 debugPrint('Error building MapScreen: $e');
@@ -299,13 +299,18 @@ class _AuthGateState extends State<AuthGate> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.error_outline,
-                              size: 64, color: Colors.red),
+                          const Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: Colors.red,
+                          ),
                           const SizedBox(height: 16),
                           const Text(
                             'שגיאה בטעינת המפה',
                             style: TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.bold),
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(
@@ -320,7 +325,8 @@ class _AuthGateState extends State<AuthGate> {
                               if (mounted) {
                                 Navigator.of(context).pushReplacement(
                                   MaterialPageRoute(
-                                      builder: (_) => const MapScreen()),
+                                    builder: (_) => const MapScreen(),
+                                  ),
                                 );
                               }
                             },
@@ -344,8 +350,11 @@ class _AuthGateState extends State<AuthGate> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline,
-                        size: 64, color: Colors.red),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: Colors.red,
+                    ),
                     const SizedBox(height: 16),
                     const Text(
                       'שגיאה בטעינת האפליקציה',

@@ -142,7 +142,9 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
               children: [
                 _buildSparkHeader(),
                 const SizedBox(height: 20),
-                if (!sparkReady) _buildConfigBanner() else ...[
+                if (!sparkReady)
+                  _buildConfigBanner()
+                else ...[
                   _buildSetupCard(coins: coins),
                   const SizedBox(height: 20),
                   if (_isGenerating) _buildLoadingPanel(),
@@ -170,9 +172,7 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
           const LivingSpark(
             emotion: SparkEmotion.excited,
             size: 100,
-          )
-              .animate(onPlay: (c) => c.repeat())
-              .shimmer(
+          ).animate(onPlay: (c) => c.repeat()).shimmer(
                 duration: 2400.ms,
                 color: Colors.white.withValues(alpha: 0.35),
               ),
@@ -224,7 +224,8 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
               controller: _nameController,
               decoration: InputDecoration(
                 labelText: 'שם המטייל/ת (לא חובה)',
-                prefixIcon: Icon(Icons.person_outline, color: AuroraTokens.plum),
+                prefixIcon:
+                    const Icon(Icons.person_outline, color: AuroraTokens.plum),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -262,9 +263,10 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
   }
 
   Widget _buildWorldPicker() {
-    final options = _unlockedLevels.isNotEmpty ? _unlockedLevels : widget.levels;
+    final options =
+        _unlockedLevels.isNotEmpty ? _unlockedLevels : widget.levels;
     if (options.isEmpty) {
-      return Text(
+      return const Text(
         'אין עדיין עולמות פתוחים. המשיכו במפה כדי לפתוח עולמות חדשים!',
         style: TextStyle(color: AuroraTokens.inkMute, fontSize: 14),
       );
@@ -346,7 +348,8 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _StatChip(icon: Icons.monetization_on, label: 'מטבעות', value: '$coins'),
+            _StatChip(
+                icon: Icons.monetization_on, label: 'מטבעות', value: '$coins'),
             _StatChip(
               icon: Icons.star_rate,
               label: 'כוכבים',
@@ -367,7 +370,7 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
     return Column(
       children: [
         const SizedBox(height: 8),
-        SparkOrb(state: OrbState.thinking, size: 140),
+        const SparkOrb(state: OrbState.thinking, size: 140),
         const SizedBox(height: 16),
         Text(
           'ספרק טווה סיפור קסום...',
@@ -431,7 +434,8 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
     sparkController.markThinking();
 
     final selected = _selectedLevel;
-    final unlockedNames = _unlockedLevels.map((l) => l.name).toList(growable: false);
+    final unlockedNames =
+        _unlockedLevels.map((l) => l.name).toList(growable: false);
 
     final labContext = AdventureLabContext(
       levelName: selected.name,
@@ -546,11 +550,14 @@ class _QuestReveal extends StatelessWidget {
                         fontSize: 15,
                       ),
                     ),
-                    avatar: Icon(Icons.translate, color: AuroraTokens.plum, size: 18),
+                    avatar: const Icon(Icons.translate,
+                        color: AuroraTokens.plum, size: 18),
                     backgroundColor: Colors.white,
-                    side: BorderSide(color: AuroraTokens.plum.withValues(alpha: 0.4)),
+                    side: BorderSide(
+                        color: AuroraTokens.plum.withValues(alpha: 0.4)),
                   )
-                      .animate(delay: (300 + quest.vocabulary.indexOf(word) * 60).ms)
+                      .animate(
+                          delay: (300 + quest.vocabulary.indexOf(word) * 60).ms)
                       .scale(
                         begin: const Offset(0.85, 0.85),
                         end: const Offset(1, 1),
@@ -615,7 +622,8 @@ class _QuestCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               body,
-              style: const TextStyle(fontSize: 16, height: 1.55, color: AuroraTokens.inkSoft),
+              style: const TextStyle(
+                  fontSize: 16, height: 1.55, color: AuroraTokens.inkSoft),
             ),
           ],
         ),
@@ -658,7 +666,9 @@ class _ShimmerStorySkeletonState extends State<_ShimmerStorySkeleton>
         return Column(
           children: List<Widget>.generate(3, (index) {
             final phase = (_controller.value + index * 0.2) % 1.0;
-            final opacity = 0.35 + 0.45 * (0.5 + 0.5 * (phase < 0.5 ? phase * 2 : (1 - phase) * 2));
+            final opacity = 0.35 +
+                0.45 *
+                    (0.5 + 0.5 * (phase < 0.5 ? phase * 2 : (1 - phase) * 2));
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Container(
@@ -693,10 +703,14 @@ class _StatChip extends StatelessWidget {
       children: [
         Icon(icon, color: AuroraTokens.plum, size: 22),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 11, color: AuroraTokens.inkMute)),
+        Text(label,
+            style: const TextStyle(fontSize: 11, color: AuroraTokens.inkMute)),
         Text(
           value,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AuroraTokens.ink),
+          style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AuroraTokens.ink),
         ),
       ],
     );

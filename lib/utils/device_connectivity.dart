@@ -13,16 +13,15 @@ abstract class DeviceConnectivity {
   @visibleForTesting
   static DeviceConnectivity? testOverride;
 
-  static DeviceConnectivity get current =>
-      testOverride ?? instance;
+  static DeviceConnectivity get current => testOverride ?? instance;
 }
 
 class _DefaultDeviceConnectivity extends DeviceConnectivity {
   @override
   Future<bool> isOnline({Duration timeout = const Duration(seconds: 3)}) async {
     try {
-      final result = await InternetAddress.lookup('one.one.one.one')
-          .timeout(timeout);
+      final result =
+          await InternetAddress.lookup('one.one.one.one').timeout(timeout);
       return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
     } catch (_) {
       return false;

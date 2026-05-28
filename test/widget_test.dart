@@ -1,11 +1,11 @@
 // test/widget_test.dart
+import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/shop_provider.dart';
+import 'package:english_learning_app/providers/theme_provider.dart';
+import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:english_learning_app/providers/coin_provider.dart';
-import 'package:english_learning_app/providers/theme_provider.dart';
-import 'package:english_learning_app/services/achievement_service.dart';
-import 'package:english_learning_app/providers/shop_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
