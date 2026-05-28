@@ -35,7 +35,7 @@ import '../utils/parent_dashboard_navigation.dart';
 import '../utils/route_observer.dart';
 import '../widgets/character_avatar.dart';
 import '../widgets/user/current_user_avatar.dart';
-import 'ai_adventure_screen.dart';
+import 'adventure_lab_screen.dart';
 import 'achievements_screen.dart';
 import 'daily_missions_screen.dart';
 import 'scavenger_hunt_screen.dart';
@@ -1312,6 +1312,16 @@ class _MapScreenState extends State<MapScreen>
                           bottom: 100, // Above bottom nav
                           child: _InfoBanner(message: _errorMessage!),
                         ),
+
+                      // Spark's Adventure Lab — prominent map entry
+                      if (!_isLoading && levels.isNotEmpty)
+                        Positioned(
+                          right: 16,
+                          bottom: 96,
+                          child: _AdventureLabMapEntry(
+                            onTap: _openAdventureLab,
+                          ),
+                        ),
                     ],
                   ),
       );
@@ -1457,6 +1467,21 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
+  void _openAdventureLab() {
+    BackgroundMusicService().stop().catchError((error) {
+      debugPrint('Failed to stop music before Adventure Lab: $error');
+    });
+    Navigator.push(
+      context,
+      PageTransitions.fadeScale(
+        AdventureLabScreen(
+          levels: List<LevelData>.unmodifiable(levels),
+          totalStars: _totalStars,
+        ),
+      ),
+    );
+  }
+
   void _showAiToolsMenu() {
     showModalBottomSheet(
       context: context,
@@ -1483,25 +1508,12 @@ class _MapScreenState extends State<MapScreen>
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.auto_awesome, size: 32),
-                title: const Text('מסע קסם עם Spark'),
-                subtitle: const Text('הרפתקה אינטראקטיבית'),
+                leading: const Icon(Icons.auto_stories, size: 32),
+                title: const Text('מעבדת ההרפתקאות של ספרק'),
+                subtitle: const Text('סיפורים, אתגרים ודברי עידוד מותאמים'),
                 onTap: () {
                   Navigator.pop(context);
-                  // Stop music before navigating to AI screen
-                  BackgroundMusicService().stop().catchError((error) {
-                    debugPrint(
-                        'Failed to stop music before AI adventure: $error');
-                  });
-                  Navigator.push(
-                    context,
-                    PageTransitions.fadeScale(
-                      AiAdventureScreen(
-                        levels: List<LevelData>.unmodifiable(levels),
-                        totalStars: _totalStars,
-                      ),
-                    ),
-                  );
+                  _openAdventureLab();
                 },
               ),
               ListTile(
@@ -1580,6 +1592,80 @@ class _InfoBanner extends StatelessWidget {
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Floating magical-book entry to Spark's Adventure Lab on the map.
+class _AdventureLabMapEntry extends StatefulWidget {
+  const _AdventureLabMapEntry({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  State<_AdventureLabMapEntry> createState() => _AdventureLabMapEntryState();
+}
+
+class _AdventureLabMapEntryState extends State<_AdventureLabMapEntry>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: Tween<double>(begin: 0.94, end: 1.06).animate(
+        CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onTap,
+          customBorder: const CircleBorder(),
+          child: Tooltip(
+            message: 'מעבדת ההרפתקאות של ספרק',
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF7E57C2), Color(0xFFB388FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7E57C2).withValues(alpha: 0.55),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(color: Colors.white.withValues(alpha: 0.85), width: 2),
+              ),
+              child: const Icon(
+                Icons.auto_stories_rounded,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
           ),
         ),
       ),

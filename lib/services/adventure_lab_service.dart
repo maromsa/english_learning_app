@@ -4,22 +4,23 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../app_config.dart';
-import '../providers/user_session_provider.dart';
 import '../models/local_user.dart';
+import '../providers/user_session_provider.dart';
 import 'gemini_proxy_service.dart';
 
-typedef GeminiTextGenerator = Future<String?> Function(String prompt);
+typedef GeminiStoryGenerator = Future<String?> Function(String prompt);
 
-class AdventureStoryService {
-  AdventureStoryService({GeminiTextGenerator? generator, Duration? timeout})
-    : _timeout = timeout ?? const Duration(seconds: 12),
-      _generator = generator ?? _inferGenerator();
+/// Generates personalized story quests via the Gemini proxy (`mode: "story"`).
+class AdventureLabService {
+  AdventureLabService({GeminiStoryGenerator? generator, Duration? timeout})
+      : _timeout = timeout ?? const Duration(seconds: 14),
+        _generator = generator ?? _inferGenerator();
 
-  final GeminiTextGenerator _generator;
+  final GeminiStoryGenerator _generator;
   final Duration _timeout;
 
-  Future<AdventureStory> generateAdventure(
-    AdventureStoryContext context, {
+  Future<AdventureLabQuest> generateQuest(
+    AdventureLabContext context, {
     AppSessionUser? user,
     LocalUser? localUser,
   }) async {
@@ -28,20 +29,20 @@ class AdventureStoryService {
     try {
       final raw = await _generator(prompt).timeout(_timeout);
       if (raw == null || raw.trim().isEmpty) {
-        throw const AdventureStoryGenerationException(
+        throw const AdventureLabGenerationException(
           'לא התקבלה תשובה מ-Gemini. נסו שוב בעוד רגע.',
         );
       }
       return _parseResponse(raw, prompt: prompt);
     } on TimeoutException {
-      throw const AdventureStoryGenerationException(
+      throw const AdventureLabGenerationException(
         'נראה ש-Gemini מתעכב. נסו שוב בעוד רגע.',
       );
-    } on AdventureStoryGenerationException {
+    } on AdventureLabGenerationException {
       rethrow;
     } catch (error, stackTrace) {
-      debugPrint('Adventure story generation failed: $error\n$stackTrace');
-      throw const AdventureStoryGenerationException(
+      debugPrint('Adventure Lab generation failed: $error\n$stackTrace');
+      throw const AdventureLabGenerationException(
         'לא הצלחנו ליצור סיפור חדש. נסו שוב בעוד רגע.',
       );
     }
@@ -64,18 +65,18 @@ class AdventureStoryService {
   static const String _geminiUnavailableMessage =
       'חסר חיבור ל-Gemini. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי להפעיל את התכונה.';
 
-  static GeminiTextGenerator _inferGenerator() {
+  static GeminiStoryGenerator _inferGenerator() {
     final Uri proxyEndpoint = AppConfig.geminiProxyEndpoint;
 
     return (prompt) async {
       final service = GeminiProxyService(proxyEndpoint);
       try {
-        final response = await service.generateText(
+        final response = await service.generateStory(
           prompt,
           systemInstruction: _sparkSystemInstruction,
         );
         if (response == null || response.trim().isEmpty) {
-          throw const AdventureStoryUnavailableException(
+          throw const AdventureLabUnavailableException(
             _geminiUnavailableMessage,
           );
         }
@@ -87,13 +88,13 @@ class AdventureStoryService {
   }
 
   String _buildPrompt(
-    AdventureStoryContext context, {
+    AdventureLabContext context, {
     AppSessionUser? user,
     LocalUser? localUser,
   }) {
     final userName = user?.name ?? localUser?.name;
     final userAge = localUser?.age;
-    
+
     final contextMap = context.toMap();
     if (userName != null && userName.isNotEmpty) {
       contextMap['heroName'] = userName;
@@ -101,12 +102,12 @@ class AdventureStoryService {
     if (userAge != null) {
       contextMap['heroAge'] = userAge;
     }
-    
+
     final contextJson = jsonEncode(contextMap);
     final heroInstruction = userName != null && userName.isNotEmpty
         ? 'The hero of the story should be named "$userName".'
         : 'Create a fun adventure story.';
-    
+
     return '''Craft a playful mini-quest for a child learning English. The audience is 5-8 years old.
 
 Use the supplied JSON context to personalize the story:
@@ -121,8 +122,9 @@ Requirements:
 - Keep the entire response between 90 and 160 words.
 - Use some of the vocabulary words naturally in the narrative.
 - Include a simple interactive challenge that can be acted out or spoken.
+- Include a short pep talk (encouragement) that celebrates the child.
 - Never mention JSON, prompts, or being an AI.
-- Write all narrative, challenge, and encouragement text in Hebrew so it feels local, while showing each vocabulary word in English inside the sentences.
+- Write all narrative, challenge, and pep talk text in Hebrew so it feels local, while showing each vocabulary word in English inside the sentences.
 
 Return the result as minified JSON with keys:
 {
@@ -136,7 +138,7 @@ Return the result as minified JSON with keys:
 Do not include markdown code fences around the JSON.''';
   }
 
-  AdventureStory _parseResponse(String raw, {required String prompt}) {
+  AdventureLabQuest _parseResponse(String raw, {required String prompt}) {
     final cleaned = _stripCodeFences(raw).trim();
 
     Map<String, dynamic>? decoded;
@@ -149,14 +151,19 @@ Do not include markdown code fences around the JSON.''';
     }
 
     if (decoded != null) {
-      return AdventureStory.fromJson(decoded, rawText: cleaned, prompt: prompt);
+      return AdventureLabQuest.fromJson(
+        decoded,
+        rawText: cleaned,
+        prompt: prompt,
+      );
     }
 
-    return AdventureStory(
+    return AdventureLabQuest(
       title: 'הפתעת ספרק',
       scene: cleaned,
       challenge: 'הציגו את ההרפתקה ושבצו את המילים החדשות שלמדתם.',
-      encouragement: 'אתם נהדרים! ספרק מתרגש לראות אתכם ממשיכים לחקור וללמוד.',
+      pepTalk:
+          'אתם נהדרים! ספרק מתרגש לראות אתכם ממשיכים לחקור וללמוד.',
       vocabulary: const [],
       rawText: cleaned,
       prompt: prompt,
@@ -179,8 +186,9 @@ Do not include markdown code fences around the JSON.''';
   }
 }
 
-class AdventureStoryContext {
-  const AdventureStoryContext({
+/// Context from unlocked worlds / levels on the map.
+class AdventureLabContext {
+  const AdventureLabContext({
     required this.levelName,
     required this.levelDescription,
     required this.vocabularyWords,
@@ -189,6 +197,7 @@ class AdventureStoryContext {
     required this.coins,
     required this.mood,
     this.playerName,
+    this.unlockedWorldNames = const [],
   });
 
   final String levelName;
@@ -199,50 +208,52 @@ class AdventureStoryContext {
   final int coins;
   final String mood;
   final String? playerName;
+  final List<String> unlockedWorldNames;
 
   Map<String, dynamic> toMap() => <String, dynamic>{
-    'levelName': levelName,
-    'levelDescription': levelDescription,
-    'vocabularyWords': vocabularyWords,
-    'levelStars': levelStars,
-    'totalStars': totalStars,
-    'coins': coins,
-    'mood': mood,
-    if (playerName != null && playerName!.trim().isNotEmpty)
-      'playerName': playerName!.trim(),
-  };
+        'levelName': levelName,
+        'levelDescription': levelDescription,
+        'vocabularyWords': vocabularyWords,
+        'levelStars': levelStars,
+        'totalStars': totalStars,
+        'coins': coins,
+        'mood': mood,
+        if (unlockedWorldNames.isNotEmpty)
+          'unlockedWorlds': unlockedWorldNames,
+        if (playerName != null && playerName!.trim().isNotEmpty)
+          'playerName': playerName!.trim(),
+      };
 }
 
-class AdventureStory {
-  AdventureStory({
+class AdventureLabQuest {
+  AdventureLabQuest({
     required this.title,
     required this.scene,
     required this.challenge,
-    required this.encouragement,
+    required this.pepTalk,
     required this.vocabulary,
     required this.rawText,
     required this.prompt,
     this.parsedFromJson = true,
   });
 
-  factory AdventureStory.fromJson(
+  factory AdventureLabQuest.fromJson(
     Map<String, dynamic> json, {
     required String rawText,
     required String prompt,
   }) {
-    final vocabulary =
-        (json['vocabulary'] as List?)
+    final vocabulary = (json['vocabulary'] as List?)
             ?.whereType<String>()
             .map((word) => word.trim())
             .where((word) => word.isNotEmpty)
             .toList(growable: false) ??
         const <String>[];
 
-    return AdventureStory(
+    return AdventureLabQuest(
       title: _sanitize(json['title']),
       scene: _sanitize(json['scene']),
       challenge: _sanitize(json['challenge']),
-      encouragement: _sanitize(json['encouragement']),
+      pepTalk: _sanitize(json['encouragement']),
       vocabulary: vocabulary,
       rawText: rawText,
       prompt: prompt,
@@ -252,7 +263,7 @@ class AdventureStory {
   final String title;
   final String scene;
   final String challenge;
-  final String encouragement;
+  final String pepTalk;
   final List<String> vocabulary;
   final String rawText;
   final String prompt;
@@ -266,16 +277,15 @@ class AdventureStory {
   }
 }
 
-class AdventureStoryGenerationException implements Exception {
-  const AdventureStoryGenerationException(this.message);
+class AdventureLabGenerationException implements Exception {
+  const AdventureLabGenerationException(this.message);
 
   final String message;
 
   @override
-  String toString() => 'AdventureStoryGenerationException: $message';
+  String toString() => 'AdventureLabGenerationException: $message';
 }
 
-class AdventureStoryUnavailableException
-    extends AdventureStoryGenerationException {
-  const AdventureStoryUnavailableException(String message) : super(message);
+class AdventureLabUnavailableException extends AdventureLabGenerationException {
+  const AdventureLabUnavailableException(String message) : super(message);
 }

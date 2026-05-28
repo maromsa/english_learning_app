@@ -75,6 +75,28 @@ class GeminiProxyService {
     return null;
   }
 
+  /// Story generation for Spark's Adventure Lab (`mode: "story"` on the proxy).
+  Future<String?> generateStory(
+    String prompt, {
+    String? systemInstruction,
+  }) async {
+    final payload = {
+      'mode': 'story',
+      'prompt': prompt,
+      if (systemInstruction != null) 'system_instruction': systemInstruction,
+    };
+    final response = await _postJson(payload);
+
+    if (response == null) return null;
+
+    final text = response['text'];
+    if (text is String) {
+      return text.trim().isEmpty ? null : text.trim();
+    }
+
+    return null;
+  }
+
   /// General text generation helper, used by higher-level services that
   /// provide their own system instructions.
   Future<String?> generateText(
