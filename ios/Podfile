@@ -31,12 +31,7 @@ target 'Runner' do
   use_frameworks! :linkage => :static
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
-  
-  # FIX: Explicitly ignore warnings for noisy pods to clean up build logs
-  pod 'FirebaseCore', :inhibit_warnings => true
-  pod 'FirebaseAuth', :inhibit_warnings => true
-  pod 'GoogleUtilities', :inhibit_warnings => true
-  
+
   target 'RunnerTests' do
     inherit! :search_paths
   end
@@ -74,6 +69,11 @@ post_install do |installer|
       header_search_paths << '$(inherited)' unless header_search_paths.include?('$(inherited)')
       header_search_paths << '$(PROJECT_DIR)/../Flutter' unless header_search_paths.include?('$(PROJECT_DIR)/../Flutter')
       config.build_settings['HEADER_SEARCH_PATHS'] = header_search_paths.uniq
+
+      # Silence noisy third-party pod warnings without pinning Firebase versions.
+      if ['FirebaseCore', 'FirebaseAuth', 'GoogleUtilities'].include?(target.name)
+        config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
+      end
     end
   end
 end
