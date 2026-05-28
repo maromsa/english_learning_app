@@ -245,4 +245,23 @@ class SparkStrings {
       'עודכן $when · $levels שלבים';
   static String offlineDownloadsProgress(int done, int total) =>
       '$done מתוך $total פריטים';
+
+  // ─── Leaderboard ──────────────────────────────
+  static const String leaderboardTitle = 'לוח מובילים';
+  static const String leaderboardSubtitle = 'מטבעות ורצף יומי';
+  static const String leaderboardLoading = 'טוענים את הדירוג...';
+  static const String leaderboardLoadFailed = 'לא הצלחנו לטעון. ננסה שוב?';
+  static const String leaderboardEmpty = 'עדיין אין מספיק שחקנים';
+  static const String leaderboardEmptyHint =
+      'בואו נאסוף מטבעות ונחזור לבדוק מי מוביל!';
+  static const String leaderboardYouBadge = 'אתם';
+  static const String leaderboardStreakLabel = 'רצף:';
+  static const String leaderboardYourRank = 'המיקום שלכם';
+  static String leaderboardYourRankDetail(
+    int rank,
+    int coins,
+    int streak,
+  ) =>
+      'מקום $rank · 🪙 $coins · 🔥 $streak';
+  static const String leaderboardMapButton = 'לוח מובילים';
 }

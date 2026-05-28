@@ -43,6 +43,7 @@ import 'settings_screen.dart';
 import 'shop_screen.dart';
 import 'character_selection_screen.dart';
 import 'user_selection_screen.dart';
+import 'leaderboard_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -1135,6 +1136,33 @@ class _MapScreenState extends State<MapScreen>
           leadingWidth: 180,
           title: const _MapTitleCard(),
           actions: [
+            Tooltip(
+              message: SparkStrings.leaderboardMapButton,
+              child: IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD54F), Color(0xFFFFB300)],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.amber.withValues(alpha: 0.5),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.emoji_events,
+                    color: Color(0xFF5D4037),
+                  ),
+                ),
+                onPressed: _navigateToLeaderboard,
+              ),
+            ),
+            const SizedBox(width: 4),
             // ── Character Selection button ────────────────────────────────────
             Consumer<CharacterProvider>(
               builder: (context, charProvider, _) {
@@ -1392,6 +1420,13 @@ class _MapScreenState extends State<MapScreen>
     await Navigator.push(
       context,
       PageTransitions.slideFromRight(const ShopScreen()),
+    );
+  }
+
+  Future<void> _navigateToLeaderboard() async {
+    await Navigator.push(
+      context,
+      PageTransitions.slideFromRight(const LeaderboardScreen()),
     );
   }
 
