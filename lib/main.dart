@@ -9,6 +9,7 @@ import 'package:english_learning_app/providers/shop_provider.dart';
 import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
+import 'package:english_learning_app/services/speech_feedback_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'dart:ui';
 
@@ -165,6 +166,10 @@ Future<void> main() async {
         Provider<SoundService>.value(value: soundService),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         Provider<TelemetryService>.value(value: telemetryService),
+        Provider<SpeechFeedbackService>(
+          create: (_) => SpeechFeedbackService(),
+          dispose: (_, service) => service.dispose(),
+        ),
       ],
       child: MyApp(hasSeenOnboarding: hasSeenOnboarding),
     ),

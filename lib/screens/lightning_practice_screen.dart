@@ -9,16 +9,20 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/daily_mission.dart';
+import '../models/pronunciation_feedback.dart';
 import '../models/word_data.dart';
 import '../providers/coin_provider.dart';
 import '../providers/daily_mission_provider.dart';
 import '../providers/spark_overlay_controller.dart';
 import '../providers/user_session_provider.dart';
+import '../services/achievement_service.dart';
 import '../services/level_progress_service.dart';
 import '../services/sound_service.dart';
+import '../services/speech_feedback_service.dart';
 import '../services/telemetry_service.dart';
 import '../services/word_mastery_service.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/widgets/pronunciation_mic_button.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 
 /// Lightning-round practice screen — Phase 3 edition.
@@ -67,6 +71,7 @@ class LightningPracticeScreen extends StatefulWidget {
 class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
   static const int _sessionSeconds = 60;
   static const int _recentHistorySize = 4;
+  static const int _pronunciationCoinReward = 10;
 
   final Random _random = Random();
   final Queue<String> _recentWords = Queue<String>();
@@ -99,6 +104,11 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
   int _questionCount = 0;
   int _currentStreak = 0;
   int _bestStreak = 0;
+
+  bool _isListening = false;
+  bool _isEvaluating = false;
+  bool _pronunciationAwardedThisQuestion = false;
+  SpeechFeedbackService? _speechFeedbackService;
 
   // ---------------------------------------------------------------------------
   // Fallback word pool used when the level does not have enough words.
@@ -189,14 +199,18 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     _levelProgressService = widget.levelProgressService ?? LevelProgressService();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _speechFeedbackService = context.read<SpeechFeedbackService>();
       _telemetry = TelemetryService.maybeOf(context);
       _telemetry?.startScreenSession('lightning');
       _loadAndSortWords();
     });
   }
 
+  bool get _speechBusy => _isListening || _isEvaluating;
+
   @override
   void dispose() {
+    unawaited(_speechFeedbackService?.cancelListening());
     _timer?.cancel();
     _telemetry?.endScreenSession(
       'lightning',
@@ -403,6 +417,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     setState(() {
       _currentWord = nextWord;
       _currentOptions = _buildOptions(nextWord.word);
+      _pronunciationAwardedThisQuestion = false;
       _selectedAnswer = null;
       _awaitingNext = false;
       _lastAnswerCorrect = null;
@@ -448,8 +463,97 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
   // Answer handling
   // ---------------------------------------------------------------------------
 
+  Future<void> _handlePronunciationFeedback(
+    PronunciationFeedback aiFeedback,
+    String recognizedWord,
+  ) async {
+    if (!_sessionActive ||
+        _sessionEnded ||
+        _currentWord == null ||
+        _pronunciationAwardedThisQuestion) {
+      return;
+    }
+
+    final word = _currentWord!.word;
+    var feedback = aiFeedback.feedbackMessage;
+    final isStrong = aiFeedback.isStrongAttempt;
+
+    if (!mounted) return;
+
+    setState(() {
+      _feedback = feedback;
+      _lastAnswerCorrect = isStrong;
+    });
+
+    if (!isStrong) {
+      SoundService().playSound('error');
+      return;
+    }
+
+    _pronunciationAwardedThisQuestion = true;
+    _currentStreak += 1;
+    _bestStreak = max(_bestStreak, _currentStreak);
+    _score += _pronunciationCoinReward;
+    _correctAnswers += 1;
+
+    final compliment = SparkStrings.randomCompliment();
+    final coinLine =
+        SparkStrings.quizCorrectCoins(compliment, _pronunciationCoinReward);
+    feedback = '$feedback\n$coinLine';
+
+    await context.read<CoinProvider>().addCoins(_pronunciationCoinReward);
+    if (!mounted) return;
+
+    context.read<AchievementService>().checkForAchievements(
+          streak: _currentStreak,
+        );
+
+    await context
+        .read<DailyMissionProvider>()
+        .incrementByType(DailyMissionType.speakPractice);
+    if (!mounted) return;
+
+    await _markWordCompleted(word);
+    if (!mounted) return;
+
+    SoundService().playSuccessSound();
+    _notifySpark(SparkOverlayAnimationState.celebrating);
+
+    await Celebration.fire(
+      context,
+      tier: CelebrationTier.micro,
+      word: word,
+      coinsEarned: 0,
+    );
+    if (!mounted) return;
+
+    setState(() {
+      _feedback = feedback;
+      _lastAnswerCorrect = true;
+    });
+
+    final int elapsed = _sessionSeconds - _remainingSeconds;
+    _telemetry?.logLightningAnswer(
+      word: word,
+      correct: true,
+      streak: _currentStreak,
+      elapsedSeconds: elapsed < 0 ? 0 : elapsed,
+      remainingSeconds: _remainingSeconds,
+      reward: _pronunciationCoinReward,
+    );
+
+    Future<void>.delayed(const Duration(seconds: 2), () {
+      if (!mounted || _sessionEnded) return;
+      _notifySpark(SparkOverlayAnimationState.idle);
+    });
+  }
+
   Future<void> _handleAnswer(String option) async {
-    if (!_sessionActive || _sessionEnded || _awaitingNext || _currentWord == null) {
+    if (!_sessionActive ||
+        _sessionEnded ||
+        _awaitingNext ||
+        _currentWord == null ||
+        _speechBusy) {
       return;
     }
 
@@ -754,10 +858,22 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
               const SizedBox(height: 16),
               ClipRRect(
                 borderRadius: BorderRadius.circular(18),
-                child: SizedBox(height: 160, child: visual),
+                child: SizedBox(height: 140, child: visual),
               ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+            _buildPronunciationSection(word.word),
+            const SizedBox(height: 16),
+            Text(
+              'או בחרו את המילה הנכונה:',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Colors.deepOrange.shade600,
+              ),
+            ),
+            const SizedBox(height: 12),
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
@@ -769,8 +885,10 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
                             option: option,
                             isSelected: _selectedAnswer == option,
                             isCorrectAnswer: word.word == option,
-                            awaitingNext: _awaitingNext,
-                            onTap: () => _handleAnswer(option),
+                            awaitingNext: _awaitingNext || _speechBusy,
+                            onTap: _speechBusy
+                                ? null
+                                : () => _handleAnswer(option),
                           ),
                         ),
                       )
@@ -870,18 +988,76 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     );
   }
 
+  Widget _buildPronunciationSection(String targetWord) {
+    final service = _speechFeedbackService;
+    if (service == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.deepOrange.shade300,
+            Colors.orange.shade200,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.deepOrange.withValues(alpha: 0.25),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'אמרו את המילה באנגלית 🎤',
+              style: TextStyle(
+                color: Colors.deepOrange.shade900,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          PronunciationMicButton(
+            targetWord: targetWord,
+            speechService: service,
+            enabled: _sessionActive && !_sessionEnded && !_awaitingNext,
+            height: 200,
+            onListeningChanged: (listening) {
+              if (!mounted) return;
+              setState(() => _isListening = listening);
+            },
+            onEvaluatingChanged: (evaluating) {
+              if (!mounted) return;
+              setState(() => _isEvaluating = evaluating);
+            },
+            onFeedback: _handlePronunciationFeedback,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBottomControls() {
     if (_sessionEnded) return const SizedBox.shrink();
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         OutlinedButton.icon(
-          onPressed: _sessionActive ? () => _endSession() : null,
+          onPressed: _sessionActive && !_speechBusy ? () => _endSession() : null,
           icon: const Icon(Icons.flag_circle_outlined),
           label: const Text('סיימו מוקדם'),
         ),
         TextButton.icon(
-          onPressed: _awaitingNext || _sessionEnded
+          onPressed: _awaitingNext || _sessionEnded || _speechBusy
               ? null
               : () => _prepareNextQuestion(),
           icon: const Icon(Icons.shuffle),
@@ -1026,7 +1202,7 @@ class _LightningOptionButton extends StatelessWidget {
   final bool isSelected;
   final bool isCorrectAnswer;
   final bool awaitingNext;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1052,7 +1228,7 @@ class _LightningOptionButton extends StatelessWidget {
     }
 
     return ElevatedButton(
-      onPressed: awaitingNext ? null : onTap,
+      onPressed: awaitingNext || onTap == null ? null : onTap,
       style: ElevatedButton.styleFrom(
         backgroundColor: background,
         disabledBackgroundColor: background,

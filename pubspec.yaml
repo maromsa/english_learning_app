@@ -65,6 +65,9 @@ dev_dependencies:
   fake_cloud_firestore: ^4.0.1
 
 flutter:
+  config:
+    # CocoaPods-only plugins (permission_handler_apple, flutter_tts, flutter_sound).
+    enable-swift-package-manager: false
   uses-material-design: true
   assets:
     - assets/images/

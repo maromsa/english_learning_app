@@ -23,6 +23,9 @@ class SparkStrings {
   static const String micChecking = 'רגע, בודקת מה שמעתם...';
   static const String micHeardNothing = 'לא שמעתי. בואו נדבר שוב?';
   static const String micStartFailed = 'אופס, לא הצלחתי. ננסה שוב?';
+  static const String micPermissionSettings =
+      'אין גישה למיקרופון. פתחו הגדרות ואשרו הקלטה.';
+  static const String micOpenSettings = 'הגדרות';
 
   /// Semantics for [SparkOrb] (assistive tech only).
   static const String orbSemanticsIdle = 'מיקרופון — לחצו לדבר';

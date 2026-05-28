@@ -26,6 +26,7 @@ class KidSpeechService {
   /// [onStatus] - Called when status changes (listening, done, etc.)
   Future<void> listen({
     required Function(String) onResult,
+    Function(String)? onPartialResult,
     Function(double)? onSoundLevel,
     Function(String)? onStatus,
   }) async {
@@ -40,8 +41,12 @@ class KidSpeechService {
     // Child-specific configuration
     await _speech.listen(
       onResult: (val) {
+        final words = val.recognizedWords;
+        if (words.isNotEmpty) {
+          onPartialResult?.call(words);
+        }
         if (val.finalResult) {
-          onResult(val.recognizedWords);
+          onResult(words);
         }
       },
       onSoundLevelChange: onSoundLevel ?? (level) {},

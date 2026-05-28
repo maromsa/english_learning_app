@@ -27,13 +27,14 @@ import 'package:english_learning_app/services/level_progress_service.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/level_completion_screen.dart';
 import 'package:english_learning_app/utils/page_transitions.dart';
-import 'package:english_learning_app/widgets/bouncy_button.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:english_learning_app/widgets/living_spark.dart';
 import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/services/spark_voice_service.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
-import 'package:english_learning_app/services/kid_speech_service.dart';
+import 'package:english_learning_app/models/pronunciation_feedback.dart';
+import 'package:english_learning_app/services/speech_feedback_service.dart';
+import 'package:english_learning_app/widgets/pronunciation_mic_button.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -64,7 +65,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   late final FlutterTts flutterTts;
   GoogleTtsService? _googleTts;
-  final KidSpeechService _kidSpeechService = KidSpeechService();
+  SpeechFeedbackService? _speechFeedbackService;
   final SparkVoiceService _sparkVoiceService = SparkVoiceService();
   final ImagePicker _picker = ImagePicker();
   late final WordRepository _wordRepository;
@@ -81,20 +82,13 @@ class _MyHomePageState extends State<MyHomePage> {
   int _attemptsForCurrentWord = 0;
   bool _isListening = false;
   String _feedbackText = SparkStrings.micPrompt;
-  String _recognizedWords = '';
-  bool _speechEnabled = false;
-  double _soundLevel = 0.0; // For visual feedback
   int _streak = 0;
-  bool _isEvaluating = false; // Prevent double evaluation
-  // In-memory cache for Gemini phonetic evaluation results.
-  // Key format: '<correctWord_lowercase>|<recognizedWord_lowercase>'
-  final Map<String, bool> _geminiResultCache = {};
+  bool _isEvaluating = false;
   // AI features are always enabled since geminiProxyEndpoint always returns a valid endpoint
   Uri get proxyEndpoint => AppConfig.geminiProxyEndpoint;
 
   bool _showFeedback = false;
   bool _lastResultSuccess = false;
-  DateTime? _lastResultAt;
   
   // Spark emotion state
   SparkEmotion _sparkEmotion = SparkEmotion.neutral;
@@ -128,7 +122,7 @@ class _MyHomePageState extends State<MyHomePage> {
       },
     );
     flutterTts.stop();
-    _kidSpeechService.stop();
+    unawaited(_speechFeedbackService?.cancelListening());
     _audioPlayer.dispose();
     _httpImageValidator?.dispose();
     _webImageService?.dispose();
@@ -138,6 +132,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _initializeServices() async {
+    _speechFeedbackService = context.read<SpeechFeedbackService>();
     final bool cloudinaryAvailable = AppConfig.hasCloudinary;
     final bool pixabayAvailable = AppConfig.hasPixabay;
 
@@ -158,7 +153,6 @@ class _MyHomePageState extends State<MyHomePage> {
       _googleTts = GoogleTtsService(apiKey: AppConfig.googleTtsApiKey);
     }
     await _configureTts();
-    _speechEnabled = await _kidSpeechService.initialize();
 
     if (!cloudinaryAvailable) {
       AppConfig.debugWarnIfMissing('Cloudinary word sync', false);
@@ -477,99 +471,20 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Future<bool> _evaluateSpeechWithGemini(
-    String correctWord,
+  Future<void> _handlePronunciationFeedback(
+    PronunciationFeedback aiFeedback,
     String recognizedWord,
   ) async {
-    // Build a normalised cache key so casing differences are ignored.
-    final cacheKey =
-        '${correctWord.toLowerCase()}|${recognizedWord.toLowerCase()}';
-
-    // Return the cached result immediately – no network call needed.
-    if (_geminiResultCache.containsKey(cacheKey)) {
-      debugPrint(
-        '--- Gemini cache hit for "$cacheKey": ${_geminiResultCache[cacheKey]} ---',
-      );
-      return _geminiResultCache[cacheKey]!;
-    }
-
-    try {
-      debugPrint('--- Asking Gemini for phonetic evaluation ---');
-      debugPrint("Correct: '$correctWord', Recognized: '$recognizedWord'");
-
-      final proxy = _geminiProxy;
-      if (proxy == null) {
-        throw StateError('Gemini proxy is not initialized.');
-      }
-
-      final prompt = "You are an English teacher for a 3-6 year old child. "
-          "The child was asked to say the word '$correctWord' and they said '$recognizedWord'. "
-          "Considering their age and common pronunciation mistakes (like confusing 'th' and 't' sounds), "
-          "should this attempt be considered a good and acceptable try? "
-          "Answer with only 'yes' or 'no'.";
-
-      final response =
-          await proxy.generateText(prompt).timeout(const Duration(seconds: 10));
-      if (response == null || response.trim().isEmpty) {
-        throw StateError('Gemini proxy returned an empty response.');
-      }
-
-      final answer = response.trim().toLowerCase();
-      debugPrint("Gemini's answer: '$answer'");
-      final result = answer == 'yes';
-
-      // Store the result so rapid/repeated calls skip the network entirely.
-      _geminiResultCache[cacheKey] = result;
-      return result;
-    } catch (e) {
-      debugPrint('Error during Gemini evaluation: $e');
-      // Do NOT cache error results – let the next attempt retry the API.
-      return correctWord.toLowerCase() == recognizedWord.toLowerCase();
-    }
-  }
-
-  Future<void> _evaluateSpeech() async {
     if (_words.isEmpty) return;
 
-    // Prevent double evaluation
-    if (_isEvaluating) {
-      debugPrint('Evaluation already in progress, skipping duplicate call');
-      return;
-    }
-
-    _isEvaluating = true;
-
     final currentWordObject = _words[_currentIndex];
-    final recognizedWord = _recognizedWords.trim();
-
-    if (recognizedWord.isEmpty) {
-      _isEvaluating = false;
-      if (!mounted) return;
-      setState(() {
-        _feedbackText = SparkStrings.micHeardNothing;
-      });
-      return;
-    }
-
     _attemptsForCurrentWord++;
 
-    // First check if it's close enough using fuzzy matching
-    bool isCorrect = _kidSpeechService.isCloseEnough(
-      currentWordObject.word,
-      recognizedWord,
-    );
-    
-    // If fuzzy match fails, use Gemini for more sophisticated evaluation
-    if (!isCorrect) {
-      isCorrect = await _evaluateSpeechWithGemini(
-        currentWordObject.word,
-        recognizedWord,
-      );
-    }
+    final isCorrect = aiFeedback.isStrongAttempt;
+    String feedback = aiFeedback.feedbackMessage;
 
     if (!mounted) return;
 
-    String feedback;
     if (isCorrect) {
       _streak++;
       const int pointsToAdd = 10;
@@ -584,7 +499,8 @@ class _MyHomePageState extends State<MyHomePage> {
       if (!mounted) return;
 
       final compliment = SparkStrings.randomCompliment();
-      feedback = SparkStrings.quizCorrectCoins(compliment, pointsToAdd);
+      final coinLine = SparkStrings.quizCorrectCoins(compliment, pointsToAdd);
+      feedback = '$feedback\n$coinLine';
 
       if (mounted) {
         setState(() {
@@ -648,8 +564,9 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     } else {
       _streak = 0;
-      // Empathetic failure message - never make child feel bad
-      feedback = SparkStrings.wrongAlmostHeard(recognizedWord);
+      if (feedback.isEmpty) {
+        feedback = SparkStrings.wrongAlmostHeard(recognizedWord);
+      }
       
       // Play gentle error sound (not harsh)
       _soundService.playSound('error');
@@ -671,14 +588,10 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     }
 
-    if (!mounted) {
-      _isEvaluating = false;
-      return;
-    }
+    if (!mounted) return;
     setState(() {
       _feedbackText = feedback;
       _lastResultSuccess = isCorrect;
-      _lastResultAt = DateTime.now();
       _showFeedback = true;
     });
     if (isCorrect) {
@@ -687,15 +600,11 @@ class _MyHomePageState extends State<MyHomePage> {
       });
     }
 
-    if (!mounted) {
-      _isEvaluating = false;
-      return;
-    }
-    
+    if (!mounted) return;
+
     // Determine emotion based on result
     final emotion = isCorrect ? SparkEmotion.excited : SparkEmotion.empathetic;
     await _speak(feedback, languageCode: "he-IL", emotion: emotion);
-    _isEvaluating = false;
 
     // Auto-hide feedback after 3 seconds
     Future.delayed(const Duration(seconds: 3), () {
@@ -705,123 +614,6 @@ class _MyHomePageState extends State<MyHomePage> {
         });
       }
     });
-  }
-
-  void _startListening() async {
-    if (!_speechEnabled) {
-      setState(() {
-        _feedbackText = SparkStrings.micPermissionAsk;
-      });
-      return;
-    }
-
-    setState(() {
-      _isListening = true;
-      _feedbackText = SparkStrings.micListening;
-      _recognizedWords = '';
-      _isEvaluating =
-          false; // Reset evaluation flag when starting new listening session
-    });
-
-    try {
-      await _kidSpeechService.listen(
-        onResult: (recognizedWords) async {
-          if (mounted) {
-            setState(() {
-              _recognizedWords = recognizedWords;
-            });
-
-            // Auto-stop and evaluate when final result is received
-            if (recognizedWords.trim().isNotEmpty) {
-              // Stop listening immediately
-              try {
-                await _kidSpeechService.stop();
-              } catch (e) {
-                debugPrint('Error stopping speech recognition: $e');
-              }
-
-              if (mounted) {
-                setState(() {
-                  _isListening = false;
-                  _soundLevel = 0.0;
-                  _feedbackText = SparkStrings.micChecking;
-                });
-
-                // Evaluate speech immediately after stopping
-                // Small delay to ensure state is updated
-                Future.delayed(const Duration(milliseconds: 200), () {
-                  if (mounted) {
-                    _evaluateSpeech();
-                  }
-                });
-              }
-            }
-          }
-        },
-        onSoundLevel: (level) {
-          // Update visual feedback with sound level
-          if (mounted) {
-            setState(() {
-              _soundLevel = level;
-            });
-          }
-        },
-      );
-    } catch (e) {
-      debugPrint("Error starting speech recognition: $e");
-      if (mounted) {
-        setState(() {
-          _isListening = false;
-          _soundLevel = 0.0;
-          _feedbackText = SparkStrings.micStartFailed;
-        });
-      }
-    }
-  }
-
-  void _stopListening() async {
-    try {
-      await _kidSpeechService.stop();
-      if (mounted) {
-        setState(() {
-          _isListening = false;
-          _soundLevel = 0.0;
-        });
-      }
-      // Only evaluate if not already evaluating (to prevent double evaluation)
-      // The onResult callback will handle evaluation
-      if (!_isEvaluating && _recognizedWords.isNotEmpty) {
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted && !_isEvaluating) {
-            _evaluateSpeech();
-          }
-        });
-      } else if (_recognizedWords.isEmpty) {
-        if (mounted) {
-          setState(() {
-            _feedbackText = SparkStrings.micHeardNothing;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint("Error stopping speech recognition: $e");
-      if (mounted) {
-        setState(() {
-          _isListening = false;
-          _soundLevel = 0.0;
-          _feedbackText = SparkStrings.micRetry;
-        });
-      }
-    }
-  }
-
-  void _handleSpeech() {
-    if (!_speechEnabled) return;
-    if (_kidSpeechService.isListening) {
-      _stopListening();
-    } else {
-      _startListening();
-    }
   }
 
   void _nextWord() {
@@ -860,9 +652,9 @@ class _MyHomePageState extends State<MyHomePage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => _GameMenuSheet(
-        onAddWord: _isListening ? null : _takePictureAndIdentify,
-        onScavengerHunt: _isListening ? null : _openScavengerHunt,
-        onShop: _isListening
+        onAddWord: _speechBusy ? null : _takePictureAndIdentify,
+        onScavengerHunt: _speechBusy ? null : _openScavengerHunt,
+        onShop: _speechBusy
             ? null
             : () {
                 Navigator.pop(context);
@@ -871,7 +663,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   PageTransitions.slideFromRight(const ShopScreen()),
                 );
               },
-        onImageQuiz: _isListening
+        onImageQuiz: _speechBusy
             ? null
             : () {
                 Navigator.pop(context);
@@ -885,7 +677,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 );
               },
-        onChatBuddy: _isListening
+        onChatBuddy: _speechBusy
             ? null
             : () {
                 Navigator.pop(context);
@@ -900,7 +692,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 );
               },
-        onPracticePack: _isListening
+        onPracticePack: _speechBusy
             ? null
             : () {
                 Navigator.pop(context);
@@ -915,7 +707,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 );
               },
-        onLightning: _isListening
+        onLightning: _speechBusy
             ? null
             : (_words.length < 2
                 ? () {
@@ -1057,9 +849,9 @@ class _MyHomePageState extends State<MyHomePage> {
                           child: currentWordData != null
                               ? _HeroWordDisplay(
                                   wordData: currentWordData,
-                                  onNext: _isListening ? null : _nextWord,
-                                  onPrev: _isListening ? null : _previousWord,
-                                  onPlayAudio: _isListening
+                                  onNext: _speechBusy ? null : _nextWord,
+                                  onPrev: _speechBusy ? null : _previousWord,
+                                  onPlayAudio: _speechBusy
                                       ? null
                                       : () async {
                                           _soundService.playSound('pop');
@@ -1093,19 +885,24 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                       const SizedBox(height: 20),
                       // 4. Controls Area
-                      SizedBox(
-                        height: 188,
-                        child: Center(
-                          child: _SmartMicButton(
-                            isListening: _isListening,
-                            isEvaluating: _isEvaluating,
-                            lastResultWasSuccess: _lastResultSuccess,
-                            lastResultAt: _lastResultAt,
-                            soundLevel: _soundLevel,
-                            onPressed: _handleSpeech,
-                          ),
-                        ),
-                      ),
+                      if (currentWordData != null &&
+                          _speechFeedbackService != null)
+                        PronunciationMicButton(
+                          targetWord: currentWordData.word,
+                          speechService: _speechFeedbackService!,
+                          enabled: !_isLoading,
+                          onListeningChanged: (listening) {
+                            if (!mounted) return;
+                            setState(() => _isListening = listening);
+                          },
+                          onEvaluatingChanged: (evaluating) {
+                            if (!mounted) return;
+                            setState(() => _isEvaluating = evaluating);
+                          },
+                          onFeedback: _handlePronunciationFeedback,
+                        )
+                      else
+                        const SizedBox(height: 220),
                       const SizedBox(height: 20),
                     ],
                   ),
@@ -1117,6 +914,8 @@ class _MyHomePageState extends State<MyHomePage> {
       ],
     );
   }
+
+  bool get _speechBusy => _isListening || _isEvaluating;
 
   bool get _isLevelComplete => !_words.any((word) => !word.isCompleted);
 
@@ -1635,78 +1434,7 @@ class _HeroWordDisplay extends StatelessWidget {
   }
 }
 
-// 4. Smart Microphone Button
-class _SmartMicButton extends StatelessWidget {
-  final bool isListening;
-  final bool isEvaluating;
-  final bool lastResultWasSuccess;
-  final DateTime? lastResultAt;
-  final double soundLevel;
-  final VoidCallback onPressed;
-
-  const _SmartMicButton({
-    required this.isListening,
-    required this.isEvaluating,
-    required this.lastResultWasSuccess,
-    required this.lastResultAt,
-    required this.soundLevel,
-    required this.onPressed,
-  });
-
-  OrbState _orbState() {
-    final now = DateTime.now();
-    if (isListening) return OrbState.listening;
-    if (isEvaluating) return OrbState.thinking;
-    if (lastResultWasSuccess &&
-        lastResultAt != null &&
-        now.difference(lastResultAt!).inMilliseconds < 1200) {
-      return OrbState.success;
-    }
-    return OrbState.idle;
-  }
-
-  String _label() {
-    if (isListening) return SparkStrings.micListening;
-    if (isEvaluating) return SparkStrings.micChecking;
-    return SparkStrings.micSpeakBtn;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final buttonContent = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SparkOrb(
-          state: _orbState(),
-          soundLevel: soundLevel,
-          onTap: null,
-          size: 144,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _label(),
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
-          ),
-        ),
-      ],
-    );
-
-    if (isListening || isEvaluating) {
-      return buttonContent;
-    }
-
-    return BouncyButton(
-      onPressed: onPressed,
-      child: buttonContent,
-    );
-  }
-}
-
-// 5. Feedback Panel
+// 4. Feedback Panel
 class _FeedbackPanel extends StatelessWidget {
   final String text;
   final bool isSuccess;
