@@ -3,11 +3,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // --- Configuration ---
-// On Flutter Web, pubspec assets are served from /assets/<path>.
-// The index.html lives at /assets/map_3d/index.html, so 3D models
-// referenced relative to index.html need the correct URL prefix.
-// Using an absolute path avoids ambiguity regardless of the iframe src.
-const ASSET_PATH = 'assets/models/'; // Flutter Web absolute asset path
+// Flutter Web serves pubspec assets at /assets/assets/<path> (double prefix).
+// index.html is at /assets/assets/map_3d/index.html; models live at
+// assets/models/ in the repo → /assets/assets/models/ at runtime.
+// Do NOT use a relative "assets/models/" here — that resolves to
+// /assets/assets/map_3d/assets/models/ and 404s.
+const ASSET_PATH = '/assets/assets/models/';
 const MAP_FILE = 'map_island.glb';
 const CHARACTER_FILE = 'spark.glb';
 
