@@ -3,10 +3,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // --- Configuration ---
-// index.html lives at …/assets/assets/map_3d/index.html; models are a sibling
-// folder at …/assets/assets/models/. Use a relative path so GitHub Pages
-// subpaths (e.g. /english_learning_app/) are preserved — leading "/" drops them.
-const ASSET_PATH = '../models/';
+// index.html lives at …/assets/assets/map_3d/index.html. fetch()/GLTFLoader
+// resolve URLs against the document URL (index.html), not this script's path.
+// Models live alongside index.html at …/assets/assets/map_3d/models/.
+const ASSET_PATH = 'models/';
 const MAP_FILE = 'map_island.glb';
 const CHARACTER_FILE = 'spark.glb';
 
