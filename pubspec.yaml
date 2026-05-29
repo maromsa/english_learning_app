@@ -82,4 +82,6 @@ flutter:
     - assets/map_3d/
     # Flutter does not recurse into subdirs; declare each folder explicitly.
     - assets/map_3d/js/
+    - assets/map_3d/css/
+    - assets/map_3d/assets/models/
 
