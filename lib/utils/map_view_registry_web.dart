@@ -22,18 +22,16 @@ const String kMap3dViewType = 'map_3d_iframe';
 /// registrations. Call this before the first [HtmlElementView] with
 /// [kMap3dViewType] is built (e.g. in [State.initState]).
 ///
-/// Asset path: Flutter Web serves pubspec assets under the `/assets/` prefix,
-/// so `assets/map_3d/index.html` in pubspec becomes `assets/map_3d/index.html`
-/// at runtime (NOT `assets/assets/…`).
+/// Asset path: Flutter Web compiles pubspec `assets/…` entries to
+/// `build/web/assets/assets/…`, so the iframe must use the double prefix.
 void registerMap3dView() {
   ui_web.platformViewRegistry.registerViewFactory(
     kMap3dViewType,
     (int viewId) {
       final iframe = web.document.createElement('iframe')
           as web.HTMLIFrameElement
-        // Correct web asset path: Flutter Web serves pubspec assets at /assets/<path>.
-        // Use 'assets/map_3d/index.html' (single 'assets/' prefix).
-        ..src = 'assets/map_3d/index.html'
+        // Flutter Web quirk: root pubspec assets land under assets/assets/…
+        ..src = 'assets/assets/map_3d/index.html'
         // Explicit size constraints are required to avoid unbounded-constraint
         // rendering errors (drawFrame / finalizeTree) in the Flutter Web pipeline.
         ..style.border = 'none'
