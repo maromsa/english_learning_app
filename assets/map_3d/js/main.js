@@ -3,12 +3,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // --- Configuration ---
-// Flutter Web serves pubspec assets at /assets/assets/<path> (double prefix).
-// index.html is at /assets/assets/map_3d/index.html; models live at
-// assets/models/ in the repo → /assets/assets/models/ at runtime.
-// Do NOT use a relative "assets/models/" here — that resolves to
-// /assets/assets/map_3d/assets/models/ and 404s.
-const ASSET_PATH = '/assets/assets/models/';
+// index.html lives at …/assets/assets/map_3d/index.html; models are a sibling
+// folder at …/assets/assets/models/. Use a relative path so GitHub Pages
+// subpaths (e.g. /english_learning_app/) are preserved — leading "/" drops them.
+const ASSET_PATH = '../models/';
 const MAP_FILE = 'map_island.glb';
 const CHARACTER_FILE = 'spark.glb';
 
