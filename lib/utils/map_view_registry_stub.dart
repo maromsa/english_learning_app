@@ -16,3 +16,12 @@ void registerMap3dView() {
 
 /// No-op on mobile/desktop. Returns a no-op dispose callback.
 void Function() setupMap3dLoadListener(void Function() onLoaded) => () {};
+
+/// No-op on mobile/desktop. Returns a no-op dispose callback.
+void Function() setupMap3dMessageListener(
+  void Function(String type, Map<String, dynamic> payload) onMessage,
+) =>
+    () {};
+
+/// No-op on mobile/desktop.
+void postMessageToMap3dIframe(Map<String, dynamic> message) {}

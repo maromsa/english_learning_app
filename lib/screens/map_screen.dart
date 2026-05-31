@@ -80,6 +80,10 @@ class _MapScreenState extends State<MapScreen>
   SparkOverlayController? _sparkController;
   String? _levelHeroTransitionId;
 
+  /// Flutter Web: dispose callbacks for iframe postMessage bridges.
+  VoidCallback? _cancelMap3dMessageListener;
+  VoidCallback? _cancelMap3dReadyListener;
+
   @override
   void initState() {
     super.initState();
@@ -102,6 +106,12 @@ class _MapScreenState extends State<MapScreen>
     // On Flutter Web: register the iframe platform view.
     // On mobile/desktop: this is a no-op (stub implementation).
     registerMap3dView();
+
+    if (kIsWeb) {
+      _cancelMap3dMessageListener =
+          setupMap3dMessageListener(_handleMap3dPostMessage);
+      _cancelMap3dReadyListener = setupMap3dLoadListener(_onWebMap3dReady);
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Don't block UI - play music in background
@@ -193,6 +203,18 @@ class _MapScreenState extends State<MapScreen>
       ..loadFlutterAsset('assets/map_3d/index.html');
   }
 
+  /// Flutter Web: iframe → parent postMessage (see [setupMap3dMessageListener]).
+  void _handleMap3dPostMessage(String type, Map<String, dynamic> payload) {
+    if (!mounted) return;
+    _handleJsMessage(jsonEncode({'type': type, 'data': payload}));
+  }
+
+  void _onWebMap3dReady() {
+    if (!mounted) return;
+    setState(() => _isWebMapReady = true);
+    _sendLevelsToJs();
+  }
+
   void _handleJsMessage(String jsonMessage) {
     try {
       final data = jsonDecode(jsonMessage);
@@ -201,14 +223,14 @@ class _MapScreenState extends State<MapScreen>
 
       switch (type) {
         case 'enter_level':
-          final index = payload['index'] as int;
-          if (index >= 0 && index < levels.length) {
+          final index = _levelIndexFromPayload(data, payload);
+          if (index != null && index >= 0 && index < levels.length) {
             _navigateToLevel(levels[index], index);
           }
           break;
         case 'level_locked':
-          final index = payload['index'] as int;
-          if (index >= 0 && index < levels.length) {
+          final index = _levelIndexFromPayload(data, payload);
+          if (index != null && index >= 0 && index < levels.length) {
             _showLockedMessage(levels[index]);
           }
           break;
@@ -221,11 +243,29 @@ class _MapScreenState extends State<MapScreen>
     }
   }
 
+  int? _levelIndexFromPayload(
+    Map<String, dynamic> data,
+    dynamic payload,
+  ) {
+    final raw = (payload is Map ? payload['index'] : null) ?? data['index'];
+    if (raw is int) return raw;
+    if (raw is num) return raw.toInt();
+    return null;
+  }
+
   void _sendLevelsToJs() {
-    final controller = _webViewController;
-    if (!_isWebMapReady || levels.isEmpty || controller == null) return;
+    if (!_isWebMapReady || levels.isEmpty) return;
     try {
       final jsonList = levels.map((l) => l.toJson()).toList();
+      if (kIsWeb) {
+        postMessageToMap3dIframe({
+          'type': 'update_levels',
+          'levels': jsonList,
+        });
+        return;
+      }
+      final controller = _webViewController;
+      if (controller == null) return;
       final jsonString = jsonEncode(jsonList);
       controller.runJavaScript('window.updateLevels($jsonString)');
     } catch (e) {
@@ -1665,6 +1705,10 @@ class _MapScreenState extends State<MapScreen>
 
   @override
   void dispose() {
+    _cancelMap3dMessageListener?.call();
+    _cancelMap3dMessageListener = null;
+    _cancelMap3dReadyListener?.call();
+    _cancelMap3dReadyListener = null;
     // Unsubscribe from route observer
     RouteObserverService.routeObserver.unsubscribe(this);
     // Unsubscribe from user session provider
