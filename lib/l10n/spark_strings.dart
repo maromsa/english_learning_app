@@ -42,6 +42,25 @@ class SparkStrings {
   static const String offline = 'אין אינטרנט כרגע. ננסה עוד רגע?';
   static const String aiTimeout = 'לקח לי קצת. בואו ננסה שוב?';
   static const String aiUnavailable = 'אני קצת עייפה עכשיו. נחזור עוד מעט?';
+  static const String aiServerOverloaded =
+      'השרת עמוס עכשיו. נחכה רגע וננסה שוב?';
+  static const String aiBackendUnavailable =
+      'השרת לא זמין כרגע. ננסה שוב בעוד רגע?';
+
+  /// Localized copy for [AiService] gateway failures (`server_overloaded`, etc.).
+  static String aiFailureMessageForCode(String code) {
+    switch (code) {
+      case 'server_overloaded':
+        return aiServerOverloaded;
+      case 'backend_unavailable':
+        return aiBackendUnavailable;
+      case 'network_error':
+        return offline;
+      case 'invalid_response':
+      default:
+        return aiUnavailable;
+    }
+  }
 
   // ─── Wrong-answer ladder (3 strikes, soft) ────
   static const String wrong1 = 'כמעט! ננסה עוד פעם?';

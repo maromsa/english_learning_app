@@ -50,6 +50,10 @@ class AppConfig {
     'AI_IMAGE_VALIDATION_URL',
     defaultValue: '',
   );
+  static const String _defineAiBackendUrl = String.fromEnvironment(
+    'AI_BACKEND_URL',
+    defaultValue: '',
+  );
 
   static final String geminiProxyUrl = _readSecret(
     'GEMINI_PROXY_URL',
@@ -83,6 +87,10 @@ class AppConfig {
     'AI_IMAGE_VALIDATION_URL',
     _defineAiImageValidationUrl,
   );
+  static final String aiBackendUrl = _readSecret(
+    'AI_BACKEND_URL',
+    _defineAiBackendUrl,
+  );
 
   static bool get hasGeminiProxy =>
       true; // Always available via geminiProxyEndpoint
@@ -94,6 +102,7 @@ class AppConfig {
   static bool get hasGoogleTts => googleTtsApiKey.isNotEmpty;
   static bool get hasFirebaseUserId => firebaseUserIdForUpload.isNotEmpty;
   static bool get hasAiImageValidation => aiImageValidationUrl.isNotEmpty;
+  static bool get hasAiBackend => aiBackendUrl.isNotEmpty;
 
   /// Checks if Firebase is properly configured and accessible
   static bool get isFirebaseConfigured {
@@ -111,6 +120,9 @@ class AppConfig {
 
   static Uri? get aiImageValidationEndpoint =>
       hasAiImageValidation ? Uri.tryParse(aiImageValidationUrl) : null;
+
+  static Uri? get aiBackendEndpoint =>
+      hasAiBackend ? Uri.tryParse(aiBackendUrl) : null;
 
   static Uri get geminiProxyEndpoint {
     // If explicit URL is provided, use it
@@ -156,6 +168,7 @@ class AppConfig {
         'googleTts': hasGoogleTts,
         'firebaseUserId': hasFirebaseUserId,
         'aiImageValidation': hasAiImageValidation,
+        'aiBackend': hasAiBackend,
       };
 
   /// Logs helpful hints when a required secret is missing.
