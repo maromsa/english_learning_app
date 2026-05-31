@@ -459,11 +459,40 @@ function onWindowResize() {
 // --- Bridge to Flutter ---
 function notifyFlutter(type, data) {
     console.log('Notify Flutter:', type, data);
-    // Use JavascriptChannel name 'MapChannel'
+    const payload = data || {};
+    // Mobile WebView: JavascriptChannel 'MapChannel'
     if (window.MapChannel) {
-        window.MapChannel.postMessage(JSON.stringify({ type: type, data: data }));
+        window.MapChannel.postMessage(JSON.stringify({ type: type, data: payload }));
+    }
+    // Flutter Web iframe: parent window listens via window.addEventListener('message')
+    if (window.parent && window.parent !== window) {
+        try {
+            window.parent.postMessage({ type: type, ...payload }, '*');
+        } catch (e) {
+            console.warn('[Map3D] postMessage to parent failed:', e);
+        }
     }
 }
+
+function _parseHostMessage(data) {
+    if (typeof data === 'string') {
+        try {
+            return JSON.parse(data);
+        } catch (e) {
+            return null;
+        }
+    }
+    return data && typeof data === 'object' ? data : null;
+}
+
+// Commands from Flutter host (HtmlElementView parent)
+window.addEventListener('message', (event) => {
+    const msg = _parseHostMessage(event.data);
+    if (!msg) return;
+    if (msg.type === 'update_levels' && Array.isArray(msg.levels)) {
+        window.updateLevels(msg.levels);
+    }
+});
 
 // Global functions callable from Flutter
 window.updateLevels = function(levelsData) {
