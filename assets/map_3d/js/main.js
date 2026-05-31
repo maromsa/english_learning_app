@@ -65,18 +65,35 @@ function _applyMapIslandOptimizations(mapIsland) {
     });
 }
 
+/** Center the island at the origin and scale to a readable footprint for the scene. */
+function _fitMapIslandToScene(mapIsland) {
+    const box = new THREE.Box3().setFromObject(mapIsland);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    mapIsland.position.sub(center);
+
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const targetSize = 40;
+    if (maxDim > 0) {
+        mapIsland.scale.setScalar(targetSize / maxDim);
+    }
+
+    mapIsland.updateMatrixWorld(true);
+}
+
 // --- Initialization ---
 function init() {
     // 1. Scene
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB); // Sky blue
-    scene.fog = new THREE.Fog(0x87CEEB, 10, 50);
+    scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
 
     // 2. Camera
     // Use _viewportWidth/Height helpers — window.innerWidth can be 0 on
     // the first paint inside an iframe, which causes a broken aspect ratio.
     camera = new THREE.PerspectiveCamera(60, _viewportWidth() / _viewportHeight(), 0.1, 1000);
-    camera.position.set(0, 10, 15);
+    camera.position.set(0, 30, 40);
     camera.lookAt(0, 0, 0);
 
     // 3. Renderer
@@ -99,11 +116,13 @@ function init() {
 
     // 5. Controls
     controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0, 0);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.maxPolarAngle = Math.PI / 2 - 0.1; // Don't go below ground
-    controls.minDistance = 5;
-    controls.maxDistance = 30;
+    controls.minDistance = 15;
+    controls.maxDistance = 100;
+    controls.update();
 
     // 6. Load Assets
     loadAssets();
@@ -126,18 +145,24 @@ function loadAssets() {
         (gltf) => {
             mapModel = gltf.scene;
             _applyMapIslandOptimizations(mapModel);
+            _fitMapIslandToScene(mapModel);
             scene.add(mapModel);
             console.log('✅ Map island loaded successfully with optimizations.');
 
             _notifyParentMapLoaded('success');
 
-            // Try to find named nodes for levels
-            // If the map has nodes named "Level1", "Level2", etc., update positions
+            // Try to find named nodes for levels (world space, after fit/scale)
+            const worldPos = new THREE.Vector3();
             for (let i = 0; i < LEVEL_POSITIONS.length; i++) {
                 const node = mapModel.getObjectByName(`Level${i + 1}`);
                 if (node) {
-                    LEVEL_POSITIONS[i].copy(node.position);
+                    node.getWorldPosition(worldPos);
+                    LEVEL_POSITIONS[i].copy(worldPos);
                 }
+            }
+
+            if (character) {
+                character.position.copy(LEVEL_POSITIONS[0]);
             }
 
             setupLevelMarkers();
