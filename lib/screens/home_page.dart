@@ -95,6 +95,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   // Sound service
   final SoundService _soundService = SoundService();
+  TelemetryService? _telemetry;
 
   @override
   void initState() {
@@ -105,14 +106,14 @@ class _MyHomePageState extends State<MyHomePage> {
       await _loadLevelProgress();
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final telemetry = TelemetryService.maybeOf(context);
-      telemetry?.startScreenSession('home');
+      _telemetry ??= TelemetryService.maybeOf(context);
+      _telemetry?.startScreenSession('home');
     });
   }
 
   @override
   void dispose() {
-    TelemetryService.maybeOf(context)?.endScreenSession(
+    _telemetry?.endScreenSession(
       'home',
       extra: {
         'words_total': _words.length,
