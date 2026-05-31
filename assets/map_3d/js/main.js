@@ -36,6 +36,9 @@ let targetPosition = null;
 let clickRaycaster = new THREE.Raycaster();
 let mouse = new THREE.Vector2();
 let levelMarkers = [];
+let markerRadius = 0.6;
+let pointerDownPos = null;
+const POINTER_DRAG_THRESHOLD_PX = 6;
 
 function _notifyParentMapLoaded(status) {
     const loadingEl = document.getElementById('loading');
@@ -80,6 +83,13 @@ function _fitMapIslandToScene(mapIsland) {
     }
 
     mapIsland.updateMatrixWorld(true);
+
+    const fittedBox = new THREE.Box3().setFromObject(mapIsland);
+    const fittedSize = fittedBox.getSize(new THREE.Vector3());
+    const fittedMaxDim = Math.max(fittedSize.x, fittedSize.y, fittedSize.z);
+    if (fittedMaxDim > 0) {
+        markerRadius = Math.max(0.5, fittedMaxDim * 0.018);
+    }
 }
 
 // --- Initialization ---
@@ -129,11 +139,51 @@ function init() {
 
     // 7. Event Listeners
     window.addEventListener('resize', onWindowResize);
-    window.addEventListener('click', onMouseClick);
-    window.addEventListener('touchstart', onTouchStart, { passive: false });
+    _bindPointerListeners();
 
     // 8. Start Loop
     animate();
+}
+
+/** Map screen/client coords to normalized device coords for the WebGL canvas. */
+function _clientToNdc(clientX, clientY) {
+    const canvas = renderer.domElement;
+    const rect = canvas.getBoundingClientRect();
+    const width = rect.width || _viewportWidth();
+    const height = rect.height || _viewportHeight();
+    if (width <= 0 || height <= 0) {
+        return null;
+    }
+    mouse.x = ((clientX - rect.left) / width) * 2 - 1;
+    mouse.y = -((clientY - rect.top) / height) * 2 + 1;
+    return mouse;
+}
+
+function _bindPointerListeners() {
+    const canvas = renderer.domElement;
+    canvas.style.touchAction = 'none';
+
+    canvas.addEventListener('pointerdown', (event) => {
+        pointerDownPos = { x: event.clientX, y: event.clientY };
+    });
+
+    canvas.addEventListener('pointerup', (event) => {
+        if (!pointerDownPos) return;
+
+        const dx = event.clientX - pointerDownPos.x;
+        const dy = event.clientY - pointerDownPos.y;
+        pointerDownPos = null;
+
+        if ((dx * dx + dy * dy) > (POINTER_DRAG_THRESHOLD_PX * POINTER_DRAG_THRESHOLD_PX)) {
+            return;
+        }
+
+        handleInput(event.clientX, event.clientY);
+    });
+
+    canvas.addEventListener('pointercancel', () => {
+        pointerDownPos = null;
+    });
 }
 
 function loadAssets() {
@@ -257,7 +307,7 @@ function setupLevelMarkers() {
     levelMarkers.forEach(m => scene.remove(m));
     levelMarkers = [];
 
-    const geometry = new THREE.SphereGeometry(0.6, 16, 16);
+    const geometry = new THREE.SphereGeometry(markerRadius, 16, 16);
 
     LEVEL_POSITIONS.forEach((pos, index) => {
         // Different color for locked/unlocked
@@ -278,7 +328,7 @@ function setupLevelMarkers() {
 
         const marker = new THREE.Mesh(geometry, material);
         marker.position.copy(pos);
-        marker.position.y += 1.0; // Float above ground
+        marker.position.y += markerRadius * 1.6;
 
         // Add user data for clicking
         marker.userData = { isLevel: true, index: index, isUnlocked: isUnlocked };
@@ -289,38 +339,46 @@ function setupLevelMarkers() {
 }
 
 // --- Interaction ---
-function onMouseClick(event) {
-    handleInput(event.clientX, event.clientY);
-}
-
-function onTouchStart(event) {
-    if (event.touches.length > 0) {
-        handleInput(event.touches[0].clientX, event.touches[0].clientY);
-    }
-}
-
 function handleInput(x, y) {
     if (isMoving) return;
+    if (!renderer || !camera || levelMarkers.length === 0) return;
 
-    mouse.x = (x / window.innerWidth) * 2 - 1;
-    mouse.y = -(y / window.innerHeight) * 2 + 1;
+    if (!_clientToNdc(x, y)) {
+        console.log('[Map3D click] invalid canvas bounds — could not map pointer to NDC');
+        return;
+    }
 
     clickRaycaster.setFromCamera(mouse, camera);
-    const intersects = clickRaycaster.intersectObjects(scene.children);
+
+    // Raycast only level markers so the scaled island mesh never steals the hit.
+    const intersects = clickRaycaster.intersectObjects(levelMarkers, false);
+
+    console.log('[Map3D click]', {
+        client: { x, y },
+        ndc: { x: mouse.x, y: mouse.y },
+        markerCount: levelMarkers.length,
+        hits: intersects.map((hit) => ({
+            name: hit.object.name || `level-${hit.object.userData.index}`,
+            index: hit.object.userData.index,
+            distance: hit.distance.toFixed(2),
+        })),
+    });
 
     for (let i = 0; i < intersects.length; i++) {
         const obj = intersects[i].object;
         if (obj.userData && obj.userData.isLevel) {
             const index = obj.userData.index;
+            console.log('[Map3D click] level marker hit:', index, obj.userData);
             if (obj.userData.isUnlocked) {
                 moveToLevel(index);
             } else {
-                // Locked feedback
                 notifyFlutter('level_locked', { index: index });
             }
-            break;
+            return;
         }
     }
+
+    console.log('[Map3D click] no level marker hit');
 }
 
 function moveToLevel(index) {
@@ -385,7 +443,7 @@ function animate() {
     // Hover effect for markers
     const time = clock.getElapsedTime();
     levelMarkers.forEach((marker, i) => {
-        marker.position.y = LEVEL_POSITIONS[i].y + 1.0 + Math.sin(time * 2 + i) * 0.1;
+        marker.position.y = LEVEL_POSITIONS[i].y + markerRadius * 1.6 + Math.sin(time * 2 + i) * (markerRadius * 0.15);
         marker.rotation.y += 0.01;
     });
 
