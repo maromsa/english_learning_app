@@ -1999,7 +1999,8 @@ enum _QuickAiAction { chatBuddy, practicePack }
 // ---------------------------------------------------------------------------
 
 /// How long to wait for the 3D map iframe to load before showing the retry UI.
-const Duration _kMapLoadTimeout = Duration(seconds: 15);
+/// Large GLB assets (e.g. map_island.glb) can exceed 15s on first load.
+const Duration _kMapLoadTimeout = Duration(seconds: 60);
 
 class _Map3dWebView extends StatefulWidget {
   const _Map3dWebView();
@@ -2018,18 +2019,14 @@ class _Map3dWebViewState extends State<_Map3dWebView> {
   int _retryKey = 0;
 
   Timer? _timeoutTimer;
+  VoidCallback? _cancelLoadListener;
 
   @override
   void initState() {
     super.initState();
+    // Bridge iframe postMessage → Dart (3D_MAP_LOADED / map3d_loaded).
+    _cancelLoadListener = setupMap3dLoadListener(_onMapLoaded);
     _startTimeout();
-    // Listen for a postMessage from the iframe signalling that the map loaded.
-    // main.js hides the #loading div when the GLB is ready; we piggy-back on
-    // the same mechanism by having the JS post a message to the parent window.
-    // (See the companion change in main.js → _notifyParentLoaded.)
-    //
-    // Note: if the JS has already posted before this listener is registered
-    // we fall back gracefully — the timeout will just not fire.
   }
 
   void _startTimeout() {
@@ -2051,8 +2048,11 @@ class _Map3dWebViewState extends State<_Map3dWebView> {
   void _onMapLoaded() {
     if (!mounted) return;
     _timeoutTimer?.cancel();
-    if (_isLoading) {
-      setState(() => _isLoading = false);
+    if (_isLoading || _timedOut) {
+      setState(() {
+        _isLoading = false;
+        _timedOut = false;
+      });
     }
   }
 
@@ -2067,6 +2067,7 @@ class _Map3dWebViewState extends State<_Map3dWebView> {
 
   @override
   void dispose() {
+    _cancelLoadListener?.call();
     _timeoutTimer?.cancel();
     super.dispose();
   }

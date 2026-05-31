@@ -13,3 +13,6 @@ const String kMap3dViewType = 'map_3d_iframe';
 void registerMap3dView() {
   // Nothing to do outside Flutter Web.
 }
+
+/// No-op on mobile/desktop. Returns a no-op dispose callback.
+void Function() setupMap3dLoadListener(void Function() onLoaded) => () {};
