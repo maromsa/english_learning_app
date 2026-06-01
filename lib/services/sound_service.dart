@@ -10,6 +10,10 @@ class SoundService {
 
   bool _initialized = false;
 
+  /// Short neutral tap — used for micro UI feedback and as a safe fallback.
+  @visibleForTesting
+  static const String uiClickAsset = 'assets/audio/ui_click.wav';
+
   @visibleForTesting
   VoidCallback? debugOnPlaySoftChime;
 
@@ -37,40 +41,46 @@ class SoundService {
   String? _getSoundAsset(String type) {
     switch (type) {
       case softChime:
-        return 'assets/sfx/soft_chime.mp3';
       case pop:
-        return 'assets/sfx/pop.mp3';
+        return uiClickAsset;
       case fanfare:
-        return 'assets/sfx/fanfare.mp3';
       case epic:
-        return 'assets/sfx/epic.mp3';
+        return 'assets/audio/the_twinkling_map.mp3';
       case 'success':
-        return 'assets/audio/magic_chime_C_major.mp3'; // Major key, upward scale
+        return uiClickAsset;
       case 'error':
       case 'try_again':
-        return 'assets/audio/soft_wooden_thud.mp3'; // Gentle error, not harsh
+        return uiClickAsset;
       case 'confetti':
-        return 'assets/audio/tada.mp3';
       case 'unlock':
-        return 'assets/audio/fanfare_short.mp3';
+        return 'assets/audio/the_twinkling_map.mp3';
       case 'whoosh':
-        return 'assets/audio/whoosh.mp3';
       case 'ding':
-        return 'assets/audio/ding.mp3';
+        return uiClickAsset;
       default:
         return null;
     }
   }
 
-  String? _fallbackSoundAsset(String type) {
+  /// Fallback when the primary asset fails to load. Never routes micro/pop
+  /// feedback through [startup_chime] — on Web we stay silent if the click
+  /// cannot load.
+  @visibleForTesting
+  String? fallbackSoundAsset(String type) {
     switch (type) {
       case softChime:
       case pop:
-        // Bundled WAV — primary sfx/*.mp3 stubs are empty placeholders.
-        return 'assets/audio/startup_chime.wav';
+      case 'success':
+      case 'error':
+      case 'try_again':
+      case 'whoosh':
+      case 'ding':
+        return null;
       case fanfare:
       case epic:
-        return 'assets/audio/the_twinkling_map.mp3';
+      case 'confetti':
+      case 'unlock':
+        return uiClickAsset;
       default:
         return null;
     }
@@ -128,8 +138,15 @@ class SoundService {
     final played = await _tryPlayAsset(type, primary);
     if (played) return;
 
-    final fallback = _fallbackSoundAsset(type);
-    if (fallback == null) return;
+    final fallback = fallbackSoundAsset(type);
+    if (fallback == null) {
+      if (kDebugMode) {
+        debugPrint(
+          'SoundService: missing asset $primary for $type; no fallback (silent)',
+        );
+      }
+      return;
+    }
 
     debugPrint(
       'SoundService: missing asset $primary for $type, trying fallback $fallback',
