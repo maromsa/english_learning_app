@@ -76,6 +76,35 @@ void main() {
       await disposeTree(tester);
     });
 
+    testWidgets('without onTap, taps pass through to parent detector',
+        (WidgetTester tester) async {
+      var parentTaps = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(disableAnimations: true),
+            child: Scaffold(
+              body: Center(
+                child: GestureDetector(
+                  onTap: () => parentTaps++,
+                  child: const SparkOrb(
+                    state: OrbState.idle,
+                    size: 120,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(SparkOrb));
+      await tester.pump();
+
+      expect(parentTaps, 1);
+      await disposeTree(tester);
+    });
+
     testWidgets('reduce motion shows static orb without pulse rings',
         (WidgetTester tester) async {
       await pumpOrb(

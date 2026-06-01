@@ -7,16 +7,32 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 class KidSpeechService {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isInitialized = false;
+  void Function(String status)? _sessionStatusListener;
+
+  static const String statusListening = 'listening';
+  static const String statusNotListening = 'notListening';
+  static const String statusDone = 'done';
 
   /// Initialize the speech recognition service
   Future<bool> initialize() async {
     if (!_isInitialized) {
       _isInitialized = await _speech.initialize(
         onError: (val) => debugPrint('Speech recognition error: $val'),
-        onStatus: (val) => debugPrint('Speech recognition status: $val'),
+        onStatus: _handleStatus,
       );
     }
     return _isInitialized;
+  }
+
+  void _handleStatus(String status) {
+    debugPrint('Speech recognition status: $status');
+    _sessionStatusListener?.call(status);
+  }
+
+  static bool isSessionEndStatus(String status) {
+    return status == statusDone ||
+        status == statusNotListening ||
+        status == 'doneNoResult';
   }
 
   /// Listen for speech with child-friendly settings
@@ -37,6 +53,8 @@ class KidSpeechService {
         return;
       }
     }
+
+    _sessionStatusListener = onStatus;
 
     // Child-specific configuration
     await _speech.listen(
@@ -100,11 +118,13 @@ class KidSpeechService {
   /// Stop listening
   Future<void> stop() async {
     await _speech.stop();
+    _sessionStatusListener = null;
   }
 
   /// Cancel listening
   Future<void> cancel() async {
     await _speech.cancel();
+    _sessionStatusListener = null;
   }
 
   /// Check if currently listening

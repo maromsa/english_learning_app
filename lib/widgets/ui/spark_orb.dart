@@ -320,12 +320,14 @@ class _SparkOrbState extends State<SparkOrb>
     return Semantics(
       label: _semanticsLabel(widget.state),
       button: widget.onTap != null,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => HapticFeedback.lightImpact(),
-        onTap: widget.onTap,
-        child: content,
-      ),
+      child: widget.onTap == null
+          ? content
+          : GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (_) => HapticFeedback.lightImpact(),
+              onTap: widget.onTap,
+              child: content,
+            ),
     );
   }
 }

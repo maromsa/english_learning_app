@@ -65,16 +65,29 @@ class SoundService {
   String? _fallbackSoundAsset(String type) {
     switch (type) {
       case softChime:
-        return 'assets/audio/magic_chime_C_major.mp3';
       case pop:
-        return 'assets/audio/bubble_pop.mp3';
+        // Bundled WAV — primary sfx/*.mp3 stubs are empty placeholders.
+        return 'assets/audio/startup_chime.wav';
       case fanfare:
-        return 'assets/audio/fanfare_short.mp3';
       case epic:
-        return 'assets/audio/tada.mp3';
+        return 'assets/audio/the_twinkling_map.mp3';
       default:
         return null;
     }
+  }
+
+  /// Collapses accidental `assets/assets/…` keys before [AudioPlayer.setAsset].
+  ///
+  /// Pubspec keys always start with a single `assets/` segment. On Flutter Web the
+  /// runtime may resolve that to a URL containing `assets/assets/…`; passing a
+  /// key that already includes the doubled segment breaks loading.
+  @visibleForTesting
+  static String normalizeAssetPath(String path) {
+    var normalized = path.trim();
+    while (normalized.startsWith('assets/assets/')) {
+      normalized = normalized.substring('assets/'.length);
+    }
+    return normalized;
   }
 
   double _getVolume(String type) {
@@ -127,7 +140,7 @@ class SoundService {
   Future<bool> _tryPlayAsset(String type, String asset) async {
     try {
       final player = AudioPlayer();
-      await player.setAsset(asset);
+      await player.setAsset(normalizeAssetPath(asset));
       await player.setVolume(_getVolume(type));
       await player.play();
       Future<void>.delayed(const Duration(seconds: 2), () {

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/pronunciation_feedback.dart';
+import 'package:english_learning_app/services/kid_speech_service.dart';
 import 'package:english_learning_app/services/speech_feedback_service.dart';
 import 'package:english_learning_app/utils/aurora_tokens.dart';
 import 'package:english_learning_app/widgets/bouncy_button.dart';
@@ -132,6 +133,14 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
         onSoundLevel: (level) {
           if (!mounted) return;
           setState(() => _soundLevel = level);
+        },
+        onStatus: (status) {
+          if (!mounted) return;
+          if (KidSpeechService.isSessionEndStatus(status) &&
+              _isListening &&
+              !_isEvaluating) {
+            unawaited(_finishAndEvaluate());
+          }
         },
       );
     } on MicrophonePermissionException catch (error) {
