@@ -1,17 +1,19 @@
 import 'dart:convert';
-import 'dart:io';
+
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:english_learning_app/app_config.dart';
+import 'package:english_learning_app/services/audio/bytes_audio_source.dart';
+import 'package:english_learning_app/services/spark_voice_disk_cache.dart';
+import 'package:english_learning_app/services/spark_voice_disk_cache_export.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:path_provider/path_provider.dart';
 
 /// Emotion states for Spark's voice
 enum SparkEmotion { neutral, happy, excited, empathetic, teaching }
 
-/// Enhanced TTS service optimized for children
-/// Uses Google Cloud TTS with SSML for emotional control and caching
+/// Enhanced TTS service optimized for children.
+/// Uses Google Cloud TTS with SSML; plays MP3 bytes via [just_audio] on all platforms.
 class SparkVoiceService {
   static final SparkVoiceService _instance = SparkVoiceService._internal();
   factory SparkVoiceService() => _instance;
@@ -19,11 +21,23 @@ class SparkVoiceService {
 
   final AudioPlayer _player = AudioPlayer();
   final Dio _dio = Dio();
+  final SparkVoiceDiskCache _diskCache = createSparkVoiceDiskCache();
+  final Map<String, List<int>> _memoryCache = {};
 
   String? get _apiKey =>
       AppConfig.hasGoogleTts ? AppConfig.googleTtsApiKey : null;
   final String _endpoint =
       'https://texttospeech.googleapis.com/v1/text:synthesize';
+
+  String _cacheKey(
+    String ssmlText,
+    String voiceName,
+    double pitch,
+    double rate,
+  ) {
+    final signature = utf8.encode('$ssmlText-$voiceName-$pitch-$rate');
+    return sha256.convert(signature).toString();
+  }
 
   /// Pre-download TTS audio for offline practice packs.
   Future<bool> prefetch({
@@ -41,10 +55,14 @@ class SparkVoiceService {
     const speakingRate = 0.85;
     const pitch = 2.0;
     final ssmlText = _generateSSML(text, emotion, speakingRate, pitch);
-    final filePath =
-        await _getCachePath(ssmlText, voiceName, pitch, speakingRate);
-    final file = File(filePath);
-    if (await file.exists()) {
+    final key = _cacheKey(ssmlText, voiceName, pitch, speakingRate);
+
+    if (_memoryCache.containsKey(key)) {
+      return true;
+    }
+    final diskBytes = await _diskCache.read(key);
+    if (diskBytes != null && diskBytes.isNotEmpty) {
+      _memoryCache[key] = diskBytes;
       return true;
     }
     if (!networkAllowed) {
@@ -52,90 +70,104 @@ class SparkVoiceService {
     }
 
     return _fetchAndCacheTts(
+      cacheKey: key,
       ssmlText: ssmlText,
       languageCode: languageCode,
       voiceName: voiceName,
       speakingRate: speakingRate,
       pitch: pitch,
-      file: file,
     );
   }
 
-  /// Speak text with emotion and language context
-  Future<void> speak({
+  /// Speak text with emotion and language context.
+  /// Returns `true` when audio was played, `false` when TTS was unavailable.
+  Future<bool> speak({
     required String text,
     bool isEnglish = false,
     SparkEmotion emotion = SparkEmotion.neutral,
     bool networkAllowed = true,
   }) async {
-    if (text.trim().isEmpty) return;
+    if (text.trim().isEmpty) return false;
+
+    final apiKey = _apiKey;
+    if (apiKey == null) {
+      debugPrint('Google TTS API key not available, using fallback');
+      return false;
+    }
 
     try {
-      // If no Google TTS API key, fall back to FlutterTts
-      if (_apiKey == null) {
-        debugPrint('Google TTS API key not available, using fallback');
-        return;
-      }
-
-      // 1. Configure Voice based on context
       final String languageCode = isEnglish ? 'en-US' : 'he-IL';
       final String voiceName = isEnglish
-          ? 'en-US-Neural2-F' // Female, warm, clear
-          : 'he-IL-Neural2-A'; // Female, friendly
+          ? 'en-US-Neural2-F'
+          : 'he-IL-Neural2-A';
 
-      // 2. Adjust Prosody (Child-friendly settings)
-      const double speakingRate = 0.85; // Slower for kids
-      const double pitch = 2.0; // Higher pitch = Friendlier/Younger
+      const double speakingRate = 0.85;
+      const double pitch = 2.0;
 
-      // 3. Apply Emotional SSML
-      final String ssmlText = _generateSSML(text, emotion, speakingRate, pitch);
+      final String ssmlText =
+          _generateSSML(text, emotion, speakingRate, pitch);
+      final cacheKey = _cacheKey(ssmlText, voiceName, pitch, speakingRate);
 
-      // 4. Check Cache
-      final filePath =
-          await _getCachePath(ssmlText, voiceName, pitch, speakingRate);
-      final file = File(filePath);
-
-      if (await file.exists()) {
-        await _player.setFilePath(filePath);
-        await _player.play();
-        return;
+      var bytes = _memoryCache[cacheKey];
+      bytes ??= await _diskCache.read(cacheKey);
+      if (bytes != null && bytes.isNotEmpty) {
+        _memoryCache[cacheKey] = bytes;
+        await _playBytes(bytes);
+        return true;
       }
 
       if (!networkAllowed) {
         debugPrint('SparkVoiceService: offline, no cached audio for "$text"');
-        return;
+        return false;
       }
 
-      // 5. Fetch from Google API if not cached
       final cached = await _fetchAndCacheTts(
+        cacheKey: cacheKey,
         ssmlText: ssmlText,
         languageCode: languageCode,
         voiceName: voiceName,
         speakingRate: speakingRate,
         pitch: pitch,
-        file: file,
       );
-      if (cached) {
-        await _player.setFilePath(filePath);
-        await _player.play();
+      if (!cached) {
+        return false;
       }
-    } catch (e) {
+
+      bytes = _memoryCache[cacheKey];
+      if (bytes == null || bytes.isEmpty) {
+        return false;
+      }
+      await _playBytes(bytes);
+      return true;
+    } catch (e, st) {
       debugPrint('SparkVoiceService Error: $e');
-      // Fallback will be handled by caller
+      debugPrint('$st');
+      return false;
     }
   }
 
+  Future<void> _playBytes(List<int> bytes) async {
+    await _player.stop();
+    await _player.setAudioSource(BytesAudioSource(bytes));
+    await _player.play();
+  }
+
   Future<bool> _fetchAndCacheTts({
+    required String cacheKey,
     required String ssmlText,
     required String languageCode,
     required String voiceName,
     required double speakingRate,
     required double pitch,
-    required File file,
   }) async {
+    final apiKey = _apiKey;
+    if (apiKey == null) {
+      return false;
+    }
+
     try {
       final response = await _dio.post(
-        '$_endpoint?key=$_apiKey',
+        '$_endpoint?key=$apiKey',
         data: {
           'input': {'ssml': ssmlText},
           'voice': {
@@ -162,7 +194,8 @@ class SparkVoiceService {
         final audioContent = response.data?['audioContent'] as String?;
         if (audioContent != null && audioContent.isNotEmpty) {
           final bytes = base64.decode(audioContent);
-          await file.writeAsBytes(bytes);
+          _memoryCache[cacheKey] = bytes;
+          await _diskCache.write(cacheKey, bytes);
           return true;
         }
       }
@@ -175,18 +208,17 @@ class SparkVoiceService {
   /// Generate SSML with emotional prosody
   String _generateSSML(
       String text, SparkEmotion emotion, double rate, double pitch) {
-    // Adjust parameters based on emotion
     switch (emotion) {
       case SparkEmotion.excited:
         pitch += 4.0;
-        rate = 0.95; // Faster when excited
+        rate = 0.95;
         break;
       case SparkEmotion.empathetic:
         pitch -= 1.0;
-        rate = 0.75; // Slower, softer
+        rate = 0.75;
         break;
       case SparkEmotion.teaching:
-        rate = 0.75; // Very clear for English words
+        rate = 0.75;
         break;
       case SparkEmotion.happy:
         pitch += 2.0;
@@ -196,7 +228,6 @@ class SparkVoiceService {
         break;
     }
 
-    // Escape XML special characters
     final String escapedText = text
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
@@ -204,7 +235,6 @@ class SparkVoiceService {
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&apos;');
 
-    // SSML allows us to control prosody (pitch, rate, volume)
     return '''
 <speak>
   <prosody rate="$rate" pitch="${pitch}st">
@@ -214,22 +244,10 @@ class SparkVoiceService {
 ''';
   }
 
-  /// Get cache path for TTS audio
-  Future<String> _getCachePath(
-      String text, String voiceName, double pitch, double rate) async {
-    final dir = await getTemporaryDirectory();
-    // Create a unique signature for this specific request
-    final signature = utf8.encode('$text-$voiceName-$pitch-$rate');
-    final hash = sha256.convert(signature).toString();
-    return '${dir.path}/tts_$hash.mp3';
-  }
-
-  /// Stop current speech
   Future<void> stop() async {
     await _player.stop();
   }
 
-  /// Dispose resources
   Future<void> dispose() async {
     await _player.dispose();
     _dio.close();

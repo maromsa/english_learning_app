@@ -7,7 +7,7 @@ import {z} from "zod";
 
 const GEMINI_API_VERSION = "v1";
 const DEFAULT_MODEL_MAP: Record<string, string> = {
-  "gemini-1.5": "gemini-3-pro-preview",
+  "gemini-1.5": "gemini-2.5-flash",
 };
 const GEMINI_MODEL_OVERRIDE = process.env.GEMINI_MODEL_OVERRIDE?.trim();
 
@@ -162,8 +162,7 @@ function getModel(
   logger.info("GoogleGenerativeAI client created successfully");
   
   // Resolve the model ID: use directModelId if provided, otherwise use default
-  // Use gemini-3-pro-preview - the latest preview model
-  const resolvedModelId = options.directModelId ?? DEFAULT_MODEL_MAP["gemini-1.5"] ?? "gemini-3-pro-preview";
+  const resolvedModelId = options.directModelId ?? DEFAULT_MODEL_MAP["gemini-1.5"] ?? "gemini-2.5-flash";
   
   // Build model config with ONLY snake_case system_instruction (never camelCase)
   // Explicitly construct the object to avoid any camelCase properties
@@ -207,7 +206,6 @@ function getModel(
   });
   
   // Use getGenerativeModel with explicit v1 API version
-  // Using gemini-3-pro-preview which is compatible with v1 API
   const requestOptions = {
     apiVersion: GEMINI_API_VERSION as "v1",
   };
@@ -303,11 +301,9 @@ function buildModelAttempts(): ModelAttempt[] {
     normalizedPrimary,
     stripLatestSuffix(primaryModel),
     stripLatestSuffix(normalizedPrimary),
+    "gemini-2.5-flash",
     "gemini-3-pro-preview",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash-latest",
     "gemini-1.5-flash",
-    "gemini-1.5",
   ]);
 
   const attempts: ModelAttempt[] = [];
@@ -667,7 +663,7 @@ export const geminiProxy = functions.onRequest(
                          requestMode === "validate" ? "gemini-1.5" :
                          requestMode === "text" || requestMode === "story" ? "gemini-1.5" : "unknown",
                 note: "This should not happen when using the v1 API",
-                recommendation: "Verify the Cloud Function is deployed with apiVersion set to v1 and using gemini-2.0-flash.",
+                recommendation: "Verify the Cloud Function is deployed with apiVersion set to v1 and using gemini-2.5-flash.",
               });
             }
               
@@ -680,7 +676,7 @@ export const geminiProxy = functions.onRequest(
                          requestMode === "validate" ? "gemini-1.5" :
                          requestMode === "text" || requestMode === "story" ? "gemini-1.5" : "unknown",
                 apiVersion: errorMessage.includes("v1beta") ? "v1beta" : "unknown",
-                recommendation: "Model name may need to be gemini-2.0-flash for v1 API, or API version needs to be v1 instead of v1beta",
+                recommendation: "Deploy the latest geminiProxy (primary model gemini-2.5-flash, apiVersion v1).",
               });
             }
             res.status(500).json({error: error.message});

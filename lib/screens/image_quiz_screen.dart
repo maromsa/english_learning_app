@@ -18,6 +18,7 @@ import 'package:english_learning_app/utils/hero_tags.dart';
 import 'package:english_learning_app/utils/offline_word_loader.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:provider/provider.dart';
@@ -94,6 +95,9 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
 
   Future<void> _configureTts() async {
     try {
+      if (kIsWeb) {
+        await _flutterTts.awaitSpeakCompletion(true);
+      }
       await _flutterTts.setLanguage('en-US');
       await _flutterTts.setSpeechRate(0.4);
       await _flutterTts.setPitch(1.1);
@@ -170,19 +174,23 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
     try {
       if (AppConfig.hasGoogleTts) {
         final online = await DeviceConnectivity.current.isOnline();
-        await _sparkVoiceService.speak(
+        final spoke = await _sparkVoiceService.speak(
           text: word,
           isEnglish: true,
           emotion: SparkEmotion.happy,
           networkAllowed: online,
         );
-      } else {
-        await _flutterTts.setLanguage('en-US');
-        await _flutterTts.setSpeechRate(0.4);
-        await _flutterTts.setPitch(1.1);
-        await _flutterTts.speak(word);
+        if (spoke) {
+          return;
+        }
       }
-    } catch (_) {}
+      await _flutterTts.setLanguage('en-US');
+      await _flutterTts.setSpeechRate(0.4);
+      await _flutterTts.setPitch(1.1);
+      await _flutterTts.speak(word);
+    } catch (e) {
+      debugPrint('ImageQuizScreen _playWord TTS error: $e');
+    }
   }
 
   String? _imageUrlForWord(WordData word) {

@@ -176,24 +176,27 @@ class _MyHomePageState extends State<MyHomePage> {
     if (text.isEmpty) return;
 
     try {
-      // Try SparkVoiceService first (uses Google TTS with SSML)
       if (AppConfig.hasGoogleTts) {
         final online = await DeviceConnectivity.current.isOnline();
-        await _sparkVoiceService.speak(
+        final spoke = await _sparkVoiceService.speak(
           text: text,
           isEnglish: languageCode == 'en-US',
           emotion: emotion,
           networkAllowed: online,
         );
-        return;
+        if (spoke) {
+          return;
+        }
+        debugPrint(
+          'Google TTS failed or unavailable, using FlutterTts fallback',
+        );
+      } else {
+        debugPrint('Google TTS not available, using FlutterTts fallback');
       }
 
-      // Fallback to FlutterTts if Google TTS is not available
-      debugPrint('Google TTS not available, using FlutterTts fallback');
       await _speakWithFlutterTts(text, languageCode: languageCode);
     } catch (e) {
       debugPrint('Error in _speak function: $e');
-      // Fallback to FlutterTts on error
       try {
         await _speakWithFlutterTts(text, languageCode: languageCode);
       } catch (fallbackError) {
@@ -257,6 +260,9 @@ class _MyHomePageState extends State<MyHomePage> {
     if (tts == null) return;
 
     try {
+      if (kIsWeb) {
+        await tts.awaitSpeakCompletion(true);
+      }
       await tts.setLanguage('en-US');
     } catch (error, stackTrace) {
       debugPrint('TTS setLanguage failed: $error');
@@ -876,13 +882,11 @@ class _MyHomePageState extends State<MyHomePage> {
                                   onPlayAudio: _speechBusy
                                       ? null
                                       : () async {
-                                          _soundService.playSound('pop');
-                                          final tts = flutterTts;
-                                          if (tts == null) return;
-                                          await tts.setLanguage('en-US');
-                                          await tts.setSpeechRate(0.4);
-                                          await tts.setPitch(1.1);
-                                          await tts.speak(currentWordData.word);
+                                          await _speak(
+                                            currentWordData.word,
+                                            languageCode: 'en-US',
+                                            emotion: SparkEmotion.teaching,
+                                          );
                                         },
                                   canGoNext: _currentIndex < _words.length - 1,
                                   canGoPrev: _currentIndex > 0,
