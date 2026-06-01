@@ -383,20 +383,31 @@ function handleInput(x, y) {
 
 function moveToLevel(index) {
     if (index === currentLevelIndex) {
-        // Already here, enter level
+        notifyFlutter('enter_level', { index: index });
+        return;
+    }
+
+    // Character loads async after the map — enter immediately instead of crashing.
+    if (!character) {
+        currentLevelIndex = index;
         notifyFlutter('enter_level', { index: index });
         return;
     }
 
     targetPosition = LEVEL_POSITIONS[index].clone();
 
-    // Face target
-    character.lookAt(targetPosition.x, character.position.y, targetPosition.z);
+    try {
+        character.lookAt(targetPosition.x, character.position.y, targetPosition.z);
+    } catch (e) {
+        console.warn('[Map3D] moveToLevel lookAt failed:', e);
+        currentLevelIndex = index;
+        notifyFlutter('enter_level', { index: index });
+        return;
+    }
 
     isMoving = true;
     currentLevelIndex = index;
 
-    // Animation
     if (walkAction && idleAction) {
         idleAction.fadeOut(0.2);
         walkAction.reset().fadeIn(0.2).play();
@@ -424,7 +435,6 @@ function animate() {
         const dist = direction.length();
 
         if (dist < 0.1) {
-            // Arrived
             character.position.x = targetPosition.x;
             character.position.z = targetPosition.z;
             isMoving = false;
@@ -434,6 +444,8 @@ function animate() {
                 walkAction.fadeOut(0.2);
                 idleAction.reset().fadeIn(0.2).play();
             }
+
+            notifyFlutter('enter_level', { index: currentLevelIndex });
         } else {
             direction.normalize();
             character.position.addScaledVector(direction, speed);

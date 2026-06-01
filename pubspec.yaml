@@ -54,6 +54,7 @@ dependencies:
   model_viewer_plus: ^1.9.3
   webview_flutter: ^4.13.0
   web: ^1.1.1
+  pointer_interceptor: ^0.10.1+2
 
 dev_dependencies:
   flutter_test:

@@ -14,6 +14,7 @@ import 'package:english_learning_app/screens/home_page.dart';
 import 'package:english_learning_app/utils/map_view_registry.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -42,6 +43,26 @@ import 'leaderboard_screen.dart';
 import 'scavenger_hunt_screen.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
+
+/// On Flutter Web, [HtmlElementView] iframes sit above the canvas and steal
+/// pointer events from Flutter widgets drawn on top. Wrap interactive chrome
+/// with this helper so taps reach AppBar / nav / FABs instead of the map.
+Widget _webPointerShield(Widget child) {
+  if (kIsWeb) {
+    return PointerInterceptor(child: child);
+  }
+  return child;
+}
+
+PreferredSizeWidget _webPointerShieldAppBar(AppBar appBar) {
+  if (!kIsWeb) {
+    return appBar;
+  }
+  return PreferredSize(
+    preferredSize: appBar.preferredSize,
+    child: PointerInterceptor(child: appBar),
+  );
+}
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -217,7 +238,9 @@ class _MapScreenState extends State<MapScreen>
 
   void _handleJsMessage(String jsonMessage) {
     try {
-      final data = jsonDecode(jsonMessage);
+      final decoded = jsonDecode(jsonMessage);
+      if (decoded is! Map) return;
+      final data = Map<String, dynamic>.from(decoded);
       final type = data['type'];
       final payload = data['data'];
 
@@ -1215,7 +1238,8 @@ class _MapScreenState extends State<MapScreen>
         extendBody: true, // Allows map to go behind bottom nav
 
         // 1. Minimal AppBar - Redesigned by Gemini 3 Pro
-        appBar: AppBar(
+        appBar: _webPointerShieldAppBar(
+          AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           centerTitle: true,
@@ -1332,9 +1356,10 @@ class _MapScreenState extends State<MapScreen>
             const SizedBox(width: 12),
           ],
         ),
+        ),
 
         // 2. Bottom Navigation for Secondary Actions - Redesigned by Gemini 3 Pro
-        bottomNavigationBar: _buildBottomNav(context),
+        bottomNavigationBar: _webPointerShield(_buildBottomNav(context)),
 
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -1389,11 +1414,13 @@ class _MapScreenState extends State<MapScreen>
                             kToolbarHeight +
                             8,
                         left: 16,
-                        child: SafeArea(
-                          top: false, // already accounted for above
-                          child: _StatsPill(
-                            totalStars: _totalStars,
-                            coins: coinProvider.coins,
+                        child: _webPointerShield(
+                          SafeArea(
+                            top: false, // already accounted for above
+                            child: _StatsPill(
+                              totalStars: _totalStars,
+                              coins: coinProvider.coins,
+                            ),
                           ),
                         ),
                       ),
@@ -1404,7 +1431,9 @@ class _MapScreenState extends State<MapScreen>
                           left: 16,
                           right: 16,
                           bottom: 100, // Above bottom nav
-                          child: _InfoBanner(message: _errorMessage!),
+                          child: _webPointerShield(
+                            _InfoBanner(message: _errorMessage!),
+                          ),
                         ),
 
                       // Spark Chat Buddy — map entry (left)
@@ -1412,8 +1441,10 @@ class _MapScreenState extends State<MapScreen>
                         Positioned(
                           left: 16,
                           bottom: 96,
-                          child: _ChatBuddyMapEntry(
-                            onTap: _openChatBuddy,
+                          child: _webPointerShield(
+                            _ChatBuddyMapEntry(
+                              onTap: _openChatBuddy,
+                            ),
                           ),
                         ),
 
@@ -1422,8 +1453,10 @@ class _MapScreenState extends State<MapScreen>
                         Positioned(
                           right: 16,
                           bottom: 96,
-                          child: _AdventureLabMapEntry(
-                            onTap: _openAdventureLab,
+                          child: _webPointerShield(
+                            _AdventureLabMapEntry(
+                              onTap: _openAdventureLab,
+                            ),
                           ),
                         ),
 
@@ -2153,59 +2186,63 @@ class _Map3dWebViewState extends State<_Map3dWebView> {
 
               // Loading overlay — shown while the map is initialising.
               if (_isLoading && !_timedOut)
-                Container(
-                  color: const Color(0xFF0D47A1), // deep blue
-                  child: const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(color: Colors.white),
-                        SizedBox(height: 16),
-                        Text(
-                          SparkStrings.mapLoading3d,
-                          style: TextStyle(color: Colors.white, fontSize: 16),
-                        ),
-                      ],
+                _webPointerShield(
+                  Container(
+                    color: const Color(0xFF0D47A1), // deep blue
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: Colors.white),
+                          SizedBox(height: 16),
+                          Text(
+                            SparkStrings.mapLoading3d,
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
 
               // Timeout / error overlay — shown when the map fails to load.
               if (_timedOut)
-                Container(
-                  color: const Color(0xFF0D47A1),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.wifi_off_rounded,
-                          color: Colors.white70,
-                          size: 56,
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          SparkStrings.mapLoadFailed,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                _webPointerShield(
+                  Container(
+                    color: const Color(0xFF0D47A1),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.wifi_off_rounded,
+                            color: Colors.white70,
+                            size: 56,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          SparkStrings.offline,
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-                        KidButton.warning(
-                          label: SparkStrings.tryAgain,
-                          onPressed: _retry,
-                          leadingIcon: Icons.refresh,
-                        ),
-                      ],
+                          const SizedBox(height: 16),
+                          const Text(
+                            SparkStrings.mapLoadFailed,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            SparkStrings.offline,
+                            style: TextStyle(color: Colors.white70, fontSize: 14),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          KidButton.warning(
+                            label: SparkStrings.tryAgain,
+                            onPressed: _retry,
+                            leadingIcon: Icons.refresh,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
