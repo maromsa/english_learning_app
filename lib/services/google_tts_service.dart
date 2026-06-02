@@ -1,26 +1,21 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:english_learning_app/services/network/app_http_client.dart';
+import 'package:english_learning_app/services/tts_voice_config.dart';
 import 'package:flutter/foundation.dart';
-
-import 'network/app_http_client.dart';
 
 class GoogleTtsService {
   GoogleTtsService({
     required String apiKey,
     List<String>? voicePreference,
     AppHttpClient? httpClient,
-    this.languageCode = 'he-IL',
+    this.languageCode = TtsVoiceConfig.hebrewLanguageCode,
     this.speakingRate = 0.8,
     this.pitch = 0.0,
     this.volumeGainDb = 2.0,
   })  : _apiKey = apiKey,
-        _voices = voicePreference ??
-            const [
-              'he-IL-Standard-B',
-              'he-IL-Neural2-B',
-              'he-IL-Wavenet-B',
-            ],
+        _voices = voicePreference ?? TtsVoiceConfig.hebrewVoicePreference,
         _httpClient = httpClient ??
             AppHttpClient(
               connectTimeout: const Duration(seconds: 10),

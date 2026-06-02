@@ -4,17 +4,16 @@ import 'package:english_learning_app/models/local_user.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
-import 'package:english_learning_app/services/audio/bytes_audio_source.dart';
 import 'package:english_learning_app/services/background_music_service.dart';
 import 'package:english_learning_app/services/conversation_coach_service.dart';
-import 'package:english_learning_app/services/google_tts_service.dart';
+import 'package:english_learning_app/services/spark_voice_service.dart';
 import 'package:english_learning_app/services/local_user_service.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
+import 'package:english_learning_app/utils/device_connectivity.dart';
 import 'package:english_learning_app/utils/route_observer.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -31,8 +30,6 @@ class _AiConversationScreenState extends State<AiConversationScreen>
     with RouteAware {
   late final ConversationCoachService _service;
   late final FlutterTts _tts;
-  GoogleTtsService? _googleTts;
-  final AudioPlayer _audioPlayer = AudioPlayer();
   final SpeechToText _speechToText = SpeechToText();
   final LocalUserService _localUserService = LocalUserService();
 
@@ -75,9 +72,6 @@ class _AiConversationScreenState extends State<AiConversationScreen>
 
     _service = ConversationCoachService();
     _tts = FlutterTts();
-    if (AppConfig.hasGoogleTts) {
-      _googleTts = GoogleTtsService(apiKey: AppConfig.googleTtsApiKey);
-    }
     _initSpeech();
     _configureTts();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -156,10 +150,9 @@ class _AiConversationScreenState extends State<AiConversationScreen>
     _nameController.dispose();
     _scrollController.dispose();
     _tts.stop();
-    _audioPlayer.dispose();
     _speechToText.stop();
     _speechToText.cancel();
-    _googleTts?.dispose();
+    SparkVoiceService().stop();
     super.dispose();
   }
 
@@ -767,20 +760,17 @@ class _AiConversationScreenState extends State<AiConversationScreen>
 
     try {
       await _tts.stop();
-      _audioPlayer.stop();
+      await SparkVoiceService().stop();
 
-      // Use Google Cloud TTS if available for better quality
-      // Use slower, clearer settings for children
-      if (_googleTts != null) {
-        final audioBytes = await _googleTts!.synthesize(
+      if (AppConfig.hasGoogleTts) {
+        final online = await DeviceConnectivity.current.isOnline();
+        final spoke = await SparkVoiceService().speak(
           text: message,
-          speakingRateOverride: 0.6, // Slower for clarity
-          pitchOverride: 0.0, // Natural pitch
-          languageCodeOverride: 'he-IL',
+          isEnglish: false,
+          emotion: SparkEmotion.happy,
+          networkAllowed: online,
         );
-        if (audioBytes != null) {
-          await _audioPlayer.setAudioSource(BytesAudioSource(audioBytes));
-          await _audioPlayer.play();
+        if (spoke) {
           return;
         }
       }

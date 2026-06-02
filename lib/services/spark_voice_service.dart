@@ -6,6 +6,7 @@ import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/services/audio/bytes_audio_source.dart';
 import 'package:english_learning_app/services/spark_voice_disk_cache.dart';
 import 'package:english_learning_app/services/spark_voice_disk_cache_export.dart';
+import 'package:english_learning_app/services/tts_voice_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -50,8 +51,8 @@ class SparkVoiceService {
       return false;
     }
 
-    final languageCode = isEnglish ? 'en-US' : 'he-IL';
-    final voiceName = isEnglish ? 'en-US-Neural2-F' : 'he-IL-Neural2-A';
+    final languageCode = TtsVoiceConfig.languageCodeFor(isEnglish: isEnglish);
+    final voiceName = TtsVoiceConfig.ssmlVoiceFor(isEnglish: isEnglish);
     const speakingRate = 0.85;
     const pitch = 2.0;
     final ssmlText = _generateSSML(text, emotion, speakingRate, pitch);
@@ -96,10 +97,8 @@ class SparkVoiceService {
     }
 
     try {
-      final String languageCode = isEnglish ? 'en-US' : 'he-IL';
-      final String voiceName = isEnglish
-          ? 'en-US-Neural2-F'
-          : 'he-IL-Neural2-A';
+      final languageCode = TtsVoiceConfig.languageCodeFor(isEnglish: isEnglish);
+      final voiceName = TtsVoiceConfig.ssmlVoiceFor(isEnglish: isEnglish);
 
       const double speakingRate = 0.85;
       const double pitch = 2.0;

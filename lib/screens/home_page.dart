@@ -21,7 +21,6 @@ import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
 import 'package:english_learning_app/services/gemini_proxy_service.dart';
-import 'package:english_learning_app/services/google_tts_service.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
 import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/services/spark_voice_service.dart';
@@ -65,7 +64,6 @@ class _MyHomePageState extends State<MyHomePage> {
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   FlutterTts? flutterTts;
-  GoogleTtsService? _googleTts;
   SpeechFeedbackService? _speechFeedbackService;
   final SparkVoiceService _sparkVoiceService = SparkVoiceService();
   final ImagePicker _picker = ImagePicker();
@@ -128,7 +126,6 @@ class _MyHomePageState extends State<MyHomePage> {
     _httpImageValidator?.dispose();
     _webImageService?.dispose();
     _geminiProxy?.dispose();
-    _googleTts?.dispose();
     super.dispose();
   }
 
@@ -150,9 +147,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     flutterTts = FlutterTts();
-    if (AppConfig.hasGoogleTts) {
-      _googleTts = GoogleTtsService(apiKey: AppConfig.googleTtsApiKey);
-    }
     await _configureTts();
 
     if (!cloudinaryAvailable) {
@@ -398,11 +392,11 @@ class _MyHomePageState extends State<MyHomePage> {
           SparkStrings.cameraSpeakFound(newWord.word),
           languageCode: 'he-IL',
         );
-        final tts = flutterTts;
-        if (tts != null) {
-          await tts.setLanguage('en-US');
-          await tts.speak(newWord.word);
-        }
+        await _speak(
+          newWord.word,
+          languageCode: 'en-US',
+          emotion: SparkEmotion.happy,
+        );
         telemetry?.logCameraValidation(
           word: identifiedWord,
           accepted: true,
