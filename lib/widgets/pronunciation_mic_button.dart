@@ -8,7 +8,7 @@ import 'package:english_learning_app/utils/aurora_tokens.dart';
 import 'package:english_learning_app/widgets/bouncy_button.dart';
 import 'package:english_learning_app/widgets/ui/spark_orb.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Kid-friendly mic control: pulse while recording, live transcript, animated stars.
 class PronunciationMicButton extends StatefulWidget {
@@ -45,17 +45,40 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
   String? _statusHint;
   PronunciationFeedback? _lastFeedback;
   int _displayedStars = 0;
+  int _poppingStarIndex = -1;
   bool _lastAttemptSuccess = false;
   DateTime? _lastSuccessAt;
 
   late final AnimationController _starController;
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseScale;
+  late final Animation<double> _starPopScale;
 
   @override
   void initState() {
     super.initState();
     _starController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 450),
+      duration: const Duration(milliseconds: 520),
+    );
+    _starPopScale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.0, end: 1.35)
+            .chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 55,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.35, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 45,
+      ),
+    ]).animate(_starController);
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _pulseScale = Tween<double>(begin: 1.0, end: 1.07).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
   }
 
@@ -73,6 +96,7 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
       _statusHint = null;
       _lastFeedback = null;
       _displayedStars = 0;
+      _poppingStarIndex = -1;
       _lastAttemptSuccess = false;
       _lastSuccessAt = null;
     });
@@ -81,7 +105,18 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
   @override
   void dispose() {
     _starController.dispose();
+    _pulseController.dispose();
     super.dispose();
+  }
+
+  void _setListeningPulse(bool listening) {
+    if (listening) {
+      _pulseController.repeat(reverse: true);
+    } else {
+      _pulseController
+        ..stop()
+        ..value = 0;
+    }
   }
 
   OrbState get _orbState {
@@ -116,8 +151,10 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
       _transcript = '';
       _statusHint = SparkStrings.micListening;
       _displayedStars = 0;
+      _poppingStarIndex = -1;
       _lastFeedback = null;
     });
+    _setListeningPulse(true);
     widget.onListeningChanged?.call(true);
 
     try {
@@ -150,6 +187,7 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
         _soundLevel = 0;
         _statusHint = _permissionMessage(error.status);
       });
+      _setListeningPulse(false);
       widget.onListeningChanged?.call(false);
       _maybeShowSettingsSnack(error.status);
     } on SpeechRecognitionUnavailableException {
@@ -158,6 +196,7 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
         _isListening = false;
         _statusHint = SparkStrings.micStartFailed;
       });
+      _setListeningPulse(false);
       widget.onListeningChanged?.call(false);
     } catch (error) {
       debugPrint('PronunciationMicButton listen error: $error');
@@ -166,6 +205,7 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
         _isListening = false;
         _statusHint = SparkStrings.micStartFailed;
       });
+      _setListeningPulse(false);
       widget.onListeningChanged?.call(false);
     }
   }
@@ -179,6 +219,7 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
       _soundLevel = 0;
       _statusHint = SparkStrings.micChecking;
     });
+    _setListeningPulse(false);
     widget.onListeningChanged?.call(false);
     widget.onEvaluatingChanged?.call(true);
 
@@ -236,9 +277,16 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
   Future<void> _animateStars(int targetStars) async {
     for (var star = 1; star <= targetStars; star++) {
       if (!mounted) return;
-      setState(() => _displayedStars = star);
-      _starController.forward(from: 0);
-      await Future<void>.delayed(const Duration(milliseconds: 280));
+      setState(() {
+        _displayedStars = star;
+        _poppingStarIndex = star - 1;
+      });
+      await _starController.forward(from: 0);
+      if (!mounted) return;
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+    }
+    if (mounted) {
+      setState(() => _poppingStarIndex = -1);
     }
   }
 
@@ -298,21 +346,28 @@ class _PronunciationMicButtonState extends State<PronunciationMicButton>
           if (feedbackMessage != null && !_isListening && !_isEvaluating)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: _FeedbackBubble(message: feedbackMessage),
+              child: _FeedbackBubble(
+                key: ValueKey<String>(feedbackMessage),
+                message: feedbackMessage,
+              ),
             ),
           _StarRow(
             displayedStars: _displayedStars,
-            animating: _isEvaluating || _displayedStars > 0,
-            starController: _starController,
+            poppingStarIndex: _poppingStarIndex,
+            starPopScale: _starPopScale,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           if (_isListening || _isEvaluating)
-            _MicCore(
-              orbState: _orbState,
-              soundLevel: _soundLevel,
-              label: _actionLabel,
-              onTap:
-                  _isListening ? () => unawaited(_finishAndEvaluate()) : null,
+            _PulsingMicWrapper(
+              pulsing: _isListening,
+              pulseScale: _pulseScale,
+              child: _MicCore(
+                orbState: _orbState,
+                soundLevel: _soundLevel,
+                label: _actionLabel,
+                onTap:
+                    _isListening ? () => unawaited(_finishAndEvaluate()) : null,
+              ),
             )
           else if (widget.enabled)
             BouncyButton(
@@ -364,15 +419,43 @@ class _MicCore extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           label,
-          style: const TextStyle(
+          style: GoogleFonts.quicksand(
             color: Colors.white,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
             fontSize: 16,
-            shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+            shadows: const [Shadow(blurRadius: 4, color: Colors.black45)],
           ),
           textAlign: TextAlign.center,
         ),
       ],
+    );
+  }
+}
+
+class _PulsingMicWrapper extends StatelessWidget {
+  const _PulsingMicWrapper({
+    required this.pulsing,
+    required this.pulseScale,
+    required this.child,
+  });
+
+  final bool pulsing;
+  final Animation<double> pulseScale;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!pulsing) return child;
+
+    return AnimatedBuilder(
+      animation: pulseScale,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: pulseScale.value,
+          child: child,
+        );
+      },
+      child: child,
     );
   }
 }
@@ -408,11 +491,7 @@ class _TranscriptBubble extends StatelessWidget {
                 color: AuroraTokens.coral,
                 shape: BoxShape.circle,
               ),
-            )
-                .animate(onPlay: (c) => c.repeat())
-                .fade(duration: 600.ms)
-                .then()
-                .fade(begin: 1, end: 0.3, duration: 600.ms),
+            ),
           Flexible(
             child: Text(
               text,
@@ -430,91 +509,158 @@ class _TranscriptBubble extends StatelessWidget {
   }
 }
 
-class _FeedbackBubble extends StatelessWidget {
-  const _FeedbackBubble({required this.message});
+class _FeedbackBubble extends StatefulWidget {
+  const _FeedbackBubble({super.key, required this.message});
 
   final String message;
 
   @override
+  State<_FeedbackBubble> createState() => _FeedbackBubbleState();
+}
+
+class _FeedbackBubbleState extends State<_FeedbackBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _scale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.0, end: 1.15)
+            .chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 55,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.15, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 45,
+      ),
+    ]).animate(_controller);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.2),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    ));
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 320),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AuroraTokens.plum, AuroraTokens.blueberry],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AuroraTokens.plum.withValues(alpha: 0.35),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return SlideTransition(
+      position: _slide,
+      child: ScaleTransition(
+        scale: _scale,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 320),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AuroraTokens.plum, AuroraTokens.blueberry],
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: AuroraTokens.plum.withValues(alpha: 0.35),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Text(
-        message,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-          fontSize: 15,
+          child: Text(
+            widget.message,
+            style: GoogleFonts.quicksand(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+            ),
+            textAlign: TextAlign.center,
+          ),
         ),
-        textAlign: TextAlign.center,
       ),
-    ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.15, end: 0);
+    );
   }
 }
 
 class _StarRow extends StatelessWidget {
   const _StarRow({
     required this.displayedStars,
-    required this.animating,
-    required this.starController,
+    required this.poppingStarIndex,
+    required this.starPopScale,
   });
 
   final int displayedStars;
-  final bool animating;
-  final AnimationController starController;
+  final int poppingStarIndex;
+  final Animation<double> starPopScale;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 36,
+      height: 40,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: List.generate(3, (index) {
           final filled = index < displayedStars;
+          final isPopping = index == poppingStarIndex;
+
           final star = Icon(
             filled ? Icons.star_rounded : Icons.star_outline_rounded,
             color: filled ? AuroraTokens.butter : Colors.white54,
-            size: 32,
+            size: 34,
             shadows: filled
                 ? [
                     Shadow(
                       color: AuroraTokens.butter.withValues(alpha: 0.6),
-                      blurRadius: 8,
+                      blurRadius: 10,
                     ),
                   ]
                 : null,
           );
 
-          if (!filled || !animating) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+          Widget content = star;
+          if (filled && isPopping) {
+            content = AnimatedBuilder(
+              animation: starPopScale,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: starPopScale.value,
+                  child: child,
+                );
+              },
               child: star,
             );
           }
 
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: AnimatedBuilder(
-              animation: starController,
-              builder: (context, child) {
-                final scale = 0.85 + (starController.value * 0.35);
-                return Transform.scale(scale: scale, child: child);
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              transitionBuilder: (child, animation) {
+                return ScaleTransition(scale: animation, child: child);
               },
-              child: star,
+              child: filled
+                  ? KeyedSubtree(
+                      key: ValueKey<int>(index),
+                      child: content,
+                    )
+                  : KeyedSubtree(
+                      key: ValueKey<String>('empty-$index'),
+                      child: star,
+                    ),
             ),
           );
         }),

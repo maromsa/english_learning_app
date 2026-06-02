@@ -38,6 +38,7 @@ import 'package:english_learning_app/widgets/pronunciation_mic_button.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:just_audio/just_audio.dart';
@@ -867,12 +868,12 @@ class _MyHomePageState extends State<MyHomePage> {
                           ],
                         ),
                       ),
-                      const Spacer(flex: 1),
-                      // 2. Hero Word Card Area
+                      const SizedBox(height: 8),
+                      // 2. Hero Word Card — primary focus
                       Expanded(
-                        flex: 10,
+                        flex: 5,
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
                           child: currentWordData != null
                               ? _HeroWordDisplay(
                                   levelId: widget.levelId,
@@ -901,38 +902,29 @@ class _MyHomePageState extends State<MyHomePage> {
                                 ),
                         ),
                       ),
-                      const Spacer(flex: 1),
-                      // 3. Feedback Area (Dynamic Height)
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 300),
-                        child: _showFeedback
-                            ? _FeedbackPanel(
-                                text: _feedbackText,
-                                isSuccess: _lastResultSuccess,
+                      // 3. Mic & feedback dock — clearly partitioned at bottom
+                      _LevelControlDock(
+                        showFeedback: _showFeedback,
+                        feedbackText: _feedbackText,
+                        isSuccess: _lastResultSuccess,
+                        child: currentWordData != null &&
+                                _speechFeedbackService != null
+                            ? PronunciationMicButton(
+                                targetWord: currentWordData.word,
+                                speechService: _speechFeedbackService!,
+                                enabled: !_isLoading,
+                                onListeningChanged: (listening) {
+                                  if (!mounted) return;
+                                  setState(() => _isListening = listening);
+                                },
+                                onEvaluatingChanged: (evaluating) {
+                                  if (!mounted) return;
+                                  setState(() => _isEvaluating = evaluating);
+                                },
+                                onFeedback: _handlePronunciationFeedback,
                               )
-                            : const SizedBox.shrink(),
+                            : const SizedBox(height: 200),
                       ),
-                      const SizedBox(height: 20),
-                      // 4. Controls Area
-                      if (currentWordData != null &&
-                          _speechFeedbackService != null)
-                        PronunciationMicButton(
-                          targetWord: currentWordData.word,
-                          speechService: _speechFeedbackService!,
-                          enabled: !_isLoading,
-                          onListeningChanged: (listening) {
-                            if (!mounted) return;
-                            setState(() => _isListening = listening);
-                          },
-                          onEvaluatingChanged: (evaluating) {
-                            if (!mounted) return;
-                            setState(() => _isEvaluating = evaluating);
-                          },
-                          onFeedback: _handlePronunciationFeedback,
-                        )
-                      else
-                        const SizedBox(height: 220),
-                      const SizedBox(height: 20),
                     ],
                   ),
                 ],
@@ -1315,94 +1307,104 @@ class _HeroWordDisplay extends StatelessWidget {
               child: FadeTransition(opacity: animation, child: child),
             );
           },
-          child: Card(
+          child: Container(
             key: ValueKey<String>(wordData.word),
-            elevation: 12,
-            shadowColor: Colors.black.withValues(alpha: 0.3),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(32),
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(40),
+              border: wordData.isCompleted
+                  ? Border.all(color: Colors.green.shade300, width: 3)
+                  : Border.all(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      width: 2,
+                    ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.indigo.withValues(alpha: 0.12),
+                  blurRadius: 32,
+                  offset: const Offset(0, 12),
+                  spreadRadius: 2,
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(32),
-                border: wordData.isCompleted
-                    ? Border.all(color: Colors.green.shade300, width: 3)
-                    : null,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Image Area
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(24),
-                        color: Colors.grey.shade100,
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(24),
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Hero(
-                              tag: HeroTags.wordImage(levelId, wordData.word),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: _buildImage(context),
-                              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Image Area
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      color: Colors.grey.shade100,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Hero(
+                            tag: HeroTags.wordImage(levelId, wordData.word),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: _buildImage(context),
                             ),
-                            if (wordData.isCompleted)
-                              Container(
-                                color: Colors.green.withValues(alpha: 0.2),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.check_circle,
-                                    color: Colors.green,
-                                    size: 64,
-                                  ),
+                          ),
+                          if (wordData.isCompleted)
+                            Container(
+                              color: Colors.green.withValues(alpha: 0.2),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green,
+                                  size: 64,
                                 ),
                               ),
-                          ],
-                        ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  // Word & TTS
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Hero(
-                        tag: HeroTags.wordTitle(levelId, wordData.word),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: Text(
-                            wordData.word,
-                            style: const TextStyle(
-                              fontSize: 42,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF4A4A4A),
-                            ),
+                ),
+                const SizedBox(height: 24),
+                // Word & TTS
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Hero(
+                      tag: HeroTags.wordTitle(levelId, wordData.word),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: Text(
+                          wordData.word,
+                          style: GoogleFonts.quicksand(
+                            fontSize: 48,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF3D3D5C),
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      IconButton.filledTonal(
-                        onPressed: onPlayAudio,
-                        icon: const Icon(Icons.volume_up_rounded, size: 28),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.indigo.shade50,
-                          foregroundColor: Colors.indigo,
-                        ),
+                    ),
+                    const SizedBox(width: 12),
+                    IconButton.filledTonal(
+                      onPressed: onPlayAudio,
+                      icon: const Icon(Icons.volume_up_rounded, size: 28),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.indigo.shade50,
+                        foregroundColor: Colors.indigo,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
             ),
           ),
         ),
@@ -1476,50 +1478,167 @@ class _HeroWordDisplay extends StatelessWidget {
   }
 }
 
-// 4. Feedback Panel
-class _FeedbackPanel extends StatelessWidget {
-  final String text;
-  final bool isSuccess;
+// 4. Bottom dock — mic + feedback partition
+class _LevelControlDock extends StatelessWidget {
+  const _LevelControlDock({
+    required this.showFeedback,
+    required this.feedbackText,
+    required this.isSuccess,
+    required this.child,
+  });
 
-  const _FeedbackPanel({required this.text, required this.isSuccess});
+  final bool showFeedback;
+  final String feedbackText;
+  final bool isSuccess;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: isSuccess ? Colors.green.shade600 : Colors.orange.shade800,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.35)),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            isSuccess ? Icons.check_circle : Icons.info_outline,
-            color: Colors.white,
-            size: 28,
+          AnimatedSize(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: showFeedback
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _FeedbackPanel(
+                      key: ValueKey<String>(feedbackText),
+                      text: feedbackText,
+                      isSuccess: isSuccess,
+                    ),
+                  )
+                : const SizedBox(width: double.infinity, height: 0),
           ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
+          child,
         ],
+      ),
+    );
+  }
+}
+
+// 5. Feedback Panel
+class _FeedbackPanel extends StatefulWidget {
+  final String text;
+  final bool isSuccess;
+
+  const _FeedbackPanel({
+    super.key,
+    required this.text,
+    required this.isSuccess,
+  });
+
+  @override
+  State<_FeedbackPanel> createState() => _FeedbackPanelState();
+}
+
+class _FeedbackPanelState extends State<_FeedbackPanel>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+    _scale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.0, end: 1.12)
+            .chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 55,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.12, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 45,
+      ),
+    ]).animate(_controller);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.25),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    ));
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SlideTransition(
+      position: _slide,
+      child: ScaleTransition(
+        scale: _scale,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+          decoration: BoxDecoration(
+            color: widget.isSuccess
+                ? Colors.green.shade600
+                : Colors.orange.shade800,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: (widget.isSuccess ? Colors.green : Colors.orange)
+                    .withValues(alpha: 0.35),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                widget.isSuccess ? Icons.check_circle : Icons.info_outline,
+                color: Colors.white,
+                size: 26,
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  widget.text,
+                  style: GoogleFonts.quicksand(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    height: 1.3,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
