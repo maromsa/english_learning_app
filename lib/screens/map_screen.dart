@@ -34,6 +34,7 @@ import '../utils/page_transitions.dart';
 import '../utils/parent_dashboard_navigation.dart';
 import '../utils/route_observer.dart';
 import '../widgets/ui/_barrel.dart';
+import '../widgets/ui/glass_card.dart';
 import '../widgets/user/current_user_avatar.dart';
 import 'achievements_screen.dart';
 import 'adventure_lab_screen.dart';
@@ -90,6 +91,13 @@ class _MapScreenState extends State<MapScreen>
   final double _pathAmplitude = 80.0; // How wide the snake path is
   final double _topPadding = 160.0; // Space for AppBar & Stats
   final double _bottomPadding = 120.0; // Space for BottomNavBar
+
+  /// Floating pill dock + FAB layout (Flutter chrome only).
+  static const double _floatingDockHeight = 68.0;
+  static const double _floatingDockBottomMargin = 20.0;
+  static const double _floatingDockHorizontalMargin = 22.0;
+  static const double _fabGapAboveDock = 14.0;
+  static const double _mapFabSize = 64.0;
 
   late ScrollController _scrollController;
   late AnimationController _pulseController;
@@ -886,6 +894,14 @@ class _MapScreenState extends State<MapScreen>
     await openParentDashboard(context);
   }
 
+  /// Bottom inset for map FABs so they sit above the floating glass dock.
+  double _mapFabBottomOffset(BuildContext context) {
+    return _floatingDockBottomMargin +
+        _floatingDockHeight +
+        _fabGapAboveDock +
+        MediaQuery.paddingOf(context).bottom;
+  }
+
   void _showLockedMessage(LevelData level) async {
     // Find previous level
     final levelIndex = levels.indexWhere((l) => l.id == level.id);
@@ -1212,12 +1228,16 @@ class _MapScreenState extends State<MapScreen>
   Widget build(BuildContext context) {
     // Always show loading indicator if still initializing
     if (_isLoading) {
-      return Scaffold(
-        body: Container(
-          color: Colors.blue.shade900,
-          child: const Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          ),
+      return const Scaffold(
+        backgroundColor: Color(0xFF3D5AFE),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            _MapSkyGradient(),
+            Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+          ],
         ),
       );
     }
@@ -1233,7 +1253,10 @@ class _MapScreenState extends State<MapScreen>
       final coinProvider = context.watch<CoinProvider>();
       final colorScheme = Theme.of(context).colorScheme;
 
+      final fabBottom = _mapFabBottomOffset(context);
+
       return Scaffold(
+        backgroundColor: const Color(0xFF3D5AFE),
         extendBodyBehindAppBar: true,
         extendBody: true, // Allows map to go behind bottom nav
 
@@ -1377,6 +1400,9 @@ class _MapScreenState extends State<MapScreen>
                   )
                 : Stack(
                     children: [
+                      // Sky gradient behind the island (visible at edges / letterbox).
+                      const Positioned.fill(child: _MapSkyGradient()),
+
                       // 1. 3D Map View — WebView on mobile, HtmlElementView iframe on web.
                       //    Positioned.fill gives the child explicit, bounded constraints,
                       //    which prevents the drawFrame/finalizeTree pipeline errors.
@@ -1388,21 +1414,24 @@ class _MapScreenState extends State<MapScreen>
 
                       // 2. Loading Overlay for WebView (mobile only)
                       if (!kIsWeb && !_isWebMapReady)
-                        Container(
-                          color: Colors.blue.shade900,
-                          child: const Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CircularProgressIndicator(color: Colors.white),
-                                SizedBox(height: 16),
-                                Text(
-                                  SparkStrings.mapLoading3d,
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ],
+                        const Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            _MapSkyGradient(),
+                            Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(color: Colors.white),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    SparkStrings.mapLoading3d,
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
+                          ],
                         ),
 
                       // 3. Floating Stats Pill (Fixed Position)
@@ -1430,7 +1459,7 @@ class _MapScreenState extends State<MapScreen>
                         Positioned(
                           left: 16,
                           right: 16,
-                          bottom: 100, // Above bottom nav
+                          bottom: fabBottom + _mapFabSize + 12,
                           child: _webPointerShield(
                             _InfoBanner(message: _errorMessage!),
                           ),
@@ -1440,7 +1469,7 @@ class _MapScreenState extends State<MapScreen>
                       if (!_isLoading && levels.isNotEmpty)
                         Positioned(
                           left: 16,
-                          bottom: 96,
+                          bottom: fabBottom,
                           child: _webPointerShield(
                             _ChatBuddyMapEntry(
                               onTap: _openChatBuddy,
@@ -1452,7 +1481,7 @@ class _MapScreenState extends State<MapScreen>
                       if (!_isLoading && levels.isNotEmpty)
                         Positioned(
                           right: 16,
-                          bottom: 96,
+                          bottom: fabBottom,
                           child: _webPointerShield(
                             _AdventureLabMapEntry(
                               onTap: _openAdventureLab,
@@ -1557,26 +1586,30 @@ class _MapScreenState extends State<MapScreen>
   }
 
   Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        _floatingDockHorizontalMargin,
+        0,
+        _floatingDockHorizontalMargin,
+        _floatingDockBottomMargin + bottomInset,
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+      child: GlassCard(
+        borderRadius: 32,
+        blurSigma: 14,
+        surfaceOpacity: 0.28,
+        backgroundColor: Colors.white.withValues(alpha: 0.22),
+        borderColor: Colors.white.withValues(alpha: 0.55),
+        padding: EdgeInsets.zero,
         child: NavigationBar(
-          height: 70,
+          height: _floatingDockHeight,
           elevation: 0,
-          backgroundColor: Colors.white,
-          indicatorColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          indicatorColor:
+              Theme.of(context).primaryColor.withValues(alpha: 0.28),
           labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
           selectedIndex: _selectedNavIndex,
           onDestinationSelected: _handleBottomNav,
@@ -1952,6 +1985,32 @@ class _AdventureLabMapEntryState extends State<_AdventureLabMapEntry>
 
 // --- Components - Redesigned by Gemini 3 Pro ---
 
+/// Radial sky behind the 3D island — gives depth at map edges and while loading.
+class _MapSkyGradient extends StatelessWidget {
+  const _MapSkyGradient();
+
+  @override
+  Widget build(BuildContext context) {
+    return const DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0, -0.15),
+          radius: 1.15,
+          colors: [
+            Color(0xFFB8E4FF),
+            Color(0xFF6EB5F5),
+            Color(0xFF4A7FD4),
+            Color(0xFF4E3F8C),
+            Color(0xFF2D1B4E),
+          ],
+          stops: [0.0, 0.35, 0.62, 0.85, 1.0],
+        ),
+      ),
+      child: SizedBox.expand(),
+    );
+  }
+}
+
 class _MapTitleCard extends StatelessWidget {
   const _MapTitleCard();
 
@@ -1993,19 +2052,12 @@ class _StatsPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GlassCard(
+      borderRadius: 30,
+      blurSigma: 12,
+      surfaceOpacity: 0.3,
+      backgroundColor: Colors.white.withValues(alpha: 0.25),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -2017,7 +2069,7 @@ class _StatsPill extends StatelessWidget {
           Container(
             height: 20,
             width: 1,
-            color: Colors.grey.shade300,
+            color: Colors.white.withValues(alpha: 0.35),
             margin: const EdgeInsets.symmetric(horizontal: 8),
           ),
           _StatItem(
@@ -2187,30 +2239,36 @@ class _Map3dWebViewState extends State<_Map3dWebView> {
               // Loading overlay — shown while the map is initialising.
               if (_isLoading && !_timedOut)
                 _webPointerShield(
-                  Container(
-                    color: const Color(0xFF0D47A1), // deep blue
-                    child: const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(color: Colors.white),
-                          SizedBox(height: 16),
-                          Text(
-                            SparkStrings.mapLoading3d,
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
-                        ],
+                  const Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _MapSkyGradient(),
+                      Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(color: Colors.white),
+                            SizedBox(height: 16),
+                            Text(
+                              SparkStrings.mapLoading3d,
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 16),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
 
               // Timeout / error overlay — shown when the map fails to load.
               if (_timedOut)
                 _webPointerShield(
-                  Container(
-                    color: const Color(0xFF0D47A1),
-                    child: Center(
+                  Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      const _MapSkyGradient(),
+                      Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -2244,6 +2302,7 @@ class _Map3dWebViewState extends State<_Map3dWebView> {
                         ],
                       ),
                     ),
+                    ],
                   ),
                 ),
             ],
