@@ -113,6 +113,9 @@ class _MapScreenState extends State<MapScreen>
   VoidCallback? _cancelMap3dMessageListener;
   VoidCallback? _cancelMap3dReadyListener;
 
+  /// While the parental gate is open, block the 3D map iframe from taking focus.
+  bool _shieldMapForParentGate = false;
+
   @override
   void initState() {
     super.initState();
@@ -891,7 +894,16 @@ class _MapScreenState extends State<MapScreen>
   }
 
   Future<void> _openParentDashboard() async {
-    await openParentDashboard(context);
+    if (kIsWeb) {
+      setState(() => _shieldMapForParentGate = true);
+    }
+    try {
+      await openParentDashboard(context);
+    } finally {
+      if (mounted && kIsWeb) {
+        setState(() => _shieldMapForParentGate = false);
+      }
+    }
   }
 
   /// Bottom inset for map FABs so they sit above the floating glass dock.
@@ -1408,9 +1420,19 @@ class _MapScreenState extends State<MapScreen>
                       //    which prevents the drawFrame/finalizeTree pipeline errors.
                       Positioned.fill(
                         child: kIsWeb
-                            ? const _Map3dWebView()
+                            ? _Map3dWebView(
+                                shieldPlatformView: _shieldMapForParentGate,
+                              )
                             : WebViewWidget(controller: _webViewController!),
                       ),
+
+                      // Web: full-screen shield while parental gate is open (iframe z-order).
+                      if (kIsWeb && _shieldMapForParentGate)
+                        Positioned.fill(
+                          child: PointerInterceptor(
+                            child: const SizedBox.expand(),
+                          ),
+                        ),
 
                       // 2. Loading Overlay for WebView (mobile only)
                       if (!kIsWeb && !_isWebMapReady)
@@ -2132,7 +2154,10 @@ enum _QuickAiAction { chatBuddy, practicePack }
 const Duration _kMapLoadTimeout = Duration(seconds: 60);
 
 class _Map3dWebView extends StatefulWidget {
-  const _Map3dWebView();
+  const _Map3dWebView({this.shieldPlatformView = false});
+
+  /// When true, the iframe ignores pointers so dialogs can keep keyboard focus.
+  final bool shieldPlatformView;
 
   @override
   State<_Map3dWebView> createState() => _Map3dWebViewState();
@@ -2223,17 +2248,20 @@ class _Map3dWebViewState extends State<_Map3dWebView> {
               // The actual iframe platform view.
               // ValueKey(_retryKey) forces a full widget rebuild on retry,
               // which tears down the old iframe and creates a fresh one.
-              HtmlElementView(
-                key: ValueKey(_retryKey),
-                viewType: kMap3dViewType,
-                // onPlatformViewCreated fires when the iframe DOM element is
-                // injected — at that point we know the view is wired up, but
-                // the JS assets may still be loading. We start a short
-                // additional timer here if needed.
-                onPlatformViewCreated: (_) {
-                  // The iframe is mounted; the timeout is already running.
-                  // No additional action required here.
-                },
+              IgnorePointer(
+                ignoring: widget.shieldPlatformView,
+                child: HtmlElementView(
+                  key: ValueKey(_retryKey),
+                  viewType: kMap3dViewType,
+                  // onPlatformViewCreated fires when the iframe DOM element is
+                  // injected — at that point we know the view is wired up, but
+                  // the JS assets may still be loading. We start a short
+                  // additional timer here if needed.
+                  onPlatformViewCreated: (_) {
+                    // The iframe is mounted; the timeout is already running.
+                    // No additional action required here.
+                  },
+                ),
               ),
 
               // Loading overlay — shown while the map is initialising.

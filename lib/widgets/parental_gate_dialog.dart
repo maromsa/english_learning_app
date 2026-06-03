@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 /// Simple math gate so young learners cannot open the parent dashboard.
 class ParentalGateDialog extends StatefulWidget {
@@ -21,6 +23,27 @@ class ParentalGateDialog extends StatefulWidget {
 
   /// Returns `true` when the adult answered correctly.
   static Future<bool> show(BuildContext context) {
+    if (kIsWeb) {
+      return showGeneralDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+        // Barrier is drawn inside [_ParentalGateDialogShell] under [PointerInterceptor].
+        barrierColor: Colors.transparent,
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return _ParentalGateDialogShell(
+            child: FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOut,
+              ),
+              child: const ParentalGateDialog(),
+            ),
+          );
+        },
+      ).then((value) => value ?? false);
+    }
+
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -32,11 +55,38 @@ class ParentalGateDialog extends StatefulWidget {
   State<ParentalGateDialog> createState() => _ParentalGateDialogState();
 }
 
+/// Full-screen shell so the modal barrier and dialog sit above the 3D map iframe.
+class _ParentalGateDialogShell extends StatelessWidget {
+  const _ParentalGateDialogShell({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return PointerInterceptor(
+      child: Material(
+        type: MaterialType.transparency,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            const ModalBarrier(
+              dismissible: false,
+              color: Colors.black54,
+            ),
+            Center(child: child),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ParentalGateDialogState extends State<ParentalGateDialog> {
   late final int _factorA;
   late final int _factorB;
   late final int _correctAnswer;
   final TextEditingController _answerController = TextEditingController();
+  final FocusNode _answerFocusNode = FocusNode();
   String? _errorText;
 
   @override
@@ -51,11 +101,25 @@ class _ParentalGateDialogState extends State<ParentalGateDialog> {
       _factorB = 2 + random.nextInt(8);
     }
     _correctAnswer = _factorA * _factorB;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _stealFocusFromPlatformView());
+    if (kIsWeb) {
+      Future<void>.delayed(
+        const Duration(milliseconds: 80),
+        _stealFocusFromPlatformView,
+      );
+    }
+  }
+
+  void _stealFocusFromPlatformView() {
+    if (!mounted) return;
+    _answerFocusNode.requestFocus();
   }
 
   @override
   void dispose() {
     _answerController.dispose();
+    _answerFocusNode.dispose();
     super.dispose();
   }
 
@@ -72,7 +136,7 @@ class _ParentalGateDialogState extends State<ParentalGateDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    final dialog = AlertDialog(
       title: const Text(SparkStrings.parentGateTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -85,6 +149,8 @@ class _ParentalGateDialogState extends State<ParentalGateDialog> {
           const SizedBox(height: 16),
           TextField(
             controller: _answerController,
+            focusNode: _answerFocusNode,
+            autofocus: true,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             decoration: InputDecoration(
@@ -106,5 +172,10 @@ class _ParentalGateDialogState extends State<ParentalGateDialog> {
         ),
       ],
     );
+
+    if (kIsWeb) {
+      return PointerInterceptor(child: dialog);
+    }
+    return dialog;
   }
 }
