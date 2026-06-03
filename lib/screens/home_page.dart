@@ -28,6 +28,7 @@ import 'package:english_learning_app/services/speech_feedback_service.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
+import 'package:english_learning_app/utils/aurora_tokens.dart';
 import 'package:english_learning_app/utils/device_connectivity.dart';
 import 'package:english_learning_app/utils/hero_tags.dart';
 import 'package:english_learning_app/utils/offline_word_loader.dart';
@@ -35,6 +36,7 @@ import 'package:english_learning_app/utils/page_transitions.dart';
 import 'package:english_learning_app/widgets/living_spark.dart';
 import 'package:english_learning_app/widgets/pronunciation_mic_button.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
+import 'package:english_learning_app/widgets/ui/glass_card.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -659,9 +661,8 @@ class _MyHomePageState extends State<MyHomePage> {
   void _openGameMenu() {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => _GameMenuSheet(
         onAddWord: _speechBusy ? null : _takePictureAndIdentify,
         onScavengerHunt: _speechBusy ? null : _openScavengerHunt,
@@ -1666,6 +1667,109 @@ class _LevelHeader extends StatelessWidget {
 }
 
 // 7. Menu Sheet (Clean way to handle secondary actions)
+class _GameMenuEntry {
+  const _GameMenuEntry({
+    required this.icon,
+    required this.label,
+    required this.gradient,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final List<Color> gradient;
+  final VoidCallback onTap;
+}
+
+class _IconGradientBadge extends StatelessWidget {
+  const _IconGradientBadge({
+    required this.icon,
+    required this.gradient,
+  });
+
+  final IconData icon;
+  final List<Color> gradient;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradient,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: gradient.first.withValues(alpha: 0.35),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Icon(icon, color: Colors.white, size: 24),
+    );
+  }
+}
+
+class _GameMenuGridTile extends StatelessWidget {
+  const _GameMenuGridTile({required this.entry});
+
+  final _GameMenuEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.pop(context);
+          entry.onTap();
+        },
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            color: Colors.white.withValues(alpha: 0.14),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.35),
+              width: 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _IconGradientBadge(
+                  icon: entry.icon,
+                  gradient: entry.gradient,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  entry.label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.heebo(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AuroraTokens.ink,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _GameMenuSheet extends StatelessWidget {
   final VoidCallback? onAddWord;
   final VoidCallback? onScavengerHunt;
@@ -1685,86 +1789,127 @@ class _GameMenuSheet extends StatelessWidget {
     this.onLightning,
   });
 
+  List<_GameMenuEntry> _buildEntries() {
+    final entries = <_GameMenuEntry>[];
+
+    if (onAddWord != null) {
+      entries.add(
+        _GameMenuEntry(
+          icon: Icons.camera_alt_rounded,
+          label: 'הוסף מילה חדשה',
+          gradient: const [AuroraTokens.blueberry, AuroraTokens.sky],
+          onTap: onAddWord!,
+        ),
+      );
+    }
+    if (onScavengerHunt != null) {
+      entries.add(
+        _GameMenuEntry(
+          icon: Icons.explore_rounded,
+          label: SparkStrings.scavengerTitle,
+          gradient: const [AuroraTokens.mint, AuroraTokens.sky],
+          onTap: onScavengerHunt!,
+        ),
+      );
+    }
+    if (onShop != null) {
+      entries.add(
+        _GameMenuEntry(
+          icon: Icons.store_rounded,
+          label: 'חנות',
+          gradient: const [AuroraTokens.plum, AuroraTokens.blueberry],
+          onTap: onShop!,
+        ),
+      );
+    }
+    if (onImageQuiz != null) {
+      entries.add(
+        _GameMenuEntry(
+          icon: Icons.image_search_rounded,
+          label: 'חידון תמונות',
+          gradient: const [AuroraTokens.coral, AuroraTokens.butter],
+          onTap: onImageQuiz!,
+        ),
+      );
+    }
+    if (onChatBuddy != null) {
+      entries.add(
+        _GameMenuEntry(
+          icon: Icons.chat_rounded,
+          label: 'חבר שיחה של ספרק',
+          gradient: const [AuroraTokens.mint, Color(0xFF1FA888)],
+          onTap: onChatBuddy!,
+        ),
+      );
+    }
+    if (onPracticePack != null) {
+      entries.add(
+        _GameMenuEntry(
+          icon: Icons.emoji_events_rounded,
+          label: 'חבילת אימון AI',
+          gradient: const [AuroraTokens.butter, AuroraTokens.coral],
+          onTap: onPracticePack!,
+        ),
+      );
+    }
+    if (onLightning != null) {
+      entries.add(
+        _GameMenuEntry(
+          icon: Icons.flash_on_rounded,
+          label: 'ריצת ברק',
+          gradient: const [AuroraTokens.butter, AuroraTokens.coral],
+          onTap: onLightning!,
+        ),
+      );
+    }
+
+    return entries;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'תפריט משחק',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+    final entries = _buildEntries();
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: GlassCard(
+          borderRadius: 32,
+          blurSigma: 14,
+          surfaceOpacity: 0.28,
+          backgroundColor: Colors.white.withValues(alpha: 0.22),
+          borderColor: Colors.white.withValues(alpha: 0.55),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'תפריט משחק',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.baloo2(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: AuroraTokens.ink,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              const SizedBox(height: 20),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 14,
+                  childAspectRatio: 1.08,
+                ),
+                itemCount: entries.length,
+                itemBuilder: (context, index) =>
+                    _GameMenuGridTile(entry: entries[index]),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
-          if (onAddWord != null)
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: Colors.blue),
-              title: const Text('הוסף מילה חדשה'),
-              onTap: () {
-                Navigator.pop(context);
-                onAddWord?.call();
-              },
-            ),
-          if (onScavengerHunt != null)
-            ListTile(
-              leading: const Icon(Icons.explore_rounded, color: Colors.teal),
-              title: const Text(SparkStrings.scavengerTitle),
-              onTap: () {
-                Navigator.pop(context);
-                onScavengerHunt?.call();
-              },
-            ),
-          if (onShop != null)
-            ListTile(
-              leading: const Icon(Icons.store, color: Colors.purple),
-              title: const Text('חנות'),
-              onTap: () {
-                Navigator.pop(context);
-                onShop?.call();
-              },
-            ),
-          if (onImageQuiz != null)
-            ListTile(
-              leading: const Icon(Icons.image_search, color: Colors.orange),
-              title: const Text('חידון תמונות'),
-              onTap: () {
-                Navigator.pop(context);
-                onImageQuiz?.call();
-              },
-            ),
-          if (onChatBuddy != null)
-            ListTile(
-              leading: const Icon(Icons.chat, color: Colors.green),
-              title: const Text('חבר שיחה של ספרק'),
-              onTap: () {
-                Navigator.pop(context);
-                onChatBuddy?.call();
-              },
-            ),
-          if (onPracticePack != null)
-            ListTile(
-              leading: const Icon(Icons.emoji_events, color: Colors.amber),
-              title: const Text('חבילת אימון AI'),
-              onTap: () {
-                Navigator.pop(context);
-                onPracticePack?.call();
-              },
-            ),
-          if (onLightning != null)
-            ListTile(
-              leading: const Icon(Icons.flash_on, color: Colors.orange),
-              title: const Text('ריצת ברק'),
-              onTap: () {
-                Navigator.pop(context);
-                onLightning?.call();
-              },
-            ),
-        ],
+        ),
       ),
     );
   }
