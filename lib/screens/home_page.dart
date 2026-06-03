@@ -28,6 +28,7 @@ import 'package:english_learning_app/services/speech_feedback_service.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
+import 'package:english_learning_app/utils/word_image_url.dart';
 import 'package:english_learning_app/utils/aurora_tokens.dart';
 import 'package:english_learning_app/utils/device_connectivity.dart';
 import 'package:english_learning_app/utils/hero_tags.dart';
@@ -37,7 +38,7 @@ import 'package:english_learning_app/widgets/living_spark.dart';
 import 'package:english_learning_app/widgets/pronunciation_mic_button.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, Uint8List;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -312,12 +313,23 @@ class _MyHomePageState extends State<MyHomePage> {
       return;
     }
 
+    final imageBytes = await readPickedImageBytes(imageFile);
+    if (imageBytes == null) {
+      debugPrint('Error identifying image: could not read picked image bytes');
+      if (mounted) {
+        setState(() {
+          _feedbackText = SparkStrings.cameraGenericFail;
+        });
+        await _speak(SparkStrings.cameraGenericFail, languageCode: 'he-IL');
+      }
+      return;
+    }
+
     setState(() {
       _feedbackText = SparkStrings.imageAnalyzing;
     });
 
     try {
-      final imageBytes = await imageFile.readAsBytes();
       const prompt =
           "Identify the main, single object in this image. Respond with only the object's name in English, in singular form. For example: 'Apple', 'Car', 'Dog'. If you cannot identify a single clear object, respond with the word 'unclear'.";
 
@@ -372,8 +384,9 @@ class _MyHomePageState extends State<MyHomePage> {
         }
 
         final newWord = await _saveImageAndCreateWordData(
-          imageFile,
           identifiedWord,
+          imageBytes: imageBytes,
+          imageFile: imageFile,
         );
         setState(() {
           _words.add(newWord);
@@ -419,29 +432,15 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<WordData> _saveImageAndCreateWordData(
-    XFile imageFile,
-    String word,
-  ) async {
+    String word, {
+    required Uint8List imageBytes,
+    XFile? imageFile,
+  }) async {
     String? imagePath;
 
     if (kIsWeb) {
-      imagePath = imageFile.path;
-
-      if (imagePath.isEmpty) {
-        try {
-          final bytes = await imageFile.readAsBytes();
-          if (bytes.isNotEmpty) {
-            imagePath = Uri.dataFromBytes(
-              bytes,
-              mimeType: 'image/jpeg',
-            ).toString();
-          }
-        } catch (error) {
-          debugPrint('Failed to read picked web image bytes: $error');
-          imagePath = null;
-        }
-      }
-    } else {
+      imagePath = dataImageUrlFromBytes(imageBytes);
+    } else if (imageFile != null) {
       final directory = await getApplicationDocumentsDirectory();
       final newPath =
           '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
@@ -1439,10 +1438,11 @@ class _HeroWordDisplay extends StatelessWidget {
     }
 
     final bool isAssetImage = imageUrl.startsWith('assets/');
+    final bool isInlineImage = isInlineDataImageUrl(imageUrl) ||
+        imageUrl.startsWith('blob:');
     final bool isLocalFile = !kIsWeb &&
         !imageUrl.startsWith('http') &&
-        !imageUrl.startsWith('blob:') &&
-        !imageUrl.startsWith('data:') &&
+        !isInlineImage &&
         !isAssetImage;
 
     if (isAssetImage) {
@@ -1457,6 +1457,16 @@ class _HeroWordDisplay extends StatelessWidget {
         File(imageUrl),
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) =>
+            const Icon(Icons.image, size: 64, color: Colors.grey),
+      );
+    } else if (isInlineImage) {
+      return buildInlineOrNetworkWordImage(
+        imageUrl,
+        fit: BoxFit.cover,
+        placeholder: const Center(
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        errorWidget:
             const Icon(Icons.image, size: 64, color: Colors.grey),
       );
     } else {

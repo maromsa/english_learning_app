@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../models/word_data.dart';
+import '../utils/word_image_url.dart';
 
 class WordDisplayCard extends StatelessWidget {
   final WordData wordData;
@@ -29,11 +30,13 @@ class WordDisplayCard extends StatelessWidget {
     final bool hasImageUrl = normalizedUrl.isNotEmpty;
     final bool isAssetImage =
         hasImageUrl && normalizedUrl.startsWith('assets/');
+    final bool isInlineImage = hasImageUrl &&
+        (isInlineDataImageUrl(normalizedUrl) ||
+            normalizedUrl.startsWith('blob:'));
     final bool isLocalFile = !kIsWeb &&
         hasImageUrl &&
         !normalizedUrl.startsWith('http') &&
-        !normalizedUrl.startsWith('blob:') &&
-        !normalizedUrl.startsWith('data:') &&
+        !isInlineImage &&
         !isAssetImage;
 
     return Card(
@@ -52,9 +55,11 @@ class WordDisplayCard extends StatelessWidget {
                   child: _wrapHero(
                     heroImageTag,
                     _buildImage(
+                      context,
                       imageUrl,
                       isLocalFile: isLocalFile,
                       isAssetImage: isAssetImage,
+                      isInlineImage: isInlineImage,
                     ),
                   ),
                 ),
@@ -151,9 +156,11 @@ class WordDisplayCard extends StatelessWidget {
   }
 
   Widget _buildImage(
+    BuildContext context,
     String? imageUrl, {
     required bool isLocalFile,
     required bool isAssetImage,
+    required bool isInlineImage,
   }) {
     if (imageUrl == null || imageUrl.isEmpty) {
       return _buildPlaceholder();
@@ -175,7 +182,17 @@ class WordDisplayCard extends StatelessWidget {
                     return _errorBuilder(context, error, stackTrace);
                   },
                 )
-              : CachedNetworkImage(
+              : isInlineImage
+                  ? KeyedSubtree(
+                      key: ValueKey(imageUrl),
+                      child: buildInlineOrNetworkWordImage(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorWidget:
+                            _errorBuilder(context, 'inline', null),
+                      ),
+                    )
+                  : CachedNetworkImage(
                   imageUrl: imageUrl,
                   key: ValueKey(imageUrl),
                   fit: BoxFit.cover,
