@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:confetti/confetti.dart';
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/daily_mission.dart';
@@ -105,9 +106,24 @@ class _MyHomePageState extends State<MyHomePage> {
   final SoundService _soundService = SoundService();
   TelemetryService? _telemetry;
 
+  late final ConfettiController _confettiController;
+
+  static const List<Color> _confettiColors = [
+    Color(0xFF6EE7B7), // mint
+    Color(0xFFC084FC), // plum
+    Color(0xFFFDE68A), // butter
+    Color(0xFFFB7185), // coral
+    Color(0xFF93C5FD), // blueberry
+    Color(0xFFF472B6), // pink
+    Color(0xFFFBBF24), // gold
+  ];
+
   @override
   void initState() {
     super.initState();
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 1),
+    );
     _words = widget.wordsForLevel;
     _initializeServices().then((_) async {
       // Load progress after services are initialized
@@ -135,6 +151,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _httpImageValidator?.dispose();
     _webImageService?.dispose();
     _geminiProxy?.dispose();
+    _confettiController.dispose();
     super.dispose();
   }
 
@@ -598,6 +615,12 @@ class _MyHomePageState extends State<MyHomePage> {
           currentWordObject.isCompleted = true;
         });
 
+        if (aiFeedback.stars == 3 &&
+            !MediaQuery.disableAnimationsOf(context)) {
+          unawaited(_confettiController.play());
+          unawaited(_soundService.playSound('confetti'));
+        }
+
         final levelJustFinished = _isLevelComplete;
         final CelebrationTier tier;
         if (levelJustFinished) {
@@ -1001,6 +1024,22 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 ],
               ),
+            ),
+          ),
+        ),
+        IgnorePointer(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              shouldLoop: false,
+              numberOfParticles: 28,
+              maxBlastForce: 22,
+              minBlastForce: 8,
+              emissionFrequency: 0.05,
+              gravity: 0.18,
+              colors: _confettiColors,
             ),
           ),
         ),
