@@ -52,6 +52,7 @@ Uint8List? decodeDataImageUrl(String dataUrl) {
 Widget buildInlineOrNetworkWordImage(
   String imageUrl, {
   BoxFit fit = BoxFit.cover,
+  Alignment alignment = Alignment.center,
   Widget? placeholder,
   Widget? errorWidget,
 }) {
@@ -63,6 +64,9 @@ Widget buildInlineOrNetworkWordImage(
     return Image.memory(
       bytes,
       fit: fit,
+      alignment: alignment,
+      width: double.infinity,
+      height: double.infinity,
       gaplessPlayback: true,
       errorBuilder: (_, __, ___) =>
           errorWidget ?? const Icon(Icons.broken_image),
@@ -73,6 +77,9 @@ Widget buildInlineOrNetworkWordImage(
     return Image.network(
       imageUrl,
       fit: fit,
+      alignment: alignment,
+      width: double.infinity,
+      height: double.infinity,
       gaplessPlayback: true,
       errorBuilder: (_, __, ___) =>
           errorWidget ?? const Icon(Icons.broken_image),
@@ -82,6 +89,9 @@ Widget buildInlineOrNetworkWordImage(
   return Image.network(
     imageUrl,
     fit: fit,
+    alignment: alignment,
+    width: double.infinity,
+    height: double.infinity,
     loadingBuilder: (context, child, progress) {
       if (progress == null) {
         return child;

@@ -1527,6 +1527,9 @@ class _HeroWordDisplay extends StatelessWidget {
       return Image.asset(
         imageUrl,
         fit: BoxFit.cover,
+        alignment: Alignment.center,
+        width: double.infinity,
+        height: double.infinity,
         errorBuilder: (_, __, ___) =>
             const Icon(Icons.image, size: 64, color: Colors.grey),
       );
@@ -1534,6 +1537,9 @@ class _HeroWordDisplay extends StatelessWidget {
       return Image.file(
         File(imageUrl),
         fit: BoxFit.cover,
+        alignment: Alignment.center,
+        width: double.infinity,
+        height: double.infinity,
         errorBuilder: (_, __, ___) =>
             const Icon(Icons.image, size: 64, color: Colors.grey),
       );
@@ -1541,6 +1547,7 @@ class _HeroWordDisplay extends StatelessWidget {
       return buildInlineOrNetworkWordImage(
         imageUrl,
         fit: BoxFit.cover,
+        alignment: Alignment.center,
         placeholder: const Center(
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
@@ -1551,6 +1558,9 @@ class _HeroWordDisplay extends StatelessWidget {
       return CachedNetworkImage(
         imageUrl: imageUrl,
         fit: BoxFit.cover,
+        alignment: Alignment.center,
+        width: double.infinity,
+        height: double.infinity,
         placeholder: (context, url) => const Center(
           child: CircularProgressIndicator(strokeWidth: 2),
         ),

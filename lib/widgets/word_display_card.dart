@@ -8,6 +8,9 @@ import '../models/word_data.dart';
 import '../utils/word_image_url.dart';
 
 class WordDisplayCard extends StatelessWidget {
+  static const double _imageBorderRadius = 20;
+  static const double _imageMinSide = 250;
+
   final WordData wordData;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
@@ -50,17 +53,14 @@ class WordDisplayCard extends StatelessWidget {
             Stack(
               alignment: Alignment.center,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20.0),
-                  child: _wrapHero(
-                    heroImageTag,
-                    _buildImage(
-                      context,
-                      imageUrl,
-                      isLocalFile: isLocalFile,
-                      isAssetImage: isAssetImage,
-                      isInlineImage: isInlineImage,
-                    ),
+                _wrapHero(
+                  heroImageTag,
+                  _buildImage(
+                    context,
+                    imageUrl,
+                    isLocalFile: isLocalFile,
+                    isAssetImage: isAssetImage,
+                    isInlineImage: isInlineImage,
                   ),
                 ),
                 Positioned(
@@ -155,6 +155,29 @@ class WordDisplayCard extends StatelessWidget {
     );
   }
 
+  /// Square, width-aware frame with clipped corners and tight cover constraints.
+  Widget _imageFrame(Widget child) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final side = constraints.maxWidth.isFinite && constraints.maxWidth > 0
+            ? constraints.maxWidth
+            : _imageMinSide;
+        return SizedBox(
+          width: side,
+          height: side,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(_imageBorderRadius),
+            child: Stack(
+              fit: StackFit.expand,
+              alignment: Alignment.center,
+              children: [child],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildImage(
     BuildContext context,
     String? imageUrl, {
@@ -166,16 +189,17 @@ class WordDisplayCard extends StatelessWidget {
       return _buildPlaceholder();
     }
 
-    return SizedBox(
-      width: 250,
-      height: 250,
-      child: isAssetImage
+    return _imageFrame(
+      isAssetImage
           ? _buildAssetImage(imageUrl)
           : isLocalFile
               ? Image.file(
                   File(imageUrl),
                   key: ValueKey(imageUrl),
                   fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  width: double.infinity,
+                  height: double.infinity,
                   errorBuilder: (context, error, stackTrace) {
                     debugPrint(
                         'Failed to load local image "$imageUrl": $error');
@@ -188,27 +212,31 @@ class WordDisplayCard extends StatelessWidget {
                       child: buildInlineOrNetworkWordImage(
                         imageUrl,
                         fit: BoxFit.cover,
+                        alignment: Alignment.center,
                         errorWidget:
                             _errorBuilder(context, 'inline', null),
                       ),
                     )
                   : CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  key: ValueKey(imageUrl),
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  errorWidget: (context, url, error) {
-                    debugPrint(
-                        'Failed to load network image "$imageUrl": $error');
-                    return _errorBuilder(context, error, null);
-                  },
-                  memCacheWidth: 500, // Optimize memory usage
-                  memCacheHeight: 500,
-                  maxWidthDiskCache: 1000,
-                  maxHeightDiskCache: 1000,
-                ),
+                      imageUrl: imageUrl,
+                      key: ValueKey(imageUrl),
+                      fit: BoxFit.cover,
+                      alignment: Alignment.center,
+                      width: double.infinity,
+                      height: double.infinity,
+                      placeholder: (context, url) => const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      errorWidget: (context, url, error) {
+                        debugPrint(
+                            'Failed to load network image "$imageUrl": $error');
+                        return _errorBuilder(context, error, null);
+                      },
+                      memCacheWidth: 500,
+                      memCacheHeight: 500,
+                      maxWidthDiskCache: 1000,
+                      maxHeightDiskCache: 1000,
+                    ),
     );
   }
 
@@ -217,6 +245,9 @@ class WordDisplayCard extends StatelessWidget {
       imageUrl,
       key: ValueKey(imageUrl),
       fit: BoxFit.cover,
+      alignment: Alignment.center,
+      width: double.infinity,
+      height: double.infinity,
       errorBuilder: (context, error, stackTrace) {
         debugPrint('Failed to load asset image "$imageUrl": $error');
 
@@ -229,6 +260,9 @@ class WordDisplayCard extends StatelessWidget {
             resolvedUrl,
             key: ValueKey('web_$imageUrl'),
             fit: BoxFit.cover,
+            alignment: Alignment.center,
+            width: double.infinity,
+            height: double.infinity,
             loadingBuilder: _loadingBuilder,
             errorBuilder: (context, fallbackError, fallbackStackTrace) {
               debugPrint(
@@ -251,15 +285,15 @@ class WordDisplayCard extends StatelessWidget {
     return Uri.base.resolve('assets/$normalized').toString();
   }
 
-  Widget _buildPlaceholder() => Container(
-        width: 250,
-        height: 250,
-        color: Colors.grey.shade200,
-        child: const Center(
-          child: Icon(
-            Icons.image_not_supported_outlined,
-            size: 80,
-            color: Colors.grey,
+  Widget _buildPlaceholder() => _imageFrame(
+        ColoredBox(
+          color: Colors.grey.shade200,
+          child: const Center(
+            child: Icon(
+              Icons.image_not_supported_outlined,
+              size: 80,
+              color: Colors.grey,
+            ),
           ),
         ),
       );
@@ -271,9 +305,7 @@ class WordDisplayCard extends StatelessWidget {
   ) {
     if (loadingProgress == null) return child;
 
-    return Container(
-      width: 250,
-      height: 250,
+    return ColoredBox(
       color: Colors.grey.shade100,
       child: const Center(child: CircularProgressIndicator()),
     );
@@ -284,9 +316,7 @@ class WordDisplayCard extends StatelessWidget {
     Object error,
     StackTrace? stackTrace,
   ) =>
-      Container(
-        width: 250,
-        height: 250,
+      ColoredBox(
         color: Colors.grey.shade200,
         child: const Center(
           child: Icon(Icons.broken_image, size: 80, color: Colors.grey),
