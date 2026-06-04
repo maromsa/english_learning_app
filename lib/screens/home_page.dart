@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/daily_mission.dart';
+import 'package:english_learning_app/models/object_identification_result.dart';
 import 'package:english_learning_app/models/pronunciation_feedback.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
@@ -28,6 +29,7 @@ import 'package:english_learning_app/services/speech_feedback_service.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
+import 'package:english_learning_app/utils/level_target_category.dart';
 import 'package:english_learning_app/utils/word_image_url.dart';
 import 'package:english_learning_app/utils/aurora_tokens.dart';
 import 'package:english_learning_app/utils/device_connectivity.dart';
@@ -53,11 +55,15 @@ class MyHomePage extends StatefulWidget {
     required this.title,
     required this.levelId,
     required this.wordsForLevel,
+    this.targetCategory,
+    this.categoryLabelHe,
   });
 
   final String title;
   final String levelId;
   final List<WordData> wordsForLevel;
+  final String? targetCategory;
+  final String? categoryLabelHe;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -330,94 +336,93 @@ class _MyHomePageState extends State<MyHomePage> {
     });
 
     try {
-      const prompt =
-          "Identify the main, single object in this image. Respond with only the object's name in English, in singular form. For example: 'Apple', 'Car', 'Dog'. If you cannot identify a single clear object, respond with the word 'unclear'.";
-
-      final proxyResult = await _geminiProxy!.identifyMainObject(
-        imageBytes,
-        prompt: prompt,
-        mimeType: 'image/jpeg',
+      final levelCategory = LevelTargetCategory.resolve(
+        widget.levelId,
+        targetCategoryFromLevel: widget.targetCategory,
+        categoryLabelHeFromLevel: widget.categoryLabelHe,
       );
-      final identifiedWord = proxyResult ?? 'unclear';
+      final ObjectIdentificationResult? identification;
 
-      debugPrint('Gemini identified: $identifiedWord');
-
-      if (identifiedWord.toLowerCase() == 'unclear' ||
-          identifiedWord.contains(' ')) {
-        telemetry?.logCameraValidation(
-          word: identifiedWord,
-          accepted: false,
-          validatorType: _cameraValidatorType,
-          confidence: null,
-        );
-        setState(() {
-          _feedbackText = SparkStrings.cameraUnclearUi;
-        });
-        await _speak(SparkStrings.cameraUnclearSpeak, languageCode: 'he-IL');
-      } else {
-        final bool validationPassed = await _cameraValidator.validate(
+      if (levelCategory != null) {
+        identification = await _geminiProxy!.identifyObjectInCategory(
           imageBytes,
-          identifiedWord,
+          targetCategory: levelCategory.geminiCategory,
           mimeType: 'image/jpeg',
         );
-        debugPrint(
-          'Camera validation for "$identifiedWord": $validationPassed',
+      } else {
+        const prompt =
+            "Identify the main, single object in this image. Respond with only the object's name in English, in singular form. For example: 'Apple', 'Car', 'Dog'. If you cannot identify a single clear object, respond with the word 'unclear'.";
+        final proxyResult = await _geminiProxy!.identifyMainObject(
+          imageBytes,
+          prompt: prompt,
+          mimeType: 'image/jpeg',
         );
+        identification = GeminiProxyService.parseCategoryIdentifyResponse(
+          proxyResult,
+        );
+      }
 
-        if (!validationPassed) {
-          if (mounted) {
-            setState(() {
-              _feedbackText = SparkStrings.cameraCenterWord(identifiedWord);
-            });
-          }
+      if (identification == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text(SparkStrings.aiUnavailable)),
+          );
+          setState(() {
+            _feedbackText = SparkStrings.cameraGenericFail;
+          });
+        }
+        await _speak(SparkStrings.cameraGenericFail, languageCode: 'he-IL');
+        return;
+      }
+
+      switch (identification) {
+        case ObjectIdentificationCategoryMismatch(:final identified):
+          final categoryHe = levelCategory?.displayHe ?? '';
+          debugPrint(
+            'Gemini category mismatch: $identified (expected ${levelCategory?.geminiCategory})',
+          );
           telemetry?.logCameraValidation(
-            word: identifiedWord,
+            word: identified,
             accepted: false,
             validatorType: _cameraValidatorType,
-            confidence: _currentValidationConfidence(),
+            confidence: null,
           );
+          if (mounted) {
+            final message = SparkStrings.cameraCategoryMismatch(
+              identified,
+              categoryHe,
+            );
+            setState(() {
+              _feedbackText = message;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(message)),
+            );
+          }
           await _speak(
-            SparkStrings.cameraCenterWord(identifiedWord),
+            SparkStrings.cameraCategoryMismatchSpeak(identified, categoryHe),
             languageCode: 'he-IL',
           );
           return;
-        }
-
-        final newWord = await _saveImageAndCreateWordData(
-          identifiedWord,
-          imageBytes: imageBytes,
-          imageFile: imageFile,
-        );
-        setState(() {
-          _words.add(newWord);
-          _currentIndex = _words.length - 1;
-          _feedbackText = SparkStrings.cameraFoundWord(newWord.word);
-        });
-        await _wordRepository.cacheWords(
-          _words,
-          cacheNamespace: widget.levelId,
-        );
-        if (mounted) {
-          Provider.of<AchievementService>(
-            context,
-            listen: false,
-          ).checkForAchievements(streak: _streak, wordAdded: true);
-        }
-        await _speak(
-          SparkStrings.cameraSpeakFound(newWord.word),
-          languageCode: 'he-IL',
-        );
-        await _speak(
-          newWord.word,
-          languageCode: 'en-US',
-          emotion: SparkEmotion.happy,
-        );
-        telemetry?.logCameraValidation(
-          word: identifiedWord,
-          accepted: true,
-          validatorType: _cameraValidatorType,
-          confidence: _currentValidationConfidence(),
-        );
+        case ObjectIdentificationUnclear():
+          telemetry?.logCameraValidation(
+            word: 'unclear',
+            accepted: false,
+            validatorType: _cameraValidatorType,
+            confidence: null,
+          );
+          setState(() {
+            _feedbackText = SparkStrings.cameraUnclearUi;
+          });
+          await _speak(SparkStrings.cameraUnclearSpeak, languageCode: 'he-IL');
+          return;
+        case ObjectIdentificationSuccess(:final word):
+          await _acceptIdentifiedCameraWord(
+            word,
+            imageBytes: imageBytes,
+            imageFile: imageFile,
+            telemetry: telemetry,
+          );
       }
     } catch (e) {
       debugPrint('Error identifying image: $e');
@@ -429,6 +434,79 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       rethrow;
     }
+  }
+
+  Future<void> _acceptIdentifiedCameraWord(
+    String identifiedWord, {
+    required Uint8List imageBytes,
+    required XFile? imageFile,
+    TelemetryService? telemetry,
+  }) async {
+    debugPrint('Gemini identified: $identifiedWord');
+
+    final bool validationPassed = await _cameraValidator.validate(
+      imageBytes,
+      identifiedWord,
+      mimeType: 'image/jpeg',
+    );
+    debugPrint(
+      'Camera validation for "$identifiedWord": $validationPassed',
+    );
+
+    if (!validationPassed) {
+      if (mounted) {
+        setState(() {
+          _feedbackText = SparkStrings.cameraCenterWord(identifiedWord);
+        });
+      }
+      telemetry?.logCameraValidation(
+        word: identifiedWord,
+        accepted: false,
+        validatorType: _cameraValidatorType,
+        confidence: _currentValidationConfidence(),
+      );
+      await _speak(
+        SparkStrings.cameraCenterWord(identifiedWord),
+        languageCode: 'he-IL',
+      );
+      return;
+    }
+
+    final newWord = await _saveImageAndCreateWordData(
+      identifiedWord,
+      imageBytes: imageBytes,
+      imageFile: imageFile,
+    );
+    setState(() {
+      _words.add(newWord);
+      _currentIndex = _words.length - 1;
+      _feedbackText = SparkStrings.cameraFoundWord(newWord.word);
+    });
+    await _wordRepository.cacheWords(
+      _words,
+      cacheNamespace: widget.levelId,
+    );
+    if (mounted) {
+      Provider.of<AchievementService>(
+        context,
+        listen: false,
+      ).checkForAchievements(streak: _streak, wordAdded: true);
+    }
+    await _speak(
+      SparkStrings.cameraSpeakFound(newWord.word),
+      languageCode: 'he-IL',
+    );
+    await _speak(
+      newWord.word,
+      languageCode: 'en-US',
+      emotion: SparkEmotion.happy,
+    );
+    telemetry?.logCameraValidation(
+      word: identifiedWord,
+      accepted: true,
+      validatorType: _cameraValidatorType,
+      confidence: _currentValidationConfidence(),
+    );
   }
 
   Future<WordData> _saveImageAndCreateWordData(

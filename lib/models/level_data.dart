@@ -5,6 +5,10 @@ class LevelData {
   final String id;
   final String name;
   final String? description;
+  /// English category sent to Gemini for camera capture (e.g. "Fruits").
+  final String? targetCategory;
+  /// Hebrew label shown when category validation fails.
+  final String? categoryLabelHe;
   final int reward;
   final int unlockStars;
   final double positionX;
@@ -18,6 +22,8 @@ class LevelData {
     required this.name,
     required this.words,
     this.description,
+    this.targetCategory,
+    this.categoryLabelHe,
     this.reward = 0,
     this.unlockStars = 0,
     this.positionX = 0.5,
@@ -45,6 +51,8 @@ class LevelData {
       id: id,
       name: name,
       description: json['description'] as String?,
+      targetCategory: json['targetCategory'] as String?,
+      categoryLabelHe: json['categoryLabelHe'] as String?,
       reward: json['reward'] as int? ?? 0,
       unlockStars: json['unlockStars'] as int? ?? 0,
       positionX: ((json['position'] as Map<String, dynamic>?)?['x'] as num?)
@@ -61,6 +69,8 @@ class LevelData {
         'id': id,
         'name': name,
         if (description != null) 'description': description,
+        if (targetCategory != null) 'targetCategory': targetCategory,
+        if (categoryLabelHe != null) 'categoryLabelHe': categoryLabelHe,
         'reward': reward,
         'unlockStars': unlockStars,
         'position': {'x': positionX, 'y': positionY},

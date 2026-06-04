@@ -96,6 +96,13 @@ class SparkStrings {
   static String cameraFoundWord(String word) => 'וואו! רואה $word. בואו נלמד!';
   static String cameraSpeakFound(String word) => 'מצוין! רואה $word.';
   static const String cameraGenericFail = 'אופס! בואו ננסה שוב?';
+  static String cameraCategoryMismatch(String identified, String categoryHe) =>
+      'זה $identified, אבל אנחנו מחפשים $categoryHe! בואו ננסה שוב?';
+  static String cameraCategoryMismatchSpeak(
+    String identified,
+    String categoryHe,
+  ) =>
+      'זה $identified, אבל בשלב הזה מחפשים $categoryHe. בואו נצלם משהו אחר!';
 
   // ─── Camera mission screen ────────────────────
   static String cameraShootTarget(String word) => 'צלמו: $word';

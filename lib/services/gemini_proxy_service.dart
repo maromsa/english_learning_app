@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show Uint8List, debugPrint;
 
+import 'package:english_learning_app/models/object_identification_result.dart';
+
 import 'gemini_proxy_response_cache.dart';
 import 'network/app_http_client.dart';
 
@@ -80,6 +82,81 @@ class GeminiProxyService {
     }
 
     return null;
+  }
+
+  /// Prompt for level camera capture: object must belong to [targetCategory].
+  static String buildCategoryIdentifyPrompt(String targetCategory) {
+    final category = targetCategory.trim();
+    return 'Analyze the image. Identify the single main object in the photo.\n'
+        'The learner is on a level about the category: "$category".\n'
+        '\n'
+        'RULES:\n'
+        '- If the primary object clearly belongs to the category "$category", '
+        'respond with JSON only: {"word": "Apple"} using the English singular noun '
+        '(e.g. "Apple", "Dog").\n'
+        '- If the primary object does NOT belong to "$category", respond with JSON only: '
+        '{"error": "category_mismatch", "identified": "Houseplant"} where "identified" '
+        'is the English name of what you see.\n'
+        '- If you cannot identify one clear object, respond with JSON only: '
+        '{"error": "unclear"}.\n'
+        '\n'
+        'Do not include markdown, code fences, or any text outside the JSON object.';
+  }
+
+  /// Parses Gemini identify-mode text (JSON or legacy plain word).
+  static ObjectIdentificationResult? parseCategoryIdentifyResponse(
+    String? rawText,
+  ) {
+    if (rawText == null) return null;
+    final trimmed = _stripCodeFences(rawText.trim());
+    if (trimmed.isEmpty) return null;
+
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is Map<String, dynamic>) {
+        final error = decoded['error'];
+        if (error == 'category_mismatch') {
+          final identified = decoded['identified'];
+          if (identified is String && identified.trim().isNotEmpty) {
+            return ObjectIdentificationCategoryMismatch(identified.trim());
+          }
+          return const ObjectIdentificationCategoryMismatch('object');
+        }
+        if (error == 'unclear') {
+          return const ObjectIdentificationUnclear();
+        }
+        final word = decoded['word'];
+        if (word is String && word.trim().isNotEmpty) {
+          return ObjectIdentificationSuccess(word.trim());
+        }
+      }
+    } catch (_) {
+      // Fall through to legacy plain-text responses.
+    }
+
+    if (trimmed.toLowerCase() == 'unclear' || trimmed.contains(' ')) {
+      return const ObjectIdentificationUnclear();
+    }
+    return ObjectIdentificationSuccess(trimmed);
+  }
+
+  /// Identifies the main object when it must belong to [targetCategory].
+  Future<ObjectIdentificationResult?> identifyObjectInCategory(
+    Uint8List imageBytes, {
+    required String targetCategory,
+    String mimeType = 'image/jpeg',
+  }) async {
+    final response = await _postJson({
+      'mode': 'identify',
+      'prompt': buildCategoryIdentifyPrompt(targetCategory),
+      'mimeType': mimeType,
+      'imageBase64': base64Encode(imageBytes),
+    });
+
+    if (response == null) return null;
+    final text = response['text'];
+    if (text is! String) return null;
+    return parseCategoryIdentifyResponse(text);
   }
 
   /// Story generation for Spark's Adventure Lab (`mode: "story"` on the proxy).
@@ -373,11 +450,14 @@ class GeminiProxyService {
       final fenceEnd = trimmed.indexOf('```', 3);
       if (fenceEnd != -1) {
         final inner = trimmed.substring(3, fenceEnd);
-        return inner.replaceFirst(RegExp(r'^json\\s*', multiLine: true), '');
+        return inner
+            .replaceFirst(RegExp(r'^json\s*', multiLine: true), '')
+            .trim();
       }
       return trimmed
           .substring(3)
-          .replaceFirst(RegExp(r'^json\\s*', multiLine: true), '');
+          .replaceFirst(RegExp(r'^json\s*', multiLine: true), '')
+          .trim();
     }
     return trimmed;
   }

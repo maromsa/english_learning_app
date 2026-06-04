@@ -3,6 +3,8 @@
     {
       "id": "level_fruits",
       "name": "שלב 1: פירות",
+      "targetCategory": "Fruits",
+      "categoryLabelHe": "פירות",
       "description": "למדו מילים של פירות טעימים",
       "unlockStars": 0,
       "reward": 30,

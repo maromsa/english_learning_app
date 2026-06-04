@@ -1071,6 +1071,8 @@ class _MapScreenState extends State<MapScreen>
           title: level.name,
           levelId: level.id,
           wordsForLevel: List<WordData>.from(wordsForLevel),
+          targetCategory: level.targetCategory,
+          categoryLabelHe: level.categoryLabelHe,
         ),
       ),
     );
