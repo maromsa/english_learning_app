@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'map_bridge_service.dart';
+import 'word_mastery_cloud_sync_service.dart';
 import 'word_mastery_service.dart';
 
 /// Service for managing level progress - tracks which words are completed in
@@ -12,11 +13,15 @@ class LevelProgressService {
   LevelProgressService({
     WordMasteryService? wordMasteryService,
     MapBridgeService? mapBridgeService,
+    WordMasteryCloudSyncService? cloudSyncService,
   })  : _wordMasteryService = wordMasteryService ?? WordMasteryService(),
-        _mapBridgeService = mapBridgeService ?? MapBridgeService.instance;
+        _mapBridgeService = mapBridgeService ?? MapBridgeService.instance,
+        _cloudSyncService =
+            cloudSyncService ?? WordMasteryCloudSyncService();
 
   final WordMasteryService _wordMasteryService;
   final MapBridgeService _mapBridgeService;
+  final WordMasteryCloudSyncService _cloudSyncService;
 
   /// Get completed words for a specific level and user
   Future<Set<String>> getCompletedWords(
@@ -91,8 +96,105 @@ class LevelProgressService {
         );
         debugPrint('$stackTrace');
       }
+
+      if (!isLocalUser) {
+        try {
+          final mastery = await _wordMasteryService.getMastery(
+            userId: userId,
+            levelId: levelId,
+            word: word,
+          );
+          await _cloudSyncService.pushWordProgress(
+            userId: userId,
+            levelId: levelId,
+            word: word,
+            mastery: mastery,
+            markWordCompleted: true,
+          );
+        } catch (error, stackTrace) {
+          debugPrint(
+            'LevelProgressService: non-fatal cloud sync for '
+            'level=$levelId, word=$word: $error',
+          );
+          debugPrint('$stackTrace');
+        }
+      }
     } catch (e) {
       debugPrint('Error marking word as completed: $e');
+    }
+  }
+
+  /// Persists a Gemini pronunciation star rating for a word.
+  ///
+  /// Failures are logged and swallowed so the UI never crashes on save errors.
+  /// A 3-star rating marks the word as fully mastered in [WordMasteryService].
+  Future<void> recordPronunciationScore({
+    required String userId,
+    required String levelId,
+    required String word,
+    required int stars,
+    bool isLocalUser = false,
+  }) async {
+    try {
+      await _wordMasteryService.recordPronunciationScore(
+        userId: userId,
+        levelId: levelId,
+        word: word,
+        stars: stars,
+      );
+
+      if (!isLocalUser) {
+        try {
+          final mastery = await _wordMasteryService.getMastery(
+            userId: userId,
+            levelId: levelId,
+            word: word,
+          );
+          await _cloudSyncService.pushWordProgress(
+            userId: userId,
+            levelId: levelId,
+            word: word,
+            mastery: mastery,
+            markWordCompleted: stars >= 2,
+          );
+        } catch (error, stackTrace) {
+          debugPrint(
+            'LevelProgressService: non-fatal cloud sync for pronunciation '
+            'level=$levelId, word=$word: $error',
+          );
+          debugPrint('$stackTrace');
+        }
+      }
+
+      if (stars >= 3) {
+        try {
+          final masteryEntry = await _wordMasteryService.getMastery(
+            userId: userId,
+            levelId: levelId,
+            word: word,
+          );
+          _mapBridgeService.emitWordMastered(
+            WordMasteredEvent(
+              userId: userId,
+              levelId: levelId,
+              word: word,
+              masteryLevel: masteryEntry.masteryLevel,
+            ),
+          );
+        } catch (error, stackTrace) {
+          debugPrint(
+            'LevelProgressService: non-fatal bridge error for mastered '
+            'word level=$levelId, word=$word: $error',
+          );
+          debugPrint('$stackTrace');
+        }
+      }
+    } catch (error, stackTrace) {
+      debugPrint(
+        'LevelProgressService: failed to record pronunciation score '
+        'level=$levelId, word=$word, stars=$stars: $error',
+      );
+      debugPrint('$stackTrace');
     }
   }
 
@@ -171,6 +273,32 @@ class LevelProgressService {
     } catch (e) {
       debugPrint('Error resetting level progress: $e');
     }
+  }
+
+  /// Merges Firestore word progress into local SharedPreferences storage.
+  Future<void> syncLevelProgressFromCloud({
+    required String userId,
+    required String levelId,
+    bool isLocalUser = false,
+  }) async {
+    if (isLocalUser) return;
+
+    await _cloudSyncService.mergeCloudIntoLocal(
+      userId: userId,
+      levelId: levelId,
+      wordMasteryService: _wordMasteryService,
+      loadLocalCompletedWords: () => getCompletedWords(
+        userId,
+        levelId,
+        isLocalUser: false,
+      ),
+      saveLocalCompletedWords: (words) => _saveCompletedWords(
+        userId,
+        levelId,
+        words,
+        isLocalUser: false,
+      ),
+    );
   }
 
   /// Get all completed levels for a user

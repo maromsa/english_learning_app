@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'player_character.dart';
+import 'word_progress_entry.dart';
 
 /// Model for storing all player game data in Firestore
 class PlayerData {
@@ -153,6 +154,7 @@ class LevelProgress {
     this.stars = 0,
     this.isUnlocked = false,
     this.wordsCompleted = const {},
+    this.wordProgress = const {},
     this.lastPlayedAt,
   });
 
@@ -172,28 +174,89 @@ class LevelProgress {
     final wordsCompleted = <String, bool>{};
     wordsCompletedData.forEach((key, value) {
       if (value is bool) {
-        wordsCompleted[key] = value;
+        wordsCompleted[decodeWordFirestoreKey(key)] = value;
       }
     });
+
+    final wordProgress = _parseWordProgress(map, wordsCompleted);
 
     return LevelProgress(
       stars: map['stars'] as int? ?? 0,
       isUnlocked: map['isUnlocked'] as bool? ?? false,
       wordsCompleted: wordsCompleted,
+      wordProgress: wordProgress,
       lastPlayedAt: toDate(map['lastPlayedAt']),
     );
+  }
+
+  static Map<String, WordProgressEntry> _parseWordProgress(
+    Map<String, dynamic> map,
+    Map<String, bool> wordsCompleted,
+  ) {
+    final result = <String, WordProgressEntry>{};
+
+    final mapData = map['wordProgress'] as Map<String, dynamic>?;
+    if (mapData != null) {
+      mapData.forEach((encodedKey, value) {
+        if (value is! Map<String, dynamic>) return;
+        final word = decodeWordFirestoreKey(encodedKey);
+        final entry = WordProgressEntry.fromMap(value).copyWith(
+          wordId: value['wordId'] as String? ?? word,
+        );
+        result[word] = entry;
+      });
+    }
+
+    final listData = map['wordProgressList'] as List<dynamic>?;
+    if (listData != null) {
+      for (final item in listData) {
+        if (item is! Map<String, dynamic>) continue;
+        final entry = WordProgressEntry.fromMap(item);
+        if (entry.wordId.isEmpty) continue;
+        final existing = result[entry.wordId];
+        result[entry.wordId] =
+            existing == null ? entry : existing.mergeWith(entry);
+      }
+    }
+
+    wordsCompleted.forEach((word, completed) {
+      if (!completed) return;
+      final existing = result[word];
+      result[word] = (existing ??
+              WordProgressEntry(
+                wordId: word,
+                isCompleted: true,
+              ))
+          .copyWith(isCompleted: true);
+    });
+
+    return result;
   }
 
   final int stars;
   final bool isUnlocked;
   final Map<String, bool> wordsCompleted; // word -> isCompleted
+  final Map<String, WordProgressEntry> wordProgress;
   final DateTime? lastPlayedAt;
 
   Map<String, dynamic> toMap() {
+    final encodedProgress = <String, dynamic>{};
+    wordProgress.forEach((word, entry) {
+      encodedProgress[encodeWordFirestoreKey(word)] = entry.toMap();
+    });
+
+    final encodedCompleted = <String, bool>{};
+    wordsCompleted.forEach((word, value) {
+      encodedCompleted[encodeWordFirestoreKey(word)] = value;
+    });
+
     return <String, dynamic>{
       'stars': stars,
       'isUnlocked': isUnlocked,
-      'wordsCompleted': wordsCompleted,
+      'wordsCompleted': encodedCompleted,
+      if (wordProgress.isNotEmpty) 'wordProgress': encodedProgress,
+      if (wordProgress.isNotEmpty)
+        'wordProgressList': wordProgress.values.map((e) => e.toMap()).toList(),
       if (lastPlayedAt != null)
         'lastPlayedAt': Timestamp.fromDate(lastPlayedAt!),
     };
@@ -203,12 +266,14 @@ class LevelProgress {
     int? stars,
     bool? isUnlocked,
     Map<String, bool>? wordsCompleted,
+    Map<String, WordProgressEntry>? wordProgress,
     DateTime? lastPlayedAt,
   }) {
     return LevelProgress(
       stars: stars ?? this.stars,
       isUnlocked: isUnlocked ?? this.isUnlocked,
       wordsCompleted: wordsCompleted ?? this.wordsCompleted,
+      wordProgress: wordProgress ?? this.wordProgress,
       lastPlayedAt: lastPlayedAt ?? this.lastPlayedAt,
     );
   }

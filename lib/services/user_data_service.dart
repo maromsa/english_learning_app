@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/player_data.dart';
+import '../models/word_progress_entry.dart';
 
 /// Service for managing player game data in Firestore
 class UserDataService {
@@ -119,6 +120,58 @@ class UserDataService {
       return true;
     } catch (e) {
       debugPrint('Error updating level progress: $e');
+      return false;
+    }
+  }
+
+  /// Returns cloud progress for a single level, or null when missing / offline.
+  Future<LevelProgress?> getLevelProgress(String userId, String levelId) async {
+    try {
+      final player = await loadPlayerData(userId);
+      return player?.levelProgress[levelId];
+    } catch (e) {
+      debugPrint('Error loading level progress for $levelId: $e');
+      return null;
+    }
+  }
+
+  /// Merges per-word mastery/pronunciation data into the player document.
+  ///
+  /// Uses [SetOptions.merge] so offline Firestore caches can queue writes.
+  Future<bool> upsertWordProgress({
+    required String userId,
+    required String levelId,
+    required String word,
+    required WordProgressEntry progress,
+    bool markWordCompleted = false,
+  }) async {
+    try {
+      final wordKey = encodeWordFirestoreKey(word);
+      final entryMap = progress.copyWith(wordId: word).toMap();
+
+      final levelPatch = <String, dynamic>{
+        'wordProgress': {wordKey: entryMap},
+        'lastPlayedAt': FieldValue.serverTimestamp(),
+      };
+      if (markWordCompleted) {
+        levelPatch['wordsCompleted'] = {wordKey: true};
+      }
+
+      await _playerDataDoc(userId).set(
+        <String, dynamic>{
+          'levelProgress': {levelId: levelPatch},
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      debugPrint(
+        'Word progress synced: user=$userId level=$levelId word=$word '
+        'stars=${progress.bestPronunciationStars} mastered=${progress.isMastered}',
+      );
+      return true;
+    } catch (e, stackTrace) {
+      debugPrint('Error upserting word progress: $e');
+      debugPrint('$stackTrace');
       return false;
     }
   }

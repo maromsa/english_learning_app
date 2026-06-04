@@ -23,6 +23,7 @@ import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
 import 'package:english_learning_app/services/gemini_proxy_service.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
+import 'package:english_learning_app/services/word_mastery_service.dart';
 import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/services/spark_voice_service.dart';
 import 'package:english_learning_app/services/speech_feedback_service.dart';
@@ -80,6 +81,7 @@ class _MyHomePageState extends State<MyHomePage> {
   late final WordRepository _wordRepository;
   late final OfflineWordLoader _offlineWordLoader;
   final LevelProgressService _levelProgressService = LevelProgressService();
+  final WordMasteryService _wordMasteryService = WordMasteryService();
   WebImageService? _webImageService;
   final AiImageValidator _cameraValidator = const PassthroughAiImageValidator();
   HttpFunctionAiImageValidator? _httpImageValidator;
@@ -619,6 +621,9 @@ class _MyHomePageState extends State<MyHomePage> {
             !MediaQuery.disableAnimationsOf(context)) {
           unawaited(_confettiController.play());
           unawaited(_soundService.playSound('confetti'));
+          unawaited(
+            _persistThreeStarAchievement(currentWordObject.word),
+          );
         }
 
         final levelJustFinished = _isLevelComplete;
@@ -1061,6 +1066,38 @@ class _MyHomePageState extends State<MyHomePage> {
 
   bool get _isLevelComplete => !_words.any((word) => !word.isCompleted);
 
+  /// Persists a perfect (3-star) pronunciation without affecting UI flow.
+  Future<void> _persistThreeStarAchievement(String word) async {
+    try {
+      final sessionProvider = context.read<UserSessionProvider>();
+      final userId = sessionProvider.currentUserId;
+      if (userId == null) {
+        debugPrint('Cannot persist 3-star score: no user ID');
+        return;
+      }
+
+      await _levelProgressService.recordPronunciationScore(
+        userId: userId,
+        levelId: widget.levelId,
+        word: word,
+        stars: 3,
+        isLocalUser: sessionProvider.isLocalUser,
+      );
+
+      if (!mounted) return;
+      final index = _words.indexWhere((w) => w.word == word);
+      if (index >= 0) {
+        setState(() {
+          _words[index].masteryLevel = 1.0;
+          _words[index].lastReviewed = DateTime.now();
+        });
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Failed to persist 3-star achievement for $word: $error');
+      debugPrint('$stackTrace');
+    }
+  }
+
   /// Load saved progress for words in this level
   Future<void> _loadLevelProgress() async {
     try {
@@ -1079,6 +1116,14 @@ class _MyHomePageState extends State<MyHomePage> {
       final isLocalUser = sessionProvider.isLocalUser;
       debugPrint('Is local user: $isLocalUser');
 
+      if (!isLocalUser) {
+        await _levelProgressService.syncLevelProgressFromCloud(
+          userId: userId,
+          levelId: widget.levelId,
+          isLocalUser: false,
+        );
+      }
+
       // Get all completed words at once
       final completedWords = await _levelProgressService.getCompletedWords(
         userId,
@@ -1096,6 +1141,22 @@ class _MyHomePageState extends State<MyHomePage> {
           debugPrint('Loaded completed word: ${word.word}');
         } else {
           word.isCompleted = false;
+        }
+
+        try {
+          final mastery = await _wordMasteryService.getMastery(
+            userId: userId,
+            levelId: widget.levelId,
+            word: word.word,
+          );
+          final merged = _wordMasteryService.applyToWord(word, mastery);
+          word.masteryLevel = merged.masteryLevel;
+          word.lastReviewed = merged.lastReviewed;
+        } catch (error, stackTrace) {
+          debugPrint(
+            'Error loading mastery for ${word.word}: $error',
+          );
+          debugPrint('$stackTrace');
         }
       }
 

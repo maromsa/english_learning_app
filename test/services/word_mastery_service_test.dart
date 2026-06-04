@@ -65,6 +65,36 @@ void main() {
       expect(loaded.masteryLevel, 1.0);
     });
 
+    test('recordPronunciationScore keeps best stars and sets mastery on 3 stars',
+        () async {
+      final twoStar = await service.recordPronunciationScore(
+        userId: 'user1',
+        levelId: 'level1',
+        word: 'Dog',
+        stars: 2,
+      );
+      expect(twoStar.bestPronunciationStars, 2);
+      expect(twoStar.masteryLevel, closeTo(2 / 3, 0.0001));
+
+      final threeStar = await service.recordPronunciationScore(
+        userId: 'user1',
+        levelId: 'level1',
+        word: 'Dog',
+        stars: 3,
+      );
+      expect(threeStar.bestPronunciationStars, 3);
+      expect(threeStar.masteryLevel, 1.0);
+      expect(threeStar.isMastered, isTrue);
+
+      final loaded = await service.getMastery(
+        userId: 'user1',
+        levelId: 'level1',
+        word: 'Dog',
+      );
+      expect(loaded.bestPronunciationStars, 3);
+      expect(loaded.masteryLevel, 1.0);
+    });
+
     test('applyToWord merges mastery into WordData', () async {
       final base = WordData(
         word: 'Cat',

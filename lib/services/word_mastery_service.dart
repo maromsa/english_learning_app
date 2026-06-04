@@ -10,6 +10,7 @@ class WordMasteryEntry {
   const WordMasteryEntry({
     required this.masteryLevel,
     this.lastReviewed,
+    this.bestPronunciationStars = 0,
   });
 
   /// Mastery score in the range \[0.0, 1.0].
@@ -18,13 +19,22 @@ class WordMasteryEntry {
   /// When the learner last reviewed this word in a meaningful way.
   final DateTime? lastReviewed;
 
+  /// Best Gemini pronunciation rating (1–3) achieved for this word.
+  final int bestPronunciationStars;
+
+  /// Whether the learner has achieved a perfect (3-star) pronunciation.
+  bool get isMastered => masteryLevel >= 1.0 || bestPronunciationStars >= 3;
+
   WordMasteryEntry copyWith({
     double? masteryLevel,
     DateTime? lastReviewed,
+    int? bestPronunciationStars,
   }) {
     return WordMasteryEntry(
       masteryLevel: masteryLevel ?? this.masteryLevel,
       lastReviewed: lastReviewed ?? this.lastReviewed,
+      bestPronunciationStars:
+          bestPronunciationStars ?? this.bestPronunciationStars,
     );
   }
 
@@ -32,6 +42,8 @@ class WordMasteryEntry {
         'masteryLevel': masteryLevel,
         if (lastReviewed != null)
           'lastReviewed': lastReviewed!.toIso8601String(),
+        if (bestPronunciationStars > 0)
+          'bestPronunciationStars': bestPronunciationStars,
       };
 
   static WordMasteryEntry fromJson(Map<String, dynamic> json) {
@@ -55,9 +67,18 @@ class WordMasteryEntry {
       }
     }
 
+    final rawStars = json['bestPronunciationStars'];
+    var bestStars = 0;
+    if (rawStars is int) {
+      bestStars = rawStars.clamp(0, 3);
+    } else if (rawStars is num) {
+      bestStars = rawStars.toInt().clamp(0, 3);
+    }
+
     return WordMasteryEntry(
       masteryLevel: _clampMastery(mastery),
       lastReviewed: lastReviewed,
+      bestPronunciationStars: bestStars,
     );
   }
 
@@ -154,6 +175,50 @@ class WordMasteryService {
         WordMasteryEntry._clampMastery(current.masteryLevel + delta);
     final nextEntry = current.copyWith(
       masteryLevel: nextMastery,
+      lastReviewed: reviewedAt ?? DateTime.now(),
+    );
+
+    await _saveEntry(
+      userId: userId,
+      levelId: levelId,
+      word: word,
+      entry: nextEntry,
+    );
+    return nextEntry;
+  }
+
+  /// Records a pronunciation score from Gemini (1–3 stars).
+  ///
+  /// Keeps the best star rating seen so far and raises [masteryLevel] to at
+  /// least `stars / 3`. A 3-star attempt sets full mastery (`1.0`).
+  Future<WordMasteryEntry> recordPronunciationScore({
+    required String userId,
+    required String levelId,
+    required String word,
+    required int stars,
+    DateTime? reviewedAt,
+  }) async {
+    final clampedStars = stars.clamp(1, 3);
+    final current = await getMastery(
+      userId: userId,
+      levelId: levelId,
+      word: word,
+    );
+
+    final nextStars = clampedStars > current.bestPronunciationStars
+        ? clampedStars
+        : current.bestPronunciationStars;
+    final masteryFromStars = nextStars / 3.0;
+    var nextMastery = current.masteryLevel > masteryFromStars
+        ? current.masteryLevel
+        : masteryFromStars;
+    if (clampedStars == 3) {
+      nextMastery = 1.0;
+    }
+
+    final nextEntry = current.copyWith(
+      masteryLevel: WordMasteryEntry._clampMastery(nextMastery),
+      bestPronunciationStars: nextStars,
       lastReviewed: reviewedAt ?? DateTime.now(),
     );
 

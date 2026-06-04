@@ -23,7 +23,16 @@
 - **stars**: מספר כוכבים
 - **isUnlocked**: האם הרמה פתוחה
 - **wordsCompleted**: מפת מילים שהושלמו (word -> isCompleted)
+- **wordProgress**: מפת מילים עם ציון הגייה ומastery (`word` -> `WordProgressEntry`)
+- **wordProgressList**: מערך חלופי (לקריאה בלבד / ייצוא) של אותם אובייקטים
 - **lastPlayedAt**: תאריך משחק אחרון
+
+### WordProgressEntry
+נתוני מילה בודדת בענן:
+- **wordId**: מזהה המילה (טקסט או publicId)
+- **bestPronunciationStars**: ציון Gemini הטוב ביותר (1–3)
+- **isMastered**: האם הושג 3 כוכבים / mastery מלא
+- **isCompleted**: האם המילה סומנה כהושלמה ברמה
 
 ## מבנה Firestore
 
@@ -40,6 +49,17 @@ users/
             stars: number
             isUnlocked: boolean
             wordsCompleted: {word: boolean}
+            wordProgress: {
+              {word}: {
+                wordId: string
+                bestPronunciationStars: number
+                isMastered: boolean
+                isCompleted: boolean
+              }
+            }
+            wordProgressList: [
+              { wordId, bestPronunciationStars, isMastered, isCompleted }
+            ]
             lastPlayedAt: timestamp
           }
         }
