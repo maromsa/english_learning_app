@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:confetti/confetti.dart';
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
@@ -39,6 +38,7 @@ import 'package:english_learning_app/utils/offline_word_loader.dart';
 import 'package:english_learning_app/utils/page_transitions.dart';
 import 'package:english_learning_app/widgets/living_spark.dart';
 import 'package:english_learning_app/widgets/pronunciation_mic_button.dart';
+import 'package:english_learning_app/widgets/word_display_card.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, Uint8List;
@@ -970,11 +970,20 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
                           child: currentWordData != null
-                              ? _HeroWordDisplay(
-                                  levelId: widget.levelId,
+                              ? WordDisplayCard(
+                                  layout: WordDisplayCardLayout.levelHero,
                                   wordData: currentWordData,
+                                  heroImageTag: HeroTags.wordImage(
+                                    widget.levelId,
+                                    currentWordData.word,
+                                  ),
+                                  heroTitleTag: HeroTags.wordTitle(
+                                    widget.levelId,
+                                    currentWordData.word,
+                                  ),
                                   onNext: _speechBusy ? null : _nextWord,
-                                  onPrev: _speechBusy ? null : _previousWord,
+                                  onPrevious:
+                                      _speechBusy ? null : _previousWord,
                                   onPlayAudio: _speechBusy
                                       ? null
                                       : () async {
@@ -984,8 +993,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                             emotion: SparkEmotion.teaching,
                                           );
                                         },
-                                  canGoNext: _currentIndex < _words.length - 1,
-                                  canGoPrev: _currentIndex > 0,
+                                  canShowNext:
+                                      _currentIndex < _words.length - 1,
+                                  canShowPrevious: _currentIndex > 0,
                                 )
                               : const Center(
                                   child: Text(
@@ -1381,236 +1391,7 @@ class _SegmentedProgressBar extends StatelessWidget {
   }
 }
 
-// 3. Hero Word Display
-class _HeroWordDisplay extends StatelessWidget {
-  final String levelId;
-  final WordData wordData;
-  final VoidCallback? onNext;
-  final VoidCallback? onPrev;
-  final VoidCallback? onPlayAudio;
-  final bool canGoNext;
-  final bool canGoPrev;
-
-  const _HeroWordDisplay({
-    required this.levelId,
-    required this.wordData,
-    required this.onNext,
-    required this.onPrev,
-    required this.onPlayAudio,
-    required this.canGoNext,
-    required this.canGoPrev,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Main Card
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 400),
-          transitionBuilder: (Widget child, Animation<double> animation) {
-            return SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.0, 0.1),
-                end: Offset.zero,
-              ).animate(animation),
-              child: FadeTransition(opacity: animation, child: child),
-            );
-          },
-          child: Container(
-            key: ValueKey<String>(wordData.word),
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(40),
-              border: wordData.isCompleted
-                  ? Border.all(color: Colors.green.shade300, width: 3)
-                  : Border.all(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      width: 2,
-                    ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.indigo.withValues(alpha: 0.12),
-                  blurRadius: 32,
-                  offset: const Offset(0, 12),
-                  spreadRadius: 2,
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Image Area
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      color: Colors.grey.shade100,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Hero(
-                            tag: HeroTags.wordImage(levelId, wordData.word),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: _buildImage(context),
-                            ),
-                          ),
-                          if (wordData.isCompleted)
-                            Container(
-                              color: Colors.green.withValues(alpha: 0.2),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.check_circle,
-                                  color: Colors.green,
-                                  size: 64,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Word & TTS
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Hero(
-                      tag: HeroTags.wordTitle(levelId, wordData.word),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: Text(
-                          wordData.word,
-                          style: GoogleFonts.quicksand(
-                            fontSize: 48,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF3D3D5C),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    IconButton.filledTonal(
-                      onPressed: onPlayAudio,
-                      icon: const Icon(Icons.volume_up_rounded, size: 28),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.indigo.shade50,
-                        foregroundColor: Colors.indigo,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
-        ),
-        // Navigation Arrows (Floating on sides)
-        if (canGoPrev)
-          Positioned(
-            left: 0,
-            child: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                onPressed: onPrev,
-              ),
-            ),
-          ),
-        if (canGoNext)
-          Positioned(
-            right: 0,
-            child: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_forward, color: Colors.black87),
-                onPressed: onNext,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildImage(BuildContext context) {
-    final imageUrl = wordData.imageUrl;
-    if (imageUrl == null || imageUrl.isEmpty) {
-      return const Center(
-        child: Icon(Icons.image, size: 64, color: Colors.grey),
-      );
-    }
-
-    final bool isAssetImage = imageUrl.startsWith('assets/');
-    final bool isInlineImage = isInlineDataImageUrl(imageUrl) ||
-        imageUrl.startsWith('blob:');
-    final bool isLocalFile = !kIsWeb &&
-        !imageUrl.startsWith('http') &&
-        !isInlineImage &&
-        !isAssetImage;
-
-    if (isAssetImage) {
-      return Image.asset(
-        imageUrl,
-        fit: BoxFit.cover,
-        alignment: Alignment.center,
-        width: double.infinity,
-        height: double.infinity,
-        errorBuilder: (_, __, ___) =>
-            const Icon(Icons.image, size: 64, color: Colors.grey),
-      );
-    } else if (isLocalFile) {
-      return Image.file(
-        File(imageUrl),
-        fit: BoxFit.cover,
-        alignment: Alignment.center,
-        width: double.infinity,
-        height: double.infinity,
-        errorBuilder: (_, __, ___) =>
-            const Icon(Icons.image, size: 64, color: Colors.grey),
-      );
-    } else if (isInlineImage) {
-      return buildInlineOrNetworkWordImage(
-        imageUrl,
-        fit: BoxFit.cover,
-        alignment: Alignment.center,
-        placeholder: const Center(
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-        errorWidget:
-            const Icon(Icons.image, size: 64, color: Colors.grey),
-      );
-    } else {
-      return CachedNetworkImage(
-        imageUrl: imageUrl,
-        fit: BoxFit.cover,
-        alignment: Alignment.center,
-        width: double.infinity,
-        height: double.infinity,
-        placeholder: (context, url) => const Center(
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-        errorWidget: (context, url, error) =>
-            const Icon(Icons.image, size: 64, color: Colors.grey),
-      );
-    }
-  }
-}
-
-// 4. Bottom dock — mic + feedback partition
+// 3. Bottom dock — mic + feedback partition
 class _LevelControlDock extends StatelessWidget {
   const _LevelControlDock({
     required this.showFeedback,
