@@ -23,7 +23,9 @@ import 'package:webview_flutter_android/webview_flutter_android.dart'
 
 import '../providers/user_session_provider.dart';
 import '../services/background_music_service.dart';
+import '../services/achievement_service.dart';
 import '../services/daily_reward_service.dart';
+import '../services/streak_shield_service.dart';
 import '../services/level_progress_service.dart';
 import '../services/level_repository.dart';
 import '../services/local_user_data_service.dart';
@@ -39,11 +41,13 @@ import '../widgets/user/current_user_avatar.dart';
 import 'achievements_screen.dart';
 import 'adventure_lab_screen.dart';
 import 'character_selection_screen.dart';
+import 'story_screen.dart';
 import 'daily_missions_screen.dart';
 import 'leaderboard_screen.dart';
 import 'scavenger_hunt_screen.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
+import 'srs_review_screen.dart';
 
 /// On Flutter Web, [HtmlElementView] iframes sit above the canvas and steal
 /// pointer events from Flutter widgets drawn on top. Wrap interactive chrome
@@ -86,11 +90,6 @@ class _MapScreenState extends State<MapScreen>
   int _selectedNavIndex = 0; // For bottom navigation
   UserSessionProvider? _userSessionProvider;
 
-  // New layout constants for snake algorithm
-  final double _levelHeightSpacing = 140.0; // Vertical gap between nodes
-  final double _pathAmplitude = 80.0; // How wide the snake path is
-  final double _topPadding = 160.0; // Space for AppBar & Stats
-  final double _bottomPadding = 120.0; // Space for BottomNavBar
 
   /// Floating pill dock + FAB layout (Flutter chrome only).
   static const double _floatingDockHeight = 68.0;
@@ -119,7 +118,8 @@ class _MapScreenState extends State<MapScreen>
   @override
   void initState() {
     super.initState();
-    _dailyRewardService = DailyRewardService();
+    final shieldService = context.read<StreakShieldService>();
+    _dailyRewardService = DailyRewardService(shieldService: shieldService);
     _levelRepository = LevelRepository();
     _localUserDataService = LocalUserDataService();
 
@@ -884,6 +884,7 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
+  // ignore: unused_element
   Future<void> _openSettings() async {
     await Navigator.push(
       context,
@@ -984,6 +985,7 @@ class _MapScreenState extends State<MapScreen>
     }
   }
 
+  // ignore: unused_element
   Future<void> _claimDailyReward() async {
     final result = await _dailyRewardService.claimReward();
     if (!mounted) {
@@ -996,12 +998,21 @@ class _MapScreenState extends State<MapScreen>
         listen: false,
       ).addCoins(result.reward);
       if (mounted) {
+        try {
+          context.read<AchievementService>().checkForAchievements(
+                streak: 0,
+                dailyStreak: result.streak,
+              );
+        } catch (_) {}
+        final shieldMsg =
+            result.shieldUsed ? ' 🛡️ המגן הגן על הרצף שלך!' : '';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '🎁 קיבלת ${result.reward} מטבעות! רצף יומי: ${result.streak}',
+              '🎁 קיבלת ${result.reward} מטבעות! רצף יומי: ${result.streak}$shieldMsg',
             ),
-            backgroundColor: Colors.green.shade600,
+            backgroundColor:
+                result.shieldUsed ? Colors.blue.shade600 : Colors.green.shade600,
           ),
         );
       }
@@ -1073,6 +1084,7 @@ class _MapScreenState extends State<MapScreen>
           wordsForLevel: List<WordData>.from(wordsForLevel),
           targetCategory: level.targetCategory,
           categoryLabelHe: level.categoryLabelHe,
+          isChapterEnd: level.isChapterEnd,
         ),
       ),
     );
@@ -1133,6 +1145,7 @@ class _MapScreenState extends State<MapScreen>
     // Reset level start coins for next time
     await coinProvider.resetLevelStartCoins(level.id);
 
+    if (!mounted) return;
     _updateUnlockStatuses();
     setState(() {});
     await _saveProgress();
@@ -1202,6 +1215,11 @@ class _MapScreenState extends State<MapScreen>
           backgroundColor: Colors.blueGrey.shade700,
         ),
       );
+    } else if (result == 'srs') {
+      await Navigator.push(
+        context,
+        PageTransitions.slideFromRight(const SrsReviewScreen()),
+      );
     } else if (result == 'quiz') {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1211,11 +1229,14 @@ class _MapScreenState extends State<MapScreen>
           backgroundColor: Colors.blueGrey.shade700,
         ),
       );
+    } else if (result == 'story') {
+      _openInteractiveStory();
     } else if (result == 'camera') {
       await openScavengerHunt(context);
     }
   }
 
+  // ignore: unused_element
   void _handleAiShortcut(_QuickAiAction action) async {
     // Stop music before navigating to AI screen
     BackgroundMusicService().stop().catchError((error) {
@@ -1265,7 +1286,6 @@ class _MapScreenState extends State<MapScreen>
 
     try {
       final coinProvider = context.watch<CoinProvider>();
-      final colorScheme = Theme.of(context).colorScheme;
 
       final fabBottom = _mapFabBottomOffset(context);
 
@@ -1470,9 +1490,56 @@ class _MapScreenState extends State<MapScreen>
                         child: _webPointerShield(
                           SafeArea(
                             top: false, // already accounted for above
-                            child: _StatsPill(
-                              totalStars: _totalStars,
-                              coins: coinProvider.coins,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _StatsPill(
+                                  totalStars: _totalStars,
+                                  coins: coinProvider.coins,
+                                ),
+                                Consumer<StreakShieldService>(
+                                  builder: (context, shield, _) {
+                                    if (!shield.hasShield) return const SizedBox.shrink();
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: Tooltip(
+                                        message: 'מגן רצף פעיל — יום אחד מוגן!',
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue.withValues(alpha: 0.85),
+                                            borderRadius: BorderRadius.circular(20),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.blue.withValues(alpha: 0.4),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.shield_rounded,
+                                                  color: Colors.white, size: 16),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                'מגן',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -1712,20 +1779,20 @@ class _MapScreenState extends State<MapScreen>
   }
 
   void _openChatBuddy() {
-    BackgroundMusicService().stop().catchError((error) {
+    unawaited(BackgroundMusicService().stop().catchError((error) {
       debugPrint('Failed to stop music before Chat Buddy: $error');
-    });
-    Navigator.push(
+    }));
+    unawaited(Navigator.push(
       context,
       PageTransitions.slideFromRight(const ChatBuddyScreen()),
-    );
+    ));
   }
 
   void _openAdventureLab() {
-    BackgroundMusicService().stop().catchError((error) {
+    unawaited(BackgroundMusicService().stop().catchError((error) {
       debugPrint('Failed to stop music before Adventure Lab: $error');
-    });
-    Navigator.push(
+    }));
+    unawaited(Navigator.push(
       context,
       PageTransitions.fadeScale(
         AdventureLabScreen(
@@ -1733,7 +1800,28 @@ class _MapScreenState extends State<MapScreen>
           totalStars: _totalStars,
         ),
       ),
-    );
+    ));
+  }
+
+  void _openInteractiveStory() {
+    // Collect all words across loaded levels.
+    final allWords = levels
+        .expand((level) => level.words)
+        .toList();
+    final levelId = levels.isNotEmpty ? levels.first.id : 'default';
+    final levelTitle = levels.isNotEmpty ? levels.first.name : null;
+    unawaited(Navigator.push(
+      context,
+      PageTransitions.slideFromRight(
+        StoryScreen(
+          words: allWords.isEmpty
+              ? [WordData(word: 'apple', searchHint: 'פרי אדום')]
+              : allWords,
+          levelId: levelId,
+          levelTitle: levelTitle,
+        ),
+      ),
+    ));
   }
 
   void _showAiToolsMenu() {
@@ -1772,18 +1860,26 @@ class _MapScreenState extends State<MapScreen>
                 subtitle: const Text('תרגול מותאם אישית'),
                 onTap: () {
                   Navigator.pop(context);
-                  // Stop music before navigating to AI screen
-                  BackgroundMusicService().stop().catchError((error) {
+                  unawaited(BackgroundMusicService().stop().catchError((error) {
                     debugPrint(
                       'Failed to stop music before AI practice pack: $error',
                     );
-                  });
-                  Navigator.push(
+                  }));
+                  unawaited(Navigator.push(
                     context,
                     PageTransitions.slideFromRight(
                       const AiPracticePackScreen(),
                     ),
-                  );
+                  ));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.menu_book, color: Colors.deepPurple, size: 32),
+                title: const Text('סיפור אינטראקטיבי'),
+                subtitle: const Text('סיפור של ספארק עם מילות הרמה שלך'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openInteractiveStory();
                 },
               ),
             ],
@@ -1822,6 +1918,7 @@ class _MapScreenState extends State<MapScreen>
     // Not used in 3D map
   }
 
+  // ignore: unused_element
   bool _isLevelCompleted(LevelData level) {
     return level.stars > 0;
   }

@@ -33,6 +33,36 @@ class ChildProfileSyncService {
     return _profilesCollection(parentUid).doc(profileId);
   }
 
+  DocumentReference<Map<String, dynamic>> _leaderboardDoc(
+    String parentUid,
+    String profileId,
+  ) {
+    return _firestore.collection('leaderboard').doc('${parentUid}_$profileId');
+  }
+
+  /// Publishes a minimal, privacy-safe leaderboard entry.
+  ///
+  /// Only display name, coins, streak and avatar color are shared — never
+  /// photos or any other profile data. Failures are non-fatal: the profile
+  /// sync itself already succeeded.
+  Future<void> _publishLeaderboardEntry(
+    String parentUid,
+    ChildProfile profile,
+  ) async {
+    try {
+      await _leaderboardDoc(parentUid, profile.id).set({
+        'profileId': profile.id,
+        'displayName': profile.displayName,
+        'coins': profile.coins,
+        'dailyStreak': profile.dailyStreak,
+        'avatarColor': profile.avatarColor,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('ChildProfileSyncService: leaderboard publish failed: $e');
+    }
+  }
+
   /// Pull cloud profiles and merge into local storage (newer updatedAt wins).
   Future<void> syncFromCloud(String parentUid) async {
     try {
@@ -99,6 +129,7 @@ class ChildProfileSyncService {
       await _profileDoc(parentUid, profile.id)
           .set(payload, SetOptions(merge: true));
       await _profileService.markSynced(profile.id);
+      await _publishLeaderboardEntry(parentUid, profile);
       return true;
     } catch (e) {
       debugPrint('ChildProfileSyncService.syncProfileToCloud failed: $e');
@@ -109,6 +140,11 @@ class ChildProfileSyncService {
   Future<bool> deleteFromCloud(String parentUid, String profileId) async {
     try {
       await _profileDoc(parentUid, profileId).delete();
+      try {
+        await _leaderboardDoc(parentUid, profileId).delete();
+      } catch (e) {
+        debugPrint('ChildProfileSyncService: leaderboard delete failed: $e');
+      }
       return true;
     } catch (e) {
       debugPrint('ChildProfileSyncService.deleteFromCloud failed: $e');

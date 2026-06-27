@@ -1,3 +1,8 @@
+// lib/services/parent_progress_service.dart
+//
+// Reads on-device progress for the active child profile.
+// Extended to return weeklyActivity, weakWords, and session minutes.
+
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -5,12 +10,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/level_data.dart';
 import '../models/parent_dashboard_stats.dart';
+import 'app_database.dart';
 import 'daily_reward_service.dart';
 import 'level_progress_service.dart';
 import 'level_repository.dart';
 import 'local_user_data_service.dart';
 
-/// Reads on-device progress for the active child profile.
 class ParentProgressService {
   ParentProgressService({
     LevelRepository? levelRepository,
@@ -41,6 +46,9 @@ class ParentProgressService {
     'add_word',
   ];
 
+  // Storage key prefix for session activity log.
+  static const String _activityPrefix = 'parent_activity.v1';
+
   Future<ParentDashboardStats> loadStats({
     required String userId,
     required String childName,
@@ -70,6 +78,12 @@ class ParentProgressService {
     _dailyRewardService.setUserId(userId);
     final dailyStreak = await _dailyRewardService.getCurrentStreak();
 
+    // ── New enriched data ────────────────────────────────────────────────────
+    final weeklyActivity = _buildWeeklyActivity(prefs, userId);
+    final weakWords = await _findWeakWords(prefs, userId, levels);
+    final totalMinutes = _totalSessionMinutes(prefs, userId);
+    final weeklyNewWords = weeklyActivity.fold(0, (s, d) => s + d.words);
+
     return ParentDashboardStats(
       childName: childName,
       totalStars: totalStars,
@@ -85,8 +99,68 @@ class ParentProgressService {
       dailyMissionsTotal: dailyMissions.$2,
       wordsMastered: wordsMastered,
       lastPlayedAt: lastPlayedAt,
+      weeklyActivity: weeklyActivity,
+      weakWords: weakWords,
+      totalSessionMinutes: totalMinutes,
+      weeklyNewWords: weeklyNewWords,
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Activity log — write side (called from game screens)
+  // ---------------------------------------------------------------------------
+
+  /// Records that the learner answered [wordCount] words in a session of
+  /// [durationMinutes]. Should be called when a Lightning / quiz session ends.
+  static Future<void> recordSession({
+    required String userId,
+    required int wordCount,
+    required int durationMinutes,
+    SharedPreferences? prefs,
+    AppDatabase? db,
+  }) async {
+    final today = _dayKey(DateTime.now());
+    // Write to SQLite (primary).
+    try {
+      await (db ?? AppDatabase.instance).recordActivity(
+        userId: userId,
+        day: today,
+        wordCount: wordCount,
+        minutes: durationMinutes,
+      );
+    } catch (e) {
+      debugPrint('ParentProgressService.recordSession (db): $e');
+    }
+    // Keep SharedPreferences in sync for backwards compat / quick reads.
+    try {
+      final p = prefs ?? await SharedPreferences.getInstance();
+      final key = '${_activityPrefix}_${_sanitize(userId)}';
+      final existing = p.getString(key);
+      final log = existing != null
+          ? (jsonDecode(existing) as List<dynamic>)
+              .whereType<Map<String, dynamic>>()
+              .toList()
+          : <Map<String, dynamic>>[];
+
+      final idx = log.indexWhere((e) => e['day'] == today);
+      if (idx >= 0) {
+        log[idx]['words'] = ((log[idx]['words'] as int? ?? 0) + wordCount);
+        log[idx]['minutes'] =
+            ((log[idx]['minutes'] as int? ?? 0) + durationMinutes);
+      } else {
+        log.add({'day': today, 'words': wordCount, 'minutes': durationMinutes});
+      }
+
+      final trimmed = log.length > 30 ? log.sublist(log.length - 30) : log;
+      await p.setString(key, jsonEncode(trimmed));
+    } catch (e) {
+      debugPrint('ParentProgressService.recordSession (prefs): $e');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private helpers (existing)
+  // ---------------------------------------------------------------------------
 
   Future<int> _totalStars(
     String userId,
@@ -97,13 +171,10 @@ class ParentProgressService {
     var total = fromUserKeys.values.fold<int>(0, (sum, stars) => sum + stars);
 
     for (final level in levels) {
-      if (fromUserKeys.containsKey(level.id)) {
-        continue;
-      }
+      if (fromUserKeys.containsKey(level.id)) continue;
       final legacy = prefs.getInt('level_${level.id}_stars') ?? 0;
       total += legacy;
     }
-
     return total;
   }
 
@@ -131,18 +202,14 @@ class ParentProgressService {
   }) async {
     var completed = 0;
     for (final level in levels) {
-      if (level.words.isEmpty) {
-        continue;
-      }
+      if (level.words.isEmpty) continue;
       final done = await _levelProgressService.isLevelCompleted(
         userId,
         level.id,
         level.words.length,
         isLocalUser: isLocalUser,
       );
-      if (done) {
-        completed++;
-      }
+      if (done) completed++;
     }
     return completed;
   }
@@ -176,9 +243,7 @@ class ParentProgressService {
     final stored =
         prefs.getStringList('user_${userId}_daily_missions_payload') ??
             prefs.getStringList('daily_missions_payload');
-    if (stored == null || stored.isEmpty) {
-      return (0, 0);
-    }
+    if (stored == null || stored.isEmpty) return (0, 0);
 
     var completed = 0;
     for (final json in stored) {
@@ -186,9 +251,7 @@ class ParentProgressService {
         final decoded = jsonDecode(json) as Map<String, dynamic>;
         final progress = decoded['progress'] as int? ?? 0;
         final target = decoded['target'] as int? ?? 0;
-        if (target > 0 && progress >= target) {
-          completed++;
-        }
+        if (target > 0 && progress >= target) completed++;
       } catch (e) {
         debugPrint('ParentProgressService: skip mission payload: $e');
       }
@@ -200,27 +263,135 @@ class ParentProgressService {
     final sanitizedUser = userId.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
     final prefix = 'word_mastery.v1.$sanitizedUser.';
     var count = 0;
-
     for (final key in prefs.getKeys()) {
-      if (!key.startsWith(prefix)) {
-        continue;
-      }
+      if (!key.startsWith(prefix)) continue;
       final raw = prefs.getString(key);
-      if (raw == null || raw.isEmpty) {
-        continue;
-      }
+      if (raw == null || raw.isEmpty) continue;
       try {
         final decoded = jsonDecode(raw);
         if (decoded is Map<String, dynamic>) {
           final mastery = decoded['masteryLevel'];
-          if (mastery is num && mastery >= 1.0) {
-            count++;
-          }
+          if (mastery is num && mastery >= 1.0) count++;
         }
-      } catch (_) {
-        // Ignore malformed entries.
-      }
+      } catch (_) {}
     }
     return count;
   }
+
+  // ---------------------------------------------------------------------------
+  // New enriched helpers
+  // ---------------------------------------------------------------------------
+
+  List<DailyActivity> _buildWeeklyActivity(
+      SharedPreferences prefs, String userId) {
+    // Prefer SharedPreferences for synchronous access in this context.
+    // SQLite reads happen async in recordSession and are the write-primary store.
+    final key = '${_activityPrefix}_${_sanitize(userId)}';
+    final raw = prefs.getString(key);
+    final log = raw != null
+        ? (jsonDecode(raw) as List<dynamic>)
+            .whereType<Map<String, dynamic>>()
+            .toList()
+        : <Map<String, dynamic>>[];
+
+    final logMap = <String, Map<String, dynamic>>{
+      for (final e in log) (e['day'] as String? ?? ''): e,
+    };
+
+    final today = DateTime.now();
+    return List.generate(7, (i) {
+      final date = today.subtract(Duration(days: 6 - i));
+      final dayKey = _dayKey(date);
+      final entry = logMap[dayKey];
+      return DailyActivity(
+        date: date,
+        words: (entry?['words'] as int?) ?? 0,
+        minutes: (entry?['minutes'] as int?) ?? 0,
+      );
+    });
+  }
+
+  Future<List<WeakWord>> _findWeakWords(
+    SharedPreferences prefs,
+    String userId,
+    List<LevelData> levels,
+  ) async {
+    final sanitizedUser = userId.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
+    // Check both SRS keys (srs.v1) and legacy mastery keys (word_mastery.v1).
+    final prefixSrs = 'srs.v1.$sanitizedUser.';
+    final prefixLegacy = 'word_mastery.v1.$sanitizedUser.';
+
+    // Build level name map.
+    final levelNames = <String, String>{
+      for (final l in levels) l.id: l.name,
+    };
+
+    final results = <WeakWord>[];
+
+    for (final key in prefs.getKeys()) {
+      double? mastery;
+      String? levelId;
+      String? wordId;
+
+      if (key.startsWith(prefixSrs)) {
+        final parts = key.substring(prefixSrs.length).split('.');
+        if (parts.length < 2) continue;
+        levelId = parts[0];
+        wordId = parts.sublist(1).join('.');
+        final raw = prefs.getString(key);
+        if (raw == null) continue;
+        try {
+          final json = jsonDecode(raw) as Map<String, dynamic>;
+          mastery = (json['masteryLevel'] as num?)?.toDouble();
+        } catch (_) {
+          continue;
+        }
+      } else if (key.startsWith(prefixLegacy)) {
+        final parts = key.substring(prefixLegacy.length).split('.');
+        if (parts.length < 2) continue;
+        levelId = parts[0];
+        wordId = parts.sublist(1).join('.');
+        final raw = prefs.getString(key);
+        if (raw == null) continue;
+        try {
+          final json = jsonDecode(raw) as Map<String, dynamic>;
+          mastery = (json['masteryLevel'] as num?)?.toDouble();
+        } catch (_) {
+          continue;
+        }
+      }
+
+      if (mastery == null || wordId == null || levelId == null) continue;
+      // Only include seen words with non-trivial mastery (has been reviewed).
+      if (mastery <= 0.0 || mastery >= 0.8) continue;
+
+      results.add(WeakWord(
+        word: wordId.replaceAll('_', ' '),
+        masteryLevel: mastery,
+        levelName: levelNames[levelId] ?? levelId,
+      ));
+    }
+
+    results.sort((a, b) => a.masteryLevel.compareTo(b.masteryLevel));
+    return results.take(8).toList();
+  }
+
+  int _totalSessionMinutes(SharedPreferences prefs, String userId) {
+    final key = '${_activityPrefix}_${_sanitize(userId)}';
+    final raw = prefs.getString(key);
+    if (raw == null) return 0;
+    try {
+      final log = (jsonDecode(raw) as List<dynamic>)
+          .whereType<Map<String, dynamic>>();
+      return log.fold(0, (sum, e) => sum + ((e['minutes'] as int?) ?? 0));
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  static String _dayKey(DateTime date) =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+  static String _sanitize(String value) =>
+      value.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
 }

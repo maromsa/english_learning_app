@@ -25,6 +25,12 @@ class CoinProvider with ChangeNotifier {
   Future<SharedPreferences> get _sharedPrefs async =>
       _prefs ??= await SharedPreferences.getInstance();
 
+  bool _disposed = false;
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
   int get coins => _coins;
 
   /// Number of shop items owned (for Map Builder achievement).
@@ -32,13 +38,7 @@ class CoinProvider with ChangeNotifier {
 
   /// Whether the user owns the shop item with [shopItemId].
   bool isOwned(String shopItemId) => _ownedShopItemIds.contains(shopItemId);
-  int get levelCoins {
-    final earned = _coins - _coinsAtLevelStart;
-    debugPrint(
-      'Level coins calculation: $_coins - $_coinsAtLevelStart = $earned',
-    );
-    return earned;
-  }
+  int get levelCoins => _coins - _coinsAtLevelStart;
 
   /// Set the current user ID for cloud sync
   /// [isLocalUser] indicates if this is a local user (not Firebase Auth)
@@ -53,13 +53,12 @@ class CoinProvider with ChangeNotifier {
       return;
     }
 
-    try {
-      await _userDataService.updateCoins(_currentUserId!, _coins);
-      _pendingCloudSync = false;
-    } catch (e) {
-      debugPrint('Cloud coin sync retry failed: $e');
-      _pendingCloudSync = true;
+    // updateCoins reports failures via its return value (it never throws).
+    final synced = await _userDataService.updateCoins(_currentUserId!, _coins);
+    if (!synced) {
+      debugPrint('Cloud coin sync retry failed, will retry later');
     }
+    _pendingCloudSync = !synced;
   }
 
   Future<void> loadCoins() async {
@@ -72,7 +71,7 @@ class CoinProvider with ChangeNotifier {
         _ownedShopItemIds.addAll(
           prefs.getStringList('owned_shop_items') ?? [],
         );
-        notifyListeners();
+        _notify();
         return;
       }
 
@@ -83,18 +82,33 @@ class CoinProvider with ChangeNotifier {
           await _localUserDataService.getPurchasedItems(_currentUserId!),
         );
       } else {
-        // For Firebase users, try cloud first, then fallback to local
+        // Firebase users: cloud is the source of truth so coins roam across
+        // devices — unless a local write is still waiting to be synced.
         final prefs = await _sharedPrefs;
-        _coins = prefs.getInt('user_${_currentUserId}_coins') ??
+        final localCoins = prefs.getInt('user_${_currentUserId}_coins') ??
             prefs.getInt('totalCoins') ??
             0;
+
+        if (_pendingCloudSync) {
+          _coins = localCoins;
+        } else {
+          final playerData =
+              await _userDataService.loadPlayerData(_currentUserId!);
+          if (playerData != null) {
+            _coins = playerData.coins;
+            await prefs.setInt('user_${_currentUserId}_coins', _coins);
+          } else {
+            _coins = localCoins;
+          }
+        }
+
         _ownedShopItemIds.clear();
         _ownedShopItemIds.addAll(
           prefs.getStringList('user_${_currentUserId}_owned_shop_items') ?? [],
         );
         await flushPendingCloudSync();
       }
-      notifyListeners();
+      _notify();
     } catch (e) {
       debugPrint('Error loading coins: $e');
     }
@@ -103,21 +117,11 @@ class CoinProvider with ChangeNotifier {
   /// Load coins at level start for a specific level
   Future<void> loadLevelStartCoins(String levelId) async {
     try {
+      final prefs = await _sharedPrefs;
       if (_currentUserId == null) {
-        final prefs = await _sharedPrefs;
         _coinsAtLevelStart =
             prefs.getInt('level_${levelId}_start_coins') ?? _coins;
-        return;
-      }
-
-      if (_isLocalUser) {
-        final prefs = await _sharedPrefs;
-        _coinsAtLevelStart = prefs.getInt(
-              'user_${_currentUserId}_level_${levelId}_start_coins',
-            ) ??
-            _coins;
       } else {
-        final prefs = await _sharedPrefs;
         _coinsAtLevelStart = prefs.getInt(
               'user_${_currentUserId}_level_${levelId}_start_coins',
             ) ??
@@ -129,8 +133,9 @@ class CoinProvider with ChangeNotifier {
     }
   }
 
-  Future<void> _saveCoins() async {
-    final previous = _coins;
+  /// Persists [_coins]. On a hard local-save failure the balance is rolled
+  /// back to [previousCoins] (the value before the in-memory mutation).
+  Future<void> _saveCoins({required int previousCoins}) async {
     try {
       if (_currentUserId == null) {
         // Fallback to global coins if no user is set
@@ -148,17 +153,18 @@ class CoinProvider with ChangeNotifier {
       // Firebase user: persist locally first, then cloud (defer on cloud failure).
       final prefs = await _sharedPrefs;
       await prefs.setInt('user_${_currentUserId}_coins', _coins);
-      try {
-        await _userDataService.updateCoins(_currentUserId!, _coins);
-        _pendingCloudSync = false;
-      } catch (cloudError) {
-        debugPrint('Cloud coin sync deferred: $cloudError');
-        _pendingCloudSync = true;
+
+      // updateCoins reports failures via its return value (it never throws).
+      final synced =
+          await _userDataService.updateCoins(_currentUserId!, _coins);
+      if (!synced) {
+        debugPrint('Cloud coin sync deferred, will retry later');
       }
+      _pendingCloudSync = !synced;
     } catch (e) {
       debugPrint('Critical: coin save failed, rolling back: $e');
-      _coins = previous;
-      notifyListeners();
+      _coins = previousCoins;
+      _notify();
     }
   }
 
@@ -168,9 +174,10 @@ class CoinProvider with ChangeNotifier {
       return;
     }
 
+    final previous = _coins;
     _coins += amount;
-    notifyListeners();
-    await _saveCoins();
+    _notify();
+    await _saveCoins(previousCoins: previous);
   }
 
   Future<void> setCoins(int amount) async {
@@ -178,9 +185,10 @@ class CoinProvider with ChangeNotifier {
       debugPrint('Attempted to set a negative coin balance: $amount');
     }
 
+    final previous = _coins;
     _coins = amount < 0 ? 0 : amount;
-    notifyListeners();
-    await _saveCoins();
+    _notify();
+    await _saveCoins(previousCoins: previous);
   }
 
   Future<bool> spendCoins(int amount) async {
@@ -192,9 +200,10 @@ class CoinProvider with ChangeNotifier {
     }
 
     if (_coins >= amount) {
+      final previous = _coins;
       _coins -= amount;
-      notifyListeners();
-      await _saveCoins();
+      _notify();
+      await _saveCoins(previousCoins: previous);
       return true;
     } else {
       return false;
@@ -214,7 +223,7 @@ class CoinProvider with ChangeNotifier {
     if (success) {
       _ownedShopItemIds.add(item.id);
       await _saveOwnedItems();
-      notifyListeners();
+      _notify();
     }
     return success;
   }
@@ -245,27 +254,15 @@ class CoinProvider with ChangeNotifier {
 
   Future<void> startLevel(String levelId) async {
     _coinsAtLevelStart = _coins;
-    debugPrint('=== Starting Level: $levelId ===');
-    debugPrint('Coins at start: $_coinsAtLevelStart');
     await _saveLevelStartCoins(levelId);
   }
 
   Future<void> _saveLevelStartCoins(String levelId) async {
     try {
+      final prefs = await _sharedPrefs;
       if (_currentUserId == null) {
-        final prefs = await _sharedPrefs;
         await prefs.setInt('level_${levelId}_start_coins', _coinsAtLevelStart);
-        return;
-      }
-
-      if (_isLocalUser) {
-        final prefs = await _sharedPrefs;
-        await prefs.setInt(
-          'user_${_currentUserId}_level_${levelId}_start_coins',
-          _coinsAtLevelStart,
-        );
       } else {
-        final prefs = await _sharedPrefs;
         await prefs.setInt(
           'user_${_currentUserId}_level_${levelId}_start_coins',
           _coinsAtLevelStart,
@@ -281,4 +278,11 @@ class CoinProvider with ChangeNotifier {
     _coinsAtLevelStart = _coins;
     await _saveLevelStartCoins(levelId);
   }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
 }

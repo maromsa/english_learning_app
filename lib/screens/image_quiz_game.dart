@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -15,9 +16,12 @@ import '../providers/coin_provider.dart';
 import '../providers/daily_mission_provider.dart';
 import '../providers/spark_overlay_controller.dart';
 import '../providers/user_session_provider.dart';
+import '../services/achievement_service.dart';
 import '../services/level_progress_service.dart';
 import '../services/level_repository.dart';
+import '../services/parent_progress_service.dart';
 import '../services/spark_voice_service.dart';
+import '../services/srs_service.dart';
 import '../services/telemetry_service.dart';
 import '../services/word_mastery_service.dart';
 import '../services/word_repository.dart';
@@ -54,6 +58,7 @@ class ImageQuizGame extends StatefulWidget {
     this.wordMasteryService,
     this.levelProgressService,
     this.levelRepository,
+    this.srsService,
   });
 
   /// Optional level identifier for mastery namespacing. Defaults to the first
@@ -70,6 +75,7 @@ class ImageQuizGame extends StatefulWidget {
   final WordMasteryService? wordMasteryService;
   final LevelProgressService? levelProgressService;
   final LevelRepository? levelRepository;
+  final SrsService? srsService;
 
   @override
   State<ImageQuizGame> createState() => _ImageQuizGameState();
@@ -87,6 +93,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
   late final WordMasteryService _wordMasteryService;
   late final LevelProgressService _levelProgressService;
   late final LevelRepository _levelRepository;
+  late final SrsService _srsService;
 
   // ── Loading state ──────────────────────────────────────────────────────────
   bool _isLoading = true;
@@ -95,6 +102,11 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
   // ── Word pool (sorted ascending by mastery — weak first) ───────────────────
   List<WordData> _wordsWithMastery = [];
   String _resolvedLevelId = 'level_1';
+
+  // ── Session tracking ───────────────────────────────────────────────────────
+  int _correctAnswers = 0;
+  int _questionCount = 0;
+  late DateTime _sessionStart;
 
   // ── Question state ─────────────────────────────────────────────────────────
   int _currentIndex = 0;
@@ -120,6 +132,9 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
     _levelProgressService =
         widget.levelProgressService ?? LevelProgressService();
     _levelRepository = widget.levelRepository ?? LevelRepository();
+    _srsService = widget.srsService ??
+        SrsService(legacyMasteryService: _wordMasteryService);
+    _sessionStart = DateTime.now();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _notifySparkHappy();
       _loadAndSortWords();
@@ -131,16 +146,38 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
     try {
       context.read<SparkOverlayController>().setEmotion(SparkEmotion.happy);
     } catch (_) {}
+    try {
+      context.read<AchievementService>().markModeTried('quiz');
+    } catch (_) {}
   }
 
   @override
   void dispose() {
-    if (mounted) {
-      try {
-        context.read<SparkOverlayController>().markIdle();
-      } catch (_) {}
-    }
+    try {
+      context.read<SparkOverlayController>().markIdle();
+    } catch (_) {}
+    _recordSessionOnExit();
     super.dispose();
+  }
+
+  void _recordSessionOnExit() {
+    if (_questionCount == 0) return;
+    try {
+      final session = context.read<UserSessionProvider>();
+      final userId = session.currentUser?.id ?? 'local_guest';
+      final durationMinutes =
+          DateTime.now().difference(_sessionStart).inMinutes.clamp(1, 60);
+      unawaited(ParentProgressService.recordSession(
+        userId: userId,
+        wordCount: _correctAnswers,
+        durationMinutes: durationMinutes,
+      ));
+      unawaited(_srsService.syncToFirestore(
+        userId: userId,
+        levelId: _resolvedLevelId,
+        words: _wordsWithMastery,
+      ));
+    } catch (_) {}
   }
 
   // ---------------------------------------------------------------------------
@@ -297,10 +334,10 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       _feedbackMessage = SparkStrings.quizRemovedWrong;
     });
 
-    telemetry?.logHintUsed(
+    unawaited(telemetry?.logHintUsed(
       word: target.word,
       optionsRemaining: remainingCount,
-    );
+    ));
   }
 
   // ---------------------------------------------------------------------------
@@ -313,6 +350,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
     final target = _wordsWithMastery[_currentIndex];
     final isCorrect = answer == target.word;
     final telemetry = TelemetryService.maybeOf(context);
+    _questionCount++;
 
     int reward = 0;
     int newScore = _score;
@@ -321,6 +359,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
 
     if (isCorrect) {
       newStreak = _streak + 1;
+      _correctAnswers++;
       reward = _baseReward + (newStreak - 1) * _streakBonusStep;
       newScore += reward;
       final compliment = SparkStrings.randomCompliment();
@@ -347,6 +386,19 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       feedback = SparkStrings.quizWrongAnswer(target.word);
     }
 
+    // Record SM-2 review in SRS (fire-and-forget).
+    try {
+      final session = context.read<UserSessionProvider>();
+      final userId = session.currentUser?.id ?? 'local_guest';
+      unawaited(_srsService.recordReview(
+        userId: userId,
+        levelId: _resolvedLevelId,
+        word: target.word,
+        grade: gradeFromCorrect(isCorrect),
+      ));
+    } catch (_) {}
+
+    if (!mounted) return;
     setState(() {
       _answered = true;
       _selectedAnswer = answer;
@@ -356,20 +408,20 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       _feedbackMessage = feedback;
     });
 
-    telemetry?.logQuizAnswered(
+    unawaited(telemetry?.logQuizAnswered(
       word: target.word,
       correct: isCorrect,
       reward: reward,
       streak: newStreak,
       questionIndex: _currentIndex,
       hintUsed: _hintUsed,
-    );
+    ));
 
     try {
       if (mounted) {
-        context.read<DailyMissionProvider>().incrementByType(
+        unawaited(context.read<DailyMissionProvider>().incrementByType(
               DailyMissionType.quizPlay,
-            );
+            ));
       }
     } on ProviderNotFoundException {
       // Standalone/test context without DailyMissionProvider — safe to ignore.

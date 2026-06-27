@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
@@ -7,6 +8,7 @@ import 'package:english_learning_app/models/daily_mission.dart';
 import 'package:english_learning_app/models/scavenger_hunt_challenge.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
+import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/gemini_proxy_service.dart';
 import 'package:english_learning_app/services/scavenger_hunt_service.dart';
 import 'package:english_learning_app/services/sound_service.dart';
@@ -69,7 +71,12 @@ class _ScavengerHuntScreenState extends State<ScavengerHuntScreen> {
     _sparkVoice = SparkVoiceService();
     _challenges = _huntService.startSession(rounds: widget.roundsPerSession);
     _initCamera();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _announceChallenge());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _announceChallenge();
+      try {
+        context.read<AchievementService>().markModeTried('camera');
+      } catch (_) {}
+    });
   }
 
   Future<void> _initCamera() async {
@@ -83,6 +90,7 @@ class _ScavengerHuntScreenState extends State<ScavengerHuntScreen> {
 
     try {
       final cameras = await availableCameras();
+      if (!mounted) return;
       if (cameras.isEmpty) {
         setState(() {
           _useImagePickerFallback = true;
@@ -192,11 +200,15 @@ class _ScavengerHuntScreenState extends State<ScavengerHuntScreen> {
   }
 
   Future<void> _onRoundSuccess(String message, Uint8List imageBytes) async {
+    if (!mounted) return;
     context.read<SoundService>().playSuccessSound();
     context.read<SparkOverlayController>().markCelebrating();
-    context
+    unawaited(context
         .read<DailyMissionProvider>()
-        .incrementByType(DailyMissionType.camera);
+        .incrementByType(DailyMissionType.camera));
+    try {
+      unawaited(context.read<AchievementService>().recordCameraSuccess());
+    } catch (_) {}
 
     setState(() {
       _phase = _HuntPhase.success;
@@ -266,6 +278,7 @@ class _ScavengerHuntScreenState extends State<ScavengerHuntScreen> {
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       _roundIndex += 1;
       _phase = _HuntPhase.ready;
@@ -279,6 +292,7 @@ class _ScavengerHuntScreenState extends State<ScavengerHuntScreen> {
   }
 
   Future<void> _onRoundRetry(String message) async {
+    if (!mounted) return;
     context.read<SparkOverlayController>().setEmotion(SparkEmotion.empathetic);
     setState(() {
       _phase = _HuntPhase.retry;

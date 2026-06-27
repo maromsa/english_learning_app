@@ -204,7 +204,12 @@ class _AuthGateState extends State<AuthGate> {
           Provider.of<ChildProfileProvider>(context, listen: false);
       final parentUid = authProvider.firebaseUser?.uid;
 
-      await profileProvider.initialize(parentUid: parentUid);
+      await profileProvider.initialize(parentUid: parentUid).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint('AuthGate: profile initialization timed out, continuing');
+        },
+      );
 
       final activeProfile = profileProvider.activeProfile;
       if (activeProfile != null && context.mounted) {
@@ -213,6 +218,11 @@ class _AuthGateState extends State<AuthGate> {
           activeProfile,
           parentUid: parentUid,
           syncService: _childProfileSyncService,
+        ).timeout(
+          const Duration(seconds: 8),
+          onTimeout: () {
+            debugPrint('AuthGate: ActiveProfileScope.apply timed out, continuing');
+          },
         );
       }
     } catch (e) {
@@ -442,6 +452,12 @@ class _AchievementOverlayScopeState extends State<_AchievementOverlayScope> {
   @override
   void dispose() {
     _overlayEntry?.remove();
+    _overlayEntry = null;
+    // Clear the stale callback so AchievementService doesn't hold a reference
+    // to this disposed widget's overlay or SparkOverlayController.
+    try {
+      context.read<AchievementService>().clearAchievementUnlockedCallback();
+    } catch (_) {}
     super.dispose();
   }
 

@@ -49,8 +49,8 @@ class ChildProfile {
     });
 
     return ChildProfile(
-      id: map['id'] as String,
-      displayName: map['displayName'] as String,
+      id: (map['id'] as String?) ?? '',
+      displayName: (map['displayName'] as String?) ?? '',
       avatarColor: map['avatarColor'] as int? ?? defaultAvatarColors.first,
       avatarUrl: map['avatarUrl'] as String?,
       totalStars: map['totalStars'] as int? ?? 0,

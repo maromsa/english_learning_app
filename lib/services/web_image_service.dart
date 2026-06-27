@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'ai_image_validator.dart';
+import 'gemini_proxy_service.dart';
 import 'network/app_http_client.dart';
 
 /// Contract for fetching web images for a given word.
@@ -11,12 +12,14 @@ abstract class WebImageProvider {
   Future<WebImageResult?> fetchImageForWord(String word, {String? searchHint});
 }
 
+/// Fetches images from Pixabay via the server-side proxy so the API key is
+/// never embedded in the client app binary.
 class WebImageService implements WebImageProvider {
   WebImageService({
-    required String apiKey,
+    required GeminiProxyService proxyService,
     AiImageValidator? imageValidator,
     AppHttpClient? httpClient,
-  })  : _apiKey = apiKey,
+  })  : _proxyService = proxyService,
         _httpClient = httpClient ??
             AppHttpClient(
               connectTimeout: _requestTimeout,
@@ -27,7 +30,7 @@ class WebImageService implements WebImageProvider {
   static const Duration _requestTimeout = Duration(seconds: 8);
   static const int _maxCandidates = 8;
 
-  final String _apiKey;
+  final GeminiProxyService _proxyService;
   final AppHttpClient _httpClient;
   final AiImageValidator? _imageValidator;
 
@@ -36,16 +39,15 @@ class WebImageService implements WebImageProvider {
     String word, {
     String? searchHint,
   }) async {
-    if (_apiKey.isEmpty) {
-      return null;
-    }
-
     final query = (searchHint ?? word).trim();
     if (query.isEmpty) {
       return null;
     }
 
-    final candidates = await _searchPixabay(query);
+    final candidates = await _proxyService.searchPixabay(
+      query,
+      perPage: _maxCandidates,
+    );
     if (candidates.isEmpty) {
       return null;
     }
@@ -83,43 +85,6 @@ class WebImageService implements WebImageProvider {
 
   void dispose() {
     _httpClient.close();
-  }
-
-  Future<List<Map<String, dynamic>>> _searchPixabay(String word) async {
-    final queryParameters = <String, String>{
-      'key': _apiKey,
-      'q': word,
-      'image_type': 'photo',
-      'orientation': 'horizontal',
-      'per_page': '$_maxCandidates',
-      'safesearch': 'true',
-    };
-
-    final uri = Uri.https('pixabay.com', '/api/', queryParameters);
-
-    try {
-      final response = await _httpClient.dio.getUri<Map<String, dynamic>>(
-        uri,
-        options: Options(responseType: ResponseType.json),
-      );
-      if (response.statusCode != 200) {
-        return const <Map<String, dynamic>>[];
-      }
-
-      final decoded = response.data;
-      if (decoded == null) {
-        return const <Map<String, dynamic>>[];
-      }
-
-      final hits = decoded['hits'] as List<dynamic>?;
-      if (hits == null) {
-        return const <Map<String, dynamic>>[];
-      }
-
-      return hits.whereType<Map<String, dynamic>>().toList(growable: false);
-    } catch (_) {
-      return const <Map<String, dynamic>>[];
-    }
   }
 
   Future<_DownloadedImage?> _downloadImage(String url) async {

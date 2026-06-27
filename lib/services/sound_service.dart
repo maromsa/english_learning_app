@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
+import 'audio_settings.dart';
+
 /// Enhanced audio feedback service optimized for children
 /// Uses child-friendly sounds that are pleasant and non-jarring
 class SoundService {
@@ -125,6 +127,8 @@ class SoundService {
   /// Types include [softChime], [pop], [fanfare], [epic], plus legacy keys:
   /// `success`, `error`, `try_again`, `confetti`, `unlock`, `whoosh`, `ding`.
   Future<void> playSound(String type) async {
+    if (AudioSettings().muted) return;
+
     if (!_initialized) {
       await initialize();
     }

@@ -48,6 +48,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       );
 
       if (image != null) {
+        if (!mounted) return;
         setState(() {
           _selectedImage = File(image.path);
         });
@@ -67,10 +68,14 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   Future<String?> _uploadImage(File imageFile) async {
     try {
       final storage = FirebaseStorage.instance;
-      final extension = imageFile.path.split('.').last;
-      final fileName =
-          'user_${DateTime.now().millisecondsSinceEpoch}.$extension';
-      final ref = storage.ref().child('user_profiles/$fileName');
+      final extension = imageFile.path.split('.').last.toLowerCase();
+      final uid = Provider.of<AuthProvider>(context, listen: false)
+              .firebaseUser
+              ?.uid ??
+          'anon';
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.$extension';
+      // Scope uploads under the user's UID so Storage rules can enforce ownership.
+      final ref = storage.ref().child('user_profiles/$uid/$fileName');
 
       await ref.putFile(imageFile);
       return await ref.getDownloadURL();
@@ -89,6 +94,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
       if (authProvider.isAuthenticated && authProvider.firebaseUser != null) {
         final user = authProvider.firebaseUser!;
+        if (!mounted) return;
         setState(() {
           _googleUid = user.uid;
           _googleEmail = user.email;

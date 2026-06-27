@@ -17,6 +17,9 @@ class LevelData {
   bool isUnlocked;
   int stars;
 
+  /// True when this level is the last in its chapter — triggers epic celebration.
+  final bool isChapterEnd;
+
   LevelData({
     required this.id,
     required this.name,
@@ -30,6 +33,7 @@ class LevelData {
     this.positionY = 0.5,
     this.isUnlocked = false,
     this.stars = 0,
+    this.isChapterEnd = false,
   });
 
   factory LevelData.fromJson(Map<String, dynamic> json) {
@@ -62,6 +66,7 @@ class LevelData {
               ?.toDouble() ??
           0.5,
       words: wordsJson,
+      isChapterEnd: json['isChapterEnd'] as bool? ?? false,
     );
   }
 

@@ -1,4 +1,6 @@
 // lib/screens/onboarding_screen.dart
+import 'dart:async';
+
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -39,23 +41,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final personalization = _latestPersonalization;
     if (mounted) {
       final telemetry = TelemetryService.maybeOf(context);
-      telemetry?.logOnboardingCompleted(
+      unawaited(telemetry?.logOnboardingCompleted(
         tipIds: personalization?.insights.map((tip) => tip.id).toList() ??
             const <String>[],
         returningLearner: personalization?.isReturningLearner ?? false,
         appliedRules: personalization?.appliedRules ?? const <String>[],
         millisecondsToComplete:
             DateTime.now().difference(_viewStartedAt).inMilliseconds,
-      );
+      ));
     }
 
     if (!mounted) {
       return;
     }
 
-    Navigator.of(
+    unawaited(Navigator.of(
       context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const MapScreen()));
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const MapScreen())));
   }
 
   void _logImpressionOnce(

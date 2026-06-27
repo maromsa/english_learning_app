@@ -27,6 +27,18 @@ enum SparkOverlayPosition {
 class SparkOverlayController extends ChangeNotifier {
   SparkOverlayController();
 
+  bool _disposed = false;
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
   /// When > 0, the global Spark overlay is hidden (e.g. auth / onboarding).
   int _sparkOverlaySuppressDepth = 0;
 
@@ -50,7 +62,7 @@ class SparkOverlayController extends ChangeNotifier {
     final was = isVisible;
     _userWantsSparkVisible = true;
     if (was != isVisible) {
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -59,7 +71,7 @@ class SparkOverlayController extends ChangeNotifier {
     final was = isVisible;
     _userWantsSparkVisible = false;
     if (was != isVisible) {
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -69,7 +81,7 @@ class SparkOverlayController extends ChangeNotifier {
     final was = isVisible;
     _sparkOverlaySuppressDepth++;
     if (was != isVisible) {
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -81,7 +93,7 @@ class SparkOverlayController extends ChangeNotifier {
     final was = isVisible;
     _sparkOverlaySuppressDepth--;
     if (was != isVisible) {
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -90,7 +102,7 @@ class SparkOverlayController extends ChangeNotifier {
   void setEmotion(SparkEmotion emotion) {
     if (_emotion == emotion) return;
     _emotion = emotion;
-    notifyListeners();
+    _notify();
   }
 
   /// Update the overlay's high-level animation state.
@@ -101,14 +113,14 @@ class SparkOverlayController extends ChangeNotifier {
   void setAnimationState(SparkOverlayAnimationState state) {
     if (_animationState == state) return;
     _animationState = state;
-    notifyListeners();
+    _notify();
   }
 
   /// Move Spark to a different screen corner.
   void setPosition(SparkOverlayPosition position) {
     if (_position == position) return;
     _position = position;
-    notifyListeners();
+    _notify();
   }
 
   /// Convenience helpers for common flows.

@@ -1,5 +1,7 @@
+import 'package:english_learning_app/models/daily_mission.dart';
 import 'package:english_learning_app/models/local_user.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/background_music_service.dart';
 import 'package:english_learning_app/services/local_user_service.dart';
@@ -29,6 +31,7 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen>
   List<bool> _completed = const [];
   bool _isGenerating = false;
   String? _errorMessage;
+  TelemetryService? _telemetry;
 
   String _selectedSkill = _skills.first.id;
   String _selectedTime = _durations.first.id;
@@ -55,7 +58,9 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen>
 
     _service = PracticePackService();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      TelemetryService.maybeOf(context)?.startScreenSession('ai_practice_pack');
+      if (!mounted) return;
+      _telemetry = TelemetryService.maybeOf(context);
+      _telemetry?.startScreenSession('ai_practice_pack');
     });
   }
 
@@ -102,7 +107,7 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen>
   @override
   void dispose() {
     RouteObserverService.routeObserver.unsubscribe(this);
-    TelemetryService.maybeOf(context)?.endScreenSession(
+    _telemetry?.endScreenSession(
       'ai_practice_pack',
       extra: {
         'generated': _pack != null,
@@ -402,14 +407,14 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen>
         _pack = pack;
         _completed = List<bool>.filled(pack.activities.length, false);
       });
-      TelemetryService.maybeOf(context)?.logCustomEvent(
+      unawaited(TelemetryService.maybeOf(context)?.logCustomEvent(
         'ai_practice_pack_generated',
         {
           'skill': _selectedSkill,
           'time': _selectedTime,
           'energy': _selectedEnergy,
         },
-      );
+      ));
     } on PracticePackGenerationException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -450,10 +455,15 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen>
         behavior: SnackBarBehavior.floating,
       ),
     );
-    TelemetryService.maybeOf(context)?.logCustomEvent(
+    try {
+      context
+          .read<DailyMissionProvider>()
+          .incrementByType(DailyMissionType.speakPractice);
+    } catch (_) {}
+    unawaited(TelemetryService.maybeOf(context)?.logCustomEvent(
       'ai_practice_activity_completed',
       {'skill': _selectedSkill, 'activity_index': index},
-    );
+    ));
   }
 
   List<String> _resolvedFocusWords() {

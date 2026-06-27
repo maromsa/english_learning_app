@@ -43,15 +43,15 @@ class AuthProvider extends ChangeNotifier {
           .then((user) {
         _appUser = user;
         _initializing = false;
-        notifyListeners();
+        _notify();
       }).catchError((e) {
         debugPrint('Error loading user profile: $e');
         _initializing = false;
-        notifyListeners();
+        _notify();
       });
     } else {
       _initializing = false;
-      notifyListeners();
+      _notify();
     }
 
     _authSubscription = _auth.authStateChanges().listen(
@@ -62,7 +62,7 @@ class AuthProvider extends ChangeNotifier {
     Future.delayed(const Duration(seconds: 3), () {
       if (_initializing) {
         _initializing = false;
-        notifyListeners();
+        _notify();
       }
     });
   }
@@ -77,6 +77,7 @@ class AuthProvider extends ChangeNotifier {
   bool _initializing = true;
   bool _busy = false;
   String? _errorMessage;
+  bool _disposed = false;
 
   bool get initializing => _initializing;
   bool get isBusy => _busy;
@@ -147,16 +148,16 @@ class AuthProvider extends ChangeNotifier {
       debugPrint('Sign-in timeout: $e');
       _errorMessage = e.message ??
           'Sign-in timed out. Please check your internet connection and try again.';
-      notifyListeners();
+      _notify();
     } on FirebaseAuthException catch (e) {
       debugPrint('Firebase auth error: ${e.code} - ${e.message}');
       _errorMessage = e.message ?? 'Authentication failed. Please try again.';
-      notifyListeners();
+      _notify();
     } catch (e, stackTrace) {
       debugPrint('Sign-in error: $e');
       debugPrint('Stack trace: $stackTrace');
       _errorMessage = 'An error occurred during sign-in. Please try again.';
-      notifyListeners();
+      _notify();
     } finally {
       _setBusy(false);
     }
@@ -182,7 +183,7 @@ class AuthProvider extends ChangeNotifier {
     _setBusy(true);
     try {
       _appUser = await _authService.getUser(user.uid);
-      notifyListeners();
+      _notify();
     } finally {
       _setBusy(false);
     }
@@ -196,7 +197,7 @@ class AuthProvider extends ChangeNotifier {
       if (_initializing) {
         _initializing = false;
       }
-      notifyListeners();
+      _notify();
       return;
     }
 
@@ -226,7 +227,11 @@ class AuthProvider extends ChangeNotifier {
     if (_initializing) {
       _initializing = false;
     }
-    notifyListeners();
+    _notify();
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
   }
 
   void _setBusy(bool value) {
@@ -234,11 +239,12 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
     _busy = value;
-    notifyListeners();
+    _notify();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _authSubscription?.cancel();
     super.dispose();
   }

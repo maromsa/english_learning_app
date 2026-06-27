@@ -59,6 +59,7 @@ class MyHomePage extends StatefulWidget {
     required this.wordsForLevel,
     this.targetCategory,
     this.categoryLabelHe,
+    this.isChapterEnd = false,
   });
 
   final String title;
@@ -66,6 +67,9 @@ class MyHomePage extends StatefulWidget {
   final List<WordData> wordsForLevel;
   final String? targetCategory;
   final String? categoryLabelHe;
+
+  /// True when completing this level closes a chapter (triggers epic celebration).
+  final bool isChapterEnd;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -160,19 +164,15 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _initializeServices() async {
     _speechFeedbackService = context.read<SpeechFeedbackService>();
     final bool cloudinaryAvailable = AppConfig.hasCloudinary;
-    final bool pixabayAvailable = AppConfig.hasPixabay;
 
     // Always initialize Gemini proxy - it's always available
     _geminiProxy = GeminiProxyService(proxyEndpoint);
 
-    if (pixabayAvailable) {
-      _webImageService = WebImageService(
-        apiKey: AppConfig.pixabayApiKey,
-        imageValidator: _cameraValidator,
-      );
-    } else {
-      AppConfig.debugWarnIfMissing('Pixabay image search', false);
-    }
+    // Pixabay is now routed through the proxy (key never ships in the app).
+    _webImageService = WebImageService(
+      proxyService: _geminiProxy!,
+      imageValidator: _cameraValidator,
+    );
 
     flutterTts = FlutterTts();
     await _configureTts();
@@ -350,6 +350,7 @@ class _MyHomePageState extends State<MyHomePage> {
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       _feedbackText = SparkStrings.imageAnalyzing;
     });
@@ -400,12 +401,12 @@ class _MyHomePageState extends State<MyHomePage> {
           debugPrint(
             'Gemini category mismatch: $identified (expected ${levelCategory?.geminiCategory})',
           );
-          telemetry?.logCameraValidation(
+          unawaited(telemetry?.logCameraValidation(
             word: identified,
             accepted: false,
             validatorType: _cameraValidatorType,
             confidence: null,
-          );
+          ));
           if (mounted) {
             final message = SparkStrings.cameraCategoryMismatch(
               identified,
@@ -424,12 +425,13 @@ class _MyHomePageState extends State<MyHomePage> {
           );
           return;
         case ObjectIdentificationUnclear():
-          telemetry?.logCameraValidation(
+          unawaited(telemetry?.logCameraValidation(
             word: 'unclear',
             accepted: false,
             validatorType: _cameraValidatorType,
             confidence: null,
-          );
+          ));
+          if (!mounted) return;
           setState(() {
             _feedbackText = SparkStrings.cameraUnclearUi;
           });
@@ -478,12 +480,12 @@ class _MyHomePageState extends State<MyHomePage> {
           _feedbackText = SparkStrings.cameraCenterWord(identifiedWord);
         });
       }
-      telemetry?.logCameraValidation(
+      unawaited(telemetry?.logCameraValidation(
         word: identifiedWord,
         accepted: false,
         validatorType: _cameraValidatorType,
         confidence: _currentValidationConfidence(),
-      );
+      ));
       await _speak(
         SparkStrings.cameraCenterWord(identifiedWord),
         languageCode: 'he-IL',
@@ -496,6 +498,7 @@ class _MyHomePageState extends State<MyHomePage> {
       imageBytes: imageBytes,
       imageFile: imageFile,
     );
+    if (!mounted) return;
     setState(() {
       _words.add(newWord);
       _currentIndex = _words.length - 1;
@@ -520,12 +523,12 @@ class _MyHomePageState extends State<MyHomePage> {
       languageCode: 'en-US',
       emotion: SparkEmotion.happy,
     );
-    telemetry?.logCameraValidation(
+    unawaited(telemetry?.logCameraValidation(
       word: identifiedWord,
       accepted: true,
       validatorType: _cameraValidatorType,
       confidence: _currentValidationConfidence(),
-    );
+    ));
   }
 
   Future<WordData> _saveImageAndCreateWordData(
@@ -553,6 +556,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  // ignore: unused_element
   Future<void> _openDailyMissionsFromHome() async {
     final result = await Navigator.push<Object?>(
       context,
@@ -619,11 +623,23 @@ class _MyHomePageState extends State<MyHomePage> {
 
         if (aiFeedback.stars == 3 &&
             !MediaQuery.disableAnimationsOf(context)) {
-          unawaited(_confettiController.play());
+          _confettiController.play();
           unawaited(_soundService.playSound('confetti'));
           unawaited(
             _persistThreeStarAchievement(currentWordObject.word),
           );
+          try {
+            context.read<DailyMissionProvider>().incrementByType(
+                  DailyMissionType.pronunciationPerfect,
+                );
+          } catch (_) {}
+          try {
+            unawaited(
+              context.read<AchievementService>().recordPronunciationPerfect(
+                    stars: aiFeedback.stars,
+                  ),
+            );
+          } catch (_) {}
         }
 
         final levelJustFinished = _isLevelComplete;
@@ -687,7 +703,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
 
       // Play gentle error sound (not harsh)
-      _soundService.playSound('error');
+      unawaited(_soundService.playSound('error'));
 
       // Update Spark emotion to be empathetic, not disappointed
       if (mounted) {
@@ -760,8 +776,16 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  /// Stars shown on level-complete celebration (refine with mastery in P-09).
-  int _starsForLevel() => 3;
+  /// Stars shown on level-complete celebration.
+  /// 3 stars = all words mastered on first try, 2 = most, 1 = some.
+  int _starsForLevel() {
+    if (_words.isEmpty) return 3;
+    final completed = _words.where((w) => w.isCompleted).length;
+    final ratio = completed / _words.length;
+    if (ratio >= 1.0) return 3;
+    if (ratio >= 0.67) return 2;
+    return 1;
+  }
 
   void _openGameMenu() {
     showModalBottomSheet(
@@ -1198,8 +1222,11 @@ class _MyHomePageState extends State<MyHomePage> {
           MaterialPageRoute(
             builder: (_) => LevelCompletionScreen(
               levelName: widget.title,
+              levelId: widget.levelId,
               completedWords: _words.where((w) => w.isCompleted).length,
               totalWords: _words.length,
+              isChapterEnd: widget.isChapterEnd,
+              coinsEarned: widget.wordsForLevel.length * 5,
               onContinue: () {
                 Navigator.of(context).pop(); // Pop completion screen
                 Navigator.of(context).pop(); // Pop home page, return to map
@@ -1224,6 +1251,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
+// ignore: unused_element
 class _MissionNudgeCard extends StatelessWidget {
   const _MissionNudgeCard({
     required this.mission,

@@ -19,10 +19,13 @@ import '../providers/daily_mission_provider.dart';
 import '../providers/spark_overlay_controller.dart';
 import '../providers/user_session_provider.dart';
 import '../services/achievement_service.dart';
+import '../services/difficulty_engine.dart';
 import '../services/level_progress_service.dart';
 import '../services/sound_service.dart';
 import '../services/speech_feedback_service.dart';
+import '../services/srs_service.dart';
 import '../services/telemetry_service.dart';
+import '../services/parent_progress_service.dart';
 import '../services/word_mastery_service.dart';
 
 /// Lightning-round practice screen — Phase 3 edition.
@@ -78,6 +81,8 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
 
   late final WordMasteryService _wordMasteryService;
   late final LevelProgressService _levelProgressService;
+  late final SrsService _srsService;
+  final DifficultyEngine _difficulty = DifficultyEngine();
 
   /// The sorted, mastery-enriched word pool used for the session.
   List<WordData> _wordPool = [];
@@ -196,6 +201,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
   void initState() {
     super.initState();
     _wordMasteryService = widget.wordMasteryService ?? WordMasteryService();
+    _srsService = SrsService(legacyMasteryService: _wordMasteryService);
     _levelProgressService =
         widget.levelProgressService ?? LevelProgressService();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -213,6 +219,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
   void dispose() {
     unawaited(_speechFeedbackService?.cancelListening());
     _timer?.cancel();
+    _difficulty.dispose();
     _telemetry?.endScreenSession(
       'lightning',
       extra: {
@@ -224,11 +231,10 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       },
     );
     // Return Spark to idle when leaving the screen.
-    if (mounted) {
-      try {
-        context.read<SparkOverlayController>().markIdle();
-      } catch (_) {}
-    }
+    // Note: mounted is always false in dispose(); context is still valid.
+    try {
+      context.read<SparkOverlayController>().markIdle();
+    } catch (_) {}
     super.dispose();
   }
 
@@ -259,22 +265,35 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       // Step 1: Sanitize and de-duplicate the raw word list from the level.
       final List<WordData> cleaned = _sanitizeWords(widget.words);
 
-      // Step 2: Fetch each word's persisted mastery and merge it in.
+      // Step 2: Use SRS to sort words by due date and mastery (SM-2 ordering).
+      //   - Due cards (overdue) come first, sorted by most-overdue first.
+      //   - New cards (never reviewed) come next.
+      //   - Future cards (not yet due) come last.
+      final srsOrdered = await _srsService.getSortedForSession(
+        userId: userId,
+        levelId: widget.levelId,
+        words: cleaned,
+      );
+
+      // Step 3: Enrich WordData with current SRS mastery for UI display.
       final List<WordData> withMastery = [];
-      for (final word in cleaned) {
-        final entry = await _wordMasteryService.getMastery(
+      for (final word in srsOrdered) {
+        final card = await _srsService.getCard(
           userId: userId,
           levelId: widget.levelId,
           word: word.word,
         );
-        withMastery.add(_wordMasteryService.applyToWord(word, entry));
+        withMastery.add(WordData(
+          word: word.word,
+          searchHint: word.searchHint,
+          imageUrl: word.imageUrl,
+          publicId: word.publicId,
+          isCompleted: word.isCompleted,
+          stickerUnlocked: word.stickerUnlocked,
+          masteryLevel: card.masteryLevel,
+          lastReviewed: card.lastReviewDate,
+        ));
       }
-
-      // Step 3: Sort ascending by masteryLevel (weak words first).
-      //   - masteryLevel 0.0  → brand-new / never reviewed
-      //   - masteryLevel < 0.5 → weak, needs repetition
-      //   - masteryLevel ≥ 0.5 → progressing / strong
-      withMastery.sort((a, b) => a.masteryLevel.compareTo(b.masteryLevel));
 
       // Step 4: Pad with fallback words when the level pool is too small.
       final pool = _padWithFallbacks(withMastery);
@@ -377,6 +396,10 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     // Notify Spark that a new session is starting.
     _notifySpark(SparkOverlayAnimationState.idle);
 
+    try {
+      context.read<AchievementService>().markModeTried('lightning');
+    } catch (_) {}
+
     _prepareNextQuestion();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -443,18 +466,21 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
   }
 
   List<String> _buildOptions(String correctWord) {
+    // Adaptive option count: 2 (easy) / 3 (medium) / 4 (hard).
+    final targetCount = _difficulty.params.optionCount;
+
     final Set<String> options = <String>{correctWord};
     final List<String> pool = _wordPool
         .map((w) => w.word)
         .where((w) => !w.equalsIgnoreCase(correctWord))
         .toList(growable: true);
 
-    while (options.length < 4 && pool.isNotEmpty) {
+    while (options.length < targetCount && pool.isNotEmpty) {
       options.add(pool.removeAt(_random.nextInt(pool.length)));
     }
 
     // Pad with fallback entries if the level pool is very small.
-    while (options.length < 4) {
+    while (options.length < targetCount) {
       final fallback =
           _fallbackWordEntries[_random.nextInt(_fallbackWordEntries.length)]
               ['word']!;
@@ -493,7 +519,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     });
 
     if (!isStrong) {
-      SoundService().playSound('error');
+      unawaited(SoundService().playSound('error'));
       return;
     }
 
@@ -515,15 +541,17 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
           streak: _currentStreak,
         );
 
-    await context
-        .read<DailyMissionProvider>()
-        .incrementByType(DailyMissionType.speakPractice);
+    try {
+      await context
+          .read<DailyMissionProvider>()
+          .incrementByType(DailyMissionType.speakPractice);
+    } catch (_) {}
     if (!mounted) return;
 
     await _markWordCompleted(word);
     if (!mounted) return;
 
-    SoundService().playSuccessSound();
+    unawaited(SoundService().playSuccessSound());
     _notifySpark(SparkOverlayAnimationState.celebrating);
 
     await Celebration.fire(
@@ -540,14 +568,14 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     });
 
     final int elapsed = _sessionSeconds - _remainingSeconds;
-    _telemetry?.logLightningAnswer(
+    unawaited(_telemetry?.logLightningAnswer(
       word: word,
       correct: true,
       streak: _currentStreak,
       elapsedSeconds: elapsed < 0 ? 0 : elapsed,
       remainingSeconds: _remainingSeconds,
       reward: _pronunciationCoinReward,
-    );
+    ));
 
     Future<void>.delayed(const Duration(seconds: 2), () {
       if (!mounted || _sessionEnded) return;
@@ -574,42 +602,68 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     int reward = 0;
     String feedback;
 
+    // Feed result into the difficulty engine BEFORE computing reward so
+    // bonusMultiplier reflects the *new* level.
+    _difficulty.recordAnswer(isCorrect);
+
     if (isCorrect) {
       _currentStreak += 1;
       _bestStreak = max(_bestStreak, _currentStreak);
-      reward = 5 + ((_currentStreak - 1) * 2);
+      // Bonus coins: base 5 + 2 per streak step, scaled by difficulty multiplier.
+      final base = (5 + ((_currentStreak - 1) * 2)).clamp(5, 25);
+      reward = (base * _difficulty.params.bonusMultiplier).round();
       _score += reward;
       _correctAnswers += 1;
       feedback = SparkStrings.lightningWinCoins(reward);
 
       if (mounted) {
         await context.read<CoinProvider>().addCoins(reward);
-        // ── Phase 3 Integration ──────────────────────────────────────────────
-        // markWordCompleted handles three responsibilities atomically:
-        //   1. Persists the word as completed in SharedPreferences.
-        //   2. Calls WordMasteryService.recordSuccessfulReview (+0.25 mastery).
-        //   3. Fires MapBridgeService.emitWordMastered → 3D map reacts.
+        // Record correct answer in SRS (grade 4 = correct with minor hesitation).
+        // This updates the SM-2 ease factor and schedules the next review.
+        final session = context.read<UserSessionProvider>();
+        final userId = session.currentUser?.id ?? 'local_guest';
+        unawaited(_srsService.recordReview(
+          userId: userId,
+          levelId: widget.levelId,
+          word: _currentWord!.word,
+          grade: gradeFromCorrect(true),
+        ));
+        try {
+          context.read<DailyMissionProvider>().incrementByType(
+                DailyMissionType.srsReview,
+              );
+        } catch (_) {}
+        // markWordCompleted fires MapBridge + legacy mastery update.
         await _markWordCompleted(_currentWord!.word);
-        // Play success sound — fire-and-forget, does not block UI thread.
-        SoundService().playSuccessSound();
-        // Spark celebrates on correct answer.
+        unawaited(SoundService().playSuccessSound());
         _notifySpark(SparkOverlayAnimationState.celebrating);
       }
     } else {
       _currentStreak = 0;
       _incorrectAnswers += 1;
       feedback = SparkStrings.lightningWrong(_currentWord!.word);
+      // Record incorrect answer in SRS (grade 1 = wrong, saw answer).
+      if (mounted) {
+        final session = context.read<UserSessionProvider>();
+        final userId = session.currentUser?.id ?? 'local_guest';
+        unawaited(_srsService.recordReview(
+          userId: userId,
+          levelId: widget.levelId,
+          word: _currentWord!.word,
+          grade: gradeFromCorrect(false),
+        ));
+      }
     }
 
     final int elapsed = _sessionSeconds - _remainingSeconds;
-    _telemetry?.logLightningAnswer(
+    unawaited(_telemetry?.logLightningAnswer(
       word: _currentWord!.word,
       correct: isCorrect,
       streak: _currentStreak,
       elapsedSeconds: elapsed < 0 ? 0 : elapsed,
       remainingSeconds: _remainingSeconds,
       reward: reward,
-    );
+    ));
 
     if (!mounted) return;
 
@@ -675,13 +729,39 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
           );
     } catch (_) {}
 
-    _telemetry?.logLightningSession(
+    try {
+      context.read<AchievementService>().onLightningCompleted(
+            streak: _bestStreak,
+            wordsLearned: _correctAnswers,
+          );
+    } catch (_) {}
+
+    unawaited(_telemetry?.logLightningSession(
       score: _score,
       correct: _correctAnswers,
       incorrect: _incorrectAnswers,
       bestStreak: _bestStreak,
       totalQuestions: _questionCount,
-    );
+    ));
+
+    // Sync SRS state to Firestore + record session for parent dashboard.
+    try {
+      final session = context.read<UserSessionProvider>();
+      final userId = session.currentUser?.id ?? 'local_guest';
+      unawaited(_srsService.syncToFirestore(
+        userId: userId,
+        levelId: widget.levelId,
+        words: _wordPool,
+      ));
+      final playedSeconds = (_sessionSeconds - _remainingSeconds).clamp(0, _sessionSeconds);
+      // Report at least 1 minute, max 5 minutes. Round (not ceil) for accuracy.
+      final durationMinutes = ((playedSeconds / 60).round()).clamp(1, 5);
+      unawaited(ParentProgressService.recordSession(
+        userId: userId,
+        wordCount: _correctAnswers,
+        durationMinutes: durationMinutes,
+      ));
+    } catch (_) {}
 
     if (triggeredByTimer && mounted) {
       setState(() {
@@ -823,6 +903,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
               value: '${accuracy.round()}%',
               color: Colors.blue.shade500,
             ),
+            _DifficultyChip(level: _difficulty.level),
           ],
         ),
       ),
@@ -1338,4 +1419,35 @@ class _SummaryStat extends StatelessWidget {
 
 extension StringCaseCompare on String {
   bool equalsIgnoreCase(String other) => toLowerCase() == other.toLowerCase();
+}
+
+/// Small chip showing current adaptive difficulty level in the status bar.
+class _DifficultyChip extends StatelessWidget {
+  const _DifficultyChip({required this.level});
+  final DifficultyLevel level;
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color, icon) = switch (level) {
+      DifficultyLevel.easy => ('קל', Colors.green.shade600, Icons.sentiment_satisfied),
+      DifficultyLevel.medium => ('בינוני', Colors.amber.shade700, Icons.sentiment_neutral),
+      DifficultyLevel.hard => ('קשה', Colors.red.shade600, Icons.sentiment_very_dissatisfied),
+    };
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: color.withValues(alpha: 0.15),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(height: 6),
+        const Text('רמה', style: TextStyle(fontSize: 12, color: Colors.black54)),
+        Text(label,
+            style: TextStyle(
+                fontWeight: FontWeight.w700, fontSize: 13, color: color)),
+      ],
+    );
+  }
 }

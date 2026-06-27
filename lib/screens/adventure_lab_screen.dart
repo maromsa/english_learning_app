@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/models/local_user.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/models/daily_mission.dart';
+import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/adventure_lab_service.dart';
@@ -42,6 +46,7 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
   bool _isGenerating = false;
   AdventureLabQuest? _quest;
   String? _error;
+  bool _questCompleted = false;
   final TextEditingController _nameController = TextEditingController();
 
   late final AnimationController _sparkFloatController;
@@ -150,7 +155,11 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
                   if (_isGenerating) _buildLoadingPanel(),
                   if (_error != null) _buildErrorBanner(_error!),
                   if (_quest != null && !_isGenerating)
-                    _QuestReveal(quest: _quest!),
+                    _QuestReveal(
+                      quest: _quest!,
+                      completed: _questCompleted,
+                      onComplete: _completeQuest,
+                    ),
                 ],
               ],
             ),
@@ -471,11 +480,21 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
         localUser: localUser,
       );
       if (!mounted) return;
-      setState(() => _quest = quest);
+      setState(() {
+        _quest = quest;
+        _questCompleted = false;
+      });
       sparkController.markCelebrating();
       Future<void>.delayed(const Duration(seconds: 2), () {
         if (mounted) sparkController.markIdle();
       });
+      // Read the quest scene aloud via Spark's voice.
+      if (quest.scene.isNotEmpty) {
+        unawaited(SparkVoiceService().speak(
+          text: quest.scene,
+          isEnglish: false,
+        ));
+      }
     } on AdventureLabGenerationException catch (error) {
       if (!mounted) return;
       setState(() => _error = error.message);
@@ -486,12 +505,54 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
       }
     }
   }
+
+  Future<void> _completeQuest() async {
+    if (_questCompleted) return;
+    setState(() => _questCompleted = true);
+
+    const int rewardCoins = 15;
+    try {
+      await context.read<CoinProvider>().addCoins(rewardCoins);
+    } catch (_) {}
+
+    try {
+      context
+          .read<DailyMissionProvider>()
+          .incrementByType(DailyMissionType.quizPlay);
+    } catch (_) {}
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.monetization_on, color: Colors.amber),
+            const SizedBox(width: 8),
+            Text(
+              'כל הכבוד! +$rewardCoins מטבעות 🎉',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        backgroundColor: AuroraTokens.blueberry,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
 }
 
 class _QuestReveal extends StatelessWidget {
-  const _QuestReveal({required this.quest});
+  const _QuestReveal({
+    required this.quest,
+    required this.completed,
+    required this.onComplete,
+  });
 
   final AdventureLabQuest quest;
+  final bool completed;
+  final VoidCallback onComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -567,7 +628,58 @@ class _QuestReveal extends StatelessWidget {
                 .toList(growable: false),
           ),
         ],
+        const SizedBox(height: 24),
+        _CompleteQuestButton(completed: completed, onComplete: onComplete)
+            .animate(delay: 400.ms)
+            .fadeIn(duration: 400.ms)
+            .slideY(begin: 0.1, end: 0),
       ],
+    );
+  }
+}
+
+class _CompleteQuestButton extends StatelessWidget {
+  const _CompleteQuestButton({
+    required this.completed,
+    required this.onComplete,
+  });
+
+  final bool completed;
+  final VoidCallback onComplete;
+
+  @override
+  Widget build(BuildContext context) {
+    if (completed) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        decoration: BoxDecoration(
+          color: AuroraTokens.mint.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AuroraTokens.mint, width: 2),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle_rounded, color: AuroraTokens.mint, size: 26),
+            SizedBox(width: 10),
+            Text(
+              'המשימה הושלמה! 🎉',
+              style: TextStyle(
+                color: AuroraTokens.mint,
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return KidButton.primary(
+      label: 'סיימתי את המשימה! (+15 🪙)',
+      leadingIcon: Icons.emoji_events_rounded,
+      fullWidth: true,
+      onPressed: onComplete,
     );
   }
 }

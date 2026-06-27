@@ -11,6 +11,7 @@ import '../services/child_profile_service.dart';
 import '../services/child_profile_sync_service.dart';
 import '../services/daily_reward_service.dart';
 import '../services/parent_progress_service.dart';
+import '../services/streak_shield_service.dart';
 
 /// Reconfigures app providers when the active child profile changes.
 class ActiveProfileScope {
@@ -30,17 +31,27 @@ class ActiveProfileScope {
     final achievementService = context.read<AchievementService>();
     final dailyMissionProvider = context.read<DailyMissionProvider>();
     final sessionProvider = context.read<UserSessionProvider>();
+    final shieldService = context.read<StreakShieldService>();
 
     coinProvider.setUserId(profile.id, isLocalUser: true);
     shopProvider.setUserId(profile.id);
     achievementService.setUserId(profile.id);
     dailyMissionProvider.setUserId(profile.id);
+    shieldService.setUserId(profile.id);
+
+    // Wire all-missions-complete → achievement unlock.
+    dailyMissionProvider.onAllCompleted = (int streakDays) {
+      achievementService.onAllMissionsCompleted(
+        missionStreakDays: streakDays,
+      );
+    };
 
     await Future.wait([
       coinProvider.loadCoins(),
       shopProvider.loadPurchasedItems(),
       achievementService.loadAchievements(),
       dailyMissionProvider.initialize(),
+      shieldService.initialize(),
     ]);
 
     await sessionProvider.switchToChildProfile(

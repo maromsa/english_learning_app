@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'firebase_options.dart';
 import 'utils/platform_env_stub.dart'
@@ -22,24 +21,8 @@ class AppConfig {
     'GEMINI_PROXY_URL',
     defaultValue: '',
   );
-  static const String _definePixabayApiKey = String.fromEnvironment(
-    'PIXABAY_API_KEY',
-    defaultValue: '',
-  );
-  static const String _defineFirebaseUserIdForUpload = String.fromEnvironment(
-    'FIREBASE_USER_ID_FOR_UPLOAD',
-    defaultValue: '',
-  );
   static const String _defineCloudinaryCloudName = String.fromEnvironment(
     'CLOUDINARY_CLOUD_NAME',
-    defaultValue: '',
-  );
-  static const String _defineCloudinaryApiKey = String.fromEnvironment(
-    'CLOUDINARY_API_KEY',
-    defaultValue: '',
-  );
-  static const String _defineCloudinaryApiSecret = String.fromEnvironment(
-    'CLOUDINARY_API_SECRET',
     defaultValue: '',
   );
   static const String _defineGoogleTtsApiKey = String.fromEnvironment(
@@ -59,25 +42,9 @@ class AppConfig {
     'GEMINI_PROXY_URL',
     _defineGeminiProxyUrl,
   );
-  static final String pixabayApiKey = _readSecret(
-    'PIXABAY_API_KEY',
-    _definePixabayApiKey,
-  );
-  static final String firebaseUserIdForUpload = _readSecret(
-    'FIREBASE_USER_ID_FOR_UPLOAD',
-    _defineFirebaseUserIdForUpload,
-  );
   static final String cloudinaryCloudName = _readSecret(
     'CLOUDINARY_CLOUD_NAME',
     _defineCloudinaryCloudName,
-  );
-  static final String cloudinaryApiKey = _readSecret(
-    'CLOUDINARY_API_KEY',
-    _defineCloudinaryApiKey,
-  );
-  static final String cloudinaryApiSecret = _readSecret(
-    'CLOUDINARY_API_SECRET',
-    _defineCloudinaryApiSecret,
   );
   static final String googleTtsApiKey = _readSecret(
     'GOOGLE_TTS_API_KEY',
@@ -94,13 +61,17 @@ class AppConfig {
 
   static bool get hasGeminiProxy =>
       true; // Always available via geminiProxyEndpoint
-  static bool get hasPixabay => pixabayApiKey.isNotEmpty;
-  static bool get hasCloudinary =>
-      cloudinaryCloudName.isNotEmpty &&
-      cloudinaryApiKey.isNotEmpty &&
-      cloudinaryApiSecret.isNotEmpty;
-  static bool get hasGoogleTts => googleTtsApiKey.isNotEmpty;
-  static bool get hasFirebaseUserId => firebaseUserIdForUpload.isNotEmpty;
+
+  /// TTS is served through the proxy (key stays server-side), so it is always
+  /// available as long as the proxy is reachable. The dart-define key is only
+  /// kept as a legacy direct-call fallback inside SparkVoiceService.
+  static bool get hasGoogleTts => true;
+
+  /// Fetching the public image list only requires the cloud name.
+  /// API key/secret were removed from the client on purpose: secrets compiled
+  /// into the app binary can be extracted. Signed operations (uploads) must go
+  /// through a server-side endpoint instead.
+  static bool get hasCloudinary => cloudinaryCloudName.isNotEmpty;
   static bool get hasAiImageValidation => aiImageValidationUrl.isNotEmpty;
   static bool get hasAiBackend => aiBackendUrl.isNotEmpty;
 
@@ -113,10 +84,6 @@ class AppConfig {
       return false;
     }
   }
-
-  static String? get cloudinaryUrl => hasCloudinary
-      ? 'cloudinary://$cloudinaryApiKey:$cloudinaryApiSecret@$cloudinaryCloudName'
-      : null;
 
   static Uri? get aiImageValidationEndpoint =>
       hasAiImageValidation ? Uri.tryParse(aiImageValidationUrl) : null;
@@ -163,10 +130,8 @@ class AppConfig {
   /// Provides a quick overview for debug logs/tests.
   static Map<String, bool> diagnostics() => {
         'geminiProxy': hasGeminiProxy,
-        'pixabay': hasPixabay,
         'cloudinary': hasCloudinary,
         'googleTts': hasGoogleTts,
-        'firebaseUserId': hasFirebaseUserId,
         'aiImageValidation': hasAiImageValidation,
         'aiBackend': hasAiBackend,
       };
@@ -186,17 +151,6 @@ class AppConfig {
   static String _readSecret(String key, String defineValue) {
     if (defineValue.isNotEmpty) {
       return defineValue;
-    }
-
-    if (dotenv.isInitialized) {
-      try {
-        final fromDotEnv = dotenv.maybeGet(key);
-        if (fromDotEnv != null && fromDotEnv.isNotEmpty) {
-          return fromDotEnv;
-        }
-      } catch (_) {
-        // Ignore dotenv errors when not configured.
-      }
     }
 
     final fromPlatform = readPlatformEnvironment(key);

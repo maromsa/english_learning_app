@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -98,9 +100,9 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
 
       if (!mounted) return;
       final navigator = Navigator.of(context);
-      navigator.pushReplacement(
+      unawaited(navigator.pushReplacement(
         MaterialPageRoute(builder: (_) => const MapScreen()),
-      );
+      ));
     } catch (e) {
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
@@ -128,6 +130,7 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       await authProvider.signInWithGoogle();
+      if (!mounted) return;
 
       if (authProvider.isAuthenticated && authProvider.firebaseUser != null) {
         final firebaseUser = authProvider.firebaseUser!;
@@ -213,9 +216,9 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
                   await authProvider.signOut();
                   if (!context.mounted) return;
                   final navigator = Navigator.of(context);
-                  navigator.pushReplacement(
+                  unawaited(navigator.pushReplacement(
                     MaterialPageRoute(builder: (_) => const SignInScreen()),
-                  );
+                  ));
                 },
               ),
           ],

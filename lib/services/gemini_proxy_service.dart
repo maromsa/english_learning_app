@@ -8,6 +8,7 @@ import 'package:english_learning_app/models/object_identification_result.dart';
 
 import 'gemini_proxy_response_cache.dart';
 import 'network/app_http_client.dart';
+import 'network/auth_token_provider.dart';
 
 class GeminiProxyService {
   GeminiProxyService(
@@ -16,6 +17,7 @@ class GeminiProxyService {
     Duration timeout = const Duration(seconds: 12),
     GeminiProxyResponseCache? responseCache,
     bool enableResponseCache = true,
+    AuthTokenProvider? authTokenProvider,
   })  : _endpoint = endpoint,
         _httpClient = httpClient ??
             AppHttpClient(
@@ -24,12 +26,14 @@ class GeminiProxyService {
               sendTimeout: timeout,
             ),
         _responseCache = responseCache ?? GeminiProxyResponseCache(),
-        _enableResponseCache = enableResponseCache;
+        _enableResponseCache = enableResponseCache,
+        _authTokenProvider = authTokenProvider ?? firebaseAuthTokenProvider;
 
   final Uri _endpoint;
   final AppHttpClient _httpClient;
   final GeminiProxyResponseCache _responseCache;
   final bool _enableResponseCache;
+  final AuthTokenProvider _authTokenProvider;
 
   /// Asks Gemini to identify the main object in an image, returning a short
   /// natural-language description (usually a noun phrase).
@@ -192,18 +196,6 @@ class GeminiProxyService {
       'prompt': prompt,
       if (systemInstruction != null) 'system_instruction': systemInstruction,
     };
-    debugPrint('[GeminiProxyService] Sending payload: ${jsonEncode(payload)}');
-    debugPrint(
-      '[GeminiProxyService] systemInstruction present: ${systemInstruction != null}',
-    );
-    if (systemInstruction != null) {
-      debugPrint(
-        '[GeminiProxyService] systemInstruction length: ${systemInstruction.length}',
-      );
-      debugPrint(
-        '[GeminiProxyService] systemInstruction preview: ${systemInstruction.substring(0, systemInstruction.length > 100 ? 100 : systemInstruction.length)}...',
-      );
-    }
     final response = await _postJson(payload);
 
     if (response == null) return null;
@@ -214,6 +206,27 @@ class GeminiProxyService {
     }
 
     return null;
+  }
+
+  /// Searches Pixabay via the server-side proxy (key never ships in the app).
+  ///
+  /// Returns the raw Pixabay `hits` list, or an empty list on failure.
+  Future<List<Map<String, dynamic>>> searchPixabay(
+    String query, {
+    int perPage = 8,
+  }) async {
+    final response = await _postJson({
+      'mode': 'pixabay',
+      'query': query,
+      'perPage': perPage,
+    });
+
+    if (response == null) return const [];
+    final hits = response['hits'];
+    if (hits is List) {
+      return hits.whereType<Map<String, dynamic>>().toList(growable: false);
+    }
+    return const [];
   }
 
   /// Scene-description mode for multimodal learning.
@@ -238,7 +251,7 @@ class GeminiProxyService {
         'You are Spark, an energetic AI guide helping Hebrew-speaking kids aged 5–10 learn English vocabulary.',
       )
       ..writeln(
-        'You see a single image that represents the child\\\'s surroundings. Describe the scene in friendly Hebrew, while gently teaching English words.',
+        "You see a single image that represents the child's surroundings. Describe the scene in friendly Hebrew, while gently teaching English words.",
       )
       ..writeln()
       ..writeln('GOALS:')
@@ -270,7 +283,7 @@ class GeminiProxyService {
     if (learnerName != null && learnerName.trim().isNotEmpty) {
       promptBuffer.writeln();
       promptBuffer.writeln(
-        'Use the learner\\\'s name "$learnerName" once in the description or a quiz question.',
+        'Use the learner\'s name "$learnerName" once in the description or a quiz question.',
       );
     }
     if (learnerAge != null) {
@@ -322,8 +335,11 @@ class GeminiProxyService {
     }
 
     try {
-      debugPrint('[GeminiProxyService] POST to $_endpoint');
-      debugPrint('[GeminiProxyService] Request body: ${jsonEncode(payload)}');
+      debugPrint(
+        '[GeminiProxyService] POST mode=${payload['mode'] ?? 'validate'}',
+      );
+
+      final idToken = await _authTokenProvider();
 
       final response = await _httpClient.dio.postUri<Map<String, dynamic>>(
         _endpoint,
@@ -331,13 +347,15 @@ class GeminiProxyService {
         options: Options(
           contentType: Headers.jsonContentType,
           responseType: ResponseType.json,
+          headers: {
+            if (idToken != null) 'Authorization': 'Bearer $idToken',
+          },
         ),
       );
 
       debugPrint(
         '[GeminiProxyService] Response status: ${response.statusCode}',
       );
-      debugPrint('[GeminiProxyService] Response body: ${response.data}');
 
       if (response.statusCode != 200) {
         return null;
@@ -370,8 +388,8 @@ class GeminiProxyService {
       if (statusCode != null) {
         if (statusCode == 401) {
           debugPrint(
-            '[GeminiProxyService] 🔒 401 Unauthorized — check Firebase auth '
-            'token / function IAM permissions.',
+            '[GeminiProxyService] 🔒 401 Unauthorized — user must be signed '
+            'in (the proxy requires a Firebase ID token).',
           );
           return null;
         }

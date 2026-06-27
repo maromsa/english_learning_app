@@ -150,10 +150,17 @@ class WordRepository {
   static List<WordData> _decodeWordsSync(String jsonStr) {
     try {
       final decoded = jsonDecode(jsonStr) as List<dynamic>;
-      return decoded
-          .whereType<Map<String, dynamic>>()
-          .map(WordData.fromJson)
-          .toList(growable: false);
+      // Parse per-entry so one corrupt word doesn't discard the entire cache.
+      final result = <WordData>[];
+      for (final item in decoded) {
+        if (item is! Map<String, dynamic>) continue;
+        try {
+          result.add(WordData.fromJson(item));
+        } catch (e) {
+          debugPrint('WordRepository: skipping malformed word entry: $e');
+        }
+      }
+      return result;
     } catch (e) {
       debugPrint('Failed to decode cached words: $e');
       return [];

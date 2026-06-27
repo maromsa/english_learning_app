@@ -33,33 +33,34 @@ Sensitive keys are never checked into the repository. Supply them at runtime via
 `--dart-define` when launching the app or running scripts. The `lib/app_config.dart`
 helper exposes the values at runtime.
 
-At startup the app looks for secrets in this order:
+At startup the app looks for configuration in this order:
 
 1. Explicit `--dart-define` flags (works on every platform, including web/CI).
-2. A local `.env` file loaded via `flutter_dotenv` (only on mobile/desktop builds).
-3. Environment variables exposed by the underlying platform.
+2. Environment variables exposed by the underlying platform (desktop dev runs).
+
+> **Security model:** no server-side secrets ship inside the client. The
+> Gemini key and the Google TTS key live only in the Cloud Function (Secret
+> Manager). The client authenticates to the proxy with the signed-in user's
+> Firebase ID token; unauthenticated requests are rejected with 401.
 
 | Dart define | Feature | Notes |
 | --- | --- | --- |
-| `GEMINI_PROXY_URL` | Hosted Gemini proxy endpoint (Firebase Functions / Cloud Run) | Required. All AI features go through this endpoint; if it is unreachable, the app surfaces an error instead of falling back. |
-| `GOOGLE_TTS_API_KEY` | Server-quality Hebrew TTS | Optional. Falls back to on-device TTS if omitted. |
-| `PIXABAY_API_KEY` | Bulk word uploader scripts | Required for `dart run scripts/upload_words.dart`. |
-| `FIREBASE_USER_ID_FOR_UPLOAD` | Bulk word uploader scripts | Target document owner in Firestore. |
-| `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Remote word sync (Cloudinary) and tooling | Required for pulling remote word packs. |
+| `GEMINI_PROXY_URL` | Hosted Gemini proxy endpoint (Firebase Functions / Cloud Run) | Optional. Defaults to `https://us-central1-<project-id>.cloudfunctions.net/geminiProxy`. All AI features (including server TTS) go through this authenticated endpoint. |
+| `GOOGLE_TTS_API_KEY` | Legacy direct TTS fallback | Optional and discouraged — prefer setting the key on the server (`firebase functions:secrets:set GOOGLE_TTS_API_KEY`). Used only if the proxy TTS call fails. |
+| `PIXABAY_API_KEY` | Web image search + uploader scripts | Optional. |
+| `CLOUDINARY_CLOUD_NAME` | Remote word packs (public image list) | Only the cloud name — never put the Cloudinary API key/secret in the client. |
 
 Example dev run:
 
 ```bash
 flutter run \
   --dart-define=GEMINI_PROXY_URL=https://<region>-<project>.cloudfunctions.net/geminiProxy \
-  --dart-define=CLOUDINARY_CLOUD_NAME=your_cloud \
-  --dart-define=CLOUDINARY_API_KEY=your_api_key \
-  --dart-define=CLOUDINARY_API_SECRET=your_secret
+  --dart-define=CLOUDINARY_CLOUD_NAME=your_cloud
 ```
 
 #### Local .env helper
 
-To avoid repeating the flags in local builds, copy `.env.example` to `.env`, fill in your secrets, and use the provided wrapper script:
+To avoid repeating the flags in local builds, copy `.env.example` to `.env`, fill in the values, and use the provided wrapper script:
 
 ```bash
 cp .env.example .env
@@ -68,7 +69,7 @@ echo "GEMINI_PROXY_URL=https://<region>-<project>.cloudfunctions.net/geminiProxy
 ./scripts/flutterw run -d chrome
 ```
 
-The script sources `.env`, injects the necessary `--dart-define` flags when missing, and falls back to any existing environment variables. On mobile/desktop builds the runtime also loads `.env` directly, so both approaches work. For Flutter web, the `.env` file is never bundled—use `./scripts/flutterw` locally or pass the defines explicitly. In CI you can keep using plain `flutter` with explicit `--dart-define` flags so secrets stay in your secret manager.
+The script sources `.env` and injects the necessary `--dart-define` flags when missing. The `.env` file itself is never bundled into any build (the runtime `flutter_dotenv` loader was removed on purpose — bundling it would ship secrets inside release binaries). In CI use plain `flutter` with explicit `--dart-define` flags so values stay in your secret manager.
 
 #### Server-side Gemini proxy (Firebase Functions / Cloud Run)
 
@@ -76,9 +77,9 @@ Keep your Gemini key on the server by deploying the bundled proxy under `functio
 
 1. `cd functions`
 2. `npm install`
-3. Store the key securely:  
-   - **Firebase Functions**: `firebase functions:secrets:set GEMINI_API_KEY`  
-   - **Cloud Run (via Cloud Build)**: configure `GEMINI_API_KEY` as a secret/env var in your deployment pipeline.
+3. Store the keys securely:  
+   - **Firebase Functions**: `firebase functions:secrets:set GEMINI_API_KEY` and `firebase functions:secrets:set GOOGLE_TTS_API_KEY` (the TTS secret must exist before deploying, since the function declares it).  
+   - **Cloud Run (via Cloud Build)**: configure both as secrets/env vars in your deployment pipeline.
 4. For Firebase, build and deploy:
    ```bash
    npm run build
@@ -92,8 +93,13 @@ The proxy supports these operations:
 - **Scene description** (`mode: "scene_description"`): multimodal JSON lesson for the living-world camera flow.
 - **Image validation** (default payload): answers whether an image matches a requested word and returns confidence.
 - **Text generation** (`mode: "text"` / `"story"`): powers Spark's adventure stories and other Gemini prompts on the server.
+- **Speech synthesis** (`mode: "tts"`): Google Cloud TTS with a server-side key; returns base64 MP3 in `audioContent`.
 
-Because the mobile/web client now talks to your proxy, the Gemini key never ships with the app binary—users only see the public endpoint you control.
+**Authentication:** every request must include `Authorization: Bearer <Firebase ID token>` of a signed-in user; the function verifies it with the Admin SDK and rejects everything else with 401. For local emulator testing only, set `ALLOW_UNAUTHENTICATED=true`.
+
+**Rate limiting:** each user is limited to 30 requests/minute per function instance (override with the `RATE_LIMIT_MAX_REQUESTS` env var); excess requests get 429 and the client degrades gracefully.
+
+Because the mobile/web client now talks to your proxy, neither the Gemini key nor the TTS key ships with the app binary—users only see the authenticated endpoint you control.
 
 ### CI without live Gemini
 

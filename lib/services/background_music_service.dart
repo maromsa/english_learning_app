@@ -5,6 +5,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:just_audio/just_audio.dart';
 
+import 'audio_settings.dart';
+
 enum _BackgroundPlaylist { none, startupSequence, mapLoop }
 
 class BackgroundMusicService with WidgetsBindingObserver {
@@ -28,6 +30,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
   StreamSubscription<int?>? _currentIndexSubscription;
   bool _webStartupLoopPrepared = false;
   bool _hasRegisteredPointerRoute = false;
+  bool _hasRegisteredMuteListener = false;
 
   static const _startupChimeAsset = 'assets/audio/startup_chime.wav';
   static const _backgroundLoopAsset = 'assets/audio/the_twinkling_map.mp3';
@@ -66,6 +69,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
           }
         }
       });
+      _registerMuteListener();
       _initialized = true;
     } catch (error, stackTrace) {
       debugPrint('BackgroundMusicService init failed: $error');
@@ -166,6 +170,10 @@ class BackgroundMusicService with WidgetsBindingObserver {
   Future<void> _startPlaybackWithUnlock({
     required String contextDescription,
   }) async {
+    if (AudioSettings().muted) {
+      debugPrint('$contextDescription playback skipped — audio muted.');
+      return;
+    }
     if (kIsWeb && !_userInteractionReceived) {
       if (!_awaitingUserInteractionUnlock) {
         debugPrint(
@@ -277,6 +285,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
     _awaitingUserInteractionUnlock = false;
     _webStartupLoopPrepared = false;
     _unregisterGlobalPointerRoute();
+    _unregisterMuteListener();
     await _player.dispose();
   }
 
@@ -304,6 +313,39 @@ class BackgroundMusicService with WidgetsBindingObserver {
         'Failed to reconfigure background loop for web: $error',
       );
       debugPrint('$stackTrace');
+    }
+  }
+
+  void _registerMuteListener() {
+    if (_hasRegisteredMuteListener) {
+      return;
+    }
+    AudioSettings().addListener(_handleMuteChanged);
+    _hasRegisteredMuteListener = true;
+  }
+
+  void _unregisterMuteListener() {
+    if (!_hasRegisteredMuteListener) {
+      return;
+    }
+    AudioSettings().removeListener(_handleMuteChanged);
+    _hasRegisteredMuteListener = false;
+  }
+
+  void _handleMuteChanged() {
+    if (AudioSettings().muted) {
+      _player.pause().catchError((Object e) {
+        debugPrint('Failed to pause music on mute: $e');
+      });
+    } else if (_currentPlaylist != _BackgroundPlaylist.none) {
+      // Resume the active loop now that audio is allowed again.
+      unawaited(
+        _startPlaybackWithUnlock(
+          contextDescription: _currentPlaylist == _BackgroundPlaylist.mapLoop
+              ? 'Map loop'
+              : 'Startup sequence',
+        ),
+      );
     }
   }
 

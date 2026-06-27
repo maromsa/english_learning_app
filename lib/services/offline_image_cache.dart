@@ -45,7 +45,7 @@ class OfflineImageCache {
     try {
       final decoded = jsonDecode(raw) as Map<String, dynamic>;
       return decoded.map(
-        (key, value) => MapEntry(key, value as String),
+        (key, value) => MapEntry(key, (value as String?) ?? ''),
       );
     } catch (e) {
       debugPrint('OfflineImageCache: corrupt map, resetting: $e');

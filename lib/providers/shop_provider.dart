@@ -1,21 +1,46 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
+import '../services/streak_shield_service.dart';
 import '../services/user_data_service.dart';
 
 class ShopProvider with ChangeNotifier {
-  ShopProvider({UserDataService? userDataService})
-      : _userDataService = userDataService ?? UserDataService();
+  ShopProvider({
+    UserDataService? userDataService,
+    StreakShieldService? shieldService,
+  })  : _userDataService = userDataService ?? UserDataService(),
+        _shieldService = shieldService;
 
   final UserDataService _userDataService;
+  final StreakShieldService? _shieldService;
   String? _currentUserId;
+
+  bool _disposed = false;
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
 
   /// Set the current user ID for cloud sync
   void setUserId(String? userId) {
     _currentUserId = userId;
   }
 
+  static const String streakShieldId = 'streak_shield';
+
   final List<Product> _products = [
+    // ── Consumable power-ups ──────────────────────────────────────────────────
+    Product(
+      id: streakShieldId,
+      name: 'מגן רצף',
+      englishName: 'Streak Shield',
+      price: 100,
+      assetImagePath: 'assets/images/streak_shield.png',
+      category: ProductCategory.powerUps,
+      rarity: ProductRarity.rare,
+      description: 'מגן שמגן על הרצף היומי שלך ליום אחד אם תפספס!',
+      specialEffect: 'שומר על הרצף ליום אחד',
+    ),
     // Accessories
     Product(
       id: 'magic_hat',
@@ -185,7 +210,7 @@ class ShopProvider with ChangeNotifier {
       final purchasedIds = prefs.getStringList('purchased_items') ?? [];
       _purchasedItemIds.clear();
       _purchasedItemIds.addAll(purchasedIds);
-      notifyListeners();
+      _notify();
     } catch (e) {
       debugPrint('Error loading purchased items: $e');
     }
@@ -211,6 +236,10 @@ class ShopProvider with ChangeNotifier {
   }
 
   bool isPurchased(String productId) {
+    if (productId == streakShieldId) {
+      // Shield is "owned" only while it's active.
+      return _shieldService?.hasShield ?? false;
+    }
     return _purchasedItemIds.contains(productId);
   }
 
@@ -219,15 +248,34 @@ class ShopProvider with ChangeNotifier {
   }
 
   Future<void> purchase(String productId) async {
-    if (!_purchasedItemIds.contains(productId)) {
-      _purchasedItemIds.add(productId);
-      notifyListeners();
-      await _savePurchasedItems();
+    // Streak shield is a consumable — can always buy another if you don't have one.
+    final isShield = productId == streakShieldId;
+    if (!isShield && _purchasedItemIds.contains(productId)) return;
 
-      // Also add to cloud individually
-      if (_currentUserId != null) {
-        await _userDataService.addPurchasedItem(_currentUserId!, productId);
-      }
+    if (!isShield) {
+      _purchasedItemIds.add(productId);
+    }
+    _notify();
+
+    // Side-effect: activate the shield in StreakShieldService.
+    if (isShield && _shieldService != null) {
+      await _shieldService!.grantShield();
+    }
+
+    await _savePurchasedItems();
+
+    if (_currentUserId != null) {
+      await _userDataService.addPurchasedItem(_currentUserId!, productId);
     }
   }
+
+  /// Whether the streak shield is currently active (not yet consumed).
+  bool get hasStreakShield => _shieldService?.hasShield ?? false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
 }

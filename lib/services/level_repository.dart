@@ -34,17 +34,26 @@ class LevelRepository {
           continue;
         }
 
-        final wordsJson = (json['words'] as List<dynamic>? ?? [])
-            .whereType<Map<String, dynamic>>()
-            .map(WordData.fromJson)
-            .toList();
+        final wordsJson = <WordData>[];
+        for (final wordMap in (json['words'] as List<dynamic>? ?? [])) {
+          if (wordMap is! Map<String, dynamic>) continue;
+          try {
+            wordsJson.add(WordData.fromJson(wordMap));
+          } catch (e) {
+            debugPrint('LevelRepository: skipping malformed word in level $id: $e');
+          }
+        }
         _wordsByLevelId[id] = wordsJson;
 
-        if (lazyWords) {
-          final summaryJson = Map<String, dynamic>.from(json)..['words'] = [];
-          levels.add(LevelData.fromJson(summaryJson));
-        } else {
-          levels.add(LevelData.fromJson(json));
+        try {
+          if (lazyWords) {
+            final summaryJson = Map<String, dynamic>.from(json)..['words'] = [];
+            levels.add(LevelData.fromJson(summaryJson));
+          } else {
+            levels.add(LevelData.fromJson(json));
+          }
+        } catch (e) {
+          debugPrint('LevelRepository: skipping malformed level $id: $e');
         }
       }
 

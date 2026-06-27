@@ -1,13 +1,17 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/word_data.dart';
+import 'package:english_learning_app/models/daily_mission.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
+import 'package:english_learning_app/services/difficulty_engine.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
 import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/services/spark_voice_service.dart';
@@ -70,6 +74,7 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
   String? _feedbackMessage;
   late List<WordData> _currentOptions;
   final math.Random _random = math.Random();
+  DifficultyEngine? _difficultyEngine;
 
   @override
   void initState() {
@@ -82,15 +87,30 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
     _sparkVoiceService = SparkVoiceService();
     _flutterTts = FlutterTts();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Create engine with a per-user-per-level key so difficulty persists.
+      final userId = context.read<UserSessionProvider>().currentUser?.id ?? 'local_guest';
+      _difficultyEngine = DifficultyEngine(
+        storageKey: 'difficulty_quiz_${userId}_${widget.levelId}',
+      );
       _notifySparkHappy();
       _loadWords();
       _configureTts();
     });
   }
 
+  @override
+  void dispose() {
+    _difficultyEngine?.dispose();
+    _flutterTts.stop();
+    super.dispose();
+  }
+
   void _notifySparkHappy() {
     final controller = context.read<SparkOverlayController>();
     controller.setEmotion(SparkEmotion.happy);
+    try {
+      context.read<AchievementService>().markModeTried('quiz');
+    } catch (_) {}
   }
 
   Future<void> _configureTts() async {
@@ -158,7 +178,10 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
         .where((w) => w.word != target.word)
         .toList()
       ..shuffle(_random);
-    final wrong = others.take(3).toList();
+    // Adaptive option count: 2 (easy) / 3 (medium) / 4 (hard).
+    final optionCount = _difficultyEngine?.params.optionCount ?? 3;
+    final wrongCount = (optionCount - 1).clamp(1, others.length);
+    final wrong = others.take(wrongCount).toList();
     final options = [target, ...wrong]..shuffle(_random);
     setState(() {
       _currentOptions = options;
@@ -224,8 +247,12 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
       _selectedOption = option;
     });
 
+    // Feed answer into the adaptive difficulty engine.
+    _difficultyEngine?.recordAnswer(isCorrect);
+
     if (isCorrect) {
-      final reward = _baseReward + _streak * _rewardPerStreak;
+      final multiplier = _difficultyEngine?.params.bonusMultiplier ?? 1.0;
+      final reward = ((_baseReward + _streak * _rewardPerStreak) * multiplier).round();
       final coinProvider = context.read<CoinProvider>();
       final sparkController = context.read<SparkOverlayController>();
       await coinProvider.addCoins(reward);
@@ -237,7 +264,7 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
       );
       if (mounted) {
         // Play success sound — fire-and-forget, does not block UI thread.
-        SoundService().playSuccessSound();
+        unawaited(SoundService().playSuccessSound());
         sparkController.markCelebrating();
         final compliment = SparkStrings.randomCompliment();
         setState(() {
@@ -247,6 +274,11 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
         context
             .read<AchievementService>()
             .checkForAchievements(streak: _streak);
+        try {
+          context
+              .read<DailyMissionProvider>()
+              .incrementByType(DailyMissionType.quizPlay);
+        } catch (_) {}
       }
     } else {
       if (mounted) {
@@ -322,6 +354,23 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
                 child: Column(
                   children: [
                     _buildHeroWordTitle(context, target.word),
+                    // Hebrew hint shown when the engine flags easy difficulty.
+                    if ((_difficultyEngine?.params.showHint ?? false) &&
+                        target.translation != null &&
+                        target.translation!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        target.translation!,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.6),
+                              fontStyle: FontStyle.italic,
+                            ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     IconButton.filled(
                       onPressed: () => _playWord(target.word),
