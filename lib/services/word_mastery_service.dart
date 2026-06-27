@@ -86,8 +86,7 @@ class WordMasteryEntry {
     if (value.isNaN || value.isInfinite) {
       return 0.0;
     }
-    final numClamped = value.clamp(0.0, 1.0) as num;
-    return numClamped.toDouble();
+    return value.clamp(0.0, 1.0);
   }
 }
 

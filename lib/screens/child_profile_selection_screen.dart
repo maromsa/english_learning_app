@@ -42,7 +42,12 @@ class _ChildProfileSelectionScreenState
     }
 
     final auth = context.read<AuthProvider>();
-    await provider.initialize(parentUid: auth.firebaseUser?.uid);
+    await provider.initialize(parentUid: auth.firebaseUser?.uid).timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        debugPrint('ChildProfileSelectionScreen: initialize timed out');
+      },
+    );
   }
 
   Future<void> _selectProfile(ChildProfile profile) async {

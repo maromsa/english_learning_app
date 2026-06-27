@@ -1,7 +1,9 @@
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/local_user.dart';
+import 'package:english_learning_app/models/daily_mission.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/background_music_service.dart';
@@ -47,6 +49,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
   double _soundLevel = 0.0;
 
   String? _errorMessage;
+  TelemetryService? _telemetry;
 
   String _selectedTopic = _topics.first.id;
   String _selectedSkill = _skills.first.id;
@@ -75,7 +78,9 @@ class _AiConversationScreenState extends State<AiConversationScreen>
     _initSpeech();
     _configureTts();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      TelemetryService.maybeOf(context)?.startScreenSession('ai_conversation');
+      if (!mounted) return;
+      _telemetry = TelemetryService.maybeOf(context);
+      _telemetry?.startScreenSession('ai_conversation');
     });
 
   }
@@ -139,7 +144,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
   @override
   void dispose() {
     RouteObserverService.routeObserver.unsubscribe(this);
-    TelemetryService.maybeOf(context)?.endScreenSession(
+    _telemetry?.endScreenSession(
       'ai_conversation',
       extra: {
         'turns_total': _entries.length,
@@ -614,10 +619,10 @@ class _AiConversationScreenState extends State<AiConversationScreen>
 
       await _speakSpark(response.message);
       if (mounted) {
-        TelemetryService.maybeOf(context)?.logCustomEvent(
+        unawaited(TelemetryService.maybeOf(context)?.logCustomEvent(
           'ai_conversation_started',
           {'topic': _selectedTopic, 'skill': _selectedSkill},
-        );
+        ));
       }
     } on ConversationGenerationException catch (error) {
       sparkController.markIdle();
@@ -719,10 +724,10 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       await _speakSpark(response.message);
       await _rewardLearner();
       if (mounted) {
-        TelemetryService.maybeOf(context)?.logCustomEvent(
+        unawaited(TelemetryService.maybeOf(context)?.logCustomEvent(
           'ai_conversation_turn',
           {'topic': _selectedTopic, 'skill': _selectedSkill},
-        );
+        ));
       }
     } on ConversationGenerationException catch (error) {
       sparkController.markIdle();
@@ -798,6 +803,11 @@ class _AiConversationScreenState extends State<AiConversationScreen>
     if (!mounted) {
       return;
     }
+    try {
+      context
+          .read<DailyMissionProvider>()
+          .incrementByType(DailyMissionType.speakPractice);
+    } catch (_) {}
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(

@@ -24,6 +24,12 @@ class UserSessionProvider with ChangeNotifier {
   AppSessionUser? _currentUser;
   final LocalUserService _localUserService = LocalUserService();
 
+  bool _disposed = false;
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
   AppSessionUser? get currentUser => _currentUser;
 
   /// The ID of the currently active user, or null if no user is logged in.
@@ -65,7 +71,7 @@ class UserSessionProvider with ChangeNotifier {
             // User not found, continue without setting current user
           }
         }
-        notifyListeners();
+        _notify();
       } else {
         // אם אין משתמש שמור, ננסה לטעון את המשתמש הפעיל המקומי
         final activeLocalUser = await _localUserService.getActiveUser();
@@ -77,7 +83,7 @@ class UserSessionProvider with ChangeNotifier {
             isGoogle: false,
           );
           await _saveSessionState();
-          notifyListeners();
+          _notify();
         }
       }
     } catch (e) {
@@ -96,7 +102,7 @@ class UserSessionProvider with ChangeNotifier {
     await _localUserService.setActiveUser(user.id);
     await _localUserService.updateLastPlayed(user.id);
     await _saveSessionState();
-    notifyListeners();
+    _notify();
   }
 
   /// מעבר למשתמש גוגל
@@ -108,7 +114,7 @@ class UserSessionProvider with ChangeNotifier {
       isGoogle: true,
     );
     await _saveSessionState();
-    notifyListeners();
+    _notify();
   }
 
   /// Active child profile under a signed-in parent account.
@@ -124,7 +130,7 @@ class UserSessionProvider with ChangeNotifier {
       isGoogle: false,
     );
     await _saveSessionState();
-    notifyListeners();
+    _notify();
   }
 
   Future<void> _saveSessionState() async {
@@ -139,6 +145,13 @@ class UserSessionProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('last_active_user_id');
     await prefs.remove('last_active_is_google');
-    notifyListeners();
+    _notify();
   }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
 }

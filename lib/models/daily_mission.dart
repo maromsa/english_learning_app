@@ -1,6 +1,18 @@
 import 'dart:convert';
 
-enum DailyMissionType { speakPractice, lightningRound, quizPlay, camera }
+enum DailyMissionType {
+  speakPractice,
+  lightningRound,
+  quizPlay,
+  camera,
+  // ── New mission types ──────────────────────────────────────────────────────
+  /// Review SRS due cards (in Lightning or dedicated SRS session).
+  srsReview,
+  /// Read an interactive Spark story.
+  storyRead,
+  /// Get a perfect 3-star pronunciation on a word.
+  pronunciationPerfect,
+}
 
 class DailyMission {
   final String id;
@@ -60,11 +72,11 @@ class DailyMission {
 
   factory DailyMission.fromMap(Map<String, dynamic> map) {
     return DailyMission(
-      id: map['id'] as String,
-      title: map['title'] as String,
-      description: map['description'] as String,
-      target: map['target'] as int,
-      reward: map['reward'] as int,
+      id: (map['id'] as String?) ?? '',
+      title: (map['title'] as String?) ?? '',
+      description: (map['description'] as String?) ?? '',
+      target: (map['target'] as int?) ?? 1,
+      reward: (map['reward'] as int?) ?? 0,
       type: DailyMissionType.values.firstWhere(
         (value) => value.name == map['type'],
         orElse: () => DailyMissionType.speakPractice,

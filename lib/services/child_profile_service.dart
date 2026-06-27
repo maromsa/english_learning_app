@@ -35,9 +35,16 @@ class ChildProfileService {
 
     try {
       final list = jsonDecode(raw) as List<dynamic>;
-      return list
-          .map((item) => ChildProfile.fromMap(item as Map<String, dynamic>))
-          .toList();
+      final result = <ChildProfile>[];
+      for (final item in list) {
+        if (item is! Map<String, dynamic>) continue;
+        try {
+          result.add(ChildProfile.fromMap(item));
+        } catch (e) {
+          debugPrint('ChildProfileService: skipping malformed profile: $e');
+        }
+      }
+      return result;
     } catch (e) {
       debugPrint('ChildProfileService: failed to decode profiles: $e');
       return [];
@@ -213,9 +220,16 @@ class ChildProfileService {
 
     try {
       final list = jsonDecode(raw) as List<dynamic>;
-      return list
-          .map((item) => ChildProfile.fromMap(item as Map<String, dynamic>))
-          .toList();
+      final result = <ChildProfile>[];
+      for (final item in list) {
+        if (item is! Map<String, dynamic>) continue;
+        try {
+          result.add(ChildProfile.fromMap(item));
+        } catch (_) {
+          // skip malformed entries — don't discard entire profile list
+        }
+      }
+      return result;
     } catch (_) {
       return [];
     }

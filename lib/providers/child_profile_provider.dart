@@ -21,6 +21,12 @@ class ChildProfileProvider with ChangeNotifier {
   bool _loading = false;
   bool _initialized = false;
 
+  bool _disposed = false;
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
   List<ChildProfile> get profiles => List.unmodifiable(_profiles);
   ChildProfile? get activeProfile => _activeProfile;
   String? get activeProfileId => _activeProfile?.id;
@@ -36,7 +42,7 @@ class ChildProfileProvider with ChangeNotifier {
 
     _loading = true;
     _parentUid = parentUid;
-    notifyListeners();
+    _notify();
 
     try {
       await _profileService.migrateFromLocalUsersIfNeeded();
@@ -49,7 +55,7 @@ class ChildProfileProvider with ChangeNotifier {
     } finally {
       _loading = false;
       _initialized = true;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -69,7 +75,7 @@ class ChildProfileProvider with ChangeNotifier {
       await _syncService.syncProfileToCloud(_parentUid!, profile);
     }
 
-    notifyListeners();
+    _notify();
     return profile;
   }
 
@@ -91,11 +97,16 @@ class ChildProfileProvider with ChangeNotifier {
       parentUid: _parentUid,
       syncService: _syncService,
       profileService: _profileService,
+    ).timeout(
+      const Duration(seconds: 8),
+      onTimeout: () {
+        debugPrint('ChildProfileProvider: ActiveProfileScope.apply timed out');
+      },
     );
 
     _profiles = await _profileService.getAllProfiles();
     _activeProfile = await _profileService.getActiveProfile();
-    notifyListeners();
+    _notify();
   }
 
   Future<bool> deleteProfile(String profileId) async {
@@ -112,7 +123,7 @@ class ChildProfileProvider with ChangeNotifier {
     if (_activeProfile?.id == profileId) {
       _activeProfile = null;
     }
-    notifyListeners();
+    _notify();
     return true;
   }
 
@@ -122,7 +133,7 @@ class ChildProfileProvider with ChangeNotifier {
     }
     _profiles = await _profileService.getAllProfiles();
     _activeProfile = await _profileService.getActiveProfile();
-    notifyListeners();
+    _notify();
   }
 
   Future<void> syncPendingProfiles() async {
@@ -131,12 +142,19 @@ class ChildProfileProvider with ChangeNotifier {
     }
     await _syncService.syncPendingToCloud(_parentUid!);
     _profiles = await _profileService.getAllProfiles();
-    notifyListeners();
+    _notify();
   }
 
   Future<void> clearActiveProfile() async {
     await _profileService.clearActiveProfile();
     _activeProfile = null;
-    notifyListeners();
+    _notify();
   }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
 }

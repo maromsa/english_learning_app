@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'network/app_http_client.dart';
+import 'network/auth_token_provider.dart';
 
 /// Contract for validating whether an image matches a requested word.
 abstract class AiImageValidator {
@@ -30,6 +31,7 @@ class HttpFunctionAiImageValidator implements AiImageValidator {
     AppHttpClient? client,
     Duration timeout = const Duration(seconds: 8),
     double minimumConfidence = 0.5,
+    AuthTokenProvider? authTokenProvider,
   })  : assert(
           minimumConfidence >= 0 && minimumConfidence <= 1,
           'minimumConfidence must be between 0 and 1.',
@@ -41,10 +43,12 @@ class HttpFunctionAiImageValidator implements AiImageValidator {
               sendTimeout: timeout,
             ),
         _requestTimeout = timeout,
-        _minimumConfidence = minimumConfidence;
+        _minimumConfidence = minimumConfidence,
+        _authTokenProvider = authTokenProvider ?? firebaseAuthTokenProvider;
 
   final Uri _validationEndpoint;
   final AppHttpClient _httpClient;
+  final AuthTokenProvider _authTokenProvider;
   final Duration _requestTimeout;
   final double _minimumConfidence;
   double? _lastConfidence;
@@ -62,6 +66,7 @@ class HttpFunctionAiImageValidator implements AiImageValidator {
     try {
       _lastConfidence = null;
       _lastApproval = null;
+      final idToken = await _authTokenProvider();
       final response = await _httpClient.dio.postUri<Map<String, dynamic>>(
         _validationEndpoint,
         data: {
@@ -72,6 +77,9 @@ class HttpFunctionAiImageValidator implements AiImageValidator {
         options: Options(
           contentType: Headers.jsonContentType,
           responseType: ResponseType.json,
+          headers: {
+            if (idToken != null) 'Authorization': 'Bearer $idToken',
+          },
         ),
       );
 

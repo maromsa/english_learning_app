@@ -1,7 +1,10 @@
 import 'package:english_learning_app/utils/list_performance.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../services/notification_service.dart';
 
 import '../l10n/spark_strings.dart';
 import '../models/player_character.dart';
@@ -10,6 +13,7 @@ import '../providers/character_provider.dart';
 import '../providers/child_profile_provider.dart';
 import '../providers/coin_provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/audio_settings.dart';
 import '../services/offline_practice_service.dart';
 import '../services/word_repository.dart';
 import '../utils/parent_dashboard_navigation.dart';
@@ -33,6 +37,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final activeProfile = context.watch<ChildProfileProvider>().activeProfile;
     final themeProvider = context.watch<ThemeProvider>();
     final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
+    final audioSettings = context.watch<AudioSettings>();
+    final isMuted = audioSettings.muted;
 
     return Scaffold(
       backgroundColor: isDarkMode ? null : Colors.grey.shade50,
@@ -108,6 +114,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(height: 1, indent: 60),
                 _SettingsTile(
+                  icon: isMuted ? Icons.volume_off : Icons.volume_up,
+                  iconColor: Colors.pink,
+                  title: 'השתקת סאונד',
+                  subtitle: isMuted
+                      ? 'מוזיקה, אפקטים וקול כבויים'
+                      : 'מוזיקה, אפקטים וקול הדמות',
+                  trailing: Switch.adaptive(
+                    value: isMuted,
+                    onChanged: (value) async {
+                      await audioSettings.setMuted(value);
+                    },
+                  ),
+                ),
+                const Divider(height: 1, indent: 60),
+                _SettingsTile(
                   icon: Icons.cleaning_services,
                   iconColor: Colors.orange,
                   title: 'ניקוי מטמון',
@@ -117,6 +138,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
+
+          const SizedBox(height: 24),
+          const _SectionHeader(title: 'התראות'),
+          const SizedBox(height: 8),
+          const _NotificationsCard(),
 
           const SizedBox(height: 24),
           const _SectionHeader(title: 'הורים ומורים'),
@@ -544,6 +570,181 @@ class _SettingsTile extends StatelessWidget {
                 )
               : null),
       onTap: onTap,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Notifications settings card
+// ---------------------------------------------------------------------------
+
+class _NotificationsCard extends StatefulWidget {
+  const _NotificationsCard();
+
+  @override
+  State<_NotificationsCard> createState() => _NotificationsCardState();
+}
+
+class _NotificationsCardState extends State<_NotificationsCard> {
+  bool _dailyEnabled = false;
+  bool _srsEnabled = false;
+  int _hour = 18;
+  int _minute = 0;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    if (kIsWeb) {
+      setState(() => _loading = false);
+      return;
+    }
+    final s = await NotificationService.instance.getSettings();
+    if (mounted) {
+      setState(() {
+        _dailyEnabled = s.dailyEnabled;
+        _srsEnabled = s.srsEnabled;
+        _hour = s.hour;
+        _minute = s.minute;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _toggleDaily(bool value) async {
+    setState(() => _dailyEnabled = value);
+    if (value) {
+      final ok = await NotificationService.instance.requestPermission();
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('אנא אשרו הרשאת התראות בהגדרות המכשיר')),
+        );
+        setState(() => _dailyEnabled = false);
+        return;
+      }
+      await NotificationService.instance
+          .scheduleDailyReminder(hour: _hour, minute: _minute);
+    } else {
+      await NotificationService.instance.cancelDailyReminder();
+    }
+  }
+
+  Future<void> _toggleSrs(bool value) async {
+    setState(() => _srsEnabled = value);
+    if (value) {
+      final ok = await NotificationService.instance.requestPermission();
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('אנא אשרו הרשאת התראות בהגדרות המכשיר')),
+        );
+        setState(() => _srsEnabled = false);
+        return;
+      }
+      await NotificationService.instance.scheduleSrsReminder();
+    } else {
+      await NotificationService.instance.cancelSrsReminder();
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: _hour, minute: _minute),
+      helpText: 'בחרו שעת תזכורת יומית',
+    );
+    if (picked != null) {
+      setState(() {
+        _hour = picked.hour;
+        _minute = picked.minute;
+      });
+      if (_dailyEnabled) {
+        await NotificationService.instance
+            .scheduleDailyReminder(hour: _hour, minute: _minute);
+      }
+    }
+  }
+
+  String get _timeLabel =>
+      '${_hour.toString().padLeft(2, '0')}:${_minute.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.grey.shade200),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text(
+            'התראות אינן נתמכות בגרסת הדפדפן',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
+    if (_loading) {
+      return const Center(
+          child: SizedBox(
+              height: 48, child: Center(child: CircularProgressIndicator())));
+    }
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          // Daily reminder toggle
+          _SettingsTile(
+            icon: Icons.notifications_active,
+            iconColor: Colors.blue,
+            title: 'תזכורת יומית',
+            subtitle: _dailyEnabled ? 'פעיל — בשעה $_timeLabel' : 'כבוי',
+            trailing: Switch.adaptive(
+              value: _dailyEnabled,
+              onChanged: _toggleDaily,
+            ),
+          ),
+
+          // Time picker (only when daily is on)
+          if (_dailyEnabled) ...[
+            const Divider(height: 1, indent: 60),
+            _SettingsTile(
+              icon: Icons.access_time,
+              iconColor: Colors.grey,
+              title: 'שעת תזכורת',
+              subtitle: _timeLabel,
+              onTap: _pickTime,
+            ),
+          ],
+
+          const Divider(height: 1, indent: 60),
+
+          // SRS reminder toggle
+          _SettingsTile(
+            icon: Icons.repeat_rounded,
+            iconColor: Colors.teal,
+            title: 'תזכורת חזרה מדורגת',
+            subtitle: _srsEnabled
+                ? 'פעיל — תזכורת כאשר יש כרטיסיות לחזרה'
+                : 'כבוי',
+            trailing: Switch.adaptive(
+              value: _srsEnabled,
+              onChanged: _toggleSrs,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -11,6 +11,17 @@ class CharacterProvider with ChangeNotifier {
   final UserDataService _userDataService;
   PlayerCharacter? _character;
   String? _currentUserId;
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
 
   PlayerCharacter? get character => _character;
   bool get hasCharacter => _character != null;
@@ -34,7 +45,7 @@ class CharacterProvider with ChangeNotifier {
           characterName: characterName,
           color: color,
         );
-        notifyListeners();
+        _notify();
       }
     } catch (e) {
       debugPrint('Error loading character: $e');
@@ -60,7 +71,7 @@ class CharacterProvider with ChangeNotifier {
   /// Set character (saves locally and to cloud)
   Future<void> setCharacter(PlayerCharacter character) async {
     _character = character;
-    notifyListeners();
+    _notify();
 
     // Save locally
     await _saveCharacterLocally();
@@ -83,7 +94,7 @@ class CharacterProvider with ChangeNotifier {
       if (playerData?.character != null) {
         _character = playerData!.character;
         await _saveCharacterLocally();
-        notifyListeners();
+        _notify();
       }
     } catch (e) {
       debugPrint('Error loading character from cloud: $e');

@@ -1,8 +1,13 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/providers/user_session_provider.dart';
+import 'package:english_learning_app/services/achievement_service.dart';
+import 'package:english_learning_app/services/app_database.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 /// Screen shown when a level is completed
 class LevelCompletionScreen extends StatefulWidget {
@@ -12,15 +17,23 @@ class LevelCompletionScreen extends StatefulWidget {
     required this.completedWords,
     required this.totalWords,
     required this.onContinue,
-    // Optional parameters for future data expansion
-    this.coinsEarned = 50, // Default mock value
-    this.starsEarned = 3, // Default mock value
+    this.levelId,
+    this.isChapterEnd = false,
+    this.coinsEarned = 50,
+    this.starsEarned = 3,
   });
 
   final String levelName;
   final int completedWords;
   final int totalWords;
   final VoidCallback onContinue;
+
+  /// Level identifier — used to fire chapter-end celebration.
+  final String? levelId;
+
+  /// True when completing this level closes a chapter (triggers epic celebration).
+  final bool isChapterEnd;
+
   final int coinsEarned;
   final int starsEarned;
 
@@ -40,9 +53,6 @@ class _LevelCompletionScreenState extends State<LevelCompletionScreen>
   @override
   void initState() {
     super.initState();
-
-    // TODO(P-09): trigger Celebration.fire(tier: epic) when this level closes a chapter.
-    // Requires levelId in route args + chapter metadata in levels.json (added in P-09).
 
     // Entrance Animations
     _entranceController = AnimationController(
@@ -77,6 +87,40 @@ class _LevelCompletionScreenState extends State<LevelCompletionScreen>
     )..repeat(reverse: true);
 
     _entranceController.forward();
+
+    // Fire celebration and achievements after the first frame so context is available.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _onLevelComplete();
+    });
+  }
+
+  Future<void> _onLevelComplete() async {
+    // Fetch cumulative practiced word count for milestone achievements.
+    int totalPracticed = widget.completedWords;
+    try {
+      final userId =
+          context.read<UserSessionProvider>().currentUserId ?? 'local_guest';
+      totalPracticed = await AppDatabase.instance.getPracticedCount(
+        userId: userId,
+      );
+    } catch (_) {}
+
+    // Fire AchievementService — level completion counts as a streak event.
+    try {
+      await context.read<AchievementService>().checkForAchievements(
+            streak: widget.completedWords,
+            wordsLearned: totalPracticed,
+            levelName: widget.levelName,
+          );
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    // Epic celebration when closing a chapter.
+    if (widget.isChapterEnd) {
+      unawaited(Celebration.fire(context, tier: CelebrationTier.epic));
+    }
   }
 
   @override

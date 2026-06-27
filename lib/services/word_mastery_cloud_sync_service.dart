@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import '../models/player_data.dart';
 import '../models/word_progress_entry.dart';
 import 'user_data_service.dart';
 import 'word_mastery_service.dart';
@@ -73,7 +72,7 @@ class WordMasteryCloudSyncService {
 
         final shouldUpdateMastery =
             entry.bestPronunciationStars > localMastery.bestPronunciationStars ||
-                entry.isMastered && localMastery.masteryLevel < 1.0;
+                (entry.isMastered && localMastery.masteryLevel < 1.0);
 
         if (shouldUpdateMastery) {
           if (entry.isMastered || entry.bestPronunciationStars >= 3) {

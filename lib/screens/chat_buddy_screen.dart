@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/local_user.dart';
+import 'package:english_learning_app/models/daily_mission.dart';
+import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/background_music_service.dart';
 import 'package:english_learning_app/services/chat_buddy_service.dart';
@@ -175,6 +177,11 @@ class _ChatBuddyScreenState extends State<ChatBuddyScreen> with RouteAware {
         _scaffoldingWords = turn.scaffoldingWords;
       });
       _scrollToEnd();
+      try {
+        context
+            .read<DailyMissionProvider>()
+            .incrementByType(DailyMissionType.speakPractice);
+      } catch (_) {}
     } on ChatBuddyGenerationException catch (e) {
       if (!mounted) return;
       setState(() {

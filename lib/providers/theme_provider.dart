@@ -4,6 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider with ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
+
+  bool _disposed = false;
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
   ThemeMode get themeMode => _themeMode;
 
   ThemeProvider() {
@@ -15,7 +21,7 @@ class ThemeProvider with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final isDark = prefs.getBool('is_dark_mode') ?? false;
       _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
-      notifyListeners();
+      _notify();
     } catch (e) {
       debugPrint('Error loading theme: $e');
     }
@@ -23,7 +29,7 @@ class ThemeProvider with ChangeNotifier {
 
   Future<void> toggleTheme(bool isDark) async {
     _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
-    notifyListeners();
+    _notify();
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -35,7 +41,7 @@ class ThemeProvider with ChangeNotifier {
 
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
-    notifyListeners();
+    _notify();
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -44,4 +50,11 @@ class ThemeProvider with ChangeNotifier {
       debugPrint('Error saving theme: $e');
     }
   }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
 }

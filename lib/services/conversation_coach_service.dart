@@ -304,9 +304,9 @@ Output JSON (no markdown fences) with keys:
       if (fenceEnd != -1) {
         return trimmed
             .substring(3, fenceEnd)
-            .replaceFirst(RegExp(r'^json\\s*'), '');
+            .replaceFirst(RegExp(r'^json\s*'), '');
       }
-      return trimmed.substring(3).replaceFirst(RegExp(r'^json\\s*'), '');
+      return trimmed.substring(3).replaceFirst(RegExp(r'^json\s*'), '');
     }
     return trimmed;
   }

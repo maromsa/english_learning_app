@@ -13,10 +13,19 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // A user may never change their own `role` (privilege escalation guard).
+    // Admin status itself is enforced via custom claims, but the stored role
+    // field should stay trustworthy too.
+    function roleUnchanged() {
+      return !request.resource.data.diff(resource.data)
+        .affectedKeys().hasAny(['role']);
+    }
+
     match /users/{userId} {
-      allow create: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && request.resource.data.get('role', 'user') == 'user';
       allow read: if isOwner(userId) || isAdmin();
-      allow update: if isOwner(userId) || isAdmin();
+      allow update: if isAdmin() || (isOwner(userId) && roleUnchanged());
       allow delete: if isAdmin();
 
       match /childProfiles/{profileId} {
@@ -26,6 +35,32 @@ service cloud.firestore {
       match /gameData/{docId} {
         allow read, write: if isOwner(userId);
       }
+    }
+
+    // Privacy-safe global leaderboard.
+    // Each signed-in user may publish/maintain entries only for their own
+    // profiles (doc id must be "<uid>_<profileId>"), with a strict field
+    // whitelist so no extra child data can leak into the shared collection.
+    match /leaderboard/{entryId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn()
+        && entryId == request.auth.uid + '_' + request.resource.data.profileId
+        && request.resource.data.keys().hasOnly([
+          'profileId', 'displayName', 'coins', 'dailyStreak',
+          'avatarColor', 'updatedAt'
+        ])
+        && request.resource.data.profileId is string
+        && request.resource.data.profileId.size() > 0
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() > 0
+        && request.resource.data.displayName.size() <= 40
+        && request.resource.data.coins is int
+        && request.resource.data.coins >= 0
+        && request.resource.data.dailyStreak is int
+        && request.resource.data.dailyStreak >= 0
+        && request.resource.data.avatarColor is int;
+      allow delete: if isSignedIn()
+        && entryId.split('_')[0] == request.auth.uid;
     }
 
     match /{document=**} {

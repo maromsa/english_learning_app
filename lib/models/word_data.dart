@@ -15,6 +15,9 @@ class WordData {
   final String? publicId; // From Cloudinary
   final String? imageUrl; // For local files from camera
 
+  /// Hebrew translation of the word (optional — not all words have one).
+  final String? translation;
+
   /// Whether this word is marked as completed for the current level/session.
   bool isCompleted;
 
@@ -34,6 +37,7 @@ class WordData {
     this.searchHint,
     this.publicId,
     this.imageUrl,
+    this.translation,
     this.isCompleted = false,
     this.stickerUnlocked = false,
     double? masteryLevel,
@@ -73,6 +77,7 @@ class WordData {
               : null,
       publicId: json['publicId'] as String?,
       imageUrl: json['imageUrl'] as String?,
+      translation: json['translation'] as String?,
       isCompleted: isCompleted,
       stickerUnlocked: stickerUnlocked,
       masteryLevel: masteryLevel,
@@ -86,6 +91,8 @@ class WordData {
           'searchHint': searchHint,
         if (publicId != null) 'publicId': publicId,
         if (imageUrl != null) 'imageUrl': imageUrl,
+        if (translation != null && translation!.isNotEmpty)
+          'translation': translation,
         'isCompleted': isCompleted,
         'stickerUnlocked': stickerUnlocked,
         // Mastery fields are optional to keep older readers tolerant.

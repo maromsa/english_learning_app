@@ -1,6 +1,10 @@
 // lib/widgets/achievement_notification.dart
+import 'dart:async';
+
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/achievement.dart';
+import 'package:english_learning_app/services/spark_voice_service.dart';
+import 'package:english_learning_app/utils/aurora_tokens.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
 import 'package:flutter/material.dart';
 
@@ -43,7 +47,13 @@ class _AchievementNotificationState extends State<AchievementNotification>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
     _controller.forward();
 
-    Future.delayed(const Duration(seconds: 3), () {
+    // Announce achievement aloud via Spark's voice.
+    unawaited(SparkVoiceService().speak(
+      text: 'הישג חדש! ${widget.achievement.title}',
+      isEnglish: false,
+    ));
+
+    Future.delayed(const Duration(seconds: 4), () {
       if (mounted) {
         _controller.reverse().then((_) {
           if (mounted) widget.onDismiss();
@@ -104,6 +114,34 @@ class _AchievementNotificationState extends State<AchievementNotification>
                               .withValues(alpha: 0.8),
                         ),
                       ),
+                      if (widget.achievement.coinReward > 0) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AuroraTokens.butter.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: AuroraTokens.butter.withValues(alpha: 0.6)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.monetization_on,
+                                  size: 14, color: AuroraTokens.butter),
+                              const SizedBox(width: 4),
+                              Text(
+                                '+${widget.achievement.coinReward}',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: AuroraTokens.ink,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

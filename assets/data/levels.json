@@ -15,31 +15,37 @@
       "words": [
         {
           "word": "Apple",
+          "translation": "תפוח",
           "searchHint": "ripe red apple fruit",
           "imageUrl": "assets/images/words/apple.png"
         },
         {
           "word": "Banana",
+          "translation": "בננה",
           "searchHint": "yellow banana fruit bunch",
           "imageUrl": "assets/images/words/banana.png"
         },
         {
           "word": "Orange",
+          "translation": "תפוז",
           "searchHint": "fresh orange citrus fruit",
           "imageUrl": "assets/images/words/orange.png"
         },
         {
           "word": "Strawberry",
+          "translation": "תות שדה",
           "searchHint": "sweet strawberry fruit",
           "imageUrl": "assets/images/words/strawberry.png"
         },
         {
           "word": "Pineapple",
+          "translation": "אננס",
           "searchHint": "pineapple tropical fruit",
           "imageUrl": "assets/images/words/pineapple.png"
         },
         {
           "word": "Grapes",
+          "translation": "ענבים",
           "searchHint": "grapes fruit bunch purple",
           "imageUrl": "assets/images/words/grapes.png"
         }
@@ -58,31 +64,37 @@
       "words": [
         {
           "word": "Dog",
+          "translation": "כלב",
           "searchHint": "happy dog pet",
           "imageUrl": "assets/images/words/dog.png"
         },
         {
           "word": "Cat",
+          "translation": "חתול",
           "searchHint": "curious cat kitty",
           "imageUrl": "assets/images/words/cat.png"
         },
         {
           "word": "Elephant",
+          "translation": "פיל",
           "searchHint": "elephant safari animal",
           "imageUrl": "assets/images/words/elephant.png"
         },
         {
           "word": "Lion",
+          "translation": "אריה",
           "searchHint": "roaring lion wildlife",
           "imageUrl": "assets/images/words/lion.png"
         },
         {
           "word": "Penguin",
+          "translation": "פינגווין",
           "searchHint": "penguin waddling arctic",
           "imageUrl": "assets/images/words/penguin.png"
         },
         {
           "word": "Monkey",
+          "translation": "קוף",
           "searchHint": "playful monkey jungle",
           "imageUrl": "assets/images/words/monkey.png"
         }
@@ -178,6 +190,7 @@
       "id": "level_vehicles",
       "name": "שלב 5: כלי תחבורה",
       "description": "איזה כלי יביא אתכם להרפתקה הבאה?",
+      "isChapterEnd": true,
       "unlockStars": 15,
       "reward": 75,
       "position": {
@@ -187,31 +200,37 @@
       "words": [
         {
           "word": "Car",
+          "translation": "מכונית",
           "searchHint": "red family car road",
           "imageUrl": "assets/images/words/car.png"
         },
         {
           "word": "Train",
+          "translation": "רכבת",
           "searchHint": "passenger train railway",
           "imageUrl": "assets/images/words/train.png"
         },
         {
           "word": "Helicopter",
+          "translation": "מסוק",
           "searchHint": "helicopter flying sky",
           "imageUrl": "assets/images/words/helicopter.png"
         },
         {
           "word": "Submarine",
+          "translation": "צוללת",
           "searchHint": "yellow submarine underwater",
           "imageUrl": "assets/images/words/submarine.png"
         },
         {
           "word": "Bicycle",
+          "translation": "אופניים",
           "searchHint": "kid bicycle ride",
           "imageUrl": "assets/images/words/bicycle.png"
         },
         {
           "word": "Hot Air Balloon",
+          "translation": "כדור פורח",
           "searchHint": "colorful hot air balloon",
           "imageUrl": "assets/images/words/hot_air_balloon.png"
         }
@@ -393,6 +412,7 @@
       "id": "level_sports",
       "name": "שלב 10: ספורט",
       "description": "בואו נשחק ונזוז!",
+      "isChapterEnd": true,
       "unlockStars": 48,
       "reward": 130,
       "position": {
@@ -618,6 +638,7 @@
       "id": "level_professions",
       "name": "שלב 15: מה תרצו להיות?",
       "description": "גלו מקצועות מעניינים",
+      "isChapterEnd": true,
       "unlockStars": 107,
       "reward": 180,
       "position": {
@@ -873,6 +894,7 @@
       "id": "level_school",
       "name": "שלב 20: בית הספר",
       "description": "מה יש בבית הספר?",
+      "isChapterEnd": true,
       "unlockStars": 197,
       "reward": 230,
       "position": {
@@ -1085,6 +1107,7 @@
       "id": "level_final",
       "name": "שלב 24: הרפתקה אחרונה",
       "description": "השלב הסופי - אתם מוכנים!",
+      "isChapterEnd": true,
       "unlockStars": 287,
       "reward": 300,
       "position": {

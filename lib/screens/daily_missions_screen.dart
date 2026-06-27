@@ -68,16 +68,23 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
   void _handleNavigation(BuildContext context, DailyMissionType type) {
     switch (type) {
       case DailyMissionType.speakPractice:
-        Navigator.pop(context); // Go back to map/home usually
+      case DailyMissionType.pronunciationPerfect:
+        Navigator.pop(context); // back to map — speak from any level
         break;
       case DailyMissionType.lightningRound:
         Navigator.pop(context, 'lightning');
+        break;
+      case DailyMissionType.srsReview:
+        Navigator.pop(context, 'srs');
         break;
       case DailyMissionType.quizPlay:
         Navigator.pop(context, 'quiz');
         break;
       case DailyMissionType.camera:
         Navigator.pop(context, 'camera');
+        break;
+      case DailyMissionType.storyRead:
+        Navigator.pop(context, 'story');
         break;
     }
   }
@@ -124,12 +131,19 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
                   .where((m) => m.rewardClaimed)
                   .fold<int>(0, (sum, m) => sum + m.reward);
 
+              final streakDays = missionsProvider.completionStreakDays;
+              final multiplier = missionsProvider.streakBonusMultiplier;
+              final showStreakBanner = streakDays > 0;
+              // Extra items: header(0), streak banner if shown(1), spacer(1),
+              // section label(1), tip card at end(1) → base = 4 + (1 if banner)
+              final headerItems = showStreakBanner ? 5 : 4;
+
               return RefreshIndicator(
                 onRefresh: missionsProvider.refreshMissions,
                 child: ListView.builder(
                   cacheExtent: ListPerformance.defaultCacheExtent,
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                  itemCount: missions.length + 3,
+                  itemCount: missions.length + headerItems,
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       return _MissionBoardHeader(
@@ -139,10 +153,24 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
                         totalPossibleRewards: totalRewards,
                       );
                     }
-                    if (index == 1) {
-                      return const SizedBox(height: 24);
+                    int cursor = 1;
+                    if (showStreakBanner) {
+                      if (index == cursor) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: _StreakBonusBanner(
+                            streakDays: streakDays,
+                            multiplier: multiplier,
+                          ),
+                        );
+                      }
+                      cursor++;
                     }
-                    if (index == 2) {
+                    if (index == cursor) {
+                      return const SizedBox(height: 20);
+                    }
+                    cursor++;
+                    if (index == cursor) {
                       return Padding(
                         padding:
                             const EdgeInsets.only(right: 8.0, bottom: 12.0),
@@ -156,14 +184,20 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
                         ),
                       );
                     }
-                    if (index == missions.length + 2) {
+                    cursor++;
+                    // Last item = tip card
+                    if (index == missions.length + headerItems - 1) {
                       return const Padding(
                         padding: EdgeInsets.only(top: 20),
                         child: _DailyTipCard(),
                       );
                     }
 
-                    final mission = missions[index - 3];
+                    final missionIndex = index - cursor;
+                    if (missionIndex < 0 || missionIndex >= missions.length) {
+                      return const SizedBox.shrink();
+                    }
+                    final mission = missions[missionIndex];
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16.0),
                       child: _QuestCard(
@@ -620,6 +654,84 @@ class _DailyTipCard extends StatelessWidget {
   }
 }
 
+class _StreakBonusBanner extends StatelessWidget {
+  const _StreakBonusBanner({
+    required this.streakDays,
+    required this.multiplier,
+  });
+  final int streakDays;
+  final double multiplier;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasBonus = multiplier > 1.0;
+    final color = hasBonus ? Colors.orange : Colors.green;
+    // "1.25" → "1.25x", "1.50" → "1.5x"
+    String _fmt(double v) {
+      final s = v.toStringAsFixed(2);
+      return s.endsWith('0') ? s.substring(0, s.length - 1) : s;
+    }
+    final multiplierText = _fmt(multiplier);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Text(
+            hasBonus ? '🔥' : '✅',
+            style: const TextStyle(fontSize: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$streakDays יום ברצף!',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: color.withValues(alpha: 0.85),
+                  ),
+                ),
+                if (hasBonus)
+                  Text(
+                    'בונוס ×$multiplierText על כל הפרסים של היום',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: color.withValues(alpha: 0.7),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (hasBonus)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '×$multiplierText',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EmptyMissionsState extends StatelessWidget {
   final Future<void> Function() onRefresh;
   const _EmptyMissionsState({required this.onRefresh});
@@ -672,6 +784,12 @@ class _MissionTypeConfig {
         return _MissionTypeConfig(Colors.green, Icons.quiz_rounded);
       case DailyMissionType.camera:
         return _MissionTypeConfig(Colors.purple, Icons.camera_alt_rounded);
+      case DailyMissionType.srsReview:
+        return _MissionTypeConfig(Colors.teal, Icons.repeat_rounded);
+      case DailyMissionType.storyRead:
+        return _MissionTypeConfig(Colors.indigo, Icons.menu_book_rounded);
+      case DailyMissionType.pronunciationPerfect:
+        return _MissionTypeConfig(Colors.pink, Icons.star_rounded);
     }
   }
 }

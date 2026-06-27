@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
+import 'package:english_learning_app/services/gemini_proxy_service.dart';
 import 'package:english_learning_app/services/network/app_http_client.dart';
 import 'package:english_learning_app/services/web_image_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,19 +29,24 @@ class _FakeAiValidator implements AiImageValidator {
   }
 }
 
+/// Fake proxy that returns pre-canned Pixabay hits without hitting the network.
+class _FakeProxyService extends GeminiProxyService {
+  _FakeProxyService(this._hits) : super(Uri.parse('http://localhost'));
+
+  final List<Map<String, dynamic>> _hits;
+
+  @override
+  Future<List<Map<String, dynamic>>> searchPixabay(
+    String query, {
+    int perPage = 8,
+  }) async =>
+      _hits;
+}
+
 void main() {
   test('returns the first validated image result', () async {
     final dio = Dio();
     dio.httpClientAdapter = TestHttpClientAdapter((options, _) async {
-      if (options.uri.host == 'pixabay.com') {
-        return ResponseBody.fromString(
-          '{"hits":[{"webformatURL":"https://cdn.pixabay.com/photo1.jpg","tags":"Apple, Fruit"}]}',
-          200,
-          headers: {
-            Headers.contentTypeHeader: ['application/json'],
-          },
-        );
-      }
       if (options.uri.toString() == 'https://cdn.pixabay.com/photo1.jpg') {
         return ResponseBody.fromBytes(
           List<int>.filled(4, 1),
@@ -53,9 +59,12 @@ void main() {
       return ResponseBody.fromString('not found', 404);
     });
 
+    final proxy = _FakeProxyService([
+      {'webformatURL': 'https://cdn.pixabay.com/photo1.jpg', 'tags': 'Apple, Fruit'},
+    ]);
     final validator = _FakeAiValidator(<bool>[true]);
     final service = WebImageService(
-      apiKey: 'demo',
+      proxyService: proxy,
       imageValidator: validator,
       httpClient: AppHttpClient(dio: dio),
     );
@@ -72,16 +81,6 @@ void main() {
   test('skips failing candidates until validation succeeds', () async {
     final dio = Dio();
     dio.httpClientAdapter = TestHttpClientAdapter((options, _) async {
-      if (options.uri.host == 'pixabay.com') {
-        return ResponseBody.fromString(
-          '{"hits":[{"webformatURL":"https://cdn.pixabay.com/photo_bad.jpg","tags":"Stone"},'
-          '{"webformatURL":"https://cdn.pixabay.com/photo_good.jpg","tags":"Banana"}]}',
-          200,
-          headers: {
-            Headers.contentTypeHeader: ['application/json'],
-          },
-        );
-      }
       if (options.uri.toString() == 'https://cdn.pixabay.com/photo_bad.jpg') {
         return ResponseBody.fromBytes(
           List<int>.filled(4, 2),
@@ -103,9 +102,13 @@ void main() {
       return ResponseBody.fromString('not found', 404);
     });
 
+    final proxy = _FakeProxyService([
+      {'webformatURL': 'https://cdn.pixabay.com/photo_bad.jpg', 'tags': 'Stone'},
+      {'webformatURL': 'https://cdn.pixabay.com/photo_good.jpg', 'tags': 'Banana'},
+    ]);
     final validator = _FakeAiValidator(<bool>[false, true]);
     final service = WebImageService(
-      apiKey: 'demo',
+      proxyService: proxy,
       imageValidator: validator,
       httpClient: AppHttpClient(dio: dio),
     );
@@ -119,15 +122,16 @@ void main() {
     service.dispose();
   });
 
-  test('returns null when api key is missing', () async {
+  test('returns null when proxy returns no candidates', () async {
     final dio = Dio();
     dio.httpClientAdapter = TestHttpClientAdapter(
       (options, _) async =>
           ResponseBody.fromString('should not be called', 500),
     );
+    final proxy = _FakeProxyService([]);
     final validator = _FakeAiValidator(<bool>[]);
     final service = WebImageService(
-      apiKey: '',
+      proxyService: proxy,
       imageValidator: validator,
       httpClient: AppHttpClient(dio: dio),
     );

@@ -28,9 +28,9 @@ class LocalUser {
     }
 
     return LocalUser(
-      id: map['id'] as String,
-      name: map['name'] as String,
-      age: map['age'] as int,
+      id: (map['id'] as String?) ?? '',
+      name: (map['name'] as String?) ?? '',
+      age: (map['age'] as int?) ?? 0,
       photoUrl: map['photoUrl'] as String?,
       createdAt: toDate(map['createdAt']),
       lastPlayedAt: toDate(map['lastPlayedAt']),

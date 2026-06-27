@@ -1,5 +1,5 @@
 import {GoogleGenerativeAI} from "@google/generative-ai";
-import {getModel, handleText, parseRequestBody} from "../index";
+import {getModel, handleText, handlePixabay, parseRequestBody} from "../index";
 
 // Mock the Google Generative AI SDK
 jest.mock("@google/generative-ai");
@@ -56,7 +56,7 @@ describe("systemInstruction handling", () => {
   });
 
   test("getModel should not include system_instruction when not provided", () => {
-    getModel("gemini-1.5", mockApiKey);
+    getModel(mockApiKey);
 
     const GoogleGenerativeAIClass = GoogleGenerativeAI as jest.MockedClass<typeof GoogleGenerativeAI>;
     const mockClientInstance = GoogleGenerativeAIClass.mock.results[0]?.value;
@@ -82,7 +82,7 @@ describe("systemInstruction handling", () => {
   });
 
   test("getModel should include system_instruction when provided", () => {
-    getModel("gemini-1.5", mockApiKey, "Test system instruction");
+    getModel(mockApiKey, "Test system instruction");
 
     const GoogleGenerativeAIClass = GoogleGenerativeAI as jest.MockedClass<typeof GoogleGenerativeAI>;
     const mockClientInstance = GoogleGenerativeAIClass.mock.results[0]?.value;
@@ -235,5 +235,91 @@ describe("systemInstruction handling", () => {
     await expect(handleText(payload, mockApiKey)).rejects.toThrow("Network down");
     expect(mockClient.getGenerativeModel).toHaveBeenCalledTimes(1);
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("handlePixabay", () => {
+  const mockPixabayKey = "px-test-key";
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    global.fetch = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test("returns hits on successful response", async () => {
+    const mockHits = [
+      {id: 1, webformatURL: "https://example.com/img1.jpg", tags: "cat, animal"},
+      {id: 2, webformatURL: "https://example.com/img2.jpg", tags: "kitten, pet"},
+    ];
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({hits: mockHits, totalHits: 2}),
+    });
+
+    const result = await handlePixabay(
+      {mode: "pixabay", query: "cat", perPage: 8},
+      mockPixabayKey,
+    );
+
+    expect(result).toEqual({hits: mockHits});
+    const calledUrl = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+    expect(calledUrl).toContain("pixabay.com/api/");
+    expect(calledUrl).toContain(`key=${mockPixabayKey}`);
+    expect(calledUrl).toContain("q=cat");
+    // Key must be in the URL (not a header) — this is correct for Pixabay API
+    expect(calledUrl).not.toMatch(/Authorization/i);
+  });
+
+  test("returns empty hits when API returns no results", async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({hits: [], totalHits: 0}),
+    });
+
+    const result = await handlePixabay(
+      {mode: "pixabay", query: "zzznoresult", perPage: 8},
+      mockPixabayKey,
+    );
+
+    expect(result).toEqual({hits: []});
+  });
+
+  test("throws when Pixabay returns a non-OK status", async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+    });
+
+    await expect(
+      handlePixabay({mode: "pixabay", query: "cat", perPage: 8}, mockPixabayKey),
+    ).rejects.toThrow("Pixabay search failed with status 403");
+  });
+
+  test("respects perPage parameter", async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({hits: []}),
+    });
+
+    await handlePixabay({mode: "pixabay", query: "dog", perPage: 5}, mockPixabayKey);
+
+    const calledUrl = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+    expect(calledUrl).toContain("per_page=5");
+  });
+
+  test("always sets safesearch=true", async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({hits: []}),
+    });
+
+    await handlePixabay({mode: "pixabay", query: "car", perPage: 8}, mockPixabayKey);
+
+    const calledUrl = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+    expect(calledUrl).toContain("safesearch=true");
   });
 });

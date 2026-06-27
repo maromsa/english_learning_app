@@ -24,6 +24,9 @@ void main() {
       );
     });
 
+    // Cloud entries live in the dedicated, privacy-safe `leaderboard`
+    // collection (published by ChildProfileSyncService) — direct
+    // childProfiles reads are blocked by security rules.
     Future<void> seedCloudProfile({
       required String parentUid,
       required String profileId,
@@ -32,12 +35,10 @@ void main() {
       required int dailyStreak,
     }) async {
       await firestore
-          .collection('users')
-          .doc(parentUid)
-          .collection('childProfiles')
-          .doc(profileId)
+          .collection('leaderboard')
+          .doc('${parentUid}_$profileId')
           .set({
-        'id': profileId,
+        'profileId': profileId,
         'displayName': name,
         'avatarColor': ChildProfile.defaultAvatarColors.first,
         'coins': coins,

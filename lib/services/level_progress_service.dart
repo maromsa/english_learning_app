@@ -40,7 +40,7 @@ class LevelProgressService {
         return <String>{};
       }
       final wordsList = jsonDecode(wordsJson) as List<dynamic>;
-      final words = wordsList.map((w) => w as String).toSet();
+      final words = wordsList.whereType<String>().toSet();
       debugPrint(
         'Loaded completed words for level $levelId: $words (key: $key)',
       );

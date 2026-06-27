@@ -7,9 +7,10 @@ import 'child_profile_service.dart';
 
 /// Loads and ranks child profiles for the global leaderboard.
 ///
-/// Primary source: Firestore `users/{uid}/childProfiles/{profileId}` via
-/// [collectionGroup]. Local device profiles are merged so offline learners
-/// still appear when cloud data is sparse.
+/// Primary source: the Firestore `leaderboard` collection, where each user
+/// publishes a minimal, privacy-safe entry via [ChildProfileSyncService].
+/// Local device profiles are merged so offline learners still appear when
+/// cloud data is sparse.
 class LeaderboardService {
   LeaderboardService({
     FirebaseFirestore? firestore,
@@ -30,14 +31,19 @@ class LeaderboardService {
     final merged = <String, _LeaderboardDraft>{};
 
     try {
+      // Reads the dedicated `leaderboard` collection: minimal, privacy-safe
+      // entries that each user publishes for their own profiles. A direct
+      // collectionGroup('childProfiles') query is denied by security rules
+      // (and would expose full child profiles to every user).
       final snapshot = await _firestore
-          .collectionGroup('childProfiles')
+          .collection('leaderboard')
+          .orderBy('coins', descending: true)
           .limit(limit * 3)
           .get();
 
       for (final doc in snapshot.docs) {
         final data = doc.data();
-        data['id'] = doc.id;
+        data['id'] = (data['profileId'] as String?) ?? doc.id;
         final profile = ChildProfile.fromMap(data);
         _upsertDraft(merged, profile);
       }

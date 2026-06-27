@@ -57,15 +57,19 @@ class UserDataService {
     }
   }
 
-  /// Update specific fields in player data (partial update)
+  /// Update specific fields in player data (partial update).
+  ///
+  /// Uses [SetOptions.merge] instead of [DocumentReference.update] so the
+  /// write succeeds even when the player document does not exist yet (e.g. the
+  /// very first coin a brand-new user earns). [DocumentReference.update] would
+  /// throw a not-found error in that case and silently defer the sync.
   Future<bool> updatePlayerData(
     String userId,
     Map<String, dynamic> updates,
   ) async {
     try {
       updates['updatedAt'] = FieldValue.serverTimestamp();
-      await _playerDataDoc(userId).update(updates);
-      debugPrint('Player data updated successfully for user: $userId');
+      await _playerDataDoc(userId).set(updates, SetOptions(merge: true));
       return true;
     } catch (e) {
       debugPrint('Error updating player data: $e');
@@ -81,10 +85,10 @@ class UserDataService {
   /// Add purchased item
   Future<bool> addPurchasedItem(String userId, String itemId) async {
     try {
-      await _playerDataDoc(userId).update({
+      await _playerDataDoc(userId).set({
         'purchasedItems': FieldValue.arrayUnion([itemId]),
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
       return true;
     } catch (e) {
       debugPrint('Error adding purchased item: $e');
@@ -95,10 +99,10 @@ class UserDataService {
   /// Unlock achievement
   Future<bool> unlockAchievement(String userId, String achievementId) async {
     try {
-      await _playerDataDoc(userId).update({
+      await _playerDataDoc(userId).set({
         'achievements.$achievementId': true,
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
       return true;
     } catch (e) {
       debugPrint('Error unlocking achievement: $e');
@@ -113,10 +117,10 @@ class UserDataService {
     LevelProgress progress,
   ) async {
     try {
-      await _playerDataDoc(userId).update({
+      await _playerDataDoc(userId).set({
         'levelProgress.$levelId': progress.toMap(),
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
       return true;
     } catch (e) {
       debugPrint('Error updating level progress: $e');
@@ -196,10 +200,10 @@ class UserDataService {
   Future<bool> incrementStat(String userId, String statName,
       {int amount = 1}) async {
     try {
-      await _playerDataDoc(userId).update({
+      await _playerDataDoc(userId).set({
         statName: FieldValue.increment(amount),
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
       return true;
     } catch (e) {
       debugPrint('Error incrementing stat $statName: $e');
@@ -211,11 +215,10 @@ class UserDataService {
   Future<bool> updateCharacter(
       String userId, Map<String, dynamic> characterData) async {
     try {
-      await _playerDataDoc(userId).update({
+      await _playerDataDoc(userId).set({
         'character': characterData,
         'updatedAt': FieldValue.serverTimestamp(),
-      });
-      debugPrint('Character updated successfully for user: $userId');
+      }, SetOptions(merge: true));
       return true;
     } catch (e) {
       debugPrint('Error updating character: $e');

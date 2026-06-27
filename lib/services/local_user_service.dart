@@ -19,9 +19,16 @@ class LocalUserService {
       }
 
       final usersList = jsonDecode(usersJson) as List<dynamic>;
-      return usersList
-          .map((userMap) => LocalUser.fromMap(userMap as Map<String, dynamic>))
-          .toList();
+      final result = <LocalUser>[];
+      for (final userMap in usersList) {
+        if (userMap is! Map<String, dynamic>) continue;
+        try {
+          result.add(LocalUser.fromMap(userMap));
+        } catch (e) {
+          debugPrint('LocalUserService: skipping malformed user entry: $e');
+        }
+      }
+      return result;
     } catch (e) {
       debugPrint('Error loading local users: $e');
       return [];
@@ -156,12 +163,13 @@ class LocalUserService {
       final prefs = await SharedPreferences.getInstance();
       final users = await getAllUsers();
 
-      // Update all users to set isActive
-      for (var user in users) {
-        user = user.copyWith(isActive: user.id == userId);
-        await _saveUser(user);
-      }
-
+      // Update isActive flag for all users in a single batch write instead
+      // of calling _saveUser() per user (which is O(N²) reads/writes).
+      final updated = users
+          .map((u) => u.copyWith(isActive: u.id == userId))
+          .toList();
+      final usersJson = jsonEncode(updated.map((u) => u.toMap()).toList());
+      await prefs.setString(_usersKey, usersJson);
       await prefs.setString(_activeUserIdKey, userId);
     } catch (e) {
       debugPrint('Error setting active user: $e');
