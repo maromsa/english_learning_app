@@ -131,6 +131,8 @@ class NotificationService {
       scheduled,
       _androidDetails('daily_reminder', 'תזכורת יומית'),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
@@ -172,6 +174,8 @@ class NotificationService {
       scheduled,
       _androidDetails('srs_due', 'חזרה מדורגת'),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 
