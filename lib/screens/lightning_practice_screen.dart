@@ -656,14 +656,17 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     }
 
     final int elapsed = _sessionSeconds - _remainingSeconds;
-    unawaited(_telemetry?.logLightningAnswer(
-      word: _currentWord!.word,
-      correct: isCorrect,
-      streak: _currentStreak,
-      elapsedSeconds: elapsed < 0 ? 0 : elapsed,
-      remainingSeconds: _remainingSeconds,
-      reward: reward,
-    ));
+    final telemetry = _telemetry;
+    if (telemetry != null) {
+      unawaited(telemetry.logLightningAnswer(
+        word: _currentWord!.word,
+        correct: isCorrect,
+        streak: _currentStreak,
+        elapsedSeconds: elapsed < 0 ? 0 : elapsed,
+        remainingSeconds: _remainingSeconds,
+        reward: reward,
+      ));
+    }
 
     if (!mounted) return;
 
@@ -736,13 +739,16 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
           );
     } catch (_) {}
 
-    unawaited(_telemetry?.logLightningSession(
-      score: _score,
-      correct: _correctAnswers,
-      incorrect: _incorrectAnswers,
-      bestStreak: _bestStreak,
-      totalQuestions: _questionCount,
-    ));
+    final telemetry = _telemetry;
+    if (telemetry != null) {
+      unawaited(telemetry.logLightningSession(
+        score: _score,
+        correct: _correctAnswers,
+        incorrect: _incorrectAnswers,
+        bestStreak: _bestStreak,
+        totalQuestions: _questionCount,
+      ));
+    }
 
     // Sync SRS state to Firestore + record session for parent dashboard.
     try {
