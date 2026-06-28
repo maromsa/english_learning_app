@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
+import '../models/daily_mission.dart';
 import '../models/spark_story.dart';
 import '../models/word_data.dart';
 import '../providers/daily_mission_provider.dart';
@@ -143,7 +144,7 @@ class _StoryScreenState extends State<StoryScreen>
     if (page == _story!.pages.length - 1) {
       try {
         context.read<SparkOverlayController>().markCelebrating();
-        unawaited(SoundService().playSuccessSound());
+        SoundService().playSuccessSound();
       } catch (_) {}
       if (!_storyCompleted) {
         _storyCompleted = true;

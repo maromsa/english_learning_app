@@ -152,7 +152,7 @@ class _MyHomePageState extends State<MyHomePage> {
       },
     );
     flutterTts?.stop();
-    unawaited(_speechFeedbackService?.cancelListening());
+    _speechFeedbackService?.cancelListening().ignore();
     _audioPlayer.dispose();
     _httpImageValidator?.dispose();
     _webImageService?.dispose();
@@ -401,12 +401,12 @@ class _MyHomePageState extends State<MyHomePage> {
           debugPrint(
             'Gemini category mismatch: $identified (expected ${levelCategory?.geminiCategory})',
           );
-          unawaited(telemetry?.logCameraValidation(
+          telemetry?.logCameraValidation(
             word: identified,
             accepted: false,
             validatorType: _cameraValidatorType,
             confidence: null,
-          ));
+          ).ignore();
           if (mounted) {
             final message = SparkStrings.cameraCategoryMismatch(
               identified,
@@ -425,12 +425,12 @@ class _MyHomePageState extends State<MyHomePage> {
           );
           return;
         case ObjectIdentificationUnclear():
-          unawaited(telemetry?.logCameraValidation(
+          telemetry?.logCameraValidation(
             word: 'unclear',
             accepted: false,
             validatorType: _cameraValidatorType,
             confidence: null,
-          ));
+          ).ignore();
           if (!mounted) return;
           setState(() {
             _feedbackText = SparkStrings.cameraUnclearUi;
@@ -480,12 +480,12 @@ class _MyHomePageState extends State<MyHomePage> {
           _feedbackText = SparkStrings.cameraCenterWord(identifiedWord);
         });
       }
-      unawaited(telemetry?.logCameraValidation(
+      telemetry?.logCameraValidation(
         word: identifiedWord,
         accepted: false,
         validatorType: _cameraValidatorType,
         confidence: _currentValidationConfidence(),
-      ));
+      ).ignore();
       await _speak(
         SparkStrings.cameraCenterWord(identifiedWord),
         languageCode: 'he-IL',
@@ -523,12 +523,12 @@ class _MyHomePageState extends State<MyHomePage> {
       languageCode: 'en-US',
       emotion: SparkEmotion.happy,
     );
-    unawaited(telemetry?.logCameraValidation(
+    telemetry?.logCameraValidation(
       word: identifiedWord,
       accepted: true,
       validatorType: _cameraValidatorType,
       confidence: _currentValidationConfidence(),
-    ));
+    ).ignore();
   }
 
   Future<WordData> _saveImageAndCreateWordData(

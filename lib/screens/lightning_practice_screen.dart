@@ -217,7 +217,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
 
   @override
   void dispose() {
-    unawaited(_speechFeedbackService?.cancelListening());
+    _speechFeedbackService?.cancelListening().ignore();
     _timer?.cancel();
     _difficulty.dispose();
     _telemetry?.endScreenSession(
@@ -551,7 +551,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     await _markWordCompleted(word);
     if (!mounted) return;
 
-    unawaited(SoundService().playSuccessSound());
+    SoundService().playSuccessSound();
     _notifySpark(SparkOverlayAnimationState.celebrating);
 
     await Celebration.fire(
@@ -568,14 +568,14 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     });
 
     final int elapsed = _sessionSeconds - _remainingSeconds;
-    unawaited(_telemetry?.logLightningAnswer(
+    _telemetry?.logLightningAnswer(
       word: word,
       correct: true,
       streak: _currentStreak,
       elapsedSeconds: elapsed < 0 ? 0 : elapsed,
       remainingSeconds: _remainingSeconds,
       reward: _pronunciationCoinReward,
-    ));
+    ).ignore();
 
     Future<void>.delayed(const Duration(seconds: 2), () {
       if (!mounted || _sessionEnded) return;
@@ -635,7 +635,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
         } catch (_) {}
         // markWordCompleted fires MapBridge + legacy mastery update.
         await _markWordCompleted(_currentWord!.word);
-        unawaited(SoundService().playSuccessSound());
+        SoundService().playSuccessSound();
         _notifySpark(SparkOverlayAnimationState.celebrating);
       }
     } else {

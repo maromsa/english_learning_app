@@ -15,6 +15,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:english_learning_app/models/daily_mission.dart';
 import 'package:english_learning_app/models/srs_card.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';

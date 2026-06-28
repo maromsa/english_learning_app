@@ -334,10 +334,10 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       _feedbackMessage = SparkStrings.quizRemovedWrong;
     });
 
-    unawaited(telemetry?.logHintUsed(
+    telemetry?.logHintUsed(
       word: target.word,
       optionsRemaining: remainingCount,
-    ));
+    ).ignore();
   }
 
   // ---------------------------------------------------------------------------
@@ -408,14 +408,14 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       _feedbackMessage = feedback;
     });
 
-    unawaited(telemetry?.logQuizAnswered(
+    telemetry?.logQuizAnswered(
       word: target.word,
       correct: isCorrect,
       reward: reward,
       streak: newStreak,
       questionIndex: _currentIndex,
       hintUsed: _hintUsed,
-    ));
+    ).ignore();
 
     try {
       if (mounted) {

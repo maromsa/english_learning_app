@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -264,7 +263,7 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
       );
       if (mounted) {
         // Play success sound — fire-and-forget, does not block UI thread.
-        unawaited(SoundService().playSuccessSound());
+        SoundService().playSuccessSound();
         sparkController.markCelebrating();
         final compliment = SparkStrings.randomCompliment();
         setState(() {
