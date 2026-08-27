@@ -1,4 +1,5 @@
 import 'package:english_learning_app/models/word_data.dart';
+import 'package:english_learning_app/services/level_unlock_service.dart';
 import 'package:english_learning_app/services/offline_image_cache.dart';
 import 'package:english_learning_app/services/offline_practice_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
@@ -6,6 +7,8 @@ import 'package:english_learning_app/utils/device_connectivity.dart';
 import 'package:english_learning_app/utils/offline_word_loader.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../support/fake_firebase_services.dart';
 
 class _OfflineConnectivity extends DeviceConnectivity {
   @override
@@ -39,6 +42,9 @@ void main() {
       offlinePracticeService: OfflinePracticeService(
         prefs: prefs,
         imageCache: OfflineImageCache(prefs: prefs),
+        levelUnlockService: LevelUnlockService(
+          levelProgressService: fakeLevelProgressService(),
+        ),
       ),
       connectivity: DeviceConnectivity.current,
     );

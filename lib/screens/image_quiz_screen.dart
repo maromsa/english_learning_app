@@ -38,6 +38,7 @@ class ImageQuizScreen extends StatefulWidget {
     this.wordRepository,
     this.wordMasteryService,
     this.levelProgressService,
+    this.offlineWordLoader,
   });
 
   final String levelId;
@@ -46,6 +47,7 @@ class ImageQuizScreen extends StatefulWidget {
   final WordRepository? wordRepository;
   final WordMasteryService? wordMasteryService;
   final LevelProgressService? levelProgressService;
+  final OfflineWordLoader? offlineWordLoader;
 
   @override
   State<ImageQuizScreen> createState() => _ImageQuizScreenState();
@@ -79,7 +81,8 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
   void initState() {
     super.initState();
     _wordRepository = widget.wordRepository ?? WordRepository();
-    _offlineWordLoader = OfflineWordLoader(wordRepository: _wordRepository);
+    _offlineWordLoader = widget.offlineWordLoader ??
+        OfflineWordLoader(wordRepository: _wordRepository);
     _wordMasteryService = widget.wordMasteryService ?? WordMasteryService();
     _levelProgressService =
         widget.levelProgressService ?? LevelProgressService();

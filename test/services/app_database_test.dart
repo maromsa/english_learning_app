@@ -8,20 +8,15 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:english_learning_app/services/app_database.dart';
 
+import '../support/fresh_test_database.dart';
+
 // ---------------------------------------------------------------------------
-// Helper: creates a fresh in-memory AppDatabase for each test.
+// Helper: creates a fresh AppDatabase for each test — see
+// resetAppDatabaseForTest() for why this needs more than just closing the
+// connection.
 // ---------------------------------------------------------------------------
 
-Future<AppDatabase> _makeTestDb() async {
-  sqfliteFfiInit();
-  databaseFactory = databaseFactoryFfi;
-
-  // Override the singleton's internal DB with an in-memory instance.
-  final db = AppDatabase.instance;
-  await db.close(); // ensure clean state
-  // Force re-open by clearing the cached reference (via close).
-  return db;
-}
+Future<AppDatabase> _makeTestDb() => resetAppDatabaseForTest();
 
 void main() {
   setUpAll(() {

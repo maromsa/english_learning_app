@@ -5,18 +5,23 @@ import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/image_quiz_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
+import 'package:english_learning_app/services/level_unlock_service.dart';
+import 'package:english_learning_app/services/offline_practice_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
 import 'package:english_learning_app/utils/device_connectivity.dart';
+import 'package:english_learning_app/utils/offline_word_loader.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_firebase_services.dart';
+
 /// Fake [LevelProgressService] that records [markWordCompleted] calls.
 class FakeLevelProgressService extends LevelProgressService {
-  FakeLevelProgressService() : super();
+  FakeLevelProgressService() : super(cloudSyncService: fakeCloudSyncService());
 
   final List<({String userId, String levelId, String word, bool isLocalUser})>
       markWordCompletedCalls = [];
@@ -115,6 +120,17 @@ void main() {
             levelId: 'test_level',
             wordsForLevel: _testWords(),
             wordRepository: FakeWordRepository(_testWords()),
+            levelProgressService: fakeLevelProgressService(),
+            // ImageQuizScreen builds a real OfflineWordLoader (-> real
+            // Firestore chain) in initState() when this isn't supplied.
+            offlineWordLoader: OfflineWordLoader(
+              wordRepository: FakeWordRepository(_testWords()),
+              offlinePracticeService: OfflinePracticeService(
+                levelUnlockService: LevelUnlockService(
+                  levelProgressService: fakeLevelProgressService(),
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -155,6 +171,14 @@ void main() {
             wordsForLevel: _testWords(),
             wordRepository: FakeWordRepository(_testWords()),
             levelProgressService: fakeProgress,
+            offlineWordLoader: OfflineWordLoader(
+              wordRepository: FakeWordRepository(_testWords()),
+              offlinePracticeService: OfflinePracticeService(
+                levelUnlockService: LevelUnlockService(
+                  levelProgressService: fakeLevelProgressService(),
+                ),
+              ),
+            ),
           ),
         ),
       ),

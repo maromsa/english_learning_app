@@ -24,6 +24,18 @@ class AppDatabase {
   static const int _version = 1;
   static const String _dbName = 'spark_local.db';
 
+  /// Test-only hook: when true, [_open] opens a fresh SQLite `:memory:`
+  /// database instead of the real on-disk file. `AppDatabase.instance` is a
+  /// process-wide singleton backed by a fixed file path — under `flutter
+  /// test`'s default concurrency, multiple test files opening/closing/
+  /// deleting that same physical file at once can deadlock the whole run
+  /// (observed as a 10-minute test timeout on Windows). Each in-memory
+  /// database is independent and never touches disk, so this both prevents
+  /// that cross-process contention and gives every test a guaranteed-clean
+  /// schema with no explicit delete step required. Never set outside tests.
+  @visibleForTesting
+  static bool useInMemoryDatabaseForTests = false;
+
   Database? _db;
 
   Future<Database> get database async {
@@ -36,6 +48,15 @@ class AppDatabase {
   // ---------------------------------------------------------------------------
 
   Future<Database> _open() async {
+    if (useInMemoryDatabaseForTests) {
+      return openDatabase(
+        inMemoryDatabasePath,
+        version: _version,
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+      );
+    }
+
     final dir = await getDatabasesPath();
     final path = p.join(dir, _dbName);
 

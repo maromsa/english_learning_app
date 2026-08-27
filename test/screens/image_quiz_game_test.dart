@@ -15,6 +15,7 @@
 // access is required.
 
 import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/models/srs_card.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
@@ -22,16 +23,22 @@ import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/image_quiz_game.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
+import 'package:english_learning_app/services/level_unlock_service.dart';
+import 'package:english_learning_app/services/offline_practice_service.dart';
+import 'package:english_learning_app/services/srs_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
 import 'package:english_learning_app/services/word_mastery_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
 import 'package:english_learning_app/utils/device_connectivity.dart';
+import 'package:english_learning_app/utils/offline_word_loader.dart';
 import 'package:english_learning_app/widgets/ui/kid_button.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../support/fake_firebase_services.dart';
 
 // ---------------------------------------------------------------------------
 // Minimal fake implementations — only the behaviour the widget actually calls.
@@ -95,9 +102,42 @@ class _FakeMasteryService extends WordMasteryService {
   }
 }
 
+/// An [SrsService] stub that never touches AppDatabase (sqflite).
+///
+/// SrsService.recordReview / .syncToFirestore both eventually await
+/// AppDatabase's `sqflite_common_ffi` connection, whose background isolate
+/// has been observed to deadlock under flutter_test's fake-async
+/// environment after enough open/close cycles (a reproducible 10-minute
+/// hang). ImageQuizGame only ever calls these two methods, so overriding
+/// them keeps the widget's behavior exercised while never touching sqflite.
+class _FakeSrsService extends SrsService {
+  _FakeSrsService({required SharedPreferences prefs})
+      : super(prefs: prefs, firestore: FakeFirebaseFirestore());
+
+  @override
+  Future<SrsCard> recordReview({
+    required String userId,
+    required String levelId,
+    required String word,
+    required int grade,
+    DateTime? reviewedAt,
+  }) async {
+    return SrsCard(wordId: word).review(grade: grade, reviewedAt: reviewedAt);
+  }
+
+  @override
+  Future<void> syncToFirestore({
+    required String userId,
+    required String levelId,
+    required List<WordData> words,
+  }) async {}
+}
+
 /// A [LevelProgressService] stub that silently records calls without touching
 /// SharedPreferences or the map bridge.
 class _FakeLevelProgressService extends LevelProgressService {
+  _FakeLevelProgressService() : super(cloudSyncService: fakeCloudSyncService());
+
   final List<String> completedWords = [];
 
   @override
@@ -133,7 +173,7 @@ Future<_FakeLevelProgressService> _pumpQuiz(
   List<WordData>? words,
 }) async {
   SharedPreferences.setMockInitialValues({});
-  await SharedPreferences.getInstance();
+  final prefs = await SharedPreferences.getInstance();
 
   final testWords = words ?? _testWords;
   final fakeProgress = _FakeLevelProgressService();
@@ -158,6 +198,19 @@ Future<_FakeLevelProgressService> _pumpQuiz(
           wordRepository: _FakeWordRepository(testWords),
           wordMasteryService: _FakeMasteryService(),
           levelProgressService: fakeProgress,
+          // ImageQuizGame builds its own OfflineWordLoader / SrsService in
+          // initState() when these aren't supplied, and both default chains
+          // eagerly touch the real (uninitialized-in-tests) Firestore app —
+          // override with fully faked-out chains.
+          offlineWordLoader: OfflineWordLoader(
+            wordRepository: _FakeWordRepository(testWords),
+            offlinePracticeService: OfflinePracticeService(
+              levelUnlockService: LevelUnlockService(
+                levelProgressService: fakeLevelProgressService(),
+              ),
+            ),
+          ),
+          srsService: _FakeSrsService(prefs: prefs),
         ),
       ),
     ),

@@ -14,6 +14,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_firebase_services.dart';
+
 class _FakeConnectivity extends DeviceConnectivity {
   _FakeConnectivity(this._online);
 
@@ -52,7 +54,8 @@ class _FakeBundle extends AssetBundle {
 }
 
 class _FakeUnlockService extends LevelUnlockService {
-  _FakeUnlockService(this._unlockedIds);
+  _FakeUnlockService(this._unlockedIds)
+      : super(levelProgressService: fakeLevelProgressService());
 
   final Set<String> _unlockedIds;
 
@@ -149,6 +152,8 @@ void main() {
     final service = OfflinePracticeService(
       imageCache: cache,
       prefs: prefs,
+      levelUnlockService:
+          LevelUnlockService(levelProgressService: fakeLevelProgressService()),
     );
 
     final localized = await service.localizeWordsForOffline([
