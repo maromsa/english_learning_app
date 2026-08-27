@@ -73,8 +73,12 @@ Directory _findProjectRoot() {
 }
 
 /// Reads `flutter: assets:` list entries from [pubspec.yaml].
+///
+/// `content` may have CRLF line endings (e.g. a Windows checkout with
+/// `core.autocrlf=true`) — normalize to LF first so the exact-match checks
+/// below (`line == 'flutter:'`) aren't silently defeated by a trailing `\r`.
 List<String> _parseFlutterAssetEntries(String content) {
-  final lines = content.split('\n');
+  final lines = content.replaceAll('\r\n', '\n').split('\n');
   var inFlutter = false;
   var inAssets = false;
   final entries = <String>[];

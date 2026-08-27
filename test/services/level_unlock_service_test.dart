@@ -1,9 +1,10 @@
 import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/models/word_data.dart';
-import 'package:english_learning_app/services/level_progress_service.dart';
 import 'package:english_learning_app/services/level_unlock_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../support/fake_firebase_services.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -13,7 +14,7 @@ void main() {
   });
 
   test('unlocks first level and next after previous completion', () async {
-    final progress = LevelProgressService();
+    final progress = fakeLevelProgressService();
     const userId = 'child_1';
 
     final levels = [

@@ -1,9 +1,13 @@
 // test/services/srs_service_test.dart
 import 'package:english_learning_app/models/srs_card.dart';
 import 'package:english_learning_app/models/word_data.dart';
+import 'package:english_learning_app/services/app_database.dart';
 import 'package:english_learning_app/services/srs_service.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../support/fresh_test_database.dart';
 
 void main() {
   group('SrsCard — SM-2 algorithm', () {
@@ -128,9 +132,21 @@ void main() {
     late SrsService service;
 
     setUp(() async {
+      // SrsService persists cards via AppDatabase (sqflite) — reset it so
+      // rows from an earlier test in this group can't leak into assertions
+      // like "new word returns default card".
+      final db = await resetAppDatabaseForTest();
       SharedPreferences.setMockInitialValues({});
       prefs = await SharedPreferences.getInstance();
-      service = SrsService(prefs: prefs);
+      service = SrsService(
+        prefs: prefs,
+        firestore: FakeFirebaseFirestore(),
+        db: db,
+      );
+    });
+
+    tearDown(() async {
+      await AppDatabase.instance.close();
     });
 
     test('new word returns default card', () async {
@@ -143,7 +159,7 @@ void main() {
     test('recordReview persists updated card', () async {
       await service.recordReview(
           userId: 'u1', levelId: 'l1', word: 'apple', grade: 4);
-      final service2 = SrsService(prefs: prefs);
+      final service2 = SrsService(prefs: prefs, firestore: FakeFirebaseFirestore());
       final card = await service2.getCard(
           userId: 'u1', levelId: 'l1', word: 'apple');
       expect(card.repetitions, 1);

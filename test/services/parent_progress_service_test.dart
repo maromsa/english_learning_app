@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_firebase_services.dart';
+
 class _FakeBundle extends CachingAssetBundle {
   _FakeBundle(this._responses);
 
@@ -87,6 +89,7 @@ void main() {
       final service = ParentProgressService(
         prefs: prefs,
         levelRepository: LevelRepository(bundle: bundle),
+        levelProgressService: fakeLevelProgressService(),
       );
 
       final stats = await service.loadStats(

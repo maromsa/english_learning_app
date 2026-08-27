@@ -9,11 +9,17 @@ void main() {
   group('AchievementService', () {
     late AchievementService achievementService;
 
-    setUp(() {
+    setUp(() async {
       SharedPreferences.setMockInitialValues({});
       achievementService = AchievementService(
         userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
       );
+      // The constructor kicks off loadAchievements() without awaiting it.
+      // Drain the whole event queue (not just one re-invocation) so that
+      // pending call is fully settled before any test runs — otherwise it
+      // can resolve later and clobber a test's own unlockAchievement(...)
+      // back to `false`.
+      await pumpEventQueue();
     });
 
     test('should have initial achievements', () {
@@ -68,25 +74,30 @@ void main() {
       );
     });
 
-    test('checkForAchievements should unlock first_correct', () {
-      achievementService.checkForAchievements(streak: 0);
+    test('checkForAchievements should unlock first_correct', () async {
+      await achievementService.checkForAchievements(streak: 0);
       expect(achievementService.isUnlocked('first_correct'), true);
     });
 
-    test('checkForAchievements should unlock streak_5 when streak >= 5', () {
-      achievementService.checkForAchievements(streak: 5);
+    test('checkForAchievements should unlock streak_5 when streak >= 5',
+        () async {
+      await achievementService.checkForAchievements(streak: 5);
       expect(achievementService.isUnlocked('streak_5'), true);
     });
 
-    test('checkForAchievements should not unlock streak_5 when streak < 5', () {
-      achievementService.checkForAchievements(streak: 4);
+    test('checkForAchievements should not unlock streak_5 when streak < 5',
+        () async {
+      await achievementService.checkForAchievements(streak: 4);
       expect(achievementService.isUnlocked('streak_5'), false);
     });
 
     test(
       'checkForAchievements should unlock add_word when wordAdded is true',
-      () {
-        achievementService.checkForAchievements(streak: 0, wordAdded: true);
+      () async {
+        await achievementService.checkForAchievements(
+          streak: 0,
+          wordAdded: true,
+        );
         expect(achievementService.isUnlocked('add_word'), true);
       },
     );

@@ -59,6 +59,7 @@ class ImageQuizGame extends StatefulWidget {
     this.levelProgressService,
     this.levelRepository,
     this.srsService,
+    this.offlineWordLoader,
   });
 
   /// Optional level identifier for mastery namespacing. Defaults to the first
@@ -76,6 +77,7 @@ class ImageQuizGame extends StatefulWidget {
   final LevelProgressService? levelProgressService;
   final LevelRepository? levelRepository;
   final SrsService? srsService;
+  final OfflineWordLoader? offlineWordLoader;
 
   @override
   State<ImageQuizGame> createState() => _ImageQuizGameState();
@@ -127,7 +129,8 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
   void initState() {
     super.initState();
     _wordRepository = widget.wordRepository ?? WordRepository();
-    _offlineWordLoader = OfflineWordLoader(wordRepository: _wordRepository);
+    _offlineWordLoader = widget.offlineWordLoader ??
+        OfflineWordLoader(wordRepository: _wordRepository);
     _wordMasteryService = widget.wordMasteryService ?? WordMasteryService();
     _levelProgressService =
         widget.levelProgressService ?? LevelProgressService();
