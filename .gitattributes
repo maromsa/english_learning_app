@@ -1,0 +1,73 @@
+# Auto detect text files and normalize line endings to LF in the repository,
+# regardless of which OS/editor a contributor is using.
+* text=auto eol=lf
+
+# ----------------------------------------------------------------------------
+# Source / config text files (explicit, in case extension-based auto-detection
+# ever misclassifies one of these as binary).
+# ----------------------------------------------------------------------------
+*.dart          text
+*.yaml          text
+*.yml           text
+*.json          text
+*.md            text
+*.txt           text
+*.html          text
+*.css           text
+*.js            text
+*.xml           text
+*.gradle        text
+*.gradle.kts    text
+*.kt            text
+*.kts           text
+*.java          text
+*.properties    text
+*.pbxproj       text
+*.plist         text
+*.storyboard    text
+*.xcconfig      text
+*.entitlements  text
+*.cmake         text
+*.cpp           text
+*.h             text
+*.hpp           text
+*.c             text
+*.gitattributes text
+*.gitignore     text
+*.env.example   text
+
+# Swift is used on macOS but is edited from any platform — normalize to LF.
+*.swift         text
+
+# ----------------------------------------------------------------------------
+# Platform-specific scripts: force the line ending their target shell expects,
+# no matter what the checkout platform's core.autocrlf is set to.
+# ----------------------------------------------------------------------------
+*.sh  text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# ----------------------------------------------------------------------------
+# Binary assets: never diff, never convert line endings.
+# ----------------------------------------------------------------------------
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.webp    binary
+*.ico     binary
+*.icns    binary
+*.mp3     binary
+*.wav     binary
+*.ogg     binary
+*.ttf     binary
+*.otf     binary
+*.woff    binary
+*.woff2   binary
+*.zip     binary
+*.jar     binary
+*.keystore binary
+*.jks     binary
+*.p12     binary
+*.pdf     binary
