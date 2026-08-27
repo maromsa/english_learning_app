@@ -13,6 +13,7 @@ import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/chat_buddy_screen.dart';
+import 'package:english_learning_app/screens/collection_screen.dart';
 import 'package:english_learning_app/screens/daily_missions_screen.dart';
 import 'package:english_learning_app/screens/image_quiz_screen.dart';
 import 'package:english_learning_app/screens/level_completion_screen.dart';
@@ -802,6 +803,15 @@ class _MyHomePageState extends State<MyHomePage> {
                 Navigator.push(
                   context,
                   PageTransitions.slideFromRight(const ShopScreen()),
+                );
+              },
+        onCollection: _speechBusy
+            ? null
+            : () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  PageTransitions.slideFromRight(const CollectionScreen()),
                 );
               },
         onImageQuiz: _speechBusy
@@ -1781,6 +1791,7 @@ class _GameMenuSheet extends StatelessWidget {
   final VoidCallback? onAddWord;
   final VoidCallback? onScavengerHunt;
   final VoidCallback? onShop;
+  final VoidCallback? onCollection;
   final VoidCallback? onImageQuiz;
   final VoidCallback? onChatBuddy;
   final VoidCallback? onPracticePack;
@@ -1790,6 +1801,7 @@ class _GameMenuSheet extends StatelessWidget {
     this.onAddWord,
     this.onScavengerHunt,
     this.onShop,
+    this.onCollection,
     this.onImageQuiz,
     this.onChatBuddy,
     this.onPracticePack,
@@ -1826,6 +1838,16 @@ class _GameMenuSheet extends StatelessWidget {
           label: 'חנות',
           gradient: const [AuroraTokens.plum, AuroraTokens.blueberry],
           onTap: onShop!,
+        ),
+      );
+    }
+    if (onCollection != null) {
+      entries.add(
+        _GameMenuEntry(
+          icon: Icons.menu_book_rounded,
+          label: 'ספר האוסף',
+          gradient: const [AuroraTokens.coral, AuroraTokens.plum],
+          onTap: onCollection!,
         ),
       );
     }

@@ -14,9 +14,27 @@ class ShopItem {
     this.type = ShopItemType.sticker,
   });
 
+  /// Id of the "מסגרת זהב למדבקות" (Gold Sticker Frame) cosmetic — owning it
+  /// unlocks a gold frame around mastered words in [CollectionItemCard].
+  static const String goldStickerFrameId = 'gold_sticker_frame';
+
   /// Default catalog of shop items (stickers and upgrades) for the grid.
   static List<ShopItem> get defaultCatalog => [
         // Stickers / accessories
+        const ShopItem(
+          id: goldStickerFrameId,
+          name: 'מסגרת זהב למדבקות',
+          imageUrl: 'assets/images/words/gold_sticker_frame.png',
+          cost: 100,
+          type: ShopItemType.sticker,
+        ),
+        const ShopItem(
+          id: 'spark_hat',
+          name: 'כובע לספארק',
+          imageUrl: 'assets/images/words/spark_hat.png',
+          cost: 250,
+          type: ShopItemType.sticker,
+        ),
         const ShopItem(
           id: 'magic_hat',
           name: 'כובע קסמים',
