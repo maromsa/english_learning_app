@@ -5,7 +5,6 @@ import '../providers/auth_provider.dart';
 import '../providers/character_provider.dart';
 import '../providers/child_profile_provider.dart';
 import '../providers/coin_provider.dart';
-import '../providers/shop_provider.dart';
 import '../providers/spark_overlay_controller.dart';
 import '../services/achievement_service.dart';
 import '../services/child_profile_sync_service.dart';
@@ -50,13 +49,11 @@ class _AuthGateState extends State<AuthGate> {
     try {
       final userId = authProvider.firebaseUser!.uid;
       final coinProvider = Provider.of<CoinProvider>(context, listen: false);
-      final shopProvider = Provider.of<ShopProvider>(context, listen: false);
       final achievementService =
           Provider.of<AchievementService>(context, listen: false);
 
       // Set user IDs for cloud sync
       coinProvider.setUserId(userId);
-      shopProvider.setUserId(userId);
       achievementService.setUserId(userId);
 
       final characterProvider =
@@ -68,7 +65,6 @@ class _AuthGateState extends State<AuthGate> {
           .syncFromCloud(
         userId,
         coinProvider: coinProvider,
-        shopProvider: shopProvider,
         achievementService: achievementService,
         characterProvider: characterProvider,
       )

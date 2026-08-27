@@ -1,7 +1,6 @@
 import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
-import 'package:english_learning_app/providers/shop_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
@@ -38,7 +37,6 @@ Future<void> bootstrapMapIntegrationApp() async {
     sparkOverlayController: sparkOverlayController,
     userDataService: userDataService,
   );
-  final shopProvider = ShopProvider(userDataService: userDataService);
   final characterProvider = CharacterProvider(userDataService: userDataService);
   final dailyMissionProvider = DailyMissionProvider();
   final userSessionProvider = UserSessionProvider();
@@ -47,7 +45,6 @@ Future<void> bootstrapMapIntegrationApp() async {
   await Future.wait([
     coinProvider.loadCoins(),
     themeProvider.loadTheme(),
-    shopProvider.loadPurchasedItems(),
     dailyMissionProvider.initialize(),
     userSessionProvider.loadActiveUser(),
   ], eagerError: false);
@@ -59,7 +56,6 @@ Future<void> bootstrapMapIntegrationApp() async {
         ChangeNotifierProvider.value(value: coinProvider),
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider.value(value: achievementService),
-        ChangeNotifierProvider.value(value: shopProvider),
         ChangeNotifierProvider.value(value: characterProvider),
         ChangeNotifierProvider.value(value: dailyMissionProvider),
         ChangeNotifierProvider.value(value: sparkOverlayController),

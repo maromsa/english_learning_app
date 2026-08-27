@@ -6,7 +6,6 @@ import 'package:english_learning_app/providers/auth_provider.dart';
 import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
-import 'package:english_learning_app/providers/shop_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
@@ -106,7 +105,6 @@ Future<void> main() async {
   await streakShieldService.initialize().catchError((e) {
     debugPrint('StreakShieldService init error: $e');
   });
-  final shopProvider = ShopProvider(shieldService: streakShieldService);
   final characterProvider = CharacterProvider();
   final telemetryService = TelemetryService();
   final dailyMissionProvider = DailyMissionProvider();
@@ -132,15 +130,6 @@ Future<void> main() async {
         },
       ).catchError((e) {
         debugPrint('Error loading theme: $e');
-      }),
-      shopProvider.loadPurchasedItems().timeout(
-        const Duration(seconds: 3),
-        onTimeout: () {
-          debugPrint(
-              'Shop items loading timed out, continuing with empty list');
-        },
-      ).catchError((e) {
-        debugPrint('Error loading shop items: $e');
       }),
       dailyMissionProvider.initialize().timeout(
         const Duration(seconds: 3),
@@ -203,7 +192,6 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: coinProvider),
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider.value(value: achievementService),
-        ChangeNotifierProvider.value(value: shopProvider),
         ChangeNotifierProvider.value(value: characterProvider),
         ChangeNotifierProvider.value(value: dailyMissionProvider),
         ChangeNotifierProvider.value(value: streakShieldService),

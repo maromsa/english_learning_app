@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../models/local_user.dart';
 import '../providers/auth_provider.dart';
 import '../providers/coin_provider.dart';
-import '../providers/shop_provider.dart';
 import '../services/achievement_service.dart';
 import '../services/local_user_service.dart';
 import '../widgets/optimized_avatar.dart';
@@ -87,12 +86,10 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
       // Update providers with local user ID
       if (!mounted) return;
       final coinProvider = Provider.of<CoinProvider>(context, listen: false);
-      final shopProvider = Provider.of<ShopProvider>(context, listen: false);
       final achievementService =
           Provider.of<AchievementService>(context, listen: false);
 
       coinProvider.setUserId(user.id, isLocalUser: true);
-      shopProvider.setUserId(user.id);
       achievementService.setUserId(user.id);
 
       // Load coins for the selected user
