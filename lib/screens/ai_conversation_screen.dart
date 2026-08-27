@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/local_user.dart';
