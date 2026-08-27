@@ -52,7 +52,7 @@ class StreakShieldService with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Grant a shield (called by ShopProvider after purchasing `streak_shield`).
+  /// Grant a shield (call after a successful streak-shield purchase).
   Future<void> grantShield() async {
     if (_hasShield) return; // already have one
     _hasShield = true;

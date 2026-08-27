@@ -1,4 +1,3 @@
-import 'package:english_learning_app/providers/shop_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -27,14 +26,12 @@ class ActiveProfileScope {
     DailyRewardService? dailyRewardService,
   }) async {
     final coinProvider = context.read<CoinProvider>();
-    final shopProvider = context.read<ShopProvider>();
     final achievementService = context.read<AchievementService>();
     final dailyMissionProvider = context.read<DailyMissionProvider>();
     final sessionProvider = context.read<UserSessionProvider>();
     final shieldService = context.read<StreakShieldService>();
 
     coinProvider.setUserId(profile.id, isLocalUser: true);
-    shopProvider.setUserId(profile.id);
     achievementService.setUserId(profile.id);
     dailyMissionProvider.setUserId(profile.id);
     shieldService.setUserId(profile.id);
@@ -48,7 +45,6 @@ class ActiveProfileScope {
 
     await Future.wait([
       coinProvider.loadCoins(),
-      shopProvider.loadPurchasedItems(),
       achievementService.loadAchievements(),
       dailyMissionProvider.initialize(),
       shieldService.initialize(),

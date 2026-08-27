@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/player_data.dart';
 import '../providers/character_provider.dart';
 import '../providers/coin_provider.dart';
-import '../providers/shop_provider.dart';
 import '../services/achievement_service.dart';
 import '../services/user_data_service.dart';
 
@@ -20,7 +19,6 @@ class PlayerDataSyncService {
   Future<void> syncFromCloud(
     String userId, {
     required CoinProvider coinProvider,
-    required ShopProvider shopProvider,
     required AchievementService achievementService,
     CharacterProvider? characterProvider,
   }) async {
@@ -33,8 +31,7 @@ class PlayerDataSyncService {
       if (cloudData == null) {
         debugPrint('No cloud data found, creating initial player data');
         // Create initial player data from local state
-        await _createInitialPlayerData(
-            userId, coinProvider, shopProvider, achievementService);
+        await _createInitialPlayerData(userId, coinProvider, achievementService);
         return;
       }
 
@@ -44,11 +41,11 @@ class PlayerDataSyncService {
         debugPrint('Synced coins from cloud: ${cloudData.coins}');
       }
 
-      // Sync purchased items
+      // Sync purchased items (legacy field; kept for backward-compatible
+      // reads, e.g. OnboardingPersonalizer's SharedPreferences lookup).
       if (cloudData.purchasedItems.isNotEmpty) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setStringList('purchased_items', cloudData.purchasedItems);
-        await shopProvider.loadPurchasedItems();
         debugPrint(
             'Synced purchased items from cloud: ${cloudData.purchasedItems.length}');
       }
@@ -84,7 +81,6 @@ class PlayerDataSyncService {
   Future<void> _createInitialPlayerData(
     String userId,
     CoinProvider coinProvider,
-    ShopProvider shopProvider,
     AchievementService achievementService,
   ) async {
     try {
@@ -126,7 +122,6 @@ class PlayerDataSyncService {
   Future<void> syncToCloud(
     String userId, {
     required CoinProvider coinProvider,
-    required ShopProvider shopProvider,
     required AchievementService achievementService,
   }) async {
     try {

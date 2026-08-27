@@ -1,6 +1,5 @@
 // test/widget_test.dart
 import 'package:english_learning_app/providers/coin_provider.dart';
-import 'package:english_learning_app/providers/shop_provider.dart';
 import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +20,6 @@ void main() {
             ChangeNotifierProvider(create: (_) => CoinProvider()),
             ChangeNotifierProvider(create: (_) => ThemeProvider()),
             ChangeNotifierProvider(create: (_) => AchievementService()),
-            ChangeNotifierProvider(create: (_) => ShopProvider()),
           ],
           child: const MaterialApp(home: Scaffold(body: Text('Test'))),
         ),

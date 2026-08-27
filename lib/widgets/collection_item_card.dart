@@ -2,12 +2,15 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:english_learning_app/models/collection_word_item.dart';
+import 'package:english_learning_app/models/shop_item.dart';
+import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/utils/aurora_tokens.dart';
 import 'package:english_learning_app/utils/word_image_url.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 /// Sticker-book tile for a single word in [CollectionScreen].
 class CollectionItemCard extends StatelessWidget {
@@ -29,6 +32,9 @@ class CollectionItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final mastered = item.isMastered;
+    final ownsGoldFrame =
+        context.watch<CoinProvider>().isOwned(ShopItem.goldStickerFrameId);
+    final showGoldFrame = mastered && ownsGoldFrame;
 
     return GlassCard(
       borderRadius: AuroraTokens.rLg,
@@ -40,14 +46,10 @@ class CollectionItemCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AuroraTokens.rMd),
-                  child: mastered
-                      ? _buildImage(context)
-                      : ColorFiltered(
-                          colorFilter: _lockedGrayscale,
-                          child: _buildImage(context, dimmed: true),
-                        ),
+                _buildFramedImage(
+                  context,
+                  mastered: mastered,
+                  showGoldFrame: showGoldFrame,
                 ),
                 if (!mastered)
                   Positioned(
@@ -94,6 +96,55 @@ class CollectionItemCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// Wraps the sticker image in a premium gold frame when [showGoldFrame] is
+  /// true (user owns the "מסגרת זהב למדבקות" cosmetic and this word is
+  /// mastered). Falls back to the plain rounded image otherwise, so the
+  /// locked/standard layout and constraints are unaffected.
+  Widget _buildFramedImage(
+    BuildContext context, {
+    required bool mastered,
+    required bool showGoldFrame,
+  }) {
+    final innerRadius = showGoldFrame
+        ? AuroraTokens.rMd - 3
+        : AuroraTokens.rMd;
+    final image = ClipRRect(
+      borderRadius: BorderRadius.circular(innerRadius),
+      child: mastered
+          ? _buildImage(context)
+          : ColorFiltered(
+              colorFilter: _lockedGrayscale,
+              child: _buildImage(context, dimmed: true),
+            ),
+    );
+
+    if (!showGoldFrame) return image;
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AuroraTokens.rMd),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFFF3B0),
+            Color(0xFFFFD700),
+            Color(0xFFB8860B),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.55),
+            blurRadius: 12,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: image,
     );
   }
 
