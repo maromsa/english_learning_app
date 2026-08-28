@@ -30,7 +30,13 @@ class GeminiProxyResponseCache {
     if (entry == null) {
       return null;
     }
-    if (DateTime.now().difference(entry.storedAt) > ttl) {
+    // An entry is valid for exactly [storedAt, storedAt + ttl) — expired AT
+    // the boundary, not just after it. With a strict `>`, `ttl: Duration.zero`
+    // depended on DateTime.now() advancing between put() and get(), which is
+    // not guaranteed (clock resolution can return the same instant for both
+    // calls), making that case flaky. `>=` makes every ttl, including zero,
+    // deterministic regardless of clock resolution.
+    if (DateTime.now().difference(entry.storedAt) >= ttl) {
       _removeKey(key);
       return null;
     }

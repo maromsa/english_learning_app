@@ -618,6 +618,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
 
       if (mounted) {
         await context.read<CoinProvider>().addCoins(reward);
+        if (!mounted) return;
         // Record correct answer in SRS (grade 4 = correct with minor hesitation).
         // This updates the SM-2 ease factor and schedules the next review.
         final session = context.read<UserSessionProvider>();
