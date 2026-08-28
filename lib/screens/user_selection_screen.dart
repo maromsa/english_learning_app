@@ -139,7 +139,7 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
         );
 
         await _loadUsers();
-        if (!context.mounted) return;
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('המשתמש קושר בהצלחה לחשבון Google!'),

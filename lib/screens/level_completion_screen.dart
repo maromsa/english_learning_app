@@ -106,6 +106,8 @@ class _LevelCompletionScreenState extends State<LevelCompletionScreen>
       );
     } catch (_) {}
 
+    if (!mounted) return;
+
     // Fire AchievementService — level completion counts as a streak event.
     try {
       await context.read<AchievementService>().checkForAchievements(

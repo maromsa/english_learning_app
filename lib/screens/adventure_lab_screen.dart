@@ -515,13 +515,14 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
       await context.read<CoinProvider>().addCoins(rewardCoins);
     } catch (_) {}
 
+    if (!mounted) return;
+
     try {
       context
           .read<DailyMissionProvider>()
           .incrementByType(DailyMissionType.quizPlay);
     } catch (_) {}
 
-    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
