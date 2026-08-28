@@ -84,14 +84,24 @@ class UserDataService {
 
   /// Add purchased item
   Future<bool> addPurchasedItem(String userId, String itemId) async {
+    return addPurchasedItems(userId, [itemId]);
+  }
+
+  /// Merges [itemIds] into the user's `purchasedItems` array via a single
+  /// `arrayUnion` write. Idempotent — ids already present in the cloud
+  /// array are a no-op, so it's always safe to call with the full
+  /// locally-known owned-items list (e.g. CoinProvider's shop-item sync
+  /// and its offline-retry path both do this).
+  Future<bool> addPurchasedItems(String userId, List<String> itemIds) async {
+    if (itemIds.isEmpty) return true;
     try {
       await _playerDataDoc(userId).set({
-        'purchasedItems': FieldValue.arrayUnion([itemId]),
+        'purchasedItems': FieldValue.arrayUnion(itemIds),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
       return true;
     } catch (e) {
-      debugPrint('Error adding purchased item: $e');
+      debugPrint('Error adding purchased items: $e');
       return false;
     }
   }
