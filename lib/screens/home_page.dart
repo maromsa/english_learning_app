@@ -793,7 +793,7 @@ class _MyHomePageState extends State<MyHomePage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _GameMenuSheet(
+      builder: (context) => GameMenuSheet(
         onAddWord: _speechBusy ? null : _takePictureAndIdentify,
         onScavengerHunt: _speechBusy ? null : _openScavengerHunt,
         onShop: _speechBusy
@@ -1787,7 +1787,10 @@ class _GameMenuGridTile extends StatelessWidget {
   }
 }
 
-class _GameMenuSheet extends StatelessWidget {
+/// The frosted-glass "תפריט משחק" bottom sheet opened from the map/practice
+/// screens. Public (not `_`-prefixed) so it's directly widget-testable —
+/// each `on*` callback is optional and only renders a tile when supplied.
+class GameMenuSheet extends StatelessWidget {
   final VoidCallback? onAddWord;
   final VoidCallback? onScavengerHunt;
   final VoidCallback? onShop;
@@ -1797,7 +1800,8 @@ class _GameMenuSheet extends StatelessWidget {
   final VoidCallback? onPracticePack;
   final VoidCallback? onLightning;
 
-  const _GameMenuSheet({
+  const GameMenuSheet({
+    super.key,
     this.onAddWord,
     this.onScavengerHunt,
     this.onShop,
