@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/player_data.dart';
 import '../models/shop_item.dart';
 import '../services/local_user_data_service.dart';
 import '../services/user_data_service.dart';
@@ -20,6 +21,7 @@ class CoinProvider with ChangeNotifier {
   String? _currentUserId;
   bool _isLocalUser = false;
   bool _pendingCloudSync = false;
+  bool _pendingItemsCloudSync = false;
   final List<String> _ownedShopItemIds = [];
 
   Future<SharedPreferences> get _sharedPrefs async =>
@@ -47,18 +49,35 @@ class CoinProvider with ChangeNotifier {
     _isLocalUser = isLocalUser;
   }
 
-  /// Retries a deferred Firestore coin write after a prior cloud failure.
+  /// Retries deferred Firestore writes (coins and/or owned shop items)
+  /// after a prior cloud failure.
   Future<void> flushPendingCloudSync() async {
-    if (!_pendingCloudSync || _currentUserId == null || _isLocalUser) {
+    if (_currentUserId == null || _isLocalUser) {
       return;
     }
 
-    // updateCoins reports failures via its return value (it never throws).
-    final synced = await _userDataService.updateCoins(_currentUserId!, _coins);
-    if (!synced) {
-      debugPrint('Cloud coin sync retry failed, will retry later');
+    if (_pendingCloudSync) {
+      // updateCoins reports failures via its return value (it never throws).
+      final synced =
+          await _userDataService.updateCoins(_currentUserId!, _coins);
+      if (!synced) {
+        debugPrint('Cloud coin sync retry failed, will retry later');
+      }
+      _pendingCloudSync = !synced;
     }
-    _pendingCloudSync = !synced;
+
+    if (_pendingItemsCloudSync) {
+      // addPurchasedItems is an idempotent arrayUnion, so retrying with the
+      // full current list is safe even if some ids already reached the cloud.
+      final synced = await _userDataService.addPurchasedItems(
+        _currentUserId!,
+        _ownedShopItemIds,
+      );
+      if (!synced) {
+        debugPrint('Cloud shop-item sync retry failed, will retry later');
+      }
+      _pendingItemsCloudSync = !synced;
+    }
   }
 
   Future<void> loadCoins() async {
@@ -88,24 +107,57 @@ class CoinProvider with ChangeNotifier {
         final localCoins = prefs.getInt('user_${_currentUserId}_coins') ??
             prefs.getInt('totalCoins') ??
             0;
+        final localItems =
+            prefs.getStringList('user_${_currentUserId}_owned_shop_items') ??
+                [];
+
+        // One load covers both coins and owned items; only fetch it if at
+        // least one of the two isn't sitting on an unsynced local write.
+        PlayerData? playerData;
+        if (!_pendingCloudSync || !_pendingItemsCloudSync) {
+          playerData = await _userDataService.loadPlayerData(_currentUserId!);
+        }
 
         if (_pendingCloudSync) {
           _coins = localCoins;
+        } else if (playerData != null) {
+          _coins = playerData.coins;
+          await prefs.setInt('user_${_currentUserId}_coins', _coins);
         } else {
-          final playerData =
-              await _userDataService.loadPlayerData(_currentUserId!);
-          if (playerData != null) {
-            _coins = playerData.coins;
-            await prefs.setInt('user_${_currentUserId}_coins', _coins);
-          } else {
-            _coins = localCoins;
-          }
+          _coins = localCoins;
         }
 
         _ownedShopItemIds.clear();
-        _ownedShopItemIds.addAll(
-          prefs.getStringList('user_${_currentUserId}_owned_shop_items') ?? [],
-        );
+        if (_pendingItemsCloudSync) {
+          _ownedShopItemIds.addAll(localItems);
+        } else {
+          // Items are a set, not a scalar: merge rather than let either side
+          // clobber the other, so a purchase made on device A while device B
+          // was offline survives on both once B comes back online.
+          final cloudItems = playerData?.purchasedItems ?? const <String>[];
+          final merged = <String>{...localItems, ...cloudItems}.toList();
+          _ownedShopItemIds.addAll(merged);
+          await prefs.setStringList(
+            'user_${_currentUserId}_owned_shop_items',
+            merged,
+          );
+
+          final localOnly =
+              localItems.where((id) => !cloudItems.contains(id)).toList();
+          if (localOnly.isNotEmpty) {
+            final synced = await _userDataService.addPurchasedItems(
+              _currentUserId!,
+              localOnly,
+            );
+            if (!synced) {
+              debugPrint(
+                'Cloud shop-item sync deferred on load, will retry later',
+              );
+              _pendingItemsCloudSync = true;
+            }
+          }
+        }
+
         await flushPendingCloudSync();
       }
       _notify();
@@ -240,13 +292,28 @@ class CoinProvider with ChangeNotifier {
           _currentUserId!,
           _ownedShopItemIds,
         );
-      } else {
-        final prefs = await _sharedPrefs;
-        await prefs.setStringList(
-          'user_${_currentUserId}_owned_shop_items',
-          _ownedShopItemIds,
-        );
+        return;
       }
+
+      // Firebase user: persist locally first, then cloud (defer on cloud
+      // failure) — matches _saveCoins's offline-first pattern.
+      final prefs = await _sharedPrefs;
+      await prefs.setStringList(
+        'user_${_currentUserId}_owned_shop_items',
+        _ownedShopItemIds,
+      );
+
+      // addPurchasedItems is an idempotent arrayUnion, so pushing the whole
+      // current list (not just the newly-purchased id) is safe and also
+      // doubles as a retry for anything a previous attempt missed.
+      final synced = await _userDataService.addPurchasedItems(
+        _currentUserId!,
+        _ownedShopItemIds,
+      );
+      if (!synced) {
+        debugPrint('Cloud shop-item sync deferred, will retry later');
+      }
+      _pendingItemsCloudSync = !synced;
     } catch (e) {
       debugPrint('Error saving owned shop items: $e');
     }
