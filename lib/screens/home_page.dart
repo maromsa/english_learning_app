@@ -799,7 +799,6 @@ class _MyHomePageState extends State<MyHomePage> {
         onShop: _speechBusy
             ? null
             : () {
-                Navigator.pop(context);
                 Navigator.push(
                   context,
                   PageTransitions.slideFromRight(const ShopScreen()),
@@ -808,7 +807,6 @@ class _MyHomePageState extends State<MyHomePage> {
         onCollection: _speechBusy
             ? null
             : () {
-                Navigator.pop(context);
                 Navigator.push(
                   context,
                   PageTransitions.slideFromRight(const CollectionScreen()),
@@ -817,7 +815,6 @@ class _MyHomePageState extends State<MyHomePage> {
         onImageQuiz: _speechBusy
             ? null
             : () {
-                Navigator.pop(context);
                 final heroWord =
                     _words.isNotEmpty ? _words[_currentIndex].word : null;
                 Navigator.push(
@@ -834,7 +831,6 @@ class _MyHomePageState extends State<MyHomePage> {
         onChatBuddy: _speechBusy
             ? null
             : () {
-                Navigator.pop(context);
                 final focusWords = _words
                     .take(6)
                     .map((word) => word.word)
@@ -849,7 +845,6 @@ class _MyHomePageState extends State<MyHomePage> {
         onPracticePack: _speechBusy
             ? null
             : () {
-                Navigator.pop(context);
                 final focusWords = _words
                     .take(6)
                     .map((word) => word.word)
@@ -865,7 +860,6 @@ class _MyHomePageState extends State<MyHomePage> {
             ? null
             : (_words.length < 2
                 ? () {
-                    Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
@@ -875,7 +869,6 @@ class _MyHomePageState extends State<MyHomePage> {
                     );
                   }
                 : () {
-                    Navigator.pop(context);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
