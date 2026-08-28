@@ -41,8 +41,14 @@ CollectionScreen _fakeCollectionScreen() {
 /// opens GameMenuSheet in production. Pushed on top of a root route (rather
 /// than being MaterialApp.home itself) so the test exercises the same
 /// navigation depth the real app has when the sheet is opened.
+///
+/// [destinationBuilder] defaults to the real (faked-out) CollectionScreen,
+/// but tests that only care about navigation-stack mechanics — not
+/// CollectionScreen's content — can swap in a trivial placeholder instead.
 class _MenuHostScreen extends StatelessWidget {
-  const _MenuHostScreen();
+  const _MenuHostScreen({this.destinationBuilder = _fakeCollectionScreen});
+
+  final Widget Function() destinationBuilder;
 
   void _openMenu(BuildContext context) {
     showModalBottomSheet(
@@ -50,11 +56,15 @@ class _MenuHostScreen extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => GameMenuSheet(
+        // Matches production's onCollection wiring in home_page.dart:
+        // GameMenuGridTile already pops the sheet on tap, so this callback
+        // must only push — an extra pop here would rip _MenuHostScreen off
+        // the stack too (the double-pop bug this file's regression test
+        // guards against).
         onCollection: () {
-          Navigator.pop(context);
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => _fakeCollectionScreen()),
+            MaterialPageRoute(builder: (_) => destinationBuilder()),
           );
         },
       ),
@@ -74,7 +84,10 @@ class _MenuHostScreen extends StatelessWidget {
   }
 }
 
-Future<void> _pumpHost(WidgetTester tester) async {
+Future<void> _pumpHost(
+  WidgetTester tester, {
+  Widget Function() destinationBuilder = _fakeCollectionScreen,
+}) async {
   SharedPreferences.setMockInitialValues({});
   await tester.pumpWidget(
     ChangeNotifierProvider<UserSessionProvider>(
@@ -88,7 +101,10 @@ Future<void> _pumpHost(WidgetTester tester) async {
                 // the game-menu host screen is itself pushed from the map.
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const _MenuHostScreen()),
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        _MenuHostScreen(destinationBuilder: destinationBuilder),
+                  ),
                 ),
                 child: const Text('go to level'),
               ),
@@ -147,5 +163,39 @@ void main() {
     expect(find.byType(CollectionScreen), findsOneWidget);
     // The sheet closed along with it — no leftover menu tile on screen.
     expect(find.text('ספר האוסף'), findsNothing);
+  });
+
+  testWidgets(
+      'the sheet pops exactly once, so the screen beneath survives on the '
+      'stack (regression test for the Game Menu double-pop bug)',
+      (tester) async {
+    // A trivial destination, not the real CollectionScreen: this test is
+    // only about navigation-stack mechanics (does onCollection push exactly
+    // once on top of exactly one sheet-pop), which the real screen's async
+    // data loading has nothing to do with — CollectionScreen itself is
+    // covered by the "navigates to CollectionScreen" test above.
+    await _pumpHost(
+      tester,
+      destinationBuilder: () => const Scaffold(
+        body: Center(child: Text('collection placeholder')),
+      ),
+    );
+
+    await tester.tap(find.text('open menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ספר האוסף'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('collection placeholder'), findsOneWidget);
+
+    // Pop the destination and land back on _MenuHostScreen — not two
+    // screens back at the root. A redundant extra pop in the onCollection
+    // callback would have taken the sheet's pop AND this one, skipping
+    // straight past _MenuHostScreen to the root "go to level" screen.
+    Navigator.of(tester.element(find.text('collection placeholder'))).pop();
+    await tester.pumpAndSettle();
+
+    expect(find.text('open menu'), findsOneWidget);
+    expect(find.text('go to level'), findsNothing);
   });
 }
