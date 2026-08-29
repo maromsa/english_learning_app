@@ -403,6 +403,11 @@ class _ShopItemCard extends StatelessWidget {
                     child: Image.asset(
                       item.imageUrl,
                       fit: BoxFit.cover,
+                      // Decode hint: grid thumbnails render well under
+                      // ~150 logical px — cap decode cost regardless of
+                      // how large the source art file actually is.
+                      cacheWidth: 240,
+                      cacheHeight: 240,
                       errorBuilder: (_, __, ___) => Container(
                         color: Colors.grey.shade100,
                         child: Icon(
@@ -549,6 +554,8 @@ class _ItemDetailsSheet extends StatelessWidget {
               child: Image.asset(
                 item.imageUrl,
                 fit: BoxFit.cover,
+                cacheWidth: 280,
+                cacheHeight: 280,
                 errorBuilder: (_, __, ___) => Icon(
                   item.type == ShopItemType.upgrade ? Icons.bolt : Icons.star,
                   size: 56,
@@ -713,6 +720,8 @@ class _PurchaseSuccessDialog extends StatelessWidget {
                 height: 90,
                 width: 90,
                 fit: BoxFit.cover,
+                cacheWidth: 180,
+                cacheHeight: 180,
                 errorBuilder: (_, __, ___) => const Icon(
                   Icons.check_circle,
                   size: 64,
