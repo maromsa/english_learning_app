@@ -22,14 +22,14 @@ import 'package:webview_flutter_android/webview_flutter_android.dart'
     show AndroidWebViewController;
 
 import '../providers/user_session_provider.dart';
-import '../services/background_music_service.dart';
 import '../services/achievement_service.dart';
+import '../services/background_music_service.dart';
 import '../services/daily_reward_service.dart';
-import '../services/streak_shield_service.dart';
 import '../services/level_progress_service.dart';
 import '../services/level_repository.dart';
 import '../services/local_user_data_service.dart';
 import '../services/map_bridge_service.dart';
+import '../services/streak_shield_service.dart';
 import '../utils/aurora_tokens.dart';
 import '../utils/hero_tags.dart';
 import '../utils/page_transitions.dart';
@@ -41,13 +41,13 @@ import '../widgets/user/current_user_avatar.dart';
 import 'achievements_screen.dart';
 import 'adventure_lab_screen.dart';
 import 'character_selection_screen.dart';
-import 'story_screen.dart';
 import 'daily_missions_screen.dart';
 import 'leaderboard_screen.dart';
 import 'scavenger_hunt_screen.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
 import 'srs_review_screen.dart';
+import 'story_screen.dart';
 
 /// On Flutter Web, [HtmlElementView] iframes sit above the canvas and steal
 /// pointer events from Flutter widgets drawn on top. Wrap interactive chrome
@@ -421,7 +421,7 @@ class _MapScreenState extends State<MapScreen>
         );
       } catch (e) {
         debugPrint('Error in _loadProgress: $e');
-        _updateUnlockStatuses(); // Ensure unlock statuses are updated
+        unawaited(_updateUnlockStatuses()); // Ensure unlock statuses are updated
       }
 
       // Always set loading to false, even if there were errors
@@ -450,7 +450,7 @@ class _MapScreenState extends State<MapScreen>
       debugPrint('Error initializing MapScreen: $e');
       debugPrint('Stack trace: $stackTrace');
       levels = _fallbackLevels();
-      _updateUnlockStatuses(); // Ensure unlock statuses are updated
+      unawaited(_updateUnlockStatuses()); // Ensure unlock statuses are updated
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -680,7 +680,7 @@ class _MapScreenState extends State<MapScreen>
       // This handles the case where user earned coins but stars weren't saved
       await _recalculateStarsFromCoins();
 
-      _updateUnlockStatuses();
+      unawaited(_updateUnlockStatuses());
       if (mounted) {
         setState(() {});
         _sendLevelsToJs(); // Update 3D map with new progress
@@ -689,7 +689,7 @@ class _MapScreenState extends State<MapScreen>
       debugPrint('Progress loading timed out, using defaults');
       // Continue anyway - use default progress
       await _recalculateStarsFromCoins();
-      _updateUnlockStatuses();
+      unawaited(_updateUnlockStatuses());
       if (mounted) {
         setState(() {});
       }
@@ -698,7 +698,7 @@ class _MapScreenState extends State<MapScreen>
       debugPrint('Stack trace: $stackTrace');
       // Continue anyway - use default progress
       await _recalculateStarsFromCoins();
-      _updateUnlockStatuses();
+      unawaited(_updateUnlockStatuses());
       if (mounted) {
         setState(() {});
       }
@@ -999,10 +999,12 @@ class _MapScreenState extends State<MapScreen>
       ).addCoins(result.reward);
       if (mounted) {
         try {
-          context.read<AchievementService>().checkForAchievements(
-                streak: 0,
-                dailyStreak: result.streak,
-              );
+          unawaited(
+            context.read<AchievementService>().checkForAchievements(
+                  streak: 0,
+                  dailyStreak: result.streak,
+                ),
+          );
         } catch (_) {}
         final shieldMsg =
             result.shieldUsed ? ' 🛡️ המגן הגן על הרצף שלך!' : '';
@@ -1146,7 +1148,7 @@ class _MapScreenState extends State<MapScreen>
     await coinProvider.resetLevelStartCoins(level.id);
 
     if (!mounted) return;
-    _updateUnlockStatuses();
+    unawaited(_updateUnlockStatuses());
     setState(() {});
     await _saveProgress();
 
@@ -1239,9 +1241,9 @@ class _MapScreenState extends State<MapScreen>
   // ignore: unused_element
   void _handleAiShortcut(_QuickAiAction action) async {
     // Stop music before navigating to AI screen
-    BackgroundMusicService().stop().catchError((error) {
+    unawaited(BackgroundMusicService().stop().catchError((error) {
       debugPrint('Failed to stop music before AI shortcut: $error');
-    });
+    }),);
 
     switch (action) {
       case _QuickAiAction.chatBuddy:
@@ -1506,7 +1508,7 @@ class _MapScreenState extends State<MapScreen>
                                         message: 'מגן רצף פעיל — יום אחד מוגן!',
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 6),
+                                              horizontal: 10, vertical: 6,),
                                           decoration: BoxDecoration(
                                             color: Colors.blue.withValues(alpha: 0.85),
                                             borderRadius: BorderRadius.circular(20),
@@ -1522,7 +1524,7 @@ class _MapScreenState extends State<MapScreen>
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Icon(Icons.shield_rounded,
-                                                  color: Colors.white, size: 16),
+                                                  color: Colors.white, size: 16,),
                                               SizedBox(width: 4),
                                               Text(
                                                 'מגן',
@@ -1757,7 +1759,7 @@ class _MapScreenState extends State<MapScreen>
       case 0: // Map - already here
         break;
       case 1: // Shop
-        _navigateToShop();
+        unawaited(_navigateToShop());
         break;
       case 2: // Trophy Room (Achievements)
         await _navigateToAchievements();
@@ -1781,17 +1783,17 @@ class _MapScreenState extends State<MapScreen>
   void _openChatBuddy() {
     unawaited(BackgroundMusicService().stop().catchError((error) {
       debugPrint('Failed to stop music before Chat Buddy: $error');
-    }));
+    }),);
     unawaited(Navigator.push(
       context,
       PageTransitions.slideFromRight(const ChatBuddyScreen()),
-    ));
+    ),);
   }
 
   void _openAdventureLab() {
     unawaited(BackgroundMusicService().stop().catchError((error) {
       debugPrint('Failed to stop music before Adventure Lab: $error');
-    }));
+    }),);
     unawaited(Navigator.push(
       context,
       PageTransitions.fadeScale(
@@ -1800,7 +1802,7 @@ class _MapScreenState extends State<MapScreen>
           totalStars: _totalStars,
         ),
       ),
-    ));
+    ),);
   }
 
   void _openInteractiveStory() {
@@ -1821,7 +1823,7 @@ class _MapScreenState extends State<MapScreen>
           levelTitle: levelTitle,
         ),
       ),
-    ));
+    ),);
   }
 
   void _showAiToolsMenu() {
@@ -1864,13 +1866,13 @@ class _MapScreenState extends State<MapScreen>
                     debugPrint(
                       'Failed to stop music before AI practice pack: $error',
                     );
-                  }));
+                  }),);
                   unawaited(Navigator.push(
                     context,
                     PageTransitions.slideFromRight(
                       const AiPracticePackScreen(),
                     ),
-                  ));
+                  ),);
                 },
               ),
               ListTile(
@@ -2089,7 +2091,7 @@ class _AdventureLabMapEntryState extends State<_AdventureLabMapEntry>
                   ),
                 ],
                 border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.85), width: 2),
+                    color: Colors.white.withValues(alpha: 0.85), width: 2,),
               ),
               child: const Icon(
                 Icons.auto_stories_rounded,

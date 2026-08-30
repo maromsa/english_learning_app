@@ -9,7 +9,7 @@ void main() {
       final item = CollectionWordItem(
         word: WordData(word: 'Cat'),
         levelId: 'level_1',
-        mastery: WordMasteryEntry(
+        mastery: const WordMasteryEntry(
           masteryLevel: 1.0,
           bestPronunciationStars: 3,
         ),
@@ -24,7 +24,7 @@ void main() {
       final item = CollectionWordItem(
         word: WordData(word: 'Dog', isCompleted: true),
         levelId: 'level_1',
-        mastery: WordMasteryEntry(
+        mastery: const WordMasteryEntry(
           masteryLevel: 0.5,
           bestPronunciationStars: 2,
         ),
@@ -39,7 +39,7 @@ void main() {
       final item = CollectionWordItem(
         word: WordData(word: 'Fish'),
         levelId: 'level_1',
-        mastery: WordMasteryEntry(masteryLevel: 0.0),
+        mastery: const WordMasteryEntry(masteryLevel: 0.0),
         isCompleted: false,
       );
 

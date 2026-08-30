@@ -218,7 +218,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
         });
       case _SortMode.alphabetical:
         list.sort((a, b) =>
-            a.item.word.word.toLowerCase().compareTo(b.item.word.word.toLowerCase()));
+            a.item.word.word.toLowerCase().compareTo(b.item.word.word.toLowerCase()),);
       case _SortMode.masteryDesc:
         list.sort((a, b) {
           final cmp = b.masteryPct.compareTo(a.masteryPct);
@@ -235,7 +235,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
     return sorted
         .where((e) =>
             e.item.word.word.toLowerCase().contains(_query) ||
-            (e.item.word.translation ?? '').toLowerCase().contains(_query))
+            (e.item.word.translation ?? '').toLowerCase().contains(_query),)
         .toList();
   }
 
@@ -313,12 +313,12 @@ class _CollectionScreenState extends State<CollectionScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.book_outlined,
-                  size: 56, color: AuroraTokens.inkMute.withValues(alpha: 0.5)),
+                  size: 56, color: AuroraTokens.inkMute.withValues(alpha: 0.5),),
               const SizedBox(height: 16),
               Text(_errorMessage!,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.heebo(
-                      fontSize: 16, color: AuroraTokens.inkSoft)),
+                      fontSize: 16, color: AuroraTokens.inkSoft,),),
               const SizedBox(height: 20),
               FilledButton.icon(
                 onPressed: _loadCollection,
@@ -367,7 +367,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                         : null,
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
-                        vertical: 10, horizontal: 12),
+                        vertical: 10, horizontal: 12,),
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
@@ -395,7 +395,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                   child: Text(
                     _query.isEmpty ? 'עדיין אין מילים' : 'לא נמצאו תוצאות',
                     style: GoogleFonts.heebo(
-                        fontSize: 16, color: AuroraTokens.inkMute),
+                        fontSize: 16, color: AuroraTokens.inkMute,),
                   ),
                 )
               : ListView.builder(
@@ -444,22 +444,22 @@ class _StatsHeader extends StatelessWidget {
               icon: Icons.fiber_new_rounded,
               label: 'חדשות',
               count: newCount,
-              color: Colors.blue),
+              color: Colors.blue,),
           _StatChip(
               icon: Icons.schedule_rounded,
               label: 'לחזרה',
               count: dueCount,
-              color: Colors.orange),
+              color: Colors.orange,),
           _StatChip(
               icon: Icons.star_rounded,
               label: 'שולטות',
               count: masteredCount,
-              color: Colors.green),
+              color: Colors.green,),
           _StatChip(
               icon: Icons.library_books_rounded,
               label: 'סה"כ',
               count: total,
-              color: Colors.purple),
+              color: Colors.purple,),
         ],
       ),
     );
@@ -525,7 +525,7 @@ class _SortButton extends StatelessWidget {
             Icon(Icons.schedule_rounded, size: 18),
             SizedBox(width: 8),
             Text('לחזרה ראשונות'),
-          ]),
+          ],),
         ),
         PopupMenuItem(
           value: _SortMode.alphabetical,
@@ -533,7 +533,7 @@ class _SortButton extends StatelessWidget {
             Icon(Icons.sort_by_alpha_rounded, size: 18),
             SizedBox(width: 8),
             Text('א׳ עד ת׳'),
-          ]),
+          ],),
         ),
         PopupMenuItem(
           value: _SortMode.masteryDesc,
@@ -541,7 +541,7 @@ class _SortButton extends StatelessWidget {
             Icon(Icons.star_rounded, size: 18),
             SizedBox(width: 8),
             Text('שליטה גבוהה ראשונה'),
-          ]),
+          ],),
         ),
       ],
       child: Container(
@@ -551,7 +551,7 @@ class _SortButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: Icon(Icons.sort_rounded,
-            size: 22, color: Colors.grey.shade700),
+            size: 22, color: Colors.grey.shade700,),
       ),
     );
   }
@@ -638,7 +638,7 @@ class _WordCard extends StatelessWidget {
                           children: List.generate(
                             entry.pronunciationStars,
                             (_) => const Icon(Icons.star,
-                                size: 12, color: Colors.amber),
+                                size: 12, color: Colors.amber,),
                           ),
                         ),
                     ],

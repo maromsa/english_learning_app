@@ -51,7 +51,7 @@ class _FakeConnectivity extends DeviceConnectivity {
 
   @override
   Future<bool> isOnline(
-          {Duration timeout = const Duration(seconds: 3)}) async =>
+          {Duration timeout = const Duration(seconds: 3),}) async =>
       online;
 }
 
@@ -161,7 +161,7 @@ final List<WordData> _testWords = [
   WordData(word: 'Cat', searchHint: 'A furry animal', masteryLevel: 0.3),
   WordData(word: 'Dog', searchHint: 'Man\'s best friend', masteryLevel: 0.5),
   WordData(
-      word: 'Elephant', searchHint: 'A big grey animal', masteryLevel: 0.75),
+      word: 'Elephant', searchHint: 'A big grey animal', masteryLevel: 0.75,),
 ];
 
 // ---------------------------------------------------------------------------

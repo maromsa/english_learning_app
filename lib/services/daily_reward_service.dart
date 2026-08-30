@@ -77,7 +77,7 @@ class DailyRewardService {
       if (lastClaimDate == today) {
         streak = prefs.getInt(_streakKey) ?? 1;
         return DailyRewardResult(
-            claimed: false, reward: 0, streak: streak, shieldUsed: false);
+            claimed: false, reward: 0, streak: streak, shieldUsed: false,);
       }
 
       // Compare calendar days, not a 24h duration: `add(Duration(days: 1))`
@@ -91,7 +91,7 @@ class DailyRewardService {
         // Missed at least one day. Check if the player has a shield.
         final savedStreak = prefs.getInt(_streakKey) ?? 0;
         if (savedStreak > 0 && _shield != null) {
-          shieldUsed = await _shield!.consumeShield();
+          shieldUsed = await _shield.consumeShield();
         }
         if (shieldUsed) {
           // Shield absorbed the break — continue the streak.
@@ -113,6 +113,6 @@ class DailyRewardService {
     await prefs.setInt(_streakKey, streak);
 
     return DailyRewardResult(
-        claimed: true, reward: reward, streak: streak, shieldUsed: shieldUsed);
+        claimed: true, reward: reward, streak: streak, shieldUsed: shieldUsed,);
   }
 }

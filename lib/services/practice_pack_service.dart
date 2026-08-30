@@ -8,14 +8,14 @@ import '../models/local_user.dart';
 import '../providers/user_session_provider.dart';
 import 'gemini_proxy_service.dart';
 
-typedef _PracticePackGenerator = Future<String?> Function(String prompt);
+typedef PracticePackGenerator = Future<String?> Function(String prompt);
 
 class PracticePackService {
-  PracticePackService({Duration? timeout, _PracticePackGenerator? generator})
+  PracticePackService({Duration? timeout, PracticePackGenerator? generator})
       : _timeout = timeout ?? const Duration(seconds: 12),
         _generator = generator ?? _inferGenerator();
 
-  final _PracticePackGenerator _generator;
+  final PracticePackGenerator _generator;
   final Duration _timeout;
 
   Future<PracticePack> generatePack(
@@ -66,7 +66,7 @@ class PracticePackService {
   static const String _geminiUnavailableMessage =
       'חבילת האימון של ספרק דורשת חיבור ל-Gemini. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי להפעיל את התכונה.';
 
-  static _PracticePackGenerator _inferGenerator() {
+  static PracticePackGenerator _inferGenerator() {
     // Check if Firebase is properly configured
     if (!AppConfig.isFirebaseConfigured) {
       // Firebase not configured, return a generator that throws immediately

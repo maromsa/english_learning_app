@@ -87,7 +87,7 @@ const _kMap3dLoadMessageTypes = {'3D_MAP_LOADED', 'map3d_loaded', 'map3d_load_er
 /// Supports both shapes used in this project:
 /// - `{ type, data: { index: 0 } }` (MapChannel / [notifyFlutter])
 /// - `{ type, index: 0 }` (flat parent postMessage)
-Map<String, dynamic> _payloadFromPostMessage(Map data) {
+Map<String, dynamic> _payloadFromPostMessage(Map<Object?, Object?> data) {
   final nested = data['data'];
   if (nested is Map) {
     return Map<String, dynamic>.from(nested);

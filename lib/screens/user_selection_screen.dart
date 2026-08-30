@@ -99,7 +99,7 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
       final navigator = Navigator.of(context);
       unawaited(navigator.pushReplacement(
         MaterialPageRoute(builder: (_) => const MapScreen()),
-      ));
+      ),);
     } catch (e) {
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
@@ -215,7 +215,7 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
                   final navigator = Navigator.of(context);
                   unawaited(navigator.pushReplacement(
                     MaterialPageRoute(builder: (_) => const SignInScreen()),
-                  ));
+                  ),);
                 },
               ),
           ],

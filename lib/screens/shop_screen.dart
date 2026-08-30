@@ -131,7 +131,7 @@ class _ShopScreenState extends State<ShopScreen>
                         icon: Icons.emoji_emotions_outlined,
                         isSelected: _selectedType == ShopItemType.sticker,
                         onTap: () => setState(
-                            () => _selectedType = ShopItemType.sticker),
+                            () => _selectedType = ShopItemType.sticker,),
                       ),
                       const SizedBox(width: 10),
                       _TypeChip(
@@ -139,7 +139,7 @@ class _ShopScreenState extends State<ShopScreen>
                         icon: Icons.bolt,
                         isSelected: _selectedType == ShopItemType.upgrade,
                         onTap: () => setState(
-                            () => _selectedType = ShopItemType.upgrade),
+                            () => _selectedType = ShopItemType.upgrade,),
                       ),
                     ],
                   ),

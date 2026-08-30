@@ -50,9 +50,15 @@ class SrsService {
         _syncEngine = syncEngine;
 
   static const String _defaultPrefix = 'srs.v1';
+  // Reserved for a future direct-Firestore code path; sync currently goes
+  // through SyncEngine. Kept (with the field below) so callers/tests can
+  // still inject a fake Firestore instance and avoid an eager
+  // FirebaseFirestore.instance lookup when one isn't configured.
+  // ignore: unused_field
   static const String _firestoreCollection = 'srs_cards';
 
   final Future<SharedPreferences> _prefsFuture;
+  // ignore: unused_field
   final FirebaseFirestore _firestore;
   final WordMasteryService _legacyService;
   final String _prefix;
@@ -238,7 +244,7 @@ class SrsService {
     int count = 0;
     for (final word in words) {
       final card = await getCard(
-          userId: userId, levelId: levelId, word: word.word);
+          userId: userId, levelId: levelId, word: word.word,);
       if (card.isDue) count++;
     }
     return count;
@@ -260,7 +266,7 @@ class SrsService {
 
     final seen = allWords
         .where((w) =>
-            (cardMap[w.word.toLowerCase()]?.lastReviewDate) != null)
+            (cardMap[w.word.toLowerCase()]?.lastReviewDate) != null,)
         .toList();
 
     seen.sort((a, b) {
@@ -360,7 +366,7 @@ class SrsService {
   }
 
   Future<SrsCard?> _loadFromPrefs(
-      String userId, String levelId, String word) async {
+      String userId, String levelId, String word,) async {
     try {
       final prefs = await _prefsFuture;
       final key = _prefsKey(userId, levelId, word);
@@ -375,7 +381,7 @@ class SrsService {
   }
 
   Future<void> _saveToPrefs(
-      String userId, String levelId, SrsCard card) async {
+      String userId, String levelId, SrsCard card,) async {
     try {
       final prefs = await _prefsFuture;
       final key = _prefsKey(userId, levelId, card.wordId);

@@ -47,7 +47,7 @@ Future<void> bootstrapMapIntegrationApp() async {
     themeProvider.loadTheme(),
     dailyMissionProvider.initialize(),
     userSessionProvider.loadActiveUser(),
-  ], eagerError: false);
+  ], eagerError: false,);
 
   runApp(
     MultiProvider(

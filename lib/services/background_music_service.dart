@@ -105,13 +105,10 @@ class BackgroundMusicService with WidgetsBindingObserver {
       } catch (e) {
         debugPrint('Failed to set loop mode in startup sequence: $e');
       }
-      final source = ConcatenatingAudioSource(
-        children: [
-          AudioSource.asset(_startupChimeAsset),
-          AudioSource.asset(_backgroundLoopAsset),
-        ],
-      );
-      await _player.setAudioSource(source);
+      await _player.setAudioSources([
+        AudioSource.asset(_startupChimeAsset),
+        AudioSource.asset(_backgroundLoopAsset),
+      ]);
       _currentPlaylist = _BackgroundPlaylist.startupSequence;
       await _player.setVolume(_defaultVolume);
       await _startPlaybackWithUnlock(
@@ -228,7 +225,7 @@ class BackgroundMusicService with WidgetsBindingObserver {
   }
 
   Future<void> fadeOut(
-      {Duration duration = const Duration(milliseconds: 600)}) {
+      {Duration duration = const Duration(milliseconds: 600),}) {
     return _player
         .setVolume(0)
         .timeout(duration, onTimeout: () {})

@@ -210,7 +210,7 @@ class AiService {
     }
 
     if (lastDioError != null) {
-      throw _mapDioException(lastDioError!);
+      throw _mapDioException(lastDioError);
     }
 
     throw const AiServiceException(AiServiceFailureCode.backendUnavailable);

@@ -416,7 +416,7 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen>
           'time': _selectedTime,
           'energy': _selectedEnergy,
         },
-      ));
+      ),);
     } on PracticePackGenerationException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -458,14 +458,16 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen>
       ),
     );
     try {
-      context
-          .read<DailyMissionProvider>()
-          .incrementByType(DailyMissionType.speakPractice);
+      unawaited(
+        context
+            .read<DailyMissionProvider>()
+            .incrementByType(DailyMissionType.speakPractice),
+      );
     } catch (_) {}
     unawaited(TelemetryService.maybeOf(context)?.logCustomEvent(
       'ai_practice_activity_completed',
       {'skill': _selectedSkill, 'activity_index': index},
-    ));
+    ),);
   }
 
   List<String> _resolvedFocusWords() {

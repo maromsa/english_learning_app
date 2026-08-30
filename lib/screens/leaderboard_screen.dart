@@ -7,6 +7,7 @@ import 'package:english_learning_app/utils/list_performance.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:provider/provider.dart';
 
 class LeaderboardScreen extends StatefulWidget {
@@ -157,13 +158,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     return RefreshIndicator(
       onRefresh: _loadLeaderboard,
       child: ListView.builder(
-        cacheExtent: ListPerformance.defaultCacheExtent,
+        scrollCacheExtent: const ScrollCacheExtent.pixels(
+          ListPerformance.defaultCacheExtent,
+        ),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         itemCount: itemCount,
         itemBuilder: (context, index) {
           if (entries.length >= 3 && index == 0) {
             return _PodiumRow(
-                topThree: entries.take(3).toList(growable: false));
+                topThree: entries.take(3).toList(growable: false),);
           }
 
           final listIndex = index - headerCount;
@@ -248,17 +251,17 @@ class _PodiumRow extends StatelessWidget {
           Expanded(
             child: second != null
                 ? _PodiumPlace(
-                    entry: second, medal: LeaderboardMedal.silver, height: 88)
+                    entry: second, medal: LeaderboardMedal.silver, height: 88,)
                 : const SizedBox.shrink(),
           ),
           Expanded(
             child: _PodiumPlace(
-                entry: first, medal: LeaderboardMedal.gold, height: 110),
+                entry: first, medal: LeaderboardMedal.gold, height: 110,),
           ),
           Expanded(
             child: third != null
                 ? _PodiumPlace(
-                    entry: third, medal: LeaderboardMedal.bronze, height: 72)
+                    entry: third, medal: LeaderboardMedal.bronze, height: 72,)
                 : const SizedBox.shrink(),
           ),
         ],

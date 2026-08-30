@@ -301,7 +301,7 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                   valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white),
+                                      Colors.white,),
                                 ),
                               )
                             : Text(

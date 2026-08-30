@@ -1,6 +1,7 @@
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/utils/list_performance.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:provider/provider.dart';
 import '../models/daily_mission.dart';
 import '../providers/coin_provider.dart';
@@ -141,7 +142,9 @@ class _DailyMissionsScreenState extends State<DailyMissionsScreen> {
               return RefreshIndicator(
                 onRefresh: missionsProvider.refreshMissions,
                 child: ListView.builder(
-                  cacheExtent: ListPerformance.defaultCacheExtent,
+                  scrollCacheExtent: const ScrollCacheExtent.pixels(
+                    ListPerformance.defaultCacheExtent,
+                  ),
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   itemCount: missions.length + headerItems,
                   itemBuilder: (context, index) {
@@ -304,7 +307,7 @@ class _MissionBoardHeader extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                          horizontal: 10, vertical: 4,),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -331,7 +334,7 @@ class _MissionBoardHeader extends StatelessWidget {
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                          horizontal: 10, vertical: 4,),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -667,11 +670,11 @@ class _StreakBonusBanner extends StatelessWidget {
     final bool hasBonus = multiplier > 1.0;
     final color = hasBonus ? Colors.orange : Colors.green;
     // "1.25" → "1.25x", "1.50" → "1.5x"
-    String _fmt(double v) {
+    String fmt(double v) {
       final s = v.toStringAsFixed(2);
       return s.endsWith('0') ? s.substring(0, s.length - 1) : s;
     }
-    final multiplierText = _fmt(multiplier);
+    final multiplierText = fmt(multiplier);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

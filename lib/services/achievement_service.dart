@@ -6,6 +6,8 @@
 // Each achievement is persisted to SharedPreferences and optionally synced to
 // Firestore via UserDataService.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/achievement.dart';
@@ -452,7 +454,7 @@ class AchievementService with ChangeNotifier {
       checkForAchievements(streak: 0, storyRead: true, storiesRead: storiesRead);
 
   Future<void> onLightningCompleted({required int streak, int dailyStreak = 0,
-      int wordsLearned = 0, int masteredWords = 0}) =>
+      int wordsLearned = 0, int masteredWords = 0,}) =>
       checkForAchievements(
         streak: streak,
         lightningCompleted: true,
@@ -573,7 +575,10 @@ class AchievementService with ChangeNotifier {
 
     // Grant coin reward if any.
     if (achievement.coinReward > 0) {
-      _coinProvider?.addCoins(achievement.coinReward);
+      final coinProvider = _coinProvider;
+      if (coinProvider != null) {
+        unawaited(coinProvider.addCoins(achievement.coinReward));
+      }
     }
 
     _sparkOverlayController?.markCelebrating();

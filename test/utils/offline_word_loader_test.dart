@@ -13,7 +13,7 @@ import '../support/fake_firebase_services.dart';
 class _OfflineConnectivity extends DeviceConnectivity {
   @override
   Future<bool> isOnline(
-          {Duration timeout = const Duration(seconds: 3)}) async =>
+          {Duration timeout = const Duration(seconds: 3),}) async =>
       false;
 }
 

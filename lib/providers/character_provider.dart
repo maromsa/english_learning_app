@@ -80,7 +80,7 @@ class CharacterProvider with ChangeNotifier {
     if (_currentUserId != null) {
       try {
         await _userDataService.updateCharacter(
-            _currentUserId!, character.toMap());
+            _currentUserId!, character.toMap(),);
       } catch (e) {
         debugPrint('Error saving character to cloud: $e');
       }

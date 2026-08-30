@@ -2,9 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show Uint8List, debugPrint;
-
 import 'package:english_learning_app/models/object_identification_result.dart';
+import 'package:flutter/foundation.dart' show Uint8List, debugPrint;
 
 import 'gemini_proxy_response_cache.dart';
 import 'network/app_http_client.dart';
@@ -329,7 +328,7 @@ class GeminiProxyService {
       final cached = _responseCache.get(cacheKey);
       if (cached != null) {
         debugPrint(
-            '[GeminiProxyService] Cache hit for mode=${payload['mode']}');
+            '[GeminiProxyService] Cache hit for mode=${payload['mode']}',);
         return cached;
       }
     }
@@ -408,7 +407,7 @@ class GeminiProxyService {
             'the proxy or Gemini backend returned a 5xx response.',
           );
           debugPrint(
-              '[GeminiProxyService] Response body: ${error.response?.data}');
+              '[GeminiProxyService] Response body: ${error.response?.data}',);
           return null;
         }
 
@@ -418,7 +417,7 @@ class GeminiProxyService {
           'message: ${error.message}',
         );
         debugPrint(
-            '[GeminiProxyService] Response body: ${error.response?.data}');
+            '[GeminiProxyService] Response body: ${error.response?.data}',);
         debugPrint('$stackTrace');
         return null;
       }

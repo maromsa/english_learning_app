@@ -9,16 +9,16 @@ import '../providers/user_session_provider.dart';
 import '../utils/safe_display_name.dart';
 import 'gemini_proxy_service.dart';
 
-typedef _ConversationGenerator = Future<String?> Function(String prompt);
+typedef ConversationGenerator = Future<String?> Function(String prompt);
 
 class ConversationCoachService {
   ConversationCoachService({
     Duration? timeout,
-    _ConversationGenerator? generator,
+    ConversationGenerator? generator,
   })  : _timeout = timeout ?? const Duration(seconds: 12),
         _generator = generator ?? _inferGenerator();
 
-  final _ConversationGenerator _generator;
+  final ConversationGenerator _generator;
   final Duration _timeout;
 
   Future<SparkCoachResponse> startConversation(
@@ -118,7 +118,7 @@ class ConversationCoachService {
   static const String _geminiUnavailableMessage =
       'תכונת שיחת ה-AI של ספרק מושבתת. הגדירו GEMINI_PROXY_URL שמפנה לפונקציית הענן כדי לאפשר שיחות חיות.';
 
-  static _ConversationGenerator _inferGenerator() {
+  static ConversationGenerator _inferGenerator() {
     // Check if Firebase is properly configured
     if (!AppConfig.isFirebaseConfigured) {
       // Firebase not configured, return a generator that throws immediately

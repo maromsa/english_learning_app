@@ -205,7 +205,7 @@ class _ScavengerHuntScreenState extends State<ScavengerHuntScreen> {
     context.read<SparkOverlayController>().markCelebrating();
     unawaited(context
         .read<DailyMissionProvider>()
-        .incrementByType(DailyMissionType.camera));
+        .incrementByType(DailyMissionType.camera),);
     try {
       unawaited(context.read<AchievementService>().recordCameraSuccess());
     } catch (_) {}

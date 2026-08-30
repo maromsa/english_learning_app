@@ -174,12 +174,12 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
         userId: userId,
         wordCount: _correctAnswers,
         durationMinutes: durationMinutes,
-      ));
+      ),);
       unawaited(_srsService.syncToFirestore(
         userId: userId,
         levelId: _resolvedLevelId,
         words: _wordsWithMastery,
-      ));
+      ),);
     } catch (_) {}
   }
 
@@ -398,7 +398,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
         levelId: _resolvedLevelId,
         word: target.word,
         grade: gradeFromCorrect(isCorrect),
-      ));
+      ),);
     } catch (_) {}
 
     if (!mounted) return;
@@ -424,7 +424,7 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       if (mounted) {
         unawaited(context.read<DailyMissionProvider>().incrementByType(
               DailyMissionType.quizPlay,
-            ));
+            ),);
       }
     } on ProviderNotFoundException {
       // Standalone/test context without DailyMissionProvider — safe to ignore.

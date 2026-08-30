@@ -21,11 +21,11 @@ import '../providers/user_session_provider.dart';
 import '../services/achievement_service.dart';
 import '../services/difficulty_engine.dart';
 import '../services/level_progress_service.dart';
+import '../services/parent_progress_service.dart';
 import '../services/sound_service.dart';
 import '../services/speech_feedback_service.dart';
 import '../services/srs_service.dart';
 import '../services/telemetry_service.dart';
-import '../services/parent_progress_service.dart';
 import '../services/word_mastery_service.dart';
 
 /// Lightning-round practice screen — Phase 3 edition.
@@ -292,7 +292,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
           stickerUnlocked: word.stickerUnlocked,
           masteryLevel: card.masteryLevel,
           lastReviewed: card.lastReviewDate,
-        ));
+        ),);
       }
 
       // Step 4: Pad with fallback words when the level pool is too small.
@@ -537,9 +537,11 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     await context.read<CoinProvider>().addCoins(_pronunciationCoinReward);
     if (!mounted) return;
 
-    context.read<AchievementService>().checkForAchievements(
-          streak: _currentStreak,
-        );
+    unawaited(
+      context.read<AchievementService>().checkForAchievements(
+            streak: _currentStreak,
+          ),
+    );
 
     try {
       await context
@@ -628,11 +630,13 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
           levelId: widget.levelId,
           word: _currentWord!.word,
           grade: gradeFromCorrect(true),
-        ));
+        ),);
         try {
-          context.read<DailyMissionProvider>().incrementByType(
-                DailyMissionType.srsReview,
-              );
+          unawaited(
+            context.read<DailyMissionProvider>().incrementByType(
+                  DailyMissionType.srsReview,
+                ),
+          );
         } catch (_) {}
         // markWordCompleted fires MapBridge + legacy mastery update.
         await _markWordCompleted(_currentWord!.word);
@@ -652,7 +656,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
           levelId: widget.levelId,
           word: _currentWord!.word,
           grade: gradeFromCorrect(false),
-        ));
+        ),);
       }
     }
 
@@ -666,7 +670,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
         elapsedSeconds: elapsed < 0 ? 0 : elapsed,
         remainingSeconds: _remainingSeconds,
         reward: reward,
-      ));
+      ),);
     }
 
     if (!mounted) return;
@@ -748,7 +752,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
         incorrect: _incorrectAnswers,
         bestStreak: _bestStreak,
         totalQuestions: _questionCount,
-      ));
+      ),);
     }
 
     // Sync SRS state to Firestore + record session for parent dashboard.
@@ -759,7 +763,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
         userId: userId,
         levelId: widget.levelId,
         words: _wordPool,
-      ));
+      ),);
       final playedSeconds = (_sessionSeconds - _remainingSeconds).clamp(0, _sessionSeconds);
       // Report at least 1 minute, max 5 minutes. Round (not ceil) for accuracy.
       final durationMinutes = ((playedSeconds / 60).round()).clamp(1, 5);
@@ -767,7 +771,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
         userId: userId,
         wordCount: _correctAnswers,
         durationMinutes: durationMinutes,
-      ));
+      ),);
     } catch (_) {}
 
     if (triggeredByTimer && mounted) {
@@ -1173,7 +1177,7 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.psychology,
-                  size: 64, color: Colors.deepOrange.shade300),
+                  size: 64, color: Colors.deepOrange.shade300,),
               const SizedBox(height: 16),
               const Text(
                 SparkStrings.lightningNeedWords,
@@ -1372,9 +1376,9 @@ class _StatusChip extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            style: const TextStyle(fontSize: 12, color: Colors.black54),),
         Text(value,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),),
       ],
     );
   }
@@ -1410,7 +1414,7 @@ class _SummaryStat extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label,
-                  style: const TextStyle(fontSize: 13, color: Colors.black54)),
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),),
               Text(
                 value,
                 style:
@@ -1453,7 +1457,7 @@ class _DifficultyChip extends StatelessWidget {
         const Text('רמה', style: TextStyle(fontSize: 12, color: Colors.black54)),
         Text(label,
             style: TextStyle(
-                fontWeight: FontWeight.w700, fontSize: 13, color: color)),
+                fontWeight: FontWeight.w700, fontSize: 13, color: color,),),
       ],
     );
   }
