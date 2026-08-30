@@ -137,6 +137,25 @@ class WordMasteryEntry {
   }
 }
 
+/// A single word due for spaced-repetition review, per [SrsAlgorithm].
+class DueWordEntry {
+  const DueWordEntry({
+    required this.levelId,
+    required this.word,
+    required this.mastery,
+  });
+
+  /// The level this word belongs to.
+  final String levelId;
+
+  /// The word text, exactly as originally recorded (not sanitized/lowercased).
+  final String word;
+
+  /// The word's full mastery snapshot, including its `nextReviewDate` and
+  /// `srsStreak`.
+  final WordMasteryEntry mastery;
+}
+
 /// Service responsible for persisting and retrieving per-user word mastery.
 ///
 /// Data is stored in SharedPreferences using versioned, namespaced keys so it
@@ -151,6 +170,11 @@ class WordMasteryService {
         _namespacePrefix = namespacePrefix ?? _defaultPrefix;
 
   static const String _defaultPrefix = 'word_mastery.v1';
+
+  /// Separator used inside the per-user due-review index between a level id
+  /// and a word — chosen because it cannot appear in either (unlike `.` or
+  /// `_`, which level ids and words can legitimately contain).
+  static const String _indexSeparator = '';
 
   final Future<SharedPreferences> _prefsFuture;
   final String _namespacePrefix;
@@ -325,6 +349,84 @@ class WordMasteryService {
     );
   }
 
+  /// Returns every word (across all levels, unless [levelId] narrows it to
+  /// one) that is due for spaced-repetition review right now — i.e. has a
+  /// `nextReviewDate` at or before [now] (defaults to [DateTime.now]).
+  ///
+  /// Words that have never been graded via [recordPronunciationScore] have
+  /// no `nextReviewDate` yet and are not "due" in this sense — they simply
+  /// haven't entered the review cycle.
+  Future<List<DueWordEntry>> getWordsDueForReview({
+    required String userId,
+    String? levelId,
+    DateTime? now,
+  }) async {
+    final prefs = await _prefsFuture;
+    final indexed = prefs.getStringList(_indexKey(userId)) ?? const <String>[];
+    final today = now ?? DateTime.now();
+
+    final due = <DueWordEntry>[];
+    for (final composite in indexed) {
+      final separatorIndex = composite.indexOf(_indexSeparator);
+      if (separatorIndex < 0) continue;
+      final entryLevelId = composite.substring(0, separatorIndex);
+      final entryWord = composite.substring(separatorIndex + 1);
+      if (levelId != null && entryLevelId != levelId) continue;
+
+      final mastery = await getMastery(
+        userId: userId,
+        levelId: entryLevelId,
+        word: entryWord,
+      );
+      final reviewDate = mastery.nextReviewDate;
+      if (reviewDate != null && !today.isBefore(reviewDate)) {
+        due.add(
+          DueWordEntry(
+            levelId: entryLevelId,
+            word: entryWord,
+            mastery: mastery,
+          ),
+        );
+      }
+    }
+    return due;
+  }
+
+  /// Convenience wrapper around [getWordsDueForReview] for a single level:
+  /// resolves the due word ids against [catalog] (that level's full word
+  /// list) and returns the matching [WordData], merged with each word's
+  /// mastery via [applyToWord].
+  ///
+  /// Words in the due index that no longer exist in [catalog] (e.g. removed
+  /// from the level's data since they were last graded) are silently
+  /// skipped rather than surfaced as an error.
+  Future<List<WordData>> getDueWordDataForLevel({
+    required String userId,
+    required String levelId,
+    required List<WordData> catalog,
+    DateTime? now,
+  }) async {
+    final dueEntries = await getWordsDueForReview(
+      userId: userId,
+      levelId: levelId,
+      now: now,
+    );
+    if (dueEntries.isEmpty) return const <WordData>[];
+
+    final masteryByLowerWord = <String, WordMasteryEntry>{
+      for (final entry in dueEntries) entry.word.toLowerCase(): entry.mastery,
+    };
+
+    final result = <WordData>[];
+    for (final word in catalog) {
+      final mastery = masteryByLowerWord[word.word.toLowerCase()];
+      if (mastery != null) {
+        result.add(applyToWord(word, mastery));
+      }
+    }
+    return result;
+  }
+
   Future<void> _saveEntry({
     required String userId,
     required String levelId,
@@ -339,11 +441,33 @@ class WordMasteryService {
       if (!ok) {
         debugPrint('WordMasteryService: Failed to persist $key');
       }
+      await _addToIndex(prefs, userId: userId, levelId: levelId, word: word);
     } catch (error, stackTrace) {
       debugPrint('WordMasteryService: Error saving mastery: $error');
       debugPrint('$stackTrace');
     }
   }
+
+  /// Records that (userId, levelId, word) has a stored mastery entry, so
+  /// [getWordsDueForReview] can enumerate it later without having to guess
+  /// original level/word text back out of [_buildKey]'s sanitized form.
+  Future<void> _addToIndex(
+    SharedPreferences prefs, {
+    required String userId,
+    required String levelId,
+    required String word,
+  }) async {
+    final indexKey = _indexKey(userId);
+    final existing = prefs.getStringList(indexKey) ?? <String>[];
+    final composite = '$levelId$_indexSeparator$word';
+    if (!existing.contains(composite)) {
+      existing.add(composite);
+      await prefs.setStringList(indexKey, existing);
+    }
+  }
+
+  String _indexKey(String userId) =>
+      '$_namespacePrefix.index.${_sanitize(userId)}';
 
   String _buildKey(String userId, String levelId, String word) {
     final normalizedUser = _sanitize(userId);

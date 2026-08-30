@@ -194,9 +194,11 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<void> _speak(String text,
-      {String languageCode = 'he-IL',
-      SparkEmotion emotion = SparkEmotion.neutral,}) async {
+  Future<void> _speak(
+    String text, {
+    String languageCode = 'he-IL',
+    SparkEmotion emotion = SparkEmotion.neutral,
+  }) async {
     if (text.isEmpty) return;
 
     try {
@@ -402,12 +404,14 @@ class _MyHomePageState extends State<MyHomePage> {
           debugPrint(
             'Gemini category mismatch: $identified (expected ${levelCategory?.geminiCategory})',
           );
-          telemetry?.logCameraValidation(
-            word: identified,
-            accepted: false,
-            validatorType: _cameraValidatorType,
-            confidence: null,
-          ).ignore();
+          telemetry
+              ?.logCameraValidation(
+                word: identified,
+                accepted: false,
+                validatorType: _cameraValidatorType,
+                confidence: null,
+              )
+              .ignore();
           if (mounted) {
             final message = SparkStrings.cameraCategoryMismatch(
               identified,
@@ -426,12 +430,14 @@ class _MyHomePageState extends State<MyHomePage> {
           );
           return;
         case ObjectIdentificationUnclear():
-          telemetry?.logCameraValidation(
-            word: 'unclear',
-            accepted: false,
-            validatorType: _cameraValidatorType,
-            confidence: null,
-          ).ignore();
+          telemetry
+              ?.logCameraValidation(
+                word: 'unclear',
+                accepted: false,
+                validatorType: _cameraValidatorType,
+                confidence: null,
+              )
+              .ignore();
           if (!mounted) return;
           setState(() {
             _feedbackText = SparkStrings.cameraUnclearUi;
@@ -481,12 +487,14 @@ class _MyHomePageState extends State<MyHomePage> {
           _feedbackText = SparkStrings.cameraCenterWord(identifiedWord);
         });
       }
-      telemetry?.logCameraValidation(
-        word: identifiedWord,
-        accepted: false,
-        validatorType: _cameraValidatorType,
-        confidence: _currentValidationConfidence(),
-      ).ignore();
+      telemetry
+          ?.logCameraValidation(
+            word: identifiedWord,
+            accepted: false,
+            validatorType: _cameraValidatorType,
+            confidence: _currentValidationConfidence(),
+          )
+          .ignore();
       await _speak(
         SparkStrings.cameraCenterWord(identifiedWord),
         languageCode: 'he-IL',
@@ -526,12 +534,14 @@ class _MyHomePageState extends State<MyHomePage> {
       languageCode: 'en-US',
       emotion: SparkEmotion.happy,
     );
-    telemetry?.logCameraValidation(
-      word: identifiedWord,
-      accepted: true,
-      validatorType: _cameraValidatorType,
-      confidence: _currentValidationConfidence(),
-    ).ignore();
+    telemetry
+        ?.logCameraValidation(
+          word: identifiedWord,
+          accepted: true,
+          validatorType: _cameraValidatorType,
+          confidence: _currentValidationConfidence(),
+        )
+        .ignore();
   }
 
   Future<WordData> _saveImageAndCreateWordData(
@@ -609,7 +619,9 @@ class _MyHomePageState extends State<MyHomePage> {
       if (!mounted) return;
 
       unawaited(
-        context.read<AchievementService>().checkForAchievements(streak: _streak),
+        context
+            .read<AchievementService>()
+            .checkForAchievements(streak: _streak),
       );
 
       await context
@@ -626,8 +638,7 @@ class _MyHomePageState extends State<MyHomePage> {
           currentWordObject.isCompleted = true;
         });
 
-        if (aiFeedback.stars == 3 &&
-            !MediaQuery.disableAnimationsOf(context)) {
+        if (aiFeedback.stars == 3 && !MediaQuery.disableAnimationsOf(context)) {
           _confettiController.play();
           unawaited(_soundService.playSound('confetti'));
           unawaited(
@@ -794,12 +805,63 @@ class _MyHomePageState extends State<MyHomePage> {
     return 1;
   }
 
+  /// "אימון יומי" (Daily Practice): reviews only the words in this level
+  /// that are due right now per [WordMasteryService]'s SRS scheduling.
+  ///
+  /// Scoped to [widget.levelId] rather than pooling due words across every
+  /// level — [LightningPracticeScreen] (like [ImageQuizScreen]) is built
+  /// around a single level's [LevelProgressService] bookkeeping, and mixing
+  /// levels here would attribute a review's completion to the wrong level.
+  Future<void> _startDailyPractice() async {
+    final sessionProvider = context.read<UserSessionProvider>();
+    final userId = sessionProvider.currentUserId;
+    if (userId == null) {
+      debugPrint('Cannot start daily practice: No user ID');
+      return;
+    }
+
+    final dueWords = await _wordMasteryService.getDueWordDataForLevel(
+      userId: userId,
+      levelId: widget.levelId,
+      catalog: widget.wordsForLevel,
+    );
+
+    if (!mounted) return;
+
+    if (dueWords.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('כל הכבוד! סיימת את האימון להיום'),
+        ),
+      );
+      return;
+    }
+
+    unawaited(
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LightningPracticeScreen(
+            words: List<WordData>.unmodifiable(dueWords),
+            levelId: widget.levelId,
+            levelTitle: widget.title,
+          ),
+        ),
+      ),
+    );
+  }
+
   void _openGameMenu() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => GameMenuSheet(
+        onDailyPractice: _speechBusy
+            ? null
+            : () {
+                unawaited(_startDailyPractice());
+              },
         onAddWord: _speechBusy ? null : _takePictureAndIdentify,
         onScavengerHunt: _speechBusy ? null : _openScavengerHunt,
         onShop: _speechBusy
@@ -940,8 +1002,11 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             actions: [
               IconButton(
-                icon: const Icon(Icons.menu_rounded,
-                    color: Colors.white, size: 32,),
+                icon: const Icon(
+                  Icons.menu_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
                 onPressed: _openGameMenu,
               ),
               const SizedBox(width: 8),
@@ -985,7 +1050,8 @@ class _MyHomePageState extends State<MyHomePage> {
                             Expanded(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 12.0,),
+                                  horizontal: 12.0,
+                                ),
                                 child: _SegmentedProgressBar(
                                   total: _words.length,
                                   current: _currentIndex,
@@ -1039,7 +1105,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                   child: Text(
                                     SparkStrings.homeNoWordsYet,
                                     style: TextStyle(
-                                        fontSize: 22, color: Colors.white,),
+                                      fontSize: 22,
+                                      color: Colors.white,
+                                    ),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -1590,10 +1658,12 @@ class _FeedbackPanelState extends State<_FeedbackPanel>
     _slide = Tween<Offset>(
       begin: const Offset(0, 0.25),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    ),);
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutCubic,
+      ),
+    );
     _controller.forward();
   }
 
@@ -1790,6 +1860,7 @@ class _GameMenuGridTile extends StatelessWidget {
 /// screens. Public (not `_`-prefixed) so it's directly widget-testable —
 /// each `on*` callback is optional and only renders a tile when supplied.
 class GameMenuSheet extends StatelessWidget {
+  final VoidCallback? onDailyPractice;
   final VoidCallback? onAddWord;
   final VoidCallback? onScavengerHunt;
   final VoidCallback? onShop;
@@ -1801,6 +1872,7 @@ class GameMenuSheet extends StatelessWidget {
 
   const GameMenuSheet({
     super.key,
+    this.onDailyPractice,
     this.onAddWord,
     this.onScavengerHunt,
     this.onShop,
@@ -1814,6 +1886,18 @@ class GameMenuSheet extends StatelessWidget {
   List<_GameMenuEntry> _buildEntries() {
     final entries = <_GameMenuEntry>[];
 
+    // Listed first — the daily spaced-repetition review is the entry point
+    // we most want a returning learner to notice.
+    if (onDailyPractice != null) {
+      entries.add(
+        _GameMenuEntry(
+          icon: Icons.today_rounded,
+          label: 'אימון יומי',
+          gradient: const [AuroraTokens.plum, AuroraTokens.coral],
+          onTap: onDailyPractice!,
+        ),
+      );
+    }
     if (onAddWord != null) {
       entries.add(
         _GameMenuEntry(
