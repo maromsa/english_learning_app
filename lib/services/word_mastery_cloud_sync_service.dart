@@ -28,6 +28,8 @@ class WordMasteryCloudSyncService {
         masteryLevel: mastery.masteryLevel,
         bestPronunciationStars: mastery.bestPronunciationStars,
         isCompleted: markWordCompleted,
+        nextReviewDate: mastery.nextReviewDate,
+        srsStreak: mastery.srsStreak,
       );
       await _userDataService.upsertWordProgress(
         userId: userId,
@@ -70,9 +72,9 @@ class WordMasteryCloudSyncService {
           word: entry.wordId,
         );
 
-        final shouldUpdateMastery =
-            entry.bestPronunciationStars > localMastery.bestPronunciationStars ||
-                (entry.isMastered && localMastery.masteryLevel < 1.0);
+        final shouldUpdateMastery = entry.bestPronunciationStars >
+                localMastery.bestPronunciationStars ||
+            (entry.isMastered && localMastery.masteryLevel < 1.0);
 
         if (shouldUpdateMastery) {
           if (entry.isMastered || entry.bestPronunciationStars >= 3) {
@@ -92,7 +94,8 @@ class WordMasteryCloudSyncService {
           }
         }
 
-        if (entry.isCompleted || cloudLevel.wordsCompleted[entry.wordId] == true) {
+        if (entry.isCompleted ||
+            cloudLevel.wordsCompleted[entry.wordId] == true) {
           if (!localCompleted.contains(entry.wordId)) {
             localCompleted.add(entry.wordId);
             completedChanged = true;
