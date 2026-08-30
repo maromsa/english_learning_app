@@ -4,12 +4,16 @@
 // frosted-glass "תפריט משחק" bottom sheet opened from the map/practice
 // screens.
 
+import 'dart:async';
+
+import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/collection_screen.dart';
 import 'package:english_learning_app/screens/home_page.dart';
 import 'package:english_learning_app/services/level_unlock_service.dart';
 import 'package:english_learning_app/services/offline_practice_service.dart';
 import 'package:english_learning_app/services/srs_service.dart';
+import 'package:english_learning_app/services/word_mastery_service.dart';
 import 'package:english_learning_app/utils/offline_word_loader.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +22,12 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_firebase_services.dart';
+
+/// Test-only stand-in for a level's word catalog + user, matching what
+/// `_MyHomePageState._startDailyPractice()` looks up in production.
+const String _dailyPracticeUserId = 'test_user';
+const String _dailyPracticeLevelId = 'level_test';
+const String _dailyPracticeWord = 'Apple';
 
 /// A CollectionScreen with every Firestore/sqflite-touching dependency
 /// faked out — see test/support/fake_firebase_services.dart for why this
@@ -46,16 +56,66 @@ CollectionScreen _fakeCollectionScreen() {
 /// but tests that only care about navigation-stack mechanics — not
 /// CollectionScreen's content — can swap in a trivial placeholder instead.
 class _MenuHostScreen extends StatelessWidget {
-  const _MenuHostScreen({this.destinationBuilder = _fakeCollectionScreen});
+  const _MenuHostScreen({
+    this.destinationBuilder = _fakeCollectionScreen,
+    this.wordMasteryService,
+  });
 
   final Widget Function() destinationBuilder;
 
+  /// When supplied, wires up "אימון יומי" the same way
+  /// `_MyHomePageState._startDailyPractice()` does in production: fetch this
+  /// test's fixed (userId, levelId, catalog) due words from
+  /// [wordMasteryService], then either navigate to a stand-in destination
+  /// (a real [LightningPracticeScreen] needs far more setup than this test
+  /// cares about) or show the "nothing due" SnackBar.
+  final WordMasteryService? wordMasteryService;
+
+  static Future<void> _startDailyPractice(
+    BuildContext context,
+    WordMasteryService wordMasteryService,
+  ) async {
+    final dueWords = await wordMasteryService.getDueWordDataForLevel(
+      userId: _dailyPracticeUserId,
+      levelId: _dailyPracticeLevelId,
+      catalog: [WordData(word: _dailyPracticeWord)],
+    );
+
+    if (!context.mounted) return;
+
+    if (dueWords.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('כל הכבוד! סיימת את האימון להיום'),
+        ),
+      );
+      return;
+    }
+
+    unawaited(
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const Scaffold(
+            body: Center(child: Text('daily practice placeholder')),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _openMenu(BuildContext context) {
+    final masteryService = wordMasteryService;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => GameMenuSheet(
+        onDailyPractice: masteryService == null
+            ? null
+            : () {
+                unawaited(_startDailyPractice(context, masteryService));
+              },
         // Matches production's onCollection wiring in home_page.dart:
         // GameMenuGridTile already pops the sheet on tap, so this callback
         // must only push — an extra pop here would rip _MenuHostScreen off
@@ -87,6 +147,7 @@ class _MenuHostScreen extends StatelessWidget {
 Future<void> _pumpHost(
   WidgetTester tester, {
   Widget Function() destinationBuilder = _fakeCollectionScreen,
+  WordMasteryService? wordMasteryService,
 }) async {
   SharedPreferences.setMockInitialValues({});
   await tester.pumpWidget(
@@ -102,8 +163,10 @@ Future<void> _pumpHost(
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) =>
-                        _MenuHostScreen(destinationBuilder: destinationBuilder),
+                    builder: (_) => _MenuHostScreen(
+                      destinationBuilder: destinationBuilder,
+                      wordMasteryService: wordMasteryService,
+                    ),
                   ),
                 ),
                 child: const Text('go to level'),
@@ -197,5 +260,71 @@ void main() {
 
     expect(find.text('open menu'), findsOneWidget);
     expect(find.text('go to level'), findsNothing);
+  });
+
+  testWidgets(
+      'shows the daily practice entry only when onDailyPractice is supplied',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: GameMenuSheet(onDailyPractice: () {}),
+        ),
+      ),
+    );
+
+    expect(find.text('אימון יומי'), findsOneWidget);
+    expect(find.byIcon(Icons.today_rounded), findsOneWidget);
+  });
+
+  testWidgets(
+      'tapping "אימון יומי" navigates to practice when a word is due for review',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final masteryService = WordMasteryService(prefs: prefs);
+    final reviewedAt = DateTime.now().subtract(const Duration(days: 2));
+    // 1 star schedules the next review for the following day, which by now
+    // (2 days later) has already arrived.
+    await masteryService.recordPronunciationScore(
+      userId: _dailyPracticeUserId,
+      levelId: _dailyPracticeLevelId,
+      word: _dailyPracticeWord,
+      stars: 1,
+      reviewedAt: reviewedAt,
+    );
+
+    await _pumpHost(tester, wordMasteryService: masteryService);
+
+    await tester.tap(find.text('open menu'));
+    await tester.pumpAndSettle();
+    expect(find.text('אימון יומי'), findsOneWidget);
+
+    await tester.tap(find.text('אימון יומי'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('daily practice placeholder'), findsOneWidget);
+    // The sheet closed along with it — no leftover menu tile on screen.
+    expect(find.text('אימון יומי'), findsNothing);
+  });
+
+  testWidgets(
+      'tapping "אימון יומי" shows a success SnackBar when nothing is due',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    // No pronunciation scores recorded — nothing has ever entered the SRS
+    // review cycle, so nothing can be due.
+    final masteryService = WordMasteryService(prefs: prefs);
+
+    await _pumpHost(tester, wordMasteryService: masteryService);
+
+    await tester.tap(find.text('open menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('אימון יומי'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('כל הכבוד! סיימת את האימון להיום'), findsOneWidget);
+    expect(find.text('daily practice placeholder'), findsNothing);
   });
 }

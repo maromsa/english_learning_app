@@ -152,5 +152,171 @@ void main() {
       expect(merged.masteryLevel, closeTo(0.8, 0.0001));
       expect(merged.lastReviewed, isNotNull);
     });
+
+    group('getWordsDueForReview', () {
+      test('returns nothing for a user with no graded words', () async {
+        final due = await service.getWordsDueForReview(userId: 'user1');
+        expect(due, isEmpty);
+      });
+
+      test('excludes words whose nextReviewDate is in the future', () async {
+        final reviewedAt = DateTime(2026, 1, 1);
+        await service.recordPronunciationScore(
+          userId: 'user1',
+          levelId: 'level1',
+          word: 'Apple',
+          stars: 3,
+          reviewedAt: reviewedAt,
+        );
+
+        final due = await service.getWordsDueForReview(
+          userId: 'user1',
+          now: reviewedAt, // still day 0 — review isn't due until day 1.
+        );
+        expect(due, isEmpty);
+      });
+
+      test('includes words whose nextReviewDate has arrived', () async {
+        final reviewedAt = DateTime(2026, 1, 1);
+        await service.recordPronunciationScore(
+          userId: 'user1',
+          levelId: 'level1',
+          word: 'Apple',
+          stars: 1, // 1 star -> due again tomorrow.
+          reviewedAt: reviewedAt,
+        );
+
+        final due = await service.getWordsDueForReview(
+          userId: 'user1',
+          now: reviewedAt.add(const Duration(days: 1)),
+        );
+
+        expect(due, hasLength(1));
+        expect(due.single.levelId, 'level1');
+        expect(due.single.word, 'Apple');
+        expect(due.single.mastery.srsStreak, 0);
+      });
+
+      test('filters to a single level when levelId is supplied', () async {
+        final reviewedAt = DateTime(2026, 1, 1);
+        final dueAt = reviewedAt.add(const Duration(days: 1));
+
+        await service.recordPronunciationScore(
+          userId: 'user1',
+          levelId: 'level1',
+          word: 'Apple',
+          stars: 1,
+          reviewedAt: reviewedAt,
+        );
+        await service.recordPronunciationScore(
+          userId: 'user1',
+          levelId: 'level2',
+          word: 'Banana',
+          stars: 1,
+          reviewedAt: reviewedAt,
+        );
+
+        final due = await service.getWordsDueForReview(
+          userId: 'user1',
+          levelId: 'level1',
+          now: dueAt,
+        );
+
+        expect(due, hasLength(1));
+        expect(due.single.word, 'Apple');
+      });
+
+      test('never-graded words are not due', () async {
+        // recordSuccessfulReview doesn't run the SRS algorithm, so it never
+        // sets a nextReviewDate.
+        await service.recordSuccessfulReview(
+          userId: 'user1',
+          levelId: 'level1',
+          word: 'Cherry',
+        );
+
+        final due = await service.getWordsDueForReview(userId: 'user1');
+        expect(due, isEmpty);
+      });
+    });
+
+    group('getDueWordDataForLevel', () {
+      test('returns an empty list when nothing is due', () async {
+        final catalog = [WordData(word: 'Apple')];
+        final due = await service.getDueWordDataForLevel(
+          userId: 'user1',
+          levelId: 'level1',
+          catalog: catalog,
+        );
+        expect(due, isEmpty);
+      });
+
+      test('resolves due entries against the catalog, merged with mastery',
+          () async {
+        final reviewedAt = DateTime(2026, 1, 1);
+        await service.recordPronunciationScore(
+          userId: 'user1',
+          levelId: 'level1',
+          word: 'Apple',
+          stars: 1,
+          reviewedAt: reviewedAt,
+        );
+        // Build a streak of 2 (3-day interval) so Banana's next review
+        // lands after the check below, unlike Apple's — should be excluded
+        // from the result.
+        await service.recordPronunciationScore(
+          userId: 'user1',
+          levelId: 'level1',
+          word: 'Banana',
+          stars: 3,
+          reviewedAt: reviewedAt.subtract(const Duration(days: 3)),
+        );
+        await service.recordPronunciationScore(
+          userId: 'user1',
+          levelId: 'level1',
+          word: 'Banana',
+          stars: 3,
+          reviewedAt: reviewedAt,
+        );
+
+        final catalog = [
+          WordData(word: 'Apple', searchHint: 'red fruit'),
+          WordData(word: 'Banana'),
+          WordData(word: 'Cherry'), // never graded — never due.
+        ];
+
+        final due = await service.getDueWordDataForLevel(
+          userId: 'user1',
+          levelId: 'level1',
+          catalog: catalog,
+          now: reviewedAt.add(const Duration(days: 1)),
+        );
+
+        expect(due, hasLength(1));
+        expect(due.single.word, 'Apple');
+        expect(due.single.searchHint, 'red fruit');
+        expect(due.single.masteryLevel, greaterThan(0.0));
+      });
+
+      test('skips due entries no longer present in the catalog', () async {
+        final reviewedAt = DateTime(2026, 1, 1);
+        await service.recordPronunciationScore(
+          userId: 'user1',
+          levelId: 'level1',
+          word: 'RemovedWord',
+          stars: 1,
+          reviewedAt: reviewedAt,
+        );
+
+        final due = await service.getDueWordDataForLevel(
+          userId: 'user1',
+          levelId: 'level1',
+          catalog: const [],
+          now: reviewedAt.add(const Duration(days: 1)),
+        );
+
+        expect(due, isEmpty);
+      });
+    });
   });
 }
