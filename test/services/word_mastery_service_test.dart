@@ -65,7 +65,8 @@ void main() {
       expect(loaded.masteryLevel, 1.0);
     });
 
-    test('recordPronunciationScore keeps best stars and sets mastery on 3 stars',
+    test(
+        'recordPronunciationScore keeps best stars and sets mastery on 3 stars',
         () async {
       final twoStar = await service.recordPronunciationScore(
         userId: 'user1',
@@ -93,6 +94,40 @@ void main() {
       );
       expect(loaded.bestPronunciationStars, 3);
       expect(loaded.masteryLevel, 1.0);
+    });
+
+    test('recordPronunciationScore schedules the next SRS review', () async {
+      final reviewedAt = DateTime(2026, 1, 1);
+
+      final first = await service.recordPronunciationScore(
+        userId: 'user1',
+        levelId: 'level1',
+        word: 'Elephant',
+        stars: 3,
+        reviewedAt: reviewedAt,
+      );
+      expect(first.srsStreak, 1);
+      expect(first.nextReviewDate, reviewedAt.add(const Duration(days: 1)));
+
+      final second = await service.recordPronunciationScore(
+        userId: 'user1',
+        levelId: 'level1',
+        word: 'Elephant',
+        stars: 3,
+        reviewedAt: reviewedAt,
+      );
+      expect(second.srsStreak, 2);
+      expect(second.nextReviewDate, reviewedAt.add(const Duration(days: 3)));
+
+      final missed = await service.recordPronunciationScore(
+        userId: 'user1',
+        levelId: 'level1',
+        word: 'Elephant',
+        stars: 1,
+        reviewedAt: reviewedAt,
+      );
+      expect(missed.srsStreak, 0);
+      expect(missed.nextReviewDate, reviewedAt.add(const Duration(days: 1)));
     });
 
     test('applyToWord merges mastery into WordData', () async {

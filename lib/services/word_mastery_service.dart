@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/word_data.dart';
+import '../utils/srs_algorithm.dart';
 
 /// Snapshot of a learner's mastery for a single word.
 class WordMasteryEntry {
@@ -11,6 +12,8 @@ class WordMasteryEntry {
     required this.masteryLevel,
     this.lastReviewed,
     this.bestPronunciationStars = 0,
+    this.nextReviewDate,
+    this.srsStreak = 0,
   });
 
   /// Mastery score in the range \[0.0, 1.0].
@@ -22,19 +25,37 @@ class WordMasteryEntry {
   /// Best Gemini pronunciation rating (1–3) achieved for this word.
   final int bestPronunciationStars;
 
+  /// When this word should next be presented for review, per
+  /// [SrsAlgorithm]. Null until the first pronunciation score is recorded.
+  final DateTime? nextReviewDate;
+
+  /// Consecutive-3-star streak used by [SrsAlgorithm] to size the next
+  /// review interval.
+  final int srsStreak;
+
   /// Whether the learner has achieved a perfect (3-star) pronunciation.
   bool get isMastered => masteryLevel >= 1.0 || bestPronunciationStars >= 3;
+
+  /// Whether this word is due for spaced-repetition review right now.
+  bool get isDueForReview {
+    if (nextReviewDate == null) return true;
+    return !DateTime.now().isBefore(nextReviewDate!);
+  }
 
   WordMasteryEntry copyWith({
     double? masteryLevel,
     DateTime? lastReviewed,
     int? bestPronunciationStars,
+    DateTime? nextReviewDate,
+    int? srsStreak,
   }) {
     return WordMasteryEntry(
       masteryLevel: masteryLevel ?? this.masteryLevel,
       lastReviewed: lastReviewed ?? this.lastReviewed,
       bestPronunciationStars:
           bestPronunciationStars ?? this.bestPronunciationStars,
+      nextReviewDate: nextReviewDate ?? this.nextReviewDate,
+      srsStreak: srsStreak ?? this.srsStreak,
     );
   }
 
@@ -44,6 +65,9 @@ class WordMasteryEntry {
           'lastReviewed': lastReviewed!.toIso8601String(),
         if (bestPronunciationStars > 0)
           'bestPronunciationStars': bestPronunciationStars,
+        if (nextReviewDate != null)
+          'nextReviewDate': nextReviewDate!.toIso8601String(),
+        if (srsStreak > 0) 'srsStreak': srsStreak,
       };
 
   static WordMasteryEntry fromJson(Map<String, dynamic> json) {
@@ -75,10 +99,33 @@ class WordMasteryEntry {
       bestStars = rawStars.toInt().clamp(0, 3);
     }
 
+    DateTime? nextReviewDate;
+    final rawNextReview = json['nextReviewDate'];
+    if (rawNextReview is String && rawNextReview.trim().isNotEmpty) {
+      nextReviewDate = DateTime.tryParse(rawNextReview.trim());
+    } else if (rawNextReview is int) {
+      try {
+        nextReviewDate = DateTime.fromMillisecondsSinceEpoch(rawNextReview);
+      } catch (_) {
+        nextReviewDate = null;
+      }
+    }
+
+    final rawStreak = json['srsStreak'];
+    var srsStreak = 0;
+    if (rawStreak is int) {
+      srsStreak = rawStreak < 0 ? 0 : rawStreak;
+    } else if (rawStreak is num) {
+      final asInt = rawStreak.toInt();
+      srsStreak = asInt < 0 ? 0 : asInt;
+    }
+
     return WordMasteryEntry(
       masteryLevel: _clampMastery(mastery),
       lastReviewed: lastReviewed,
       bestPronunciationStars: bestStars,
+      nextReviewDate: nextReviewDate,
+      srsStreak: srsStreak,
     );
   }
 
@@ -190,6 +237,10 @@ class WordMasteryService {
   ///
   /// Keeps the best star rating seen so far and raises [masteryLevel] to at
   /// least `stars / 3`. A 3-star attempt sets full mastery (`1.0`).
+  ///
+  /// Also runs [SrsAlgorithm] against this grade to schedule the word's next
+  /// spaced-repetition review ([WordMasteryEntry.nextReviewDate]) and update
+  /// its streak ([WordMasteryEntry.srsStreak]).
   Future<WordMasteryEntry> recordPronunciationScore({
     required String userId,
     required String levelId,
@@ -215,10 +266,18 @@ class WordMasteryService {
       nextMastery = 1.0;
     }
 
+    final srsResult = SrsAlgorithm.computeNextReview(
+      stars: clampedStars,
+      currentStreak: current.srsStreak,
+      now: reviewedAt,
+    );
+
     final nextEntry = current.copyWith(
       masteryLevel: WordMasteryEntry._clampMastery(nextMastery),
       bestPronunciationStars: nextStars,
       lastReviewed: reviewedAt ?? DateTime.now(),
+      nextReviewDate: srsResult.nextReviewDate,
+      srsStreak: srsResult.streak,
     );
 
     await _saveEntry(

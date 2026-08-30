@@ -18,6 +18,39 @@ void main() {
       expect(restored.isCompleted, isTrue);
     });
 
+    test('fromMap and toMap round-trip the SRS fields', () {
+      final nextReview = DateTime(2026, 2, 14);
+      final entry = WordProgressEntry(
+        wordId: 'Elephant',
+        bestPronunciationStars: 3,
+        srsStreak: 2,
+        nextReviewDate: nextReview,
+      );
+
+      final restored = WordProgressEntry.fromMap(entry.toMap());
+      expect(restored.srsStreak, 2);
+      expect(restored.nextReviewDate, nextReview);
+    });
+
+    test(
+        'mergeWith keeps the SRS streak/review-date pair from the higher streak',
+        () {
+      final a = WordProgressEntry(
+        wordId: 'Dog',
+        srsStreak: 1,
+        nextReviewDate: DateTime(2026, 1, 2),
+      );
+      final b = WordProgressEntry(
+        wordId: 'Dog',
+        srsStreak: 3,
+        nextReviewDate: DateTime(2026, 1, 8),
+      );
+
+      final merged = a.mergeWith(b);
+      expect(merged.srsStreak, 3);
+      expect(merged.nextReviewDate, DateTime(2026, 1, 8));
+    });
+
     test('mergeWith keeps best stars and flags', () {
       const a = WordProgressEntry(
         wordId: 'Dog',
