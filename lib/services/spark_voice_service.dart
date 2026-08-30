@@ -410,7 +410,7 @@ class SparkVoiceService {
 
   /// Generate SSML with emotional prosody
   String _generateSSML(
-      String text, SparkEmotion emotion, double rate, double pitch) {
+      String text, SparkEmotion emotion, double rate, double pitch,) {
     switch (emotion) {
       case SparkEmotion.excited:
         pitch += 4.0;

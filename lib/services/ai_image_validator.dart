@@ -42,14 +42,12 @@ class HttpFunctionAiImageValidator implements AiImageValidator {
               receiveTimeout: timeout,
               sendTimeout: timeout,
             ),
-        _requestTimeout = timeout,
         _minimumConfidence = minimumConfidence,
         _authTokenProvider = authTokenProvider ?? firebaseAuthTokenProvider;
 
   final Uri _validationEndpoint;
   final AppHttpClient _httpClient;
   final AuthTokenProvider _authTokenProvider;
-  final Duration _requestTimeout;
   final double _minimumConfidence;
   double? _lastConfidence;
   bool? _lastApproval;

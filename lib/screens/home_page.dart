@@ -24,29 +24,29 @@ import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
 import 'package:english_learning_app/services/gemini_proxy_service.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
-import 'package:english_learning_app/services/word_mastery_service.dart';
 import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/services/spark_voice_service.dart';
 import 'package:english_learning_app/services/speech_feedback_service.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/services/web_image_service.dart';
+import 'package:english_learning_app/services/word_mastery_service.dart';
 import 'package:english_learning_app/services/word_repository.dart';
-import 'package:english_learning_app/utils/level_target_category.dart';
-import 'package:english_learning_app/utils/word_image_url.dart';
 import 'package:english_learning_app/utils/aurora_tokens.dart';
 import 'package:english_learning_app/utils/device_connectivity.dart';
 import 'package:english_learning_app/utils/hero_tags.dart';
+import 'package:english_learning_app/utils/level_target_category.dart';
 import 'package:english_learning_app/utils/offline_word_loader.dart';
 import 'package:english_learning_app/utils/page_transitions.dart';
+import 'package:english_learning_app/utils/word_image_url.dart';
 import 'package:english_learning_app/widgets/living_spark.dart';
 import 'package:english_learning_app/widgets/pronunciation_mic_button.dart';
-import 'package:english_learning_app/widgets/word_display_card.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
+import 'package:english_learning_app/widgets/word_display_card.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, Uint8List;
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
@@ -196,7 +196,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _speak(String text,
       {String languageCode = 'he-IL',
-      SparkEmotion emotion = SparkEmotion.neutral}) async {
+      SparkEmotion emotion = SparkEmotion.neutral,}) async {
     if (text.isEmpty) return;
 
     try {
@@ -510,10 +510,12 @@ class _MyHomePageState extends State<MyHomePage> {
       cacheNamespace: widget.levelId,
     );
     if (mounted) {
-      Provider.of<AchievementService>(
-        context,
-        listen: false,
-      ).checkForAchievements(streak: _streak, wordAdded: true);
+      unawaited(
+        Provider.of<AchievementService>(
+          context,
+          listen: false,
+        ).checkForAchievements(streak: _streak, wordAdded: true),
+      );
     }
     await _speak(
       SparkStrings.cameraSpeakFound(newWord.word),
@@ -606,7 +608,9 @@ class _MyHomePageState extends State<MyHomePage> {
       await context.read<CoinProvider>().addCoins(pointsToAdd);
       if (!mounted) return;
 
-      context.read<AchievementService>().checkForAchievements(streak: _streak);
+      unawaited(
+        context.read<AchievementService>().checkForAchievements(streak: _streak),
+      );
 
       await context
           .read<DailyMissionProvider>()
@@ -630,9 +634,11 @@ class _MyHomePageState extends State<MyHomePage> {
             _persistThreeStarAchievement(currentWordObject.word),
           );
           try {
-            context.read<DailyMissionProvider>().incrementByType(
-                  DailyMissionType.pronunciationPerfect,
-                );
+            unawaited(
+              context.read<DailyMissionProvider>().incrementByType(
+                    DailyMissionType.pronunciationPerfect,
+                  ),
+            );
           } catch (_) {}
           try {
             unawaited(
@@ -935,7 +941,7 @@ class _MyHomePageState extends State<MyHomePage> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.menu_rounded,
-                    color: Colors.white, size: 32),
+                    color: Colors.white, size: 32,),
                 onPressed: _openGameMenu,
               ),
               const SizedBox(width: 8),
@@ -979,7 +985,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             Expanded(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 12.0),
+                                    horizontal: 12.0,),
                                 child: _SegmentedProgressBar(
                                   total: _words.length,
                                   current: _currentIndex,
@@ -1033,7 +1039,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                   child: Text(
                                     SparkStrings.homeNoWordsYet,
                                     style: TextStyle(
-                                        fontSize: 22, color: Colors.white),
+                                        fontSize: 22, color: Colors.white,),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -1587,7 +1593,7 @@ class _FeedbackPanelState extends State<_FeedbackPanel>
     ).animate(CurvedAnimation(
       parent: _controller,
       curve: Curves.easeOutCubic,
-    ));
+    ),);
     _controller.forward();
   }
 

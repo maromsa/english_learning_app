@@ -1,10 +1,9 @@
 import 'package:english_learning_app/utils/list_performance.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../services/notification_service.dart';
 
 import '../l10n/spark_strings.dart';
 import '../models/player_character.dart';
@@ -14,6 +13,7 @@ import '../providers/child_profile_provider.dart';
 import '../providers/coin_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/audio_settings.dart';
+import '../services/notification_service.dart';
 import '../services/offline_practice_service.dart';
 import '../services/word_repository.dart';
 import '../utils/parent_dashboard_navigation.dart';
@@ -52,7 +52,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         elevation: 0,
       ),
       body: ListView(
-        cacheExtent: ListPerformance.defaultCacheExtent,
+        scrollCacheExtent: const ScrollCacheExtent.pixels(
+          ListPerformance.defaultCacheExtent,
+        ),
         padding: const EdgeInsets.all(16),
         children: [
           // 1. Hero Profile Header
@@ -693,7 +695,7 @@ class _NotificationsCardState extends State<_NotificationsCard> {
     if (_loading) {
       return const Center(
           child: SizedBox(
-              height: 48, child: Center(child: CircularProgressIndicator())));
+              height: 48, child: Center(child: CircularProgressIndicator()),),);
     }
 
     return Card(

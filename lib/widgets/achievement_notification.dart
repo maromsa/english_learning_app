@@ -51,7 +51,7 @@ class _AchievementNotificationState extends State<AchievementNotification>
     unawaited(SparkVoiceService().speak(
       text: 'הישג חדש! ${widget.achievement.title}',
       isEnglish: false,
-    ));
+    ),);
 
     Future.delayed(const Duration(seconds: 4), () {
       if (mounted) {
@@ -118,18 +118,18 @@ class _AchievementNotificationState extends State<AchievementNotification>
                         const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                              horizontal: 8, vertical: 3,),
                           decoration: BoxDecoration(
                             color: AuroraTokens.butter.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: AuroraTokens.butter.withValues(alpha: 0.6)),
+                                color: AuroraTokens.butter.withValues(alpha: 0.6),),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(Icons.monetization_on,
-                                  size: 14, color: AuroraTokens.butter),
+                                  size: 14, color: AuroraTokens.butter,),
                               const SizedBox(width: 4),
                               Text(
                                 '+${widget.achievement.coinReward}',

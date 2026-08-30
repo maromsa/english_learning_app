@@ -57,7 +57,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     unawaited(Navigator.of(
       context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const MapScreen())));
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const MapScreen())),);
   }
 
   void _logImpressionOnce(

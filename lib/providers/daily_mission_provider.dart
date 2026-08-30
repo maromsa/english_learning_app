@@ -354,7 +354,7 @@ class DailyMissionProvider with ChangeNotifier {
     final slot1Pool = _missionCatalog
         .where((m) =>
             m.type == DailyMissionType.speakPractice ||
-            m.type == DailyMissionType.pronunciationPerfect)
+            m.type == DailyMissionType.pronunciationPerfect,)
         .toList();
     final slot1 = slot1Pool[rng.nextInt(slot1Pool.length)];
 
@@ -362,7 +362,7 @@ class DailyMissionProvider with ChangeNotifier {
     final slot2Pool = _missionCatalog
         .where((m) =>
             m.type == DailyMissionType.lightningRound ||
-            m.type == DailyMissionType.srsReview)
+            m.type == DailyMissionType.srsReview,)
         .toList();
     final slot2 = slot2Pool[rng.nextInt(slot2Pool.length)];
 

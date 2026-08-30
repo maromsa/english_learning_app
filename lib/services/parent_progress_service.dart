@@ -283,7 +283,7 @@ class ParentProgressService {
   // ---------------------------------------------------------------------------
 
   List<DailyActivity> _buildWeeklyActivity(
-      SharedPreferences prefs, String userId) {
+      SharedPreferences prefs, String userId,) {
     // Prefer SharedPreferences for synchronous access in this context.
     // SQLite reads happen async in recordSession and are the write-primary store.
     final key = '${_activityPrefix}_${_sanitize(userId)}';
@@ -369,7 +369,7 @@ class ParentProgressService {
         word: wordId.replaceAll('_', ' '),
         masteryLevel: mastery,
         levelName: levelNames[levelId] ?? levelId,
-      ));
+      ),);
     }
 
     results.sort((a, b) => a.masteryLevel.compareTo(b.masteryLevel));

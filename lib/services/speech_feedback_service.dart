@@ -166,7 +166,7 @@ class SpeechFeedbackService {
       return feedback;
     } catch (error, stackTrace) {
       debugPrint(
-          '[SpeechFeedbackService] evaluation failed: $error\n$stackTrace');
+          '[SpeechFeedbackService] evaluation failed: $error\n$stackTrace',);
       final fallback = _localFallback(target, heard);
       return fallback;
     }

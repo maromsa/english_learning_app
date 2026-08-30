@@ -3,10 +3,9 @@
 // Unit tests for AppDatabase (sqflite).
 // Uses sqflite_common_ffi for in-process SQLite on non-mobile platforms.
 
+import 'package:english_learning_app/services/app_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-
-import 'package:english_learning_app/services/app_database.dart';
 
 import '../support/fresh_test_database.dart';
 
@@ -160,10 +159,10 @@ void main() {
       );
 
       await db.markCardsSynced(
-          userId: 'u1', levelId: 'l1', wordIds: ['apple']);
+          userId: 'u1', levelId: 'l1', wordIds: ['apple'],);
 
       final row = await db.getSrsCard(
-          userId: 'u1', levelId: 'l1', wordId: 'apple');
+          userId: 'u1', levelId: 'l1', wordId: 'apple',);
       expect(row!['dirty'], 0);
     });
 
@@ -232,7 +231,7 @@ void main() {
 
       final rows = await db.getRecentActivity(userId: 'u1');
       expect(rows.map((r) => r['day']).toList(),
-          ['2030-01-03', '2030-01-02', '2030-01-01']);
+          ['2030-01-03', '2030-01-02', '2030-01-01'],);
     });
 
     test('getRecentActivity respects limit', () async {

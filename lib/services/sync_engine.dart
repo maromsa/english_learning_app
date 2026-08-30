@@ -45,7 +45,7 @@ class SyncEngine {
       // Process in chunks to respect Firestore batch limit.
       for (var i = 0; i < dirty.length; i += _batchLimit) {
         final chunk = dirty.sublist(
-            i, (i + _batchLimit).clamp(0, dirty.length));
+            i, (i + _batchLimit).clamp(0, dirty.length),);
         await _uploadChunk(userId, chunk);
         synced += chunk.length;
       }
@@ -114,7 +114,7 @@ class SyncEngine {
   // ---------------------------------------------------------------------------
 
   Future<void> _uploadChunk(
-      String userId, List<Map<String, dynamic>> rows) async {
+      String userId, List<Map<String, dynamic>> rows,) async {
     final batch = _firestore.batch();
 
     // Group by (levelId, wordId) for the doc path.
@@ -142,7 +142,7 @@ class SyncEngine {
         'nextReviewMs': row['next_review_ms'],
         'lastReviewMs': row['last_review_ms'],
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      }, SetOptions(merge: true),);
 
       levelWordPairs.add((levelId: levelId, wordId: wordId));
     }

@@ -99,11 +99,11 @@ class AppDatabase {
     ''');
 
     await db.execute(
-        'CREATE INDEX idx_srs_user_level ON srs_cards(user_id, level_id)');
+        'CREATE INDEX idx_srs_user_level ON srs_cards(user_id, level_id)',);
     await db.execute(
-        'CREATE INDEX idx_srs_next_review ON srs_cards(user_id, next_review_ms)');
+        'CREATE INDEX idx_srs_next_review ON srs_cards(user_id, next_review_ms)',);
     await db.execute(
-        'CREATE INDEX idx_activity_user ON activity_log(user_id, day)');
+        'CREATE INDEX idx_activity_user ON activity_log(user_id, day)',);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -183,7 +183,7 @@ class AppDatabase {
     return db.query(
       'srs_cards',
       columns: ['level_id', 'word_id', 'mastery_level', 'best_stars',
-                 'next_review_ms', 'repetitions', 'ease_factor', 'interval_days'],
+                 'next_review_ms', 'repetitions', 'ease_factor', 'interval_days',],
       where:
           'user_id = ? AND (next_review_ms IS NULL OR next_review_ms <= ?)',
       whereArgs: [userId, nowMs],

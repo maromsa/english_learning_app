@@ -47,7 +47,7 @@ class PlayerDataSyncService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setStringList('purchased_items', cloudData.purchasedItems);
         debugPrint(
-            'Synced purchased items from cloud: ${cloudData.purchasedItems.length}');
+            'Synced purchased items from cloud: ${cloudData.purchasedItems.length}',);
       }
 
       // Sync achievements
@@ -60,14 +60,14 @@ class PlayerDataSyncService {
         }
         await achievementService.loadAchievements();
         debugPrint(
-            'Synced achievements from cloud: ${cloudData.achievements.length}');
+            'Synced achievements from cloud: ${cloudData.achievements.length}',);
       }
 
       // Sync character
       if (cloudData.character != null && characterProvider != null) {
         await characterProvider.setCharacter(cloudData.character!);
         debugPrint(
-            'Synced character from cloud: ${cloudData.character!.characterName}');
+            'Synced character from cloud: ${cloudData.character!.characterName}',);
       }
 
       debugPrint('Cloud sync completed successfully');

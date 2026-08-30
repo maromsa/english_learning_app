@@ -4,8 +4,8 @@
 // Unlocked = colorful card; Locked = grayscale + lock icon.
 
 import 'package:english_learning_app/models/achievement.dart';
-import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/screens/collection_screen.dart';
+import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/utils/page_transitions.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
 import 'package:flutter/material.dart';
@@ -53,7 +53,7 @@ class AchievementsScreen extends StatelessWidget {
                   ),
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
+                        horizontal: 16, vertical: 4,),
                     sliver: SliverGrid(
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
@@ -67,7 +67,7 @@ class AchievementsScreen extends StatelessWidget {
                           final achievement =
                               byCategory[category]![index];
                           return _AchievementCard(
-                              achievement: achievement);
+                              achievement: achievement,);
                         },
                         childCount: byCategory[category]!.length,
                       ),
@@ -251,14 +251,14 @@ class _AchievementCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.monetization_on,
-                    size: 12, color: Colors.amber),
+                    size: 12, color: Colors.amber,),
                 const SizedBox(width: 3),
                 Text(
                   '+${achievement.coinReward}',
                   style: const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: Colors.amber),
+                      color: Colors.amber,),
                 ),
               ],
             ),

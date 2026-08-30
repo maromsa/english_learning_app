@@ -118,7 +118,7 @@ class LeaderboardService {
   }
 
   void _upsertDraft(
-      Map<String, _LeaderboardDraft> merged, ChildProfile profile) {
+      Map<String, _LeaderboardDraft> merged, ChildProfile profile,) {
     final existing = merged[profile.id];
     if (existing == null) {
       merged[profile.id] = _LeaderboardDraft.fromProfile(profile);

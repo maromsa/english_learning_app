@@ -2,16 +2,16 @@ import 'dart:async';
 
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
-import 'package:english_learning_app/models/local_user.dart';
 import 'package:english_learning_app/models/daily_mission.dart';
+import 'package:english_learning_app/models/local_user.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/background_music_service.dart';
 import 'package:english_learning_app/services/conversation_coach_service.dart';
-import 'package:english_learning_app/services/spark_voice_service.dart';
 import 'package:english_learning_app/services/local_user_service.dart';
+import 'package:english_learning_app/services/spark_voice_service.dart';
 import 'package:english_learning_app/services/telemetry_service.dart';
 import 'package:english_learning_app/utils/device_connectivity.dart';
 import 'package:english_learning_app/utils/route_observer.dart';
@@ -624,7 +624,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
         unawaited(TelemetryService.maybeOf(context)?.logCustomEvent(
           'ai_conversation_started',
           {'topic': _selectedTopic, 'skill': _selectedSkill},
-        ));
+        ),);
       }
     } on ConversationGenerationException catch (error) {
       sparkController.markIdle();
@@ -729,7 +729,7 @@ class _AiConversationScreenState extends State<AiConversationScreen>
         unawaited(TelemetryService.maybeOf(context)?.logCustomEvent(
           'ai_conversation_turn',
           {'topic': _selectedTopic, 'skill': _selectedSkill},
-        ));
+        ),);
       }
     } on ConversationGenerationException catch (error) {
       sparkController.markIdle();
@@ -806,9 +806,11 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       return;
     }
     try {
-      context
-          .read<DailyMissionProvider>()
-          .incrementByType(DailyMissionType.speakPractice);
+      unawaited(
+        context
+            .read<DailyMissionProvider>()
+            .incrementByType(DailyMissionType.speakPractice),
+      );
     } catch (_) {}
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
@@ -835,8 +837,10 @@ class _AiConversationScreenState extends State<AiConversationScreen>
 
     try {
       await _speechToText.listen(
-        localeId: 'en_US',
-        listenFor: const Duration(seconds: 10),
+        listenOptions: SpeechListenOptions(
+          localeId: 'en_US',
+          listenFor: const Duration(seconds: 10),
+        ),
         onSoundLevelChange: (level) {
           if (!mounted) return;
           setState(() => _soundLevel = level);

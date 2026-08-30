@@ -549,7 +549,7 @@ class _FeedbackBubbleState extends State<_FeedbackBubble>
     ).animate(CurvedAnimation(
       parent: _controller,
       curve: Curves.easeOutCubic,
-    ));
+    ),);
     _controller.forward();
   }
 

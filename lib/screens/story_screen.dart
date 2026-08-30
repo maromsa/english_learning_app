@@ -27,7 +27,6 @@ import '../services/achievement_service.dart';
 import '../services/gemini_proxy_service.dart';
 import '../services/sound_service.dart';
 import '../services/story_service.dart';
-import '../widgets/ui/_barrel.dart';
 
 class StoryScreen extends StatefulWidget {
   const StoryScreen({
@@ -240,7 +239,7 @@ class _StoryScreenState extends State<StoryScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.auto_stories,
-                size: 72, color: Colors.deepPurple.shade200),
+                size: 72, color: Colors.deepPurple.shade200,),
             const SizedBox(height: 16),
             const Text(
               'לא הצלחנו לייצר סיפור עכשיו.',
@@ -258,7 +257,7 @@ class _StoryScreenState extends State<StoryScreen>
               icon: const Icon(Icons.refresh),
               label: const Text('נסה שוב'),
               style: FilledButton.styleFrom(
-                  backgroundColor: Colors.deepPurple.shade400),
+                  backgroundColor: Colors.deepPurple.shade400,),
             ),
           ],
         ),
@@ -413,13 +412,13 @@ class _StoryPageCard extends StatelessWidget {
                     height: 180,
                     color: Colors.deepPurple.shade50,
                     child: const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2)),
+                        child: CircularProgressIndicator(strokeWidth: 2),),
                   ),
                   errorWidget: (_, __, ___) => Container(
                     height: 120,
                     color: Colors.deepPurple.shade50,
                     child: Icon(Icons.image_not_supported,
-                        color: Colors.deepPurple.shade200, size: 40),
+                        color: Colors.deepPurple.shade200, size: 40,),
                   ),
                 ),
               )
@@ -433,7 +432,7 @@ class _StoryPageCard extends StatelessWidget {
                 ),
                 child: Center(
                   child: Icon(Icons.auto_stories,
-                      color: Colors.deepPurple.shade200, size: 48),
+                      color: Colors.deepPurple.shade200, size: 48,),
                 ),
               ),
 
@@ -447,7 +446,7 @@ class _StoryPageCard extends StatelessWidget {
                     Text(
                       'עמוד $pageNumber / $totalPages',
                       style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade500),
+                          fontSize: 12, color: Colors.grey.shade500,),
                     ),
                     const SizedBox(height: 12),
 
@@ -489,11 +488,11 @@ class _StoryPageCard extends StatelessWidget {
                         size: 18,
                       ),
                       label: Text(
-                          showHebrew ? 'הסתר עברית' : 'הצג בעברית'),
+                          showHebrew ? 'הסתר עברית' : 'הצג בעברית',),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.deepPurple.shade600,
                         side: BorderSide(
-                            color: Colors.deepPurple.shade200),
+                            color: Colors.deepPurple.shade200,),
                       ),
                     ),
                   ],
@@ -535,7 +534,7 @@ class _HighlightedText extends StatelessWidget {
           color: Colors.deepPurple.shade600,
           fontSize: 22,
         ),
-      ));
+      ),);
       start = match.end;
     }
     if (start < cleaned.length) {
@@ -616,7 +615,7 @@ class _StoryNavBar extends StatelessWidget {
               icon: const Icon(Icons.check_circle),
               label: const Text('סיום'),
               style: FilledButton.styleFrom(
-                  backgroundColor: Colors.green.shade600),
+                  backgroundColor: Colors.green.shade600,),
             )
           else
             IconButton.filled(

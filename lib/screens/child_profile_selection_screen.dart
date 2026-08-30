@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -56,8 +58,10 @@ class _ChildProfileSelectionScreenState
     if (!mounted) {
       return;
     }
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MapScreen()),
+    unawaited(
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MapScreen()),
+      ),
     );
   }
 

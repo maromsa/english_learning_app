@@ -117,7 +117,7 @@ class ChildProfileSyncService {
   }
 
   Future<bool> syncProfileToCloud(
-      String parentUid, ChildProfile profile) async {
+      String parentUid, ChildProfile profile,) async {
     try {
       final payload = profile.toMap(forCloud: true);
       payload.remove('pendingSync');

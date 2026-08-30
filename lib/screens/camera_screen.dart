@@ -120,7 +120,7 @@ class _CameraScreenState extends State<CameraScreen> {
         // Advance the camera daily mission progress.
         unawaited(context
             .read<DailyMissionProvider>()
-            .incrementByType(DailyMissionType.camera));
+            .incrementByType(DailyMissionType.camera),);
 
         setState(() {
           _isValidating = false;

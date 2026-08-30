@@ -188,10 +188,10 @@ class _SrsReviewScreenState extends State<SrsReviewScreen>
             bestPronunciationStars: (row['best_stars'] as int?) ?? 0,
             nextReviewDate: row['next_review_ms'] != null
                 ? DateTime.fromMillisecondsSinceEpoch(
-                    row['next_review_ms'] as int)
+                    row['next_review_ms'] as int,)
                 : null,
           ),
-        ));
+        ),);
       }
 
       // Shuffle so the session feels fresh.
@@ -250,7 +250,7 @@ class _SrsReviewScreenState extends State<SrsReviewScreen>
       levelId: card.levelId,
       word: card.displayWord,
       grade: grade,
-    ));
+    ),);
 
     // Coin reward for easy answers.
     if (easy && mounted) {
@@ -295,11 +295,13 @@ class _SrsReviewScreenState extends State<SrsReviewScreen>
       final userId = session.currentUserId ?? 'local_guest';
       final masteredCount = await _db.getMasteredCount(userId: userId);
       if (!mounted) return;
-      context.read<AchievementService>().checkForAchievements(
-            streak: 0,
-            masteredWords: masteredCount,
-            wordsLearned: _easyCount + _hardCount,
-          );
+      unawaited(
+        context.read<AchievementService>().checkForAchievements(
+              streak: 0,
+              masteredWords: masteredCount,
+              wordsLearned: _easyCount + _hardCount,
+            ),
+      );
     } catch (_) {}
   }
 
@@ -388,23 +390,23 @@ class _SrsReviewScreenState extends State<SrsReviewScreen>
                     Row(
                       children: [
                         const Icon(Icons.check_circle_rounded,
-                            color: Colors.green, size: 16),
+                            color: Colors.green, size: 16,),
                         const SizedBox(width: 4),
                         Text(
                           '$_easyCount',
                           style: GoogleFonts.heebo(
                               color: Colors.green,
-                              fontWeight: FontWeight.bold),
+                              fontWeight: FontWeight.bold,),
                         ),
                         const SizedBox(width: 12),
                         const Icon(Icons.refresh_rounded,
-                            color: Colors.orange, size: 16),
+                            color: Colors.orange, size: 16,),
                         const SizedBox(width: 4),
                         Text(
                           '$_hardCount',
                           style: GoogleFonts.heebo(
                               color: Colors.orange,
-                              fontWeight: FontWeight.bold),
+                              fontWeight: FontWeight.bold,),
                         ),
                       ],
                     ),
@@ -416,9 +418,9 @@ class _SrsReviewScreenState extends State<SrsReviewScreen>
                   child: LinearProgressIndicator(
                     value: progress,
                     backgroundColor:
-                        AuroraTokens.inkMute.withOpacity(0.15),
+                        AuroraTokens.inkMute.withValues(alpha: 0.15),
                     valueColor: const AlwaysStoppedAnimation<Color>(
-                        AuroraTokens.blueberry),
+                        AuroraTokens.blueberry,),
                     minHeight: 6,
                   ),
                 ),
@@ -540,7 +542,7 @@ class _CardFront extends StatelessWidget {
             Container(
               height: 180,
               decoration: BoxDecoration(
-                color: AuroraTokens.blueberry.withOpacity(0.08),
+                color: AuroraTokens.blueberry.withValues(alpha: 0.08),
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(24)),
               ),
@@ -548,7 +550,7 @@ class _CardFront extends StatelessWidget {
                 child: Icon(
                   Icons.image_outlined,
                   size: 64,
-                  color: AuroraTokens.blueberry.withOpacity(0.4),
+                  color: AuroraTokens.blueberry.withValues(alpha: 0.4),
                 ),
               ),
             ),
@@ -572,7 +574,7 @@ class _CardFront extends StatelessWidget {
                 size: 10,
                 color: filled
                     ? AuroraTokens.blueberry
-                    : AuroraTokens.inkMute.withOpacity(0.3),
+                    : AuroraTokens.inkMute.withValues(alpha: 0.3),
               );
             }),
           ),
@@ -592,7 +594,7 @@ class _CardBack extends StatelessWidget {
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      color: AuroraTokens.blueberry.withOpacity(0.08),
+      color: AuroraTokens.blueberry.withValues(alpha: 0.08),
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
@@ -839,7 +841,7 @@ class _StatBadge extends StatelessWidget {
           width: 72,
           height: 72,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
+            color: color.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 32),
@@ -901,7 +903,7 @@ class _NoDueCardsState extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AuroraTokens.blueberry,
                 padding: const EdgeInsets.symmetric(
-                    vertical: 14, horizontal: 32),
+                    vertical: 14, horizontal: 32,),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),

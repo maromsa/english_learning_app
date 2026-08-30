@@ -1,10 +1,11 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
-import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/models/daily_mission.dart';
+import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
@@ -273,13 +274,17 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
           _streak += 1;
           _feedbackMessage = SparkStrings.quizCorrectCoins(compliment, reward);
         });
-        context
-            .read<AchievementService>()
-            .checkForAchievements(streak: _streak);
-        try {
+        unawaited(
           context
-              .read<DailyMissionProvider>()
-              .incrementByType(DailyMissionType.quizPlay);
+              .read<AchievementService>()
+              .checkForAchievements(streak: _streak),
+        );
+        try {
+          unawaited(
+            context
+                .read<DailyMissionProvider>()
+                .incrementByType(DailyMissionType.quizPlay),
+          );
         } catch (_) {}
       }
     } else {

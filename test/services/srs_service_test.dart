@@ -76,7 +76,7 @@ void main() {
 
     test('interval never exceeds 365 days', () {
       var card = const SrsCard(
-          wordId: 'apple', easeFactor: 3.5, intervalDays: 200, repetitions: 5);
+          wordId: 'apple', easeFactor: 3.5, intervalDays: 200, repetitions: 5,);
       card = card.review(grade: 5);
       expect(card.intervalDays, lessThanOrEqualTo(365));
     });
@@ -151,29 +151,29 @@ void main() {
 
     test('new word returns default card', () async {
       final card = await service.getCard(
-          userId: 'u1', levelId: 'l1', word: 'apple');
+          userId: 'u1', levelId: 'l1', word: 'apple',);
       expect(card.repetitions, 0);
       expect(card.isDue, isTrue);
     });
 
     test('recordReview persists updated card', () async {
       await service.recordReview(
-          userId: 'u1', levelId: 'l1', word: 'apple', grade: 4);
+          userId: 'u1', levelId: 'l1', word: 'apple', grade: 4,);
       final service2 = SrsService(prefs: prefs, firestore: FakeFirebaseFirestore());
       final card = await service2.getCard(
-          userId: 'u1', levelId: 'l1', word: 'apple');
+          userId: 'u1', levelId: 'l1', word: 'apple',);
       expect(card.repetitions, 1);
     });
 
     test('correct then failure resets repetitions', () async {
       await service.recordReview(
-          userId: 'u1', levelId: 'l1', word: 'apple', grade: 4);
+          userId: 'u1', levelId: 'l1', word: 'apple', grade: 4,);
       await service.recordReview(
-          userId: 'u1', levelId: 'l1', word: 'apple', grade: 4);
+          userId: 'u1', levelId: 'l1', word: 'apple', grade: 4,);
       await service.recordReview(
-          userId: 'u1', levelId: 'l1', word: 'apple', grade: 0);
+          userId: 'u1', levelId: 'l1', word: 'apple', grade: 0,);
       final card = await service.getCard(
-          userId: 'u1', levelId: 'l1', word: 'apple');
+          userId: 'u1', levelId: 'l1', word: 'apple',);
       expect(card.repetitions, 0);
     });
 
@@ -181,23 +181,23 @@ void main() {
       // apple: 5 successful reviews → not due for many days
       for (int i = 0; i < 5; i++) {
         await service.recordReview(
-            userId: 'u1', levelId: 'l1', word: 'apple', grade: 5);
+            userId: 'u1', levelId: 'l1', word: 'apple', grade: 5,);
       }
       final words = [_w('apple'), _w('banana')];
       final sorted = await service.getSortedForSession(
-          userId: 'u1', levelId: 'l1', words: words);
+          userId: 'u1', levelId: 'l1', words: words,);
       expect(sorted.first.word, 'banana');
     });
 
     test('getWeakWords returns reviewed words sorted ascending by mastery',
         () async {
       await service.recordReview(
-          userId: 'u1', levelId: 'l1', word: 'apple', grade: 5);
+          userId: 'u1', levelId: 'l1', word: 'apple', grade: 5,);
       await service.recordReview(
-          userId: 'u1', levelId: 'l1', word: 'banana', grade: 1);
+          userId: 'u1', levelId: 'l1', word: 'banana', grade: 1,);
       final words = [_w('apple'), _w('banana'), _w('cat')];
       final weak = await service.getWeakWords(
-          userId: 'u1', levelId: 'l1', allWords: words, limit: 3);
+          userId: 'u1', levelId: 'l1', allWords: words, limit: 3,);
       // banana has lower mastery (failed review) than apple (perfect review).
       expect(weak.first.word, 'banana');
     });
@@ -208,11 +208,11 @@ void main() {
       for (final w in words) {
         for (int i = 0; i < 3; i++) {
           await service.recordReview(
-              userId: 'u1', levelId: 'l1', word: w.word, grade: 5);
+              userId: 'u1', levelId: 'l1', word: w.word, grade: 5,);
         }
       }
       final due = await service.countDue(
-          userId: 'u1', levelId: 'l1', words: words);
+          userId: 'u1', levelId: 'l1', words: words,);
       expect(due, 0);
     });
   });

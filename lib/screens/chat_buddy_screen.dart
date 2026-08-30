@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:english_learning_app/app_config.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
-import 'package:english_learning_app/models/local_user.dart';
 import 'package:english_learning_app/models/daily_mission.dart';
+import 'package:english_learning_app/models/local_user.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/background_music_service.dart';
@@ -178,9 +178,11 @@ class _ChatBuddyScreenState extends State<ChatBuddyScreen> with RouteAware {
       });
       _scrollToEnd();
       try {
-        context
-            .read<DailyMissionProvider>()
-            .incrementByType(DailyMissionType.speakPractice);
+        unawaited(
+          context
+              .read<DailyMissionProvider>()
+              .incrementByType(DailyMissionType.speakPractice),
+        );
       } catch (_) {}
     } on ChatBuddyGenerationException catch (e) {
       if (!mounted) return;
@@ -428,7 +430,7 @@ class _ChatBuddyScreenState extends State<ChatBuddyScreen> with RouteAware {
               Expanded(
                 child: _entries.isEmpty && !_isThinking
                     ? _EmptyChatState(
-                        onStart: geminiReady ? _startSession : null)
+                        onStart: geminiReady ? _startSession : null,)
                     : ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -766,7 +768,7 @@ class _ScaffoldingBar extends StatelessWidget {
           const Row(
             children: [
               Icon(Icons.lightbulb_outline,
-                  color: AuroraTokens.butter, size: 20),
+                  color: AuroraTokens.butter, size: 20,),
               SizedBox(width: 6),
               Text(
                 'מילים לנסות בהמשך',
@@ -795,7 +797,7 @@ class _ScaffoldingBar extends StatelessWidget {
                   ),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: AuroraTokens.coral.withValues(alpha: 0.5)),
+                      color: AuroraTokens.coral.withValues(alpha: 0.5),),
                 ),
                 child: Text(
                   word,

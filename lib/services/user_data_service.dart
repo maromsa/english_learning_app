@@ -49,7 +49,7 @@ class UserDataService {
       await _playerDataDoc(playerData.userId)
           .set(data, SetOptions(merge: true));
       debugPrint(
-          'Player data saved successfully for user: ${playerData.userId}');
+          'Player data saved successfully for user: ${playerData.userId}',);
       return true;
     } catch (e) {
       debugPrint('Error saving player data: $e');
@@ -98,7 +98,7 @@ class UserDataService {
       await _playerDataDoc(userId).set({
         'purchasedItems': FieldValue.arrayUnion(itemIds),
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      }, SetOptions(merge: true),);
       return true;
     } catch (e) {
       debugPrint('Error adding purchased items: $e');
@@ -112,7 +112,7 @@ class UserDataService {
       await _playerDataDoc(userId).set({
         'achievements.$achievementId': true,
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      }, SetOptions(merge: true),);
       return true;
     } catch (e) {
       debugPrint('Error unlocking achievement: $e');
@@ -130,7 +130,7 @@ class UserDataService {
       await _playerDataDoc(userId).set({
         'levelProgress.$levelId': progress.toMap(),
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      }, SetOptions(merge: true),);
       return true;
     } catch (e) {
       debugPrint('Error updating level progress: $e');
@@ -208,12 +208,12 @@ class UserDataService {
 
   /// Increment statistics
   Future<bool> incrementStat(String userId, String statName,
-      {int amount = 1}) async {
+      {int amount = 1,}) async {
     try {
       await _playerDataDoc(userId).set({
         statName: FieldValue.increment(amount),
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      }, SetOptions(merge: true),);
       return true;
     } catch (e) {
       debugPrint('Error incrementing stat $statName: $e');
@@ -223,12 +223,12 @@ class UserDataService {
 
   /// Update player character
   Future<bool> updateCharacter(
-      String userId, Map<String, dynamic> characterData) async {
+      String userId, Map<String, dynamic> characterData,) async {
     try {
       await _playerDataDoc(userId).set({
         'character': characterData,
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      }, SetOptions(merge: true),);
       return true;
     } catch (e) {
       debugPrint('Error updating character: $e');

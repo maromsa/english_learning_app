@@ -68,12 +68,14 @@ class KidSpeechService {
         }
       },
       onSoundLevelChange: onSoundLevel ?? (level) {},
-      localeId: 'en_US', // Learning target (English)
-      listenFor: const Duration(seconds: 10), // Longer timeout for kids
-      pauseFor: const Duration(seconds: 3), // Kids pause to think!
-      partialResults: true,
-      cancelOnError: false,
-      listenMode: stt.ListenMode.dictation, // Better for phrases
+      listenOptions: stt.SpeechListenOptions(
+        localeId: 'en_US', // Learning target (English)
+        listenFor: const Duration(seconds: 10), // Longer timeout for kids
+        pauseFor: const Duration(seconds: 3), // Kids pause to think!
+        partialResults: true,
+        cancelOnError: false,
+        listenMode: stt.ListenMode.dictation, // Better for phrases
+      ),
     );
   }
 

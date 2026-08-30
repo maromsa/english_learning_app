@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:english_learning_app/app_config.dart';
+import 'package:english_learning_app/models/daily_mission.dart';
 import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/models/local_user.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
-import 'package:english_learning_app/models/daily_mission.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
@@ -358,7 +358,7 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _StatChip(
-                icon: Icons.monetization_on, label: 'מטבעות', value: '$coins'),
+                icon: Icons.monetization_on, label: 'מטבעות', value: '$coins',),
             _StatChip(
               icon: Icons.star_rate,
               label: 'כוכבים',
@@ -493,7 +493,7 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
         unawaited(SparkVoiceService().speak(
           text: quest.scene,
           isEnglish: false,
-        ));
+        ),);
       }
     } on AdventureLabGenerationException catch (error) {
       if (!mounted) return;
@@ -518,20 +518,22 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
     if (!mounted) return;
 
     try {
-      context
-          .read<DailyMissionProvider>()
-          .incrementByType(DailyMissionType.quizPlay);
+      unawaited(
+        context
+            .read<DailyMissionProvider>()
+            .incrementByType(DailyMissionType.quizPlay),
+      );
     } catch (_) {}
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
+        content: const Row(
           children: [
-            const Icon(Icons.monetization_on, color: Colors.amber),
-            const SizedBox(width: 8),
+            Icon(Icons.monetization_on, color: Colors.amber),
+            SizedBox(width: 8),
             Text(
               'כל הכבוד! +$rewardCoins מטבעות 🎉',
-              style: const TextStyle(fontWeight: FontWeight.w700),
+              style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -613,13 +615,13 @@ class _QuestReveal extends StatelessWidget {
                       ),
                     ),
                     avatar: const Icon(Icons.translate,
-                        color: AuroraTokens.plum, size: 18),
+                        color: AuroraTokens.plum, size: 18,),
                     backgroundColor: Colors.white,
                     side: BorderSide(
-                        color: AuroraTokens.plum.withValues(alpha: 0.4)),
+                        color: AuroraTokens.plum.withValues(alpha: 0.4),),
                   )
                       .animate(
-                          delay: (300 + quest.vocabulary.indexOf(word) * 60).ms)
+                          delay: (300 + quest.vocabulary.indexOf(word) * 60).ms,)
                       .scale(
                         begin: const Offset(0.85, 0.85),
                         end: const Offset(1, 1),
@@ -736,7 +738,7 @@ class _QuestCard extends StatelessWidget {
             Text(
               body,
               style: const TextStyle(
-                  fontSize: 16, height: 1.55, color: AuroraTokens.inkSoft),
+                  fontSize: 16, height: 1.55, color: AuroraTokens.inkSoft,),
             ),
           ],
         ),
@@ -817,13 +819,13 @@ class _StatChip extends StatelessWidget {
         Icon(icon, color: AuroraTokens.plum, size: 22),
         const SizedBox(height: 2),
         Text(label,
-            style: const TextStyle(fontSize: 11, color: AuroraTokens.inkMute)),
+            style: const TextStyle(fontSize: 11, color: AuroraTokens.inkMute),),
         Text(
           value,
           style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: AuroraTokens.ink),
+              color: AuroraTokens.ink,),
         ),
       ],
     );
