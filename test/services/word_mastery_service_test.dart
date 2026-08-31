@@ -318,5 +318,44 @@ void main() {
         expect(due, isEmpty);
       });
     });
+
+    group('getHighestSrsStreak', () {
+      test('returns 0 for a user with no graded words', () async {
+        final highest = await service.getHighestSrsStreak('user1');
+        expect(highest, 0);
+      });
+
+      test('returns the all-time high, even for a word that is not due',
+          () async {
+        final longAgo = DateTime(2020, 1, 1);
+
+        // Build a streak of 4 (14-day interval) far in the past — long
+        // since not due, but still the record holder.
+        var streak = 0;
+        for (var i = 0; i < 4; i++) {
+          final result = await service.recordPronunciationScore(
+            userId: 'user1',
+            levelId: 'level1',
+            word: 'Elephant',
+            stars: 3,
+            reviewedAt: longAgo.add(Duration(days: i)),
+          );
+          streak = result.srsStreak;
+        }
+        expect(streak, 4);
+
+        // A shorter, currently-due streak on a different word.
+        await service.recordPronunciationScore(
+          userId: 'user1',
+          levelId: 'level1',
+          word: 'Ant',
+          stars: 3,
+          reviewedAt: DateTime.now().subtract(const Duration(days: 2)),
+        );
+
+        final highest = await service.getHighestSrsStreak('user1');
+        expect(highest, 4);
+      });
+    });
   });
 }

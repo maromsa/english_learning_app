@@ -92,11 +92,11 @@ class ParentProgressService {
     final dueWords =
         await _wordMasteryService.getWordsDueForReview(userId: userId);
     final wordsDueToday = dueWords.length;
-    final longestSrsStreak = dueWords.isEmpty
-        ? 0
-        : dueWords
-            .map((entry) => entry.mastery.srsStreak)
-            .reduce((a, b) => a > b ? a : b);
+    // All-time high-water mark, not just among words due today — a
+    // long-streak word gets a longer review interval and so spends most of
+    // its time not due, so deriving this from `dueWords` would understate it.
+    final longestSrsStreak =
+        await _wordMasteryService.getHighestSrsStreak(userId);
 
     return ParentDashboardStats(
       childName: childName,

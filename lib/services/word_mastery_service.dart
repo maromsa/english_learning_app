@@ -392,6 +392,36 @@ class WordMasteryService {
     return due;
   }
 
+  /// Returns the highest `srsStreak` across every word this user has ever
+  /// graded via [recordPronunciationScore] — an all-time high-water mark,
+  /// unlike [getWordsDueForReview] which only considers words due *right
+  /// now*. A long-streak word gets a longer review interval and so spends
+  /// most of its time not due, meaning it wouldn't show up there at all.
+  ///
+  /// Returns 0 when the user has never been graded.
+  Future<int> getHighestSrsStreak(String userId) async {
+    final prefs = await _prefsFuture;
+    final indexed = prefs.getStringList(_indexKey(userId)) ?? const <String>[];
+
+    var highest = 0;
+    for (final composite in indexed) {
+      final separatorIndex = composite.indexOf(_indexSeparator);
+      if (separatorIndex < 0) continue;
+      final entryLevelId = composite.substring(0, separatorIndex);
+      final entryWord = composite.substring(separatorIndex + 1);
+
+      final mastery = await getMastery(
+        userId: userId,
+        levelId: entryLevelId,
+        word: entryWord,
+      );
+      if (mastery.srsStreak > highest) {
+        highest = mastery.srsStreak;
+      }
+    }
+    return highest;
+  }
+
   /// Convenience wrapper around [getWordsDueForReview] for a single level:
   /// resolves the due word ids against [catalog] (that level's full word
   /// list) and returns the matching [WordData], merged with each word's

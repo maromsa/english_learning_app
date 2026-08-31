@@ -112,8 +112,9 @@ void main() {
       expect(stats.dailyMissionsTotal, 2);
     });
 
-    test('reports words due today and the longest due-word SRS streak',
-        () async {
+    test(
+        'reports words due today, and the all-time longest SRS streak even '
+        "when that word isn't due", () async {
       const assetPath = 'assets/data/levels.json';
       final bundle = _FakeBundle({
         assetPath: '''
@@ -131,7 +132,8 @@ void main() {
       "id": "animals",
       "name": "Animals",
       "words": [
-        {"word": "Cat"}
+        {"word": "Cat"},
+        {"word": "Dog"}
       ]
     }
   ]
@@ -167,6 +169,19 @@ void main() {
         reviewedAt: now.subtract(const Duration(days: 9)),
       );
 
+      // "Dog": five 3-star grades in a row -> streak 5 (30-day interval),
+      // graded just now — this is the child's best-ever streak, but it is
+      // NOT due for a long time. longestSrsStreak must still report it.
+      for (var i = 0; i < 5; i++) {
+        await wordMasteryService.recordPronunciationScore(
+          userId: 'child1',
+          levelId: 'animals',
+          word: 'Dog',
+          stars: 3,
+          reviewedAt: now.subtract(Duration(days: 5 - i)),
+        );
+      }
+
       final service = ParentProgressService(
         prefs: prefs,
         levelRepository: LevelRepository(bundle: bundle),
@@ -180,8 +195,10 @@ void main() {
         isLocalUser: false,
       );
 
+      // "Dog" isn't in the due list (its 30-day interval hasn't elapsed)...
       expect(stats.wordsDueToday, 2);
-      expect(stats.longestSrsStreak, 2);
+      // ...but its streak of 5 still wins as the all-time high.
+      expect(stats.longestSrsStreak, 5);
     });
 
     test('reports zero SRS stats when nothing has ever been graded', () async {
