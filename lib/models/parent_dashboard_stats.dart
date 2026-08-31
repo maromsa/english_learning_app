@@ -21,6 +21,9 @@ class ParentDashboardStats {
     this.weakWords = const [],
     this.totalSessionMinutes = 0,
     this.weeklyNewWords = 0,
+    // ── SRS (spaced-repetition) fields ─────────────────────────────────────
+    this.wordsDueToday = 0,
+    this.longestSrsStreak = 0,
   });
 
   final String childName;
@@ -50,6 +53,20 @@ class ParentDashboardStats {
 
   /// How many new words the child started this week.
   final int weeklyNewWords;
+
+  /// Number of words currently due for spaced-repetition review (i.e. ready
+  /// for "אימון יומי" / Daily Practice), per [SrsAlgorithm]'s scheduling —
+  /// see `WordMasteryService.getWordsDueForReview`.
+  final int wordsDueToday;
+
+  /// The highest consecutive-3-star SRS streak among words currently due
+  /// for review (0 when [wordsDueToday] is 0).
+  ///
+  /// Note this is scoped to *due* words, not every word ever graded — a
+  /// long-streak word gets a longer review interval and so spends most of
+  /// its time not due, meaning this number reflects the current review
+  /// batch rather than the child's all-time best streak.
+  final int longestSrsStreak;
 
   // ---------------------------------------------------------------------------
   // Computed ratios (unchanged)

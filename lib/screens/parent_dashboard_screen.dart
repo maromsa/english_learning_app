@@ -90,14 +90,16 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             tooltip: 'החלפת פרופיל',
             icon: const Icon(Icons.switch_account),
             onPressed: () {
-              unawaited(Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const ChildProfileSelectionScreen(),
-                ),
-              ).then((_) {
-                setState(() => _statsFuture = _loadStats());
-              }),);
+              unawaited(
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ChildProfileSelectionScreen(),
+                  ),
+                ).then((_) {
+                  setState(() => _statsFuture = _loadStats());
+                }),
+              );
             },
           ),
         ],
@@ -133,14 +135,17 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                 const SizedBox(height: 20),
 
                 // ── Quick Stats ────────────────────────────────────────────
-                const _SectionTitle(title: SparkStrings.parentDashboardOverview),
+                const _SectionTitle(
+                  title: SparkStrings.parentDashboardOverview,
+                ),
                 const SizedBox(height: 12),
                 _StatGrid(stats: stats),
                 const SizedBox(height: 20),
 
                 // ── Progress bars ──────────────────────────────────────────
                 const _SectionTitle(
-                    title: SparkStrings.parentDashboardProgress,),
+                  title: SparkStrings.parentDashboardProgress,
+                ),
                 const SizedBox(height: 12),
                 _ProgressCard(
                   title: SparkStrings.parentDashboardWordsLabel,
@@ -151,7 +156,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                   value: stats.wordsProgressRatio,
                   trailing: stats.wordsMastered > 0
                       ? SparkStrings.parentDashboardMastered(
-                          stats.wordsMastered,)
+                          stats.wordsMastered,
+                        )
                       : null,
                 ),
                 const SizedBox(height: 12),
@@ -172,8 +178,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                   ),
                   value: stats.dailyMissionsTotal == 0
                       ? 0
-                      : stats.dailyMissionsCompleted /
-                          stats.dailyMissionsTotal,
+                      : stats.dailyMissionsCompleted / stats.dailyMissionsTotal,
                 ),
                 const SizedBox(height: 20),
 
@@ -191,9 +196,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                 OfflineDownloadsCard(
                   userId:
                       context.read<ChildProfileProvider>().activeProfileId ??
-                          context
-                              .read<UserSessionProvider>()
-                              .currentUserId ??
+                          context.read<UserSessionProvider>().currentUserId ??
                           '',
                 ),
                 const SizedBox(height: 24),
@@ -272,8 +275,11 @@ class _HeaderCard extends StatelessWidget {
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: Colors.deepPurple.shade100,
-                  child: Icon(Icons.family_restroom,
-                      color: Colors.deepPurple.shade700, size: 30,),
+                  child: Icon(
+                    Icons.family_restroom,
+                    color: Colors.deepPurple.shade700,
+                    size: 30,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -303,8 +309,11 @@ class _HeaderCard extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(Icons.timer_outlined,
-                      size: 16, color: Colors.grey.shade600,),
+                  Icon(
+                    Icons.timer_outlined,
+                    size: 16,
+                    color: Colors.grey.shade600,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     'סה"כ זמן למידה: ${stats.totalSessionMinutes} דקות',
@@ -344,8 +353,7 @@ class _WeeklyActivityChart extends StatelessWidget {
       );
     }
 
-    final maxWords =
-        activity.fold<int>(1, (m, d) => d.words > m ? d.words : m);
+    final maxWords = activity.fold<int>(1, (m, d) => d.words > m ? d.words : m);
 
     return Card(
       elevation: 0,
@@ -361,9 +369,10 @@ class _WeeklyActivityChart extends StatelessWidget {
             Text(
               'מילים שתורגלו (7 ימים)',
               style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey.shade600,
-                  fontWeight: FontWeight.w500,),
+                fontSize: 13,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -372,8 +381,7 @@ class _WeeklyActivityChart extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: activity.map((day) {
-                  final fraction =
-                      maxWords == 0 ? 0.0 : day.words / maxWords;
+                  final fraction = maxWords == 0 ? 0.0 : day.words / maxWords;
                   final isToday = _isToday(day.date);
                   return _DayBar(
                     fraction: fraction,
@@ -432,9 +440,8 @@ class _DayBar extends StatelessWidget {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: isToday
-                  ? Colors.deepPurple.shade700
-                  : Colors.grey.shade600,
+              color:
+                  isToday ? Colors.deepPurple.shade700 : Colors.grey.shade600,
             ),
           ),
         const SizedBox(height: 4),
@@ -454,9 +461,7 @@ class _DayBar extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-            color: isToday
-                ? Colors.deepPurple.shade700
-                : Colors.grey.shade600,
+            color: isToday ? Colors.deepPurple.shade700 : Colors.grey.shade600,
           ),
         ),
       ],
@@ -506,14 +511,25 @@ class _StatGrid extends StatelessWidget {
             icon: Icons.emoji_events,
             color: Colors.deepPurple,
             label: SparkStrings.parentDashboardAchievements,
-            value:
-                '${stats.achievementsUnlocked}/${stats.achievementsTotal}',
+            value: '${stats.achievementsUnlocked}/${stats.achievementsTotal}',
           ),
           _StatTileData(
             icon: Icons.auto_stories,
             color: Colors.blue,
             label: 'מילים חדשות השבוע',
             value: '${stats.weeklyNewWords}',
+          ),
+          _StatTileData(
+            icon: Icons.today_rounded,
+            color: Colors.redAccent,
+            label: SparkStrings.parentDashboardWordsDueToday,
+            value: '${stats.wordsDueToday}',
+          ),
+          _StatTileData(
+            icon: Icons.trending_up_rounded,
+            color: Colors.indigo,
+            label: SparkStrings.parentDashboardLongestStreak,
+            value: '${stats.longestSrsStreak}',
           ),
         ];
 
@@ -617,8 +633,10 @@ class _ProgressCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(title,
-                      style: const TextStyle(fontWeight: FontWeight.bold),),
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
                 if (trailing != null)
                   Text(
@@ -628,8 +646,10 @@ class _ProgressCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 4),
-            Text(subtitle,
-                style: TextStyle(color: Colors.grey.shade600),),
+            Text(
+              subtitle,
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
             const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -671,14 +691,18 @@ class _WeakWordsList extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.fitness_center,
-                    color: Colors.orange.shade700, size: 20,),
+                Icon(
+                  Icons.fitness_center,
+                  color: Colors.orange.shade700,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'המילים האלה צריכות עוד תרגול:',
                   style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange.shade800,),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange.shade800,
+                  ),
                 ),
               ],
             ),
@@ -708,12 +732,16 @@ class _WeakWordRow extends StatelessWidget {
                 Text(
                   word.word,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 15,),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
                 ),
                 Text(
                   word.levelName,
                   style: TextStyle(
-                      fontSize: 11, color: Colors.grey.shade600,),
+                    fontSize: 11,
+                    color: Colors.grey.shade600,
+                  ),
                 ),
               ],
             ),
@@ -727,9 +755,10 @@ class _WeakWordRow extends StatelessWidget {
                 Text(
                   '${word.masteryPercent}%',
                   style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.orange.shade800,
-                      fontWeight: FontWeight.bold,),
+                    fontSize: 12,
+                    color: Colors.orange.shade800,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 ClipRRect(
