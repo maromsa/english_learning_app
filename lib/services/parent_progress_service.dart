@@ -15,6 +15,7 @@ import 'daily_reward_service.dart';
 import 'level_progress_service.dart';
 import 'level_repository.dart';
 import 'local_user_data_service.dart';
+import 'word_mastery_service.dart';
 
 class ParentProgressService {
   ParentProgressService({
@@ -22,11 +23,13 @@ class ParentProgressService {
     LevelProgressService? levelProgressService,
     LocalUserDataService? localUserDataService,
     DailyRewardService? dailyRewardService,
+    WordMasteryService? wordMasteryService,
     SharedPreferences? prefs,
   })  : _levelRepository = levelRepository ?? LevelRepository(),
         _levelProgressService = levelProgressService ?? LevelProgressService(),
         _localUserDataService = localUserDataService ?? LocalUserDataService(),
         _dailyRewardService = dailyRewardService ?? DailyRewardService(),
+        _wordMasteryService = wordMasteryService ?? WordMasteryService(),
         _prefsFuture = prefs != null
             ? Future.value(prefs)
             : SharedPreferences.getInstance();
@@ -35,6 +38,7 @@ class ParentProgressService {
   final LevelProgressService _levelProgressService;
   final LocalUserDataService _localUserDataService;
   final DailyRewardService _dailyRewardService;
+  final WordMasteryService _wordMasteryService;
   final Future<SharedPreferences> _prefsFuture;
 
   static const List<String> _achievementIds = <String>[
@@ -84,6 +88,16 @@ class ParentProgressService {
     final totalMinutes = _totalSessionMinutes(prefs, userId);
     final weeklyNewWords = weeklyActivity.fold(0, (s, d) => s + d.words);
 
+    // ── SRS (spaced-repetition) data ────────────────────────────────────────
+    final dueWords =
+        await _wordMasteryService.getWordsDueForReview(userId: userId);
+    final wordsDueToday = dueWords.length;
+    final longestSrsStreak = dueWords.isEmpty
+        ? 0
+        : dueWords
+            .map((entry) => entry.mastery.srsStreak)
+            .reduce((a, b) => a > b ? a : b);
+
     return ParentDashboardStats(
       childName: childName,
       totalStars: totalStars,
@@ -103,6 +117,8 @@ class ParentProgressService {
       weakWords: weakWords,
       totalSessionMinutes: totalMinutes,
       weeklyNewWords: weeklyNewWords,
+      wordsDueToday: wordsDueToday,
+      longestSrsStreak: longestSrsStreak,
     );
   }
 
@@ -283,7 +299,9 @@ class ParentProgressService {
   // ---------------------------------------------------------------------------
 
   List<DailyActivity> _buildWeeklyActivity(
-      SharedPreferences prefs, String userId,) {
+    SharedPreferences prefs,
+    String userId,
+  ) {
     // Prefer SharedPreferences for synchronous access in this context.
     // SQLite reads happen async in recordSession and are the write-primary store.
     final key = '${_activityPrefix}_${_sanitize(userId)}';
@@ -365,11 +383,13 @@ class ParentProgressService {
       // Only include seen words with non-trivial mastery (has been reviewed).
       if (mastery <= 0.0 || mastery >= 0.8) continue;
 
-      results.add(WeakWord(
-        word: wordId.replaceAll('_', ' '),
-        masteryLevel: mastery,
-        levelName: levelNames[levelId] ?? levelId,
-      ),);
+      results.add(
+        WeakWord(
+          word: wordId.replaceAll('_', ' '),
+          masteryLevel: mastery,
+          levelName: levelNames[levelId] ?? levelId,
+        ),
+      );
     }
 
     results.sort((a, b) => a.masteryLevel.compareTo(b.masteryLevel));
@@ -381,8 +401,8 @@ class ParentProgressService {
     final raw = prefs.getString(key);
     if (raw == null) return 0;
     try {
-      final log = (jsonDecode(raw) as List<dynamic>)
-          .whereType<Map<String, dynamic>>();
+      final log =
+          (jsonDecode(raw) as List<dynamic>).whereType<Map<String, dynamic>>();
       return log.fold(0, (sum, e) => sum + ((e['minutes'] as int?) ?? 0));
     } catch (_) {
       return 0;

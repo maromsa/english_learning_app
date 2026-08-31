@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:english_learning_app/services/level_repository.dart';
 import 'package:english_learning_app/services/parent_progress_service.dart';
+import 'package:english_learning_app/services/word_mastery_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -109,6 +110,101 @@ void main() {
       expect(stats.achievementsUnlocked, 2);
       expect(stats.dailyMissionsCompleted, 1);
       expect(stats.dailyMissionsTotal, 2);
+    });
+
+    test('reports words due today and the longest due-word SRS streak',
+        () async {
+      const assetPath = 'assets/data/levels.json';
+      final bundle = _FakeBundle({
+        assetPath: '''
+{
+  "levels": [
+    {
+      "id": "fruits",
+      "name": "Fruits",
+      "words": [
+        {"word": "Apple"},
+        {"word": "Orange"}
+      ]
+    },
+    {
+      "id": "animals",
+      "name": "Animals",
+      "words": [
+        {"word": "Cat"}
+      ]
+    }
+  ]
+}
+''',
+      });
+
+      final wordMasteryService = WordMasteryService(prefs: prefs);
+      final now = DateTime.now();
+
+      // "Orange": a single 1-star grade -> streak 0, due since yesterday.
+      await wordMasteryService.recordPronunciationScore(
+        userId: 'child1',
+        levelId: 'fruits',
+        word: 'Orange',
+        stars: 1,
+        reviewedAt: now.subtract(const Duration(days: 2)),
+      );
+
+      // "Cat": two 3-star grades in a row -> streak 2, also due by now.
+      await wordMasteryService.recordPronunciationScore(
+        userId: 'child1',
+        levelId: 'animals',
+        word: 'Cat',
+        stars: 3,
+        reviewedAt: now.subtract(const Duration(days: 10)),
+      );
+      await wordMasteryService.recordPronunciationScore(
+        userId: 'child1',
+        levelId: 'animals',
+        word: 'Cat',
+        stars: 3,
+        reviewedAt: now.subtract(const Duration(days: 9)),
+      );
+
+      final service = ParentProgressService(
+        prefs: prefs,
+        levelRepository: LevelRepository(bundle: bundle),
+        levelProgressService: fakeLevelProgressService(),
+        wordMasteryService: wordMasteryService,
+      );
+
+      final stats = await service.loadStats(
+        userId: 'child1',
+        childName: 'Noa',
+        isLocalUser: false,
+      );
+
+      expect(stats.wordsDueToday, 2);
+      expect(stats.longestSrsStreak, 2);
+    });
+
+    test('reports zero SRS stats when nothing has ever been graded', () async {
+      const assetPath = 'assets/data/levels.json';
+      final bundle = _FakeBundle({
+        assetPath: '{"levels": []}',
+      });
+
+      final service = ParentProgressService(
+        prefs: prefs,
+        levelRepository: LevelRepository(bundle: bundle),
+        levelProgressService: fakeLevelProgressService(),
+        wordMasteryService: WordMasteryService(prefs: prefs),
+      );
+
+      final stats = await service.loadStats(
+        userId: 'child1',
+        childName: 'Noa',
+        isLocalUser: false,
+      );
+
+      expect(stats.wordsDueToday, 0);
+      expect(stats.longestSrsStreak, 0);
     });
   });
 }

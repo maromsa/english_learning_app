@@ -236,6 +236,8 @@ class SparkStrings {
   static const String parentDashboardWordsPracticed = 'מילים שתרגלו';
   static const String parentDashboardCoins = 'מטבעות';
   static const String parentDashboardAchievements = 'הישגים';
+  static const String parentDashboardWordsDueToday = 'מילים לחזרה היום';
+  static const String parentDashboardLongestStreak = 'רצף חזרות';
   static const String parentDashboardLevelsDone = 'שלבים שהושלמו';
   static const String parentDashboardWordsLabel = 'מילים באנגלית';
   static String parentDashboardWordsSubtitle(int done, int total) =>
