@@ -829,9 +829,16 @@ class _MyHomePageState extends State<MyHomePage> {
     if (!mounted) return;
 
     if (dueWords.isEmpty) {
+      final rewardClaimed =
+          await context.read<CoinProvider>().claimDailyPracticeReward();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('כל הכבוד! סיימת את האימון להיום'),
+        SnackBar(
+          content: Text(
+            rewardClaimed
+                ? 'אימון יומי הושלם! בונוס +50 מטבעות 🪙'
+                : 'כל הכבוד! סיימת את האימון להיום',
+          ),
         ),
       );
       return;

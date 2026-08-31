@@ -92,5 +92,39 @@ void main() {
       await newProvider.loadCoins();
       expect(newProvider.coins, 75);
     });
+
+    group('claimDailyPracticeReward', () {
+      test('adds exactly 50 coins and returns true on the first claim today',
+          () async {
+        final claimed = await coinProvider.claimDailyPracticeReward();
+
+        expect(claimed, isTrue);
+        expect(coinProvider.coins, CoinProvider.dailyPracticeRewardCoins);
+        expect(CoinProvider.dailyPracticeRewardCoins, 50);
+      });
+
+      test('returns false and adds no coins on a second claim the same day',
+          () async {
+        expect(await coinProvider.claimDailyPracticeReward(), isTrue);
+        expect(coinProvider.coins, 50);
+
+        expect(await coinProvider.claimDailyPracticeReward(), isFalse);
+        expect(coinProvider.coins, 50);
+      });
+
+      test('persists the claim date so a fresh provider sees it as claimed',
+          () async {
+        await coinProvider.claimDailyPracticeReward();
+
+        final reloaded = CoinProvider(
+          userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
+        );
+        await reloaded.loadCoins();
+
+        expect(await reloaded.claimDailyPracticeReward(), isFalse);
+        // Coins loaded from prefs (50), unchanged by the rejected re-claim.
+        expect(reloaded.coins, 50);
+      });
+    });
   });
 }

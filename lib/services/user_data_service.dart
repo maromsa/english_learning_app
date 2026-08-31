@@ -49,7 +49,8 @@ class UserDataService {
       await _playerDataDoc(playerData.userId)
           .set(data, SetOptions(merge: true));
       debugPrint(
-          'Player data saved successfully for user: ${playerData.userId}',);
+        'Player data saved successfully for user: ${playerData.userId}',
+      );
       return true;
     } catch (e) {
       debugPrint('Error saving player data: $e');
@@ -82,6 +83,21 @@ class UserDataService {
     return updatePlayerData(userId, {'coins': coins});
   }
 
+  /// Updates coins and the "אימון יומי" (Daily Practice) SRS-reward claim
+  /// date in a single write, so a claim's coin grant and its
+  /// "already claimed today" marker never land out of step with each other
+  /// across devices — see [CoinProvider.claimDailyPracticeReward].
+  Future<bool> updateCoinsAndDailyPracticeReward({
+    required String userId,
+    required int coins,
+    required String lastDailyPracticeRewardDate,
+  }) async {
+    return updatePlayerData(userId, {
+      'coins': coins,
+      'lastDailyPracticeRewardDate': lastDailyPracticeRewardDate,
+    });
+  }
+
   /// Add purchased item
   Future<bool> addPurchasedItem(String userId, String itemId) async {
     return addPurchasedItems(userId, [itemId]);
@@ -95,10 +111,13 @@ class UserDataService {
   Future<bool> addPurchasedItems(String userId, List<String> itemIds) async {
     if (itemIds.isEmpty) return true;
     try {
-      await _playerDataDoc(userId).set({
-        'purchasedItems': FieldValue.arrayUnion(itemIds),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true),);
+      await _playerDataDoc(userId).set(
+        {
+          'purchasedItems': FieldValue.arrayUnion(itemIds),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
       return true;
     } catch (e) {
       debugPrint('Error adding purchased items: $e');
@@ -109,10 +128,13 @@ class UserDataService {
   /// Unlock achievement
   Future<bool> unlockAchievement(String userId, String achievementId) async {
     try {
-      await _playerDataDoc(userId).set({
-        'achievements.$achievementId': true,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true),);
+      await _playerDataDoc(userId).set(
+        {
+          'achievements.$achievementId': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
       return true;
     } catch (e) {
       debugPrint('Error unlocking achievement: $e');
@@ -127,10 +149,13 @@ class UserDataService {
     LevelProgress progress,
   ) async {
     try {
-      await _playerDataDoc(userId).set({
-        'levelProgress.$levelId': progress.toMap(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true),);
+      await _playerDataDoc(userId).set(
+        {
+          'levelProgress.$levelId': progress.toMap(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
       return true;
     } catch (e) {
       debugPrint('Error updating level progress: $e');
@@ -207,13 +232,19 @@ class UserDataService {
   }
 
   /// Increment statistics
-  Future<bool> incrementStat(String userId, String statName,
-      {int amount = 1,}) async {
+  Future<bool> incrementStat(
+    String userId,
+    String statName, {
+    int amount = 1,
+  }) async {
     try {
-      await _playerDataDoc(userId).set({
-        statName: FieldValue.increment(amount),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true),);
+      await _playerDataDoc(userId).set(
+        {
+          statName: FieldValue.increment(amount),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
       return true;
     } catch (e) {
       debugPrint('Error incrementing stat $statName: $e');
@@ -223,12 +254,17 @@ class UserDataService {
 
   /// Update player character
   Future<bool> updateCharacter(
-      String userId, Map<String, dynamic> characterData,) async {
+    String userId,
+    Map<String, dynamic> characterData,
+  ) async {
     try {
-      await _playerDataDoc(userId).set({
-        'character': characterData,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true),);
+      await _playerDataDoc(userId).set(
+        {
+          'character': characterData,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
       return true;
     } catch (e) {
       debugPrint('Error updating character: $e');
@@ -274,6 +310,10 @@ class UserDataService {
                         .isAfter(localData.lastDailyRewardClaim!))
             ? cloudData.lastDailyRewardClaim
             : localData.lastDailyRewardClaim,
+        lastDailyPracticeRewardDate: _laterDayKey(
+          cloudData.lastDailyPracticeRewardDate,
+          localData.lastDailyPracticeRewardDate,
+        ),
         totalWordsCompleted:
             cloudData.totalWordsCompleted > localData.totalWordsCompleted
                 ? cloudData.totalWordsCompleted
@@ -295,5 +335,14 @@ class UserDataService {
       debugPrint('Error syncing with cloud: $e');
       return localData;
     }
+  }
+
+  /// Returns whichever `YYYY-MM-DD` day key is later (lexicographic
+  /// comparison is correct for this format), treating `null` as "no claim
+  /// yet" and always losing to a real date.
+  static String? _laterDayKey(String? a, String? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return a.compareTo(b) >= 0 ? a : b;
   }
 }

@@ -133,8 +133,7 @@ void main() {
         expect(doc.data()?['purchasedItems'], contains(item.id));
       });
 
-      test(
-          'loadCoins merges a local-only purchase into an existing cloud doc',
+      test('loadCoins merges a local-only purchase into an existing cloud doc',
           () async {
         await seedCloudDoc(coins: 0, purchasedItems: ['cloud_item']);
         final prefs = await SharedPreferences.getInstance();
@@ -177,6 +176,67 @@ void main() {
           prefs.getStringList('user_${uid}_owned_shop_items'),
           contains('other_device_item'),
         );
+      });
+    });
+
+    group('claimDailyPracticeReward', () {
+      test('adds exactly 50 coins and syncs the claim date to the cloud',
+          () async {
+        await seedCloudDoc(coins: 100);
+        await provider.loadCoins();
+
+        final claimed = await provider.claimDailyPracticeReward();
+
+        expect(claimed, isTrue);
+        expect(provider.coins, 150);
+
+        final doc = await cloudPlayerDoc();
+        expect(doc.data()?['coins'], 150);
+        expect(doc.data()?['lastDailyPracticeRewardDate'], isNotNull);
+      });
+
+      test('returns false and adds no coins on a second claim the same day',
+          () async {
+        await seedCloudDoc(coins: 100);
+        await provider.loadCoins();
+
+        expect(await provider.claimDailyPracticeReward(), isTrue);
+        expect(provider.coins, 150);
+
+        expect(await provider.claimDailyPracticeReward(), isFalse);
+        expect(provider.coins, 150);
+
+        final doc = await cloudPlayerDoc();
+        expect(doc.data()?['coins'], 150);
+      });
+
+      test(
+          'a claim synced from another device blocks a duplicate claim on '
+          'this one', () async {
+        // Simulate device A: claim already recorded in the cloud today,
+        // including the coin bonus it granted.
+        final today = DateTime.now();
+        final todayKey = '${today.year.toString().padLeft(4, '0')}-'
+            '${today.month.toString().padLeft(2, '0')}-'
+            '${today.day.toString().padLeft(2, '0')}';
+        await firestore
+            .collection('users')
+            .doc(uid)
+            .collection('gameData')
+            .doc('player')
+            .set({
+          'userId': uid,
+          'coins': 150,
+          'lastDailyPracticeRewardDate': todayKey,
+        });
+
+        // Device B loads fresh state and tries to claim too.
+        final claimed = await provider.loadCoins().then(
+              (_) => provider.claimDailyPracticeReward(),
+            );
+
+        expect(claimed, isFalse);
+        expect(provider.coins, 150); // No duplicate +50 from device B.
       });
     });
   });
