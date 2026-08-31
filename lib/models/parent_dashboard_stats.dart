@@ -59,13 +59,11 @@ class ParentDashboardStats {
   /// see `WordMasteryService.getWordsDueForReview`.
   final int wordsDueToday;
 
-  /// The highest consecutive-3-star SRS streak among words currently due
-  /// for review (0 when [wordsDueToday] is 0).
+  /// The highest consecutive-3-star SRS streak across every word the child
+  /// has ever graded — an all-time high-water mark, not scoped to
+  /// [wordsDueToday]. See `WordMasteryService.getHighestSrsStreak`.
   ///
-  /// Note this is scoped to *due* words, not every word ever graded — a
-  /// long-streak word gets a longer review interval and so spends most of
-  /// its time not due, meaning this number reflects the current review
-  /// batch rather than the child's all-time best streak.
+  /// 0 when the child has never been graded.
   final int longestSrsStreak;
 
   // ---------------------------------------------------------------------------
