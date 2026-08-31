@@ -812,6 +812,12 @@ class _MyHomePageState extends State<MyHomePage> {
   /// level — [LightningPracticeScreen] (like [ImageQuizScreen]) is built
   /// around a single level's [LevelProgressService] bookkeeping, and mixing
   /// levels here would attribute a review's completion to the wrong level.
+  ///
+  /// When the queue is already empty, this also claims the once-daily
+  /// [CoinProvider.claimDailyPracticeReward] — on a fresh claim it fires the
+  /// existing level-complete confetti/sound (reused, not duplicated) plus a
+  /// celebratory SnackBar; a same-day re-claim just shows the plain "well
+  /// done" message.
   Future<void> _startDailyPractice() async {
     final sessionProvider = context.read<UserSessionProvider>();
     final userId = sessionProvider.currentUserId;
@@ -832,6 +838,10 @@ class _MyHomePageState extends State<MyHomePage> {
       final rewardClaimed =
           await context.read<CoinProvider>().claimDailyPracticeReward();
       if (!mounted) return;
+      if (rewardClaimed) {
+        _soundService.playSuccessSound();
+        _confettiController.play();
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
