@@ -13,6 +13,7 @@ class PlayerData {
     this.levelProgress = const {},
     this.dailyStreak = 0,
     this.lastDailyRewardClaim,
+    this.lastDailyPracticeRewardDate,
     this.totalWordsCompleted = 0,
     this.totalQuizzesPlayed = 0,
     this.bestQuizStreak = 0,
@@ -69,6 +70,8 @@ class PlayerData {
       levelProgress: levelProgress,
       dailyStreak: data['dailyStreak'] as int? ?? 0,
       lastDailyRewardClaim: toDate(data['lastDailyRewardClaim']),
+      lastDailyPracticeRewardDate:
+          data['lastDailyPracticeRewardDate'] as String?,
       totalWordsCompleted: data['totalWordsCompleted'] as int? ?? 0,
       totalQuizzesPlayed: data['totalQuizzesPlayed'] as int? ?? 0,
       bestQuizStreak: data['bestQuizStreak'] as int? ?? 0,
@@ -85,6 +88,13 @@ class PlayerData {
   final Map<String, LevelProgress> levelProgress; // levelId -> progress
   final int dailyStreak;
   final DateTime? lastDailyRewardClaim;
+
+  /// Calendar day (`YYYY-MM-DD`, device-local) the "אימון יומי" (Daily
+  /// Practice) SRS-review reward was last claimed on. Distinct from
+  /// [lastDailyRewardClaim], which belongs to the unrelated daily-login
+  /// streak reward.
+  final String? lastDailyPracticeRewardDate;
+
   final int totalWordsCompleted;
   final int totalQuizzesPlayed;
   final int bestQuizStreak;
@@ -106,6 +116,8 @@ class PlayerData {
       'dailyStreak': dailyStreak,
       if (lastDailyRewardClaim != null)
         'lastDailyRewardClaim': Timestamp.fromDate(lastDailyRewardClaim!),
+      if (lastDailyPracticeRewardDate != null)
+        'lastDailyPracticeRewardDate': lastDailyPracticeRewardDate,
       'totalWordsCompleted': totalWordsCompleted,
       'totalQuizzesPlayed': totalQuizzesPlayed,
       'bestQuizStreak': bestQuizStreak,
@@ -123,6 +135,7 @@ class PlayerData {
     Map<String, LevelProgress>? levelProgress,
     int? dailyStreak,
     DateTime? lastDailyRewardClaim,
+    String? lastDailyPracticeRewardDate,
     int? totalWordsCompleted,
     int? totalQuizzesPlayed,
     int? bestQuizStreak,
@@ -138,6 +151,8 @@ class PlayerData {
       levelProgress: levelProgress ?? this.levelProgress,
       dailyStreak: dailyStreak ?? this.dailyStreak,
       lastDailyRewardClaim: lastDailyRewardClaim ?? this.lastDailyRewardClaim,
+      lastDailyPracticeRewardDate:
+          lastDailyPracticeRewardDate ?? this.lastDailyPracticeRewardDate,
       totalWordsCompleted: totalWordsCompleted ?? this.totalWordsCompleted,
       totalQuizzesPlayed: totalQuizzesPlayed ?? this.totalQuizzesPlayed,
       bestQuizStreak: bestQuizStreak ?? this.bestQuizStreak,

@@ -24,6 +24,36 @@ class LocalUserDataService {
     }
   }
 
+  /// Get the calendar day (`YYYY-MM-DD`) the Daily Practice reward was last
+  /// claimed on for a user, or `null` if never claimed.
+  Future<String?> getLastDailyPracticeRewardDate(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('user_${userId}_daily_practice_reward_date');
+    } catch (e) {
+      debugPrint(
+        'Error loading daily practice reward date for user $userId: $e',
+      );
+      return null;
+    }
+  }
+
+  /// Save the calendar day (`YYYY-MM-DD`) the Daily Practice reward was
+  /// claimed on for a user.
+  Future<void> saveLastDailyPracticeRewardDate(
+    String userId,
+    String date,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_${userId}_daily_practice_reward_date', date);
+    } catch (e) {
+      debugPrint(
+        'Error saving daily practice reward date for user $userId: $e',
+      );
+    }
+  }
+
   /// Get stars for a specific level and user
   Future<int> getLevelStars(String userId, String levelId) async {
     try {

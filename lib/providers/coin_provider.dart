@@ -22,7 +22,16 @@ class CoinProvider with ChangeNotifier {
   bool _isLocalUser = false;
   bool _pendingCloudSync = false;
   bool _pendingItemsCloudSync = false;
+  bool _pendingDailyRewardCloudSync = false;
   final List<String> _ownedShopItemIds = [];
+
+  /// Coins granted for clearing "אימון יומי" (Daily Practice)'s SRS review
+  /// queue once per calendar day.
+  static const int dailyPracticeRewardCoins = 50;
+
+  /// Calendar day (`YYYY-MM-DD`, device-local) the Daily Practice reward was
+  /// last claimed on, or `null` if never claimed.
+  String? _lastDailyPracticeRewardDate;
 
   Future<SharedPreferences> get _sharedPrefs async =>
       _prefs ??= await SharedPreferences.getInstance();
@@ -78,6 +87,20 @@ class CoinProvider with ChangeNotifier {
       }
       _pendingItemsCloudSync = !synced;
     }
+
+    if (_pendingDailyRewardCloudSync && _lastDailyPracticeRewardDate != null) {
+      final synced = await _userDataService.updateCoinsAndDailyPracticeReward(
+        userId: _currentUserId!,
+        coins: _coins,
+        lastDailyPracticeRewardDate: _lastDailyPracticeRewardDate!,
+      );
+      if (!synced) {
+        debugPrint(
+          'Cloud daily-practice-reward sync retry failed, will retry later',
+        );
+      }
+      _pendingDailyRewardCloudSync = !synced;
+    }
   }
 
   Future<void> loadCoins() async {
@@ -86,6 +109,9 @@ class CoinProvider with ChangeNotifier {
         // Fallback to global coins if no user is set
         final prefs = await _sharedPrefs;
         _coins = prefs.getInt('totalCoins') ?? 0;
+        _lastDailyPracticeRewardDate = prefs.getString(
+          'dailyPracticeRewardDate',
+        );
         _ownedShopItemIds.clear();
         _ownedShopItemIds.addAll(
           prefs.getStringList('owned_shop_items') ?? [],
@@ -96,6 +122,8 @@ class CoinProvider with ChangeNotifier {
 
       if (_isLocalUser) {
         _coins = await _localUserDataService.getCoins(_currentUserId!);
+        _lastDailyPracticeRewardDate = await _localUserDataService
+            .getLastDailyPracticeRewardDate(_currentUserId!);
         _ownedShopItemIds.clear();
         _ownedShopItemIds.addAll(
           await _localUserDataService.getPurchasedItems(_currentUserId!),
@@ -110,11 +138,17 @@ class CoinProvider with ChangeNotifier {
         final localItems =
             prefs.getStringList('user_${_currentUserId}_owned_shop_items') ??
                 [];
+        final localRewardDate = prefs.getString(
+          'user_${_currentUserId}_daily_practice_reward_date',
+        );
 
-        // One load covers both coins and owned items; only fetch it if at
-        // least one of the two isn't sitting on an unsynced local write.
+        // One load covers coins, owned items, and the reward date; only
+        // fetch it if at least one of the three isn't sitting on an
+        // unsynced local write.
         PlayerData? playerData;
-        if (!_pendingCloudSync || !_pendingItemsCloudSync) {
+        if (!_pendingCloudSync ||
+            !_pendingItemsCloudSync ||
+            !_pendingDailyRewardCloudSync) {
           playerData = await _userDataService.loadPlayerData(_currentUserId!);
         }
 
@@ -125,6 +159,23 @@ class CoinProvider with ChangeNotifier {
           await prefs.setInt('user_${_currentUserId}_coins', _coins);
         } else {
           _coins = localCoins;
+        }
+
+        // The reward date is a single scalar tied 1:1 to a specific claim
+        // (unlike coins, which accumulate) — same cloud-wins-unless-pending
+        // rule keeps a claim on device A from being "forgotten" by device B.
+        if (_pendingDailyRewardCloudSync) {
+          _lastDailyPracticeRewardDate = localRewardDate;
+        } else if (playerData != null) {
+          _lastDailyPracticeRewardDate = playerData.lastDailyPracticeRewardDate;
+          if (_lastDailyPracticeRewardDate != null) {
+            await prefs.setString(
+              'user_${_currentUserId}_daily_practice_reward_date',
+              _lastDailyPracticeRewardDate!,
+            );
+          }
+        } else {
+          _lastDailyPracticeRewardDate = localRewardDate;
         }
 
         _ownedShopItemIds.clear();
@@ -262,6 +313,97 @@ class CoinProvider with ChangeNotifier {
     }
   }
 
+  /// Rewards the child once per calendar day (device-local "today") for
+  /// clearing "אימון יומי" (Daily Practice)'s SRS review queue — see
+  /// `_MyHomePageState._startDailyPractice` in home_page.dart.
+  ///
+  /// Returns `true` and adds [dailyPracticeRewardCoins] coins when this is
+  /// the first claim today; returns `false` (no coins added) if the reward
+  /// was already claimed today.
+  Future<bool> claimDailyPracticeReward() async {
+    final today = _dateKey(DateTime.now());
+    if (_lastDailyPracticeRewardDate == today) {
+      return false;
+    }
+
+    final previousCoins = _coins;
+    final previousDate = _lastDailyPracticeRewardDate;
+    _coins += dailyPracticeRewardCoins;
+    _lastDailyPracticeRewardDate = today;
+    _notify();
+
+    await _saveDailyPracticeReward(
+      previousCoins: previousCoins,
+      previousDate: previousDate,
+    );
+    return true;
+  }
+
+  /// Persists a claimed Daily Practice reward: [_coins] and
+  /// [_lastDailyPracticeRewardDate] together, locally first then (for
+  /// Firebase users) a single combined cloud write — so the coin grant and
+  /// its "already claimed today" marker never land out of step with each
+  /// other. On a hard local-save failure both are rolled back.
+  Future<void> _saveDailyPracticeReward({
+    required int previousCoins,
+    required String? previousDate,
+  }) async {
+    try {
+      if (_currentUserId == null) {
+        final prefs = await _sharedPrefs;
+        await prefs.setInt('totalCoins', _coins);
+        await prefs.setString(
+          'dailyPracticeRewardDate',
+          _lastDailyPracticeRewardDate!,
+        );
+        return;
+      }
+
+      if (_isLocalUser) {
+        await _localUserDataService.saveCoins(_currentUserId!, _coins);
+        await _localUserDataService.saveLastDailyPracticeRewardDate(
+          _currentUserId!,
+          _lastDailyPracticeRewardDate!,
+        );
+        return;
+      }
+
+      // Firebase user: persist locally first, then cloud (defer on failure).
+      final prefs = await _sharedPrefs;
+      await prefs.setInt('user_${_currentUserId}_coins', _coins);
+      await prefs.setString(
+        'user_${_currentUserId}_daily_practice_reward_date',
+        _lastDailyPracticeRewardDate!,
+      );
+
+      final synced = await _userDataService.updateCoinsAndDailyPracticeReward(
+        userId: _currentUserId!,
+        coins: _coins,
+        lastDailyPracticeRewardDate: _lastDailyPracticeRewardDate!,
+      );
+      if (!synced) {
+        debugPrint(
+          'Cloud daily-practice-reward sync deferred, will retry later',
+        );
+      }
+      _pendingDailyRewardCloudSync = !synced;
+    } catch (e) {
+      debugPrint(
+        'Critical: daily practice reward save failed, rolling back: $e',
+      );
+      _coins = previousCoins;
+      _lastDailyPracticeRewardDate = previousDate;
+      _notify();
+    }
+  }
+
+  /// Device-local calendar-day key (`YYYY-MM-DD`) for [date] — used instead
+  /// of a raw 24h `Duration` comparison so DST-transition days (23/25-hour
+  /// days) can't cause a false "already claimed" or "not claimed yet".
+  String _dateKey(DateTime date) => '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
+
   /// Purchase a shop item: deducts coins and marks the item as owned.
   /// Returns true if the purchase succeeded (or item was already owned).
   Future<bool> purchaseItem(ShopItem item) async {
@@ -351,5 +493,4 @@ class CoinProvider with ChangeNotifier {
     _disposed = true;
     super.dispose();
   }
-
 }
