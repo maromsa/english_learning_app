@@ -22,7 +22,6 @@ import 'package:english_learning_app/screens/scavenger_hunt_screen.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
-import 'package:english_learning_app/services/daily_reward_service.dart';
 import 'package:english_learning_app/services/gemini_proxy_service.dart';
 import 'package:english_learning_app/services/level_progress_service.dart';
 import 'package:english_learning_app/services/sound_service.dart';
@@ -101,10 +100,6 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isListening = false;
   String _feedbackText = SparkStrings.micPrompt;
   int _streak = 0;
-  /// Child's current daily-practice streak (🔥), shown in the top stats row.
-  /// Sourced from [DailyRewardService.getCurrentStreak] — the same value the
-  /// parent dashboard reads.
-  int _dailyStreak = 0;
   bool _isEvaluating = false;
   // AI features are always enabled since geminiProxyEndpoint always returns a valid endpoint
   Uri get proxyEndpoint => AppConfig.geminiProxyEndpoint;
@@ -138,7 +133,6 @@ class _MyHomePageState extends State<MyHomePage> {
       duration: const Duration(seconds: 1),
     );
     _words = widget.wordsForLevel;
-    unawaited(_loadDailyStreak());
     _initializeServices().then((_) async {
       // Load progress after services are initialized
       await _loadLevelProgress();
@@ -848,6 +842,15 @@ class _MyHomePageState extends State<MyHomePage> {
       if (rewardClaimed) {
         _soundService.playSuccessSound();
         _confettiController.play();
+        // Claiming the reward also advanced the 🔥 daily streak (see
+        // CoinProvider.claimDailyPracticeReward) — surface any daily-streak
+        // achievements it just unlocked.
+        unawaited(
+          context.read<AchievementService>().checkForAchievements(
+                streak: 0,
+                dailyStreak: context.read<CoinProvider>().dailyStreak,
+              ),
+        );
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1074,7 +1077,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               children: [
                                 _CoinBadge(coins: coinProvider.coins),
                                 const SizedBox(width: 8),
-                                StreakBadge(streak: _dailyStreak),
+                                StreakBadge(streak: coinProvider.dailyStreak),
                               ],
                             ),
                             // Segmented Progress
@@ -1231,21 +1234,6 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   /// Load saved progress for words in this level
-  /// Fetches the child's current daily streak for the [StreakBadge] in the
-  /// top stats row. Best-effort: a failure just leaves the badge at 0.
-  Future<void> _loadDailyStreak() async {
-    try {
-      final userId = context.read<UserSessionProvider>().currentUserId;
-      final streak = await (DailyRewardService()..setUserId(userId))
-          .getCurrentStreak();
-      if (mounted) {
-        setState(() => _dailyStreak = streak);
-      }
-    } catch (e) {
-      debugPrint('Error loading daily streak: $e');
-    }
-  }
-
   Future<void> _loadLevelProgress() async {
     try {
       debugPrint('=== Loading Level Progress ===');

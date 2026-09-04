@@ -1,5 +1,6 @@
 // test/providers/coin_provider_test.dart
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/services/daily_reward_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -101,6 +102,73 @@ void main() {
         expect(claimed, isTrue);
         expect(coinProvider.coins, CoinProvider.dailyPracticeRewardCoins);
         expect(CoinProvider.dailyPracticeRewardCoins, 50);
+      });
+
+      test('the first claim of the day also starts the daily streak at 1',
+          () async {
+        expect(coinProvider.dailyStreak, 0);
+
+        await coinProvider.claimDailyPracticeReward();
+
+        expect(coinProvider.dailyStreak, 1);
+      });
+
+      test('a consecutive-day claim advances the daily streak', () async {
+        final yesterday = DateTime(2024, 1, 1);
+        final today = DateTime(2024, 1, 2);
+        SharedPreferences.setMockInitialValues({
+          'daily_reward_last_claim': yesterday.millisecondsSinceEpoch,
+          'daily_reward_streak': 4,
+        });
+        final provider = CoinProvider(
+          userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
+          dailyRewardService: DailyRewardService(now: () => today),
+        );
+        await provider.loadCoins();
+        expect(provider.dailyStreak, 4);
+
+        final claimed = await provider.claimDailyPracticeReward();
+
+        expect(claimed, isTrue);
+        expect(provider.dailyStreak, 5);
+      });
+
+      test('a claim after a missed day resets the daily streak to 1', () async {
+        final threeDaysAgo = DateTime(2024, 1, 1);
+        final today = DateTime(2024, 1, 4);
+        SharedPreferences.setMockInitialValues({
+          'daily_reward_last_claim': threeDaysAgo.millisecondsSinceEpoch,
+          'daily_reward_streak': 9,
+        });
+        final provider = CoinProvider(
+          userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
+          dailyRewardService: DailyRewardService(now: () => today),
+        );
+        await provider.loadCoins();
+        expect(provider.dailyStreak, 9);
+
+        await provider.claimDailyPracticeReward();
+
+        expect(provider.dailyStreak, 1);
+      });
+
+      test('a rejected same-day re-claim leaves the streak untouched', () async {
+        await coinProvider.claimDailyPracticeReward();
+        expect(coinProvider.dailyStreak, 1);
+
+        expect(await coinProvider.claimDailyPracticeReward(), isFalse);
+        expect(coinProvider.dailyStreak, 1);
+      });
+
+      test('loadCoins surfaces a persisted daily streak', () async {
+        SharedPreferences.setMockInitialValues({'daily_reward_streak': 6});
+        final provider = CoinProvider(
+          userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
+        );
+
+        await provider.loadCoins();
+
+        expect(provider.dailyStreak, 6);
       });
 
       test('returns false and adds no coins on a second claim the same day',

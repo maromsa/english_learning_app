@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/player_data.dart';
 import '../models/shop_item.dart';
+import '../services/daily_reward_service.dart';
 import '../services/local_user_data_service.dart';
 import '../services/user_data_service.dart';
 
@@ -10,13 +11,25 @@ class CoinProvider with ChangeNotifier {
   CoinProvider({
     UserDataService? userDataService,
     LocalUserDataService? localUserDataService,
+    DailyRewardService? dailyRewardService,
   })  : _userDataService = userDataService ?? UserDataService(),
-        _localUserDataService = localUserDataService ?? LocalUserDataService();
+        _localUserDataService = localUserDataService ?? LocalUserDataService(),
+        _dailyRewardService = dailyRewardService ?? DailyRewardService();
 
   final UserDataService _userDataService;
   final LocalUserDataService _localUserDataService;
+
+  /// Drives the 🔥 daily streak. Clearing the Daily Practice queue is the
+  /// child's once-a-day engagement signal, so [claimDailyPracticeReward]
+  /// advances this in lockstep with the 50-coin grant.
+  ///
+  /// (No [StreakShieldService] is wired in here — matching the other
+  /// non-map creation sites — because shield-granting isn't hooked up yet.)
+  final DailyRewardService _dailyRewardService;
+
   SharedPreferences? _prefs;
   int _coins = 0;
+  int _dailyStreak = 0;
   int _coinsAtLevelStart = 0;
   String? _currentUserId;
   bool _isLocalUser = false;
@@ -44,6 +57,10 @@ class CoinProvider with ChangeNotifier {
 
   int get coins => _coins;
 
+  /// Current daily-practice streak (🔥), shown by the home-screen `StreakBadge`.
+  /// Refreshed by [loadCoins] and advanced by [claimDailyPracticeReward].
+  int get dailyStreak => _dailyStreak;
+
   /// Number of shop items owned (for Map Builder achievement).
   int get ownedShopItemsCount => _ownedShopItemIds.length;
 
@@ -56,6 +73,17 @@ class CoinProvider with ChangeNotifier {
   void setUserId(String? userId, {bool isLocalUser = false}) {
     _currentUserId = userId;
     _isLocalUser = isLocalUser;
+    _dailyRewardService.setUserId(userId);
+  }
+
+  /// Re-reads the persisted daily streak into [_dailyStreak]. Best-effort:
+  /// a read failure just leaves the last known value in place.
+  Future<void> _refreshDailyStreak() async {
+    try {
+      _dailyStreak = await _dailyRewardService.getCurrentStreak();
+    } catch (e) {
+      debugPrint('Error loading daily streak: $e');
+    }
   }
 
   /// Retries deferred Firestore writes (coins and/or owned shop items)
@@ -116,6 +144,7 @@ class CoinProvider with ChangeNotifier {
         _ownedShopItemIds.addAll(
           prefs.getStringList('owned_shop_items') ?? [],
         );
+        await _refreshDailyStreak();
         _notify();
         return;
       }
@@ -211,6 +240,7 @@ class CoinProvider with ChangeNotifier {
 
         await flushPendingCloudSync();
       }
+      await _refreshDailyStreak();
       _notify();
     } catch (e) {
       debugPrint('Error loading coins: $e');
@@ -336,6 +366,26 @@ class CoinProvider with ChangeNotifier {
       previousCoins: previousCoins,
       previousDate: previousDate,
     );
+
+    // A hard local-save failure rolls the claim back — don't advance the
+    // streak for a claim that didn't stick.
+    if (_lastDailyPracticeRewardDate != today) {
+      return false;
+    }
+
+    // Clearing the Daily Practice queue is the child's once-a-day engagement
+    // signal, so it also advances the 🔥 daily streak. claimReward() owns the
+    // consecutive-day / reset / shield logic; only its streak side effect is
+    // used here — the 50-coin grant above is the Daily Practice reward, not
+    // claimReward()'s own (unused) coin payout.
+    try {
+      final streakResult = await _dailyRewardService.claimReward();
+      _dailyStreak = streakResult.streak;
+      _notify();
+    } catch (e) {
+      debugPrint('Daily streak increment failed: $e');
+    }
+
     return true;
   }
 

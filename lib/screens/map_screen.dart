@@ -22,9 +22,7 @@ import 'package:webview_flutter_android/webview_flutter_android.dart'
     show AndroidWebViewController;
 
 import '../providers/user_session_provider.dart';
-import '../services/achievement_service.dart';
 import '../services/background_music_service.dart';
-import '../services/daily_reward_service.dart';
 import '../services/level_progress_service.dart';
 import '../services/level_repository.dart';
 import '../services/local_user_data_service.dart';
@@ -79,7 +77,6 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen>
     with SingleTickerProviderStateMixin, RouteAware {
   List<LevelData> levels = [];
-  late final DailyRewardService _dailyRewardService;
   late final LevelRepository _levelRepository;
   late final LocalUserDataService _localUserDataService;
   final LevelProgressService _levelProgressService = LevelProgressService();
@@ -118,8 +115,6 @@ class _MapScreenState extends State<MapScreen>
   @override
   void initState() {
     super.initState();
-    final shieldService = context.read<StreakShieldService>();
-    _dailyRewardService = DailyRewardService(shieldService: shieldService);
     _levelRepository = LevelRepository();
     _localUserDataService = LocalUserDataService();
 
@@ -980,49 +975,6 @@ class _MapScreenState extends State<MapScreen>
             ),
           ),
           backgroundColor: Colors.orange.shade700,
-        ),
-      );
-    }
-  }
-
-  // ignore: unused_element
-  Future<void> _claimDailyReward() async {
-    final result = await _dailyRewardService.claimReward();
-    if (!mounted) {
-      return;
-    }
-
-    if (result.claimed) {
-      await Provider.of<CoinProvider>(
-        context,
-        listen: false,
-      ).addCoins(result.reward);
-      if (mounted) {
-        try {
-          unawaited(
-            context.read<AchievementService>().checkForAchievements(
-                  streak: 0,
-                  dailyStreak: result.streak,
-                ),
-          );
-        } catch (_) {}
-        final shieldMsg =
-            result.shieldUsed ? ' 🛡️ המגן הגן על הרצף שלך!' : '';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '🎁 קיבלת ${result.reward} מטבעות! רצף יומי: ${result.streak}$shieldMsg',
-            ),
-            backgroundColor:
-                result.shieldUsed ? Colors.blue.shade600 : Colors.green.shade600,
-          ),
-        );
-      }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('כבר אספת את המתנה היום! רצף יומי: ${result.streak}'),
-          backgroundColor: Colors.orange.shade600,
         ),
       );
     }
