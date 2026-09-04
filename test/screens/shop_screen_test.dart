@@ -10,6 +10,7 @@ import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/sound_service.dart';
+import 'package:english_learning_app/services/streak_shield_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -20,11 +21,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 const _goldFrameId = 'gold_sticker_frame';
 const _goldFrameName = 'מסגרת זהב למדבקות'; // cost: 100
 const _sparkHatName = 'כובע לספארק'; // cost: 250
+const _streakShieldName = 'מגן רצף'; // cost: 150, consumable
 
-Future<CoinProvider> _pumpShop(WidgetTester tester, {required int coins}) async {
+Future<CoinProvider> _pumpShop(
+  WidgetTester tester, {
+  required int coins,
+  StreakShieldService? shieldService,
+}) async {
   SharedPreferences.setMockInitialValues({});
+  final shield = shieldService ?? StreakShieldService();
   final coinProvider = CoinProvider(
     userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
+    streakShieldService: shield,
   );
   await coinProvider.setCoins(coins);
 
@@ -32,6 +40,7 @@ Future<CoinProvider> _pumpShop(WidgetTester tester, {required int coins}) async 
     MultiProvider(
       providers: [
         ChangeNotifierProvider<CoinProvider>.value(value: coinProvider),
+        ChangeNotifierProvider<StreakShieldService>.value(value: shield),
         // Purchase success runs Celebration.fire, which reads both of these.
         Provider<SoundService>.value(value: SoundService()),
         ChangeNotifierProvider<SparkOverlayController>(
@@ -113,6 +122,42 @@ void main() {
     await tester.tap(find.text(_goldFrameName));
     await tester.pumpAndSettle();
 
+    expect(find.text('כבר בבעלותך'), findsOneWidget);
+    expect(find.textContaining('קנה עכשיו'), findsNothing);
+  });
+
+  testWidgets(
+      'buying "מגן רצף" grants a shield via the service, costs 150, stays out '
+      'of the cosmetic list, and the card then reads as owned', (tester) async {
+    final shield = StreakShieldService();
+    final coinProvider =
+        await _pumpShop(tester, coins: 300, shieldService: shield);
+
+    final shieldItem = ShopItem.defaultCatalog
+        .firstWhere((i) => i.id == ShopItem.streakShieldId);
+    final ok = await coinProvider.purchaseItem(shieldItem);
+    await tester.pumpAndSettle();
+
+    expect(ok, isTrue);
+    expect(coinProvider.coins, 150);
+    expect(shield.hasShield, isTrue);
+    // Consumable — never enters the cosmetic list.
+    expect(coinProvider.ownedShopItemsCount, 0);
+
+    // Narrow to upgrades, bring the card on-screen, and confirm the shop now
+    // reflects it as owned (via context.watch<StreakShieldService>()).
+    await tester.tap(find.text('שדרוגים'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text(_streakShieldName),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.ensureVisible(find.text(_streakShieldName));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(_streakShieldName));
+    await tester.pumpAndSettle();
     expect(find.text('כבר בבעלותך'), findsOneWidget);
     expect(find.textContaining('קנה עכשיו'), findsNothing);
   });

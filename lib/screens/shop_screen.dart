@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../models/shop_item.dart';
 import '../providers/coin_provider.dart';
+import '../services/streak_shield_service.dart';
 import '../utils/app_theme.dart';
 import '../widgets/ui/_barrel.dart';
 
@@ -95,6 +96,9 @@ class _ShopScreenState extends State<ShopScreen>
   @override
   Widget build(BuildContext context) {
     final coinProvider = Provider.of<CoinProvider>(context);
+    // Depend on the shield service too: buying or consuming "מגן רצף" flips
+    // coinProvider.isOwned(streakShieldId), and its card must re-render.
+    context.watch<StreakShieldService>();
     final items = _filteredItems();
 
     return Scaffold(

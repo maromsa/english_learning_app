@@ -94,17 +94,19 @@ Future<void> main() async {
   final bool hasSeenOnboarding = prefs.getBool('onboarding_seen') ?? false;
 
   // Initialize providers with persistence (Spark and AchievementService need refs)
-  final coinProvider = CoinProvider();
+  final streakShieldService = StreakShieldService();
+  await streakShieldService.initialize().catchError((e) {
+    debugPrint('StreakShieldService init error: $e');
+  });
+  // CoinProvider owns the shop purchase flow, so it needs the shield service
+  // to grant "מגן רצף" and to protect the daily streak.
+  final coinProvider = CoinProvider(streakShieldService: streakShieldService);
   final themeProvider = ThemeProvider();
   final sparkOverlayController = SparkOverlayController();
   final achievementService = AchievementService(
     coinProvider: coinProvider,
     sparkOverlayController: sparkOverlayController,
   );
-  final streakShieldService = StreakShieldService();
-  await streakShieldService.initialize().catchError((e) {
-    debugPrint('StreakShieldService init error: $e');
-  });
   final characterProvider = CharacterProvider();
   final telemetryService = TelemetryService();
   final dailyMissionProvider = DailyMissionProvider();

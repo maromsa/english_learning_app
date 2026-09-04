@@ -5,27 +5,35 @@ import '../models/player_data.dart';
 import '../models/shop_item.dart';
 import '../services/daily_reward_service.dart';
 import '../services/local_user_data_service.dart';
+import '../services/streak_shield_service.dart';
 import '../services/user_data_service.dart';
 
 class CoinProvider with ChangeNotifier {
   CoinProvider({
     UserDataService? userDataService,
     LocalUserDataService? localUserDataService,
+    StreakShieldService? streakShieldService,
     DailyRewardService? dailyRewardService,
   })  : _userDataService = userDataService ?? UserDataService(),
         _localUserDataService = localUserDataService ?? LocalUserDataService(),
-        _dailyRewardService = dailyRewardService ?? DailyRewardService();
+        _streakShieldService = streakShieldService ?? StreakShieldService() {
+    // The streak service gets the shield so a purchased "מגן רצף" actually
+    // absorbs a missed day before the 🔥 streak resets.
+    _dailyRewardService = dailyRewardService ??
+        DailyRewardService(shieldService: _streakShieldService);
+  }
 
   final UserDataService _userDataService;
   final LocalUserDataService _localUserDataService;
 
+  /// One-use consumable sold in the shop as "מגן רצף" — see
+  /// [purchaseItem] and [ShopItem.streakShieldId].
+  final StreakShieldService _streakShieldService;
+
   /// Drives the 🔥 daily streak. Clearing the Daily Practice queue is the
   /// child's once-a-day engagement signal, so [claimDailyPracticeReward]
   /// advances this in lockstep with the 50-coin grant.
-  ///
-  /// (No [StreakShieldService] is wired in here — matching the other
-  /// non-map creation sites — because shield-granting isn't hooked up yet.)
-  final DailyRewardService _dailyRewardService;
+  late final DailyRewardService _dailyRewardService;
 
   SharedPreferences? _prefs;
   int _coins = 0;
@@ -64,8 +72,18 @@ class CoinProvider with ChangeNotifier {
   /// Number of shop items owned (for Map Builder achievement).
   int get ownedShopItemsCount => _ownedShopItemIds.length;
 
-  /// Whether the user owns the shop item with [shopItemId].
-  bool isOwned(String shopItemId) => _ownedShopItemIds.contains(shopItemId);
+  /// Whether the user "owns" the shop item with [shopItemId].
+  ///
+  /// The streak shield ([ShopItem.streakShieldId]) is a consumable, not a
+  /// cosmetic — it never enters [_ownedShopItemIds], so "owned" for it means
+  /// "currently holding one" (the shop uses this to block a wasteful re-buy).
+  bool isOwned(String shopItemId) {
+    if (shopItemId == ShopItem.streakShieldId) {
+      return _streakShieldService.hasShield;
+    }
+    return _ownedShopItemIds.contains(shopItemId);
+  }
+
   int get levelCoins => _coins - _coinsAtLevelStart;
 
   /// Set the current user ID for cloud sync
@@ -74,6 +92,7 @@ class CoinProvider with ChangeNotifier {
     _currentUserId = userId;
     _isLocalUser = isLocalUser;
     _dailyRewardService.setUserId(userId);
+    _streakShieldService.setUserId(userId);
   }
 
   /// Re-reads the persisted daily streak into [_dailyStreak]. Best-effort:
@@ -457,6 +476,11 @@ class CoinProvider with ChangeNotifier {
   /// Purchase a shop item: deducts coins and marks the item as owned.
   /// Returns true if the purchase succeeded (or item was already owned).
   Future<bool> purchaseItem(ShopItem item) async {
+    // The streak shield is a consumable — it's granted through
+    // StreakShieldService, never added to the cosmetic [_ownedShopItemIds].
+    if (item.id == ShopItem.streakShieldId) {
+      return _purchaseStreakShield(item);
+    }
     if (_ownedShopItemIds.contains(item.id)) {
       return true;
     }
@@ -467,6 +491,23 @@ class CoinProvider with ChangeNotifier {
     if (success) {
       _ownedShopItemIds.add(item.id);
       await _saveOwnedItems();
+      _notify();
+    }
+    return success;
+  }
+
+  /// Buys one streak shield: deducts [item.cost] coins and grants the shield
+  /// natively via [StreakShieldService]. Returns false (no charge) if the
+  /// child already holds a shield ([StreakShieldService] caps it at one) or
+  /// can't afford it.
+  Future<bool> _purchaseStreakShield(ShopItem item) async {
+    await _streakShieldService.initialize();
+    if (_streakShieldService.hasShield || _coins < item.cost) {
+      return false;
+    }
+    final success = await spendCoins(item.cost);
+    if (success) {
+      await _streakShieldService.grantShield();
       _notify();
     }
     return success;
