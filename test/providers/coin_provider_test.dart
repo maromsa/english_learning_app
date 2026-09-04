@@ -1,6 +1,8 @@
 // test/providers/coin_provider_test.dart
+import 'package:english_learning_app/models/shop_item.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/services/daily_reward_service.dart';
+import 'package:english_learning_app/services/streak_shield_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -192,6 +194,96 @@ void main() {
         expect(await reloaded.claimDailyPracticeReward(), isFalse);
         // Coins loaded from prefs (50), unchanged by the rejected re-claim.
         expect(reloaded.coins, 50);
+      });
+    });
+
+    group('streak shield purchase', () {
+      final shieldItem = ShopItem.defaultCatalog
+          .firstWhere((i) => i.id == ShopItem.streakShieldId);
+
+      CoinProvider buildProvider(StreakShieldService shield) => CoinProvider(
+            userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
+            streakShieldService: shield,
+          );
+
+      test('costs exactly 150 coins and grants the shield natively', () async {
+        final shield = StreakShieldService();
+        final provider = buildProvider(shield);
+        await provider.setCoins(200);
+
+        final ok = await provider.purchaseItem(shieldItem);
+
+        expect(ok, isTrue);
+        expect(shieldItem.cost, 150);
+        expect(provider.coins, 50);
+        expect(shield.hasShield, isTrue);
+      });
+
+      test('does not enter the cosmetic purchasedItems list', () async {
+        final shield = StreakShieldService();
+        final provider = buildProvider(shield);
+        await provider.setCoins(200);
+
+        await provider.purchaseItem(shieldItem);
+
+        expect(provider.ownedShopItemsCount, 0);
+        // "owned" for the shield means "currently holding one".
+        expect(provider.isOwned(ShopItem.streakShieldId), isTrue);
+      });
+
+      test('a second purchase is rejected while one is held (no double charge)',
+          () async {
+        final shield = StreakShieldService();
+        final provider = buildProvider(shield);
+        await provider.setCoins(400);
+
+        expect(await provider.purchaseItem(shieldItem), isTrue);
+        expect(provider.coins, 250);
+
+        expect(await provider.purchaseItem(shieldItem), isFalse);
+        expect(provider.coins, 250);
+      });
+
+      test('is rejected when the child cannot afford it', () async {
+        final shield = StreakShieldService();
+        final provider = buildProvider(shield);
+        await provider.setCoins(100);
+
+        expect(await provider.purchaseItem(shieldItem), isFalse);
+        expect(provider.coins, 100);
+        expect(shield.hasShield, isFalse);
+      });
+
+      test('a bought shield absorbs a missed day instead of resetting the streak',
+          () async {
+        final threeDaysAgo = DateTime(2024, 1, 1);
+        final today = DateTime(2024, 1, 4);
+        SharedPreferences.setMockInitialValues({
+          'daily_reward_last_claim': threeDaysAgo.millisecondsSinceEpoch,
+          'daily_reward_streak': 8,
+        });
+        final shield = StreakShieldService();
+        final provider = CoinProvider(
+          userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
+          streakShieldService: shield,
+          dailyRewardService: DailyRewardService(
+            now: () => today,
+            shieldService: shield,
+          ),
+        );
+        await provider.setCoins(200);
+        await provider.loadCoins();
+        expect(provider.dailyStreak, 8);
+
+        await provider.purchaseItem(shieldItem);
+        expect(shield.hasShield, isTrue);
+
+        await provider.claimDailyPracticeReward();
+
+        // Shield consumed to bridge the gap: streak advances 8 -> 9 rather
+        // than resetting to 1.
+        expect(provider.dailyStreak, 9);
+        expect(shield.hasShield, isFalse);
       });
     });
   });

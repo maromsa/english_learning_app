@@ -18,6 +18,13 @@ class ShopItem {
   /// unlocks a gold frame around mastered words in [CollectionItemCard].
   static const String goldStickerFrameId = 'gold_sticker_frame';
 
+  /// Id of the "מגן רצף" (Streak Shield) consumable. Unlike every other item
+  /// in the catalog this is not a cosmetic: buying it calls
+  /// `StreakShieldService.grantShield()` and is *not* added to
+  /// `purchasedItems`. Held one at a time; consumed automatically to absorb
+  /// a missed day before the 🔥 daily streak would reset.
+  static const String streakShieldId = 'streak_shield';
+
   /// Default catalog of shop items (stickers and upgrades) for the grid.
   static List<ShopItem> get defaultCatalog => [
         // Stickers / accessories
@@ -117,6 +124,15 @@ class ShopItem {
           name: 'כפפת אנרגיה',
           imageUrl: 'assets/images/words/energy_gauntlet.png',
           cost: 160,
+          type: ShopItemType.upgrade,
+        ),
+        // Consumable, not a cosmetic — see [streakShieldId] and
+        // CoinProvider.purchaseItem. Reuses the hero-shield art.
+        const ShopItem(
+          id: streakShieldId,
+          name: 'מגן רצף',
+          imageUrl: 'assets/images/words/hero_shield.png',
+          cost: 150,
           type: ShopItemType.upgrade,
         ),
       ];
