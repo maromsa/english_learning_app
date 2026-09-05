@@ -18,6 +18,7 @@ import 'package:english_learning_app/screens/daily_missions_screen.dart';
 import 'package:english_learning_app/screens/image_quiz_screen.dart';
 import 'package:english_learning_app/screens/level_completion_screen.dart';
 import 'package:english_learning_app/screens/lightning_practice_screen.dart';
+import 'package:english_learning_app/screens/memory_match_screen.dart';
 import 'package:english_learning_app/screens/scavenger_hunt_screen.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
@@ -919,6 +920,19 @@ class _MyHomePageState extends State<MyHomePage> {
                       levelId: widget.levelId,
                       wordsForLevel: widget.wordsForLevel,
                       heroWord: heroWord,
+                    ),
+                  ),
+                );
+              },
+        onMemoryMatch: _speechBusy
+            ? null
+            : () {
+                Navigator.push(
+                  context,
+                  PageTransitions.fadeScale(
+                    MemoryMatchScreen(
+                      levelId: widget.levelId,
+                      wordsForLevel: widget.wordsForLevel,
                     ),
                   ),
                 );
@@ -1903,6 +1917,7 @@ class GameMenuSheet extends StatelessWidget {
   final VoidCallback? onChatBuddy;
   final VoidCallback? onPracticePack;
   final VoidCallback? onLightning;
+  final VoidCallback? onMemoryMatch;
 
   const GameMenuSheet({
     super.key,
@@ -1915,6 +1930,7 @@ class GameMenuSheet extends StatelessWidget {
     this.onChatBuddy,
     this.onPracticePack,
     this.onLightning,
+    this.onMemoryMatch,
   });
 
   List<_GameMenuEntry> _buildEntries() {
@@ -2009,6 +2025,16 @@ class GameMenuSheet extends StatelessWidget {
           label: 'ריצת ברק',
           gradient: const [AuroraTokens.butter, AuroraTokens.coral],
           onTap: onLightning!,
+        ),
+      );
+    }
+    if (onMemoryMatch != null) {
+      entries.add(
+        _GameMenuEntry(
+          icon: Icons.extension_rounded,
+          label: 'משחק זיכרון',
+          gradient: const [AuroraTokens.blueberry, AuroraTokens.mint],
+          onTap: onMemoryMatch!,
         ),
       );
     }
