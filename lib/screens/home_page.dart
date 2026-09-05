@@ -21,6 +21,7 @@ import 'package:english_learning_app/screens/lightning_practice_screen.dart';
 import 'package:english_learning_app/screens/memory_match_screen.dart';
 import 'package:english_learning_app/screens/scavenger_hunt_screen.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
+import 'package:english_learning_app/screens/voice_challenge_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/ai_image_validator.dart';
 import 'package:english_learning_app/services/gemini_proxy_service.dart';
@@ -933,6 +934,20 @@ class _MyHomePageState extends State<MyHomePage> {
                     MemoryMatchScreen(
                       levelId: widget.levelId,
                       wordsForLevel: widget.wordsForLevel,
+                    ),
+                  ),
+                );
+              },
+        onVoiceChallenge: _speechBusy
+            ? null
+            : () {
+                Navigator.push(
+                  context,
+                  PageTransitions.fadeScale(
+                    VoiceChallengeScreen(
+                      levelId: widget.levelId,
+                      wordsForLevel: widget.wordsForLevel,
+                      levelTitle: widget.title,
                     ),
                   ),
                 );
@@ -1918,6 +1933,7 @@ class GameMenuSheet extends StatelessWidget {
   final VoidCallback? onPracticePack;
   final VoidCallback? onLightning;
   final VoidCallback? onMemoryMatch;
+  final VoidCallback? onVoiceChallenge;
 
   const GameMenuSheet({
     super.key,
@@ -1931,6 +1947,7 @@ class GameMenuSheet extends StatelessWidget {
     this.onPracticePack,
     this.onLightning,
     this.onMemoryMatch,
+    this.onVoiceChallenge,
   });
 
   List<_GameMenuEntry> _buildEntries() {
@@ -2035,6 +2052,16 @@ class GameMenuSheet extends StatelessWidget {
           label: 'משחק זיכרון',
           gradient: const [AuroraTokens.blueberry, AuroraTokens.mint],
           onTap: onMemoryMatch!,
+        ),
+      );
+    }
+    if (onVoiceChallenge != null) {
+      entries.add(
+        _GameMenuEntry(
+          icon: Icons.mic_rounded,
+          label: 'אתגר דיבור',
+          gradient: const [AuroraTokens.coral, AuroraTokens.plum],
+          onTap: onVoiceChallenge!,
         ),
       );
     }
