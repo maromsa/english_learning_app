@@ -6,10 +6,9 @@ import 'package:provider/provider.dart';
 import '../models/child_profile.dart';
 import '../providers/auth_provider.dart';
 import '../providers/child_profile_provider.dart';
-import '../utils/aurora_tokens.dart';
 import '../widgets/optimized_avatar.dart';
 import '../widgets/spark_overlay_suppressor.dart';
-import '../widgets/ui/kid_button.dart';
+import '../widgets/user/child_profile_create_dialog.dart';
 import 'map_screen.dart';
 
 /// "Who is playing?" screen shown after parent authentication.
@@ -66,9 +65,9 @@ class _ChildProfileSelectionScreenState
   }
 
   Future<void> _createProfile() async {
-    final result = await showDialog<_CreateProfileResult>(
+    final result = await showDialog<ChildProfileDraft>(
       context: context,
-      builder: (context) => const _CreateProfileDialog(),
+      builder: (context) => const ChildProfileCreateDialog(),
     );
     if (result == null || !mounted) {
       return;
@@ -367,193 +366,6 @@ class _EmptyState extends StatelessWidget {
             label: const Text('פרופיל חדש'),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _CreateProfileResult {
-  const _CreateProfileResult({
-    required this.displayName,
-    required this.avatarColor,
-  });
-
-  final String displayName;
-  final int avatarColor;
-}
-
-class _CreateProfileDialog extends StatefulWidget {
-  const _CreateProfileDialog();
-
-  @override
-  State<_CreateProfileDialog> createState() => _CreateProfileDialogState();
-}
-
-class _CreateProfileDialogState extends State<_CreateProfileDialog> {
-  final _nameController = TextEditingController();
-  int _selectedColor = ChildProfile.defaultAvatarColors.first;
-
-  bool get _canCreate => _nameController.text.trim().isNotEmpty;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final name = _nameController.text.trim();
-    if (name.isEmpty) {
-      return;
-    }
-    Navigator.pop(
-      context,
-      _CreateProfileResult(
-        displayName: name,
-        avatarColor: _selectedColor,
-      ),
-    );
-  }
-
-  InputDecoration _nameFieldDecoration(BuildContext context) {
-    final base = Theme.of(context).inputDecorationTheme;
-    return InputDecoration(
-      labelText: 'שם הילד/ה',
-      hintText: 'איך קוראים לך?',
-      prefixIcon: Icon(
-        Icons.face_rounded,
-        color: AuroraTokens.plum.withValues(alpha: 0.85),
-      ),
-      filled: true,
-      fillColor: AuroraTokens.paper2,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AuroraTokens.rMd),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AuroraTokens.rMd),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AuroraTokens.rMd),
-        borderSide: const BorderSide(color: AuroraTokens.plum, width: 2),
-      ),
-      contentPadding: base.contentPadding,
-      labelStyle: base.labelStyle,
-      hintStyle: base.hintStyle,
-    );
-  }
-
-  Widget _colorSwatch(int color) {
-    final selected = _selectedColor == color;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: 'צבע אווטאר',
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedColor = color),
-        child: AnimatedContainer(
-          duration: AuroraTokens.dBounce,
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: selected ? AuroraTokens.plum : Colors.transparent,
-              width: 3,
-            ),
-            boxShadow: selected ? AuroraTokens.glow(AuroraTokens.plum) : null,
-          ),
-          child: CircleAvatar(
-            radius: selected ? 20 : 18,
-            backgroundColor: Color(color),
-            child: selected
-                ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
-                : null,
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Dialog(
-      backgroundColor: AuroraTokens.paper,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
-      ),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'פרופיל חדש',
-                textAlign: TextAlign.center,
-                style: textTheme.titleLarge,
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _nameController,
-                style: textTheme.bodyLarge,
-                textCapitalization: TextCapitalization.words,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) {
-                  if (_canCreate) {
-                    _submit();
-                  }
-                },
-                decoration: _nameFieldDecoration(context),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'בחרו צבע',
-                textAlign: TextAlign.center,
-                style: textTheme.titleSmall,
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 12,
-                runSpacing: 12,
-                children: ChildProfile.defaultAvatarColors
-                    .map(_colorSwatch)
-                    .toList(),
-              ),
-              const SizedBox(height: 24),
-              KidButton.primary(
-                label: 'צור',
-                leadingIcon: Icons.add_rounded,
-                fullWidth: true,
-                onPressed: _canCreate ? _submit : null,
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  foregroundColor: AuroraTokens.inkSoft,
-                  textStyle: textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                child: const Text('ביטול'),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
