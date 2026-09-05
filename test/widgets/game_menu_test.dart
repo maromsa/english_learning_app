@@ -263,6 +263,21 @@ void main() {
   });
 
   testWidgets(
+      'shows the voice challenge entry only when onVoiceChallenge is supplied',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: GameMenuSheet(onVoiceChallenge: () {}),
+        ),
+      ),
+    );
+
+    expect(find.text('אתגר דיבור'), findsOneWidget);
+    expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
+  });
+
+  testWidgets(
       'shows the daily practice entry only when onDailyPractice is supplied',
       (tester) async {
     await tester.pumpWidget(
