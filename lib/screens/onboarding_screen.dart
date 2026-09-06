@@ -41,23 +41,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final personalization = _latestPersonalization;
     if (mounted) {
       final telemetry = TelemetryService.maybeOf(context);
-      telemetry?.logOnboardingCompleted(
-        tipIds: personalization?.insights.map((tip) => tip.id).toList() ??
-            const <String>[],
-        returningLearner: personalization?.isReturningLearner ?? false,
-        appliedRules: personalization?.appliedRules ?? const <String>[],
-        millisecondsToComplete:
-            DateTime.now().difference(_viewStartedAt).inMilliseconds,
-      ).ignore();
+      telemetry
+          ?.logOnboardingCompleted(
+            tipIds: personalization?.insights.map((tip) => tip.id).toList() ??
+                const <String>[],
+            returningLearner: personalization?.isReturningLearner ?? false,
+            appliedRules: personalization?.appliedRules ?? const <String>[],
+            millisecondsToComplete:
+                DateTime.now().difference(_viewStartedAt).inMilliseconds,
+          )
+          .ignore();
     }
 
     if (!mounted) {
       return;
     }
 
-    unawaited(Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const MapScreen())),);
+    unawaited(
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const MapScreen())),
+    );
   }
 
   void _logImpressionOnce(

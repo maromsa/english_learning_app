@@ -694,8 +694,11 @@ class _NotificationsCardState extends State<_NotificationsCard> {
 
     if (_loading) {
       return const Center(
-          child: SizedBox(
-              height: 48, child: Center(child: CircularProgressIndicator()),),);
+        child: SizedBox(
+          height: 48,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
     }
 
     return Card(
@@ -737,9 +740,8 @@ class _NotificationsCardState extends State<_NotificationsCard> {
             icon: Icons.repeat_rounded,
             iconColor: Colors.teal,
             title: 'תזכורת חזרה מדורגת',
-            subtitle: _srsEnabled
-                ? 'פעיל — תזכורת כאשר יש כרטיסיות לחזרה'
-                : 'כבוי',
+            subtitle:
+                _srsEnabled ? 'פעיל — תזכורת כאשר יש כרטיסיות לחזרה' : 'כבוי',
             trailing: Switch.adaptive(
               value: _srsEnabled,
               onChanged: _toggleSrs,

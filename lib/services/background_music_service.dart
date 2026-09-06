@@ -224,8 +224,9 @@ class BackgroundMusicService with WidgetsBindingObserver {
     return normalized.toLowerCase();
   }
 
-  Future<void> fadeOut(
-      {Duration duration = const Duration(milliseconds: 600),}) {
+  Future<void> fadeOut({
+    Duration duration = const Duration(milliseconds: 600),
+  }) {
     return _player
         .setVolume(0)
         .timeout(duration, onTimeout: () {})

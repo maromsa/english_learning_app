@@ -166,16 +166,15 @@ class AiService {
           throw const AiServiceException(AiServiceFailureCode.invalidResponse);
         }
 
-        final imageUrl = decoded['imageUrl'] as String? ??
-            decoded['image_url'] as String?;
+        final imageUrl =
+            decoded['imageUrl'] as String? ?? decoded['image_url'] as String?;
         final imageBase64 = decoded['imageBase64'] as String? ??
             decoded['image_base64'] as String?;
 
         final result = AiGenerateResult(
           imageUrl: imageUrl?.trim().isEmpty == true ? null : imageUrl?.trim(),
-          imageBase64: imageBase64?.trim().isEmpty == true
-              ? null
-              : imageBase64?.trim(),
+          imageBase64:
+              imageBase64?.trim().isEmpty == true ? null : imageBase64?.trim(),
         );
 
         if (!result.hasImage) {

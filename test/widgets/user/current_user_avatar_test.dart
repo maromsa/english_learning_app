@@ -46,7 +46,8 @@ class _FakeProfiles extends ChildProfileProvider {
 AppSessionUser _user(String id, String name) =>
     AppSessionUser(id: id, name: name, isGoogle: false);
 
-ChildProfile _profile(String id, String name, {String? avatarId}) => ChildProfile(
+ChildProfile _profile(String id, String name, {String? avatarId}) =>
+    ChildProfile(
       id: id,
       displayName: name,
       avatarColor: ChildProfile.defaultAvatarColors.first,

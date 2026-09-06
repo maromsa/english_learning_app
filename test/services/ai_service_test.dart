@@ -21,7 +21,8 @@ void main() {
   );
 
   group('AiService.generate', () {
-    test('retries 502 up to three times then throws server_overloaded', () async {
+    test('retries 502 up to three times then throws server_overloaded',
+        () async {
       var attempts = 0;
       final dio = Dio();
       dio.httpClientAdapter = TestHttpClientAdapter((options, _) async {

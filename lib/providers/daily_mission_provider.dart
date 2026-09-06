@@ -352,17 +352,21 @@ class DailyMissionProvider with ChangeNotifier {
 
     // Slot 1: voice practice
     final slot1Pool = _missionCatalog
-        .where((m) =>
-            m.type == DailyMissionType.speakPractice ||
-            m.type == DailyMissionType.pronunciationPerfect,)
+        .where(
+          (m) =>
+              m.type == DailyMissionType.speakPractice ||
+              m.type == DailyMissionType.pronunciationPerfect,
+        )
         .toList();
     final slot1 = slot1Pool[rng.nextInt(slot1Pool.length)];
 
     // Slot 2: active learning
     final slot2Pool = _missionCatalog
-        .where((m) =>
-            m.type == DailyMissionType.lightningRound ||
-            m.type == DailyMissionType.srsReview,)
+        .where(
+          (m) =>
+              m.type == DailyMissionType.lightningRound ||
+              m.type == DailyMissionType.srsReview,
+        )
         .toList();
     final slot2 = slot2Pool[rng.nextInt(slot2Pool.length)];
 
@@ -441,8 +445,7 @@ class DailyMissionProvider with ChangeNotifier {
   String _yesterdayKey() =>
       _dateKey(DateTime.now().subtract(const Duration(days: 1)));
 
-  String _dateKey(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-'
+  String _dateKey(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 
@@ -451,5 +454,4 @@ class DailyMissionProvider with ChangeNotifier {
     _disposed = true;
     super.dispose();
   }
-
 }

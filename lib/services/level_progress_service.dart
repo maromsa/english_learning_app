@@ -16,8 +16,7 @@ class LevelProgressService {
     WordMasteryCloudSyncService? cloudSyncService,
   })  : _wordMasteryService = wordMasteryService ?? WordMasteryService(),
         _mapBridgeService = mapBridgeService ?? MapBridgeService.instance,
-        _cloudSyncService =
-            cloudSyncService ?? WordMasteryCloudSyncService();
+        _cloudSyncService = cloudSyncService ?? WordMasteryCloudSyncService();
 
   final WordMasteryService _wordMasteryService;
   final MapBridgeService _mapBridgeService;

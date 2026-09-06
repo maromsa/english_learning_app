@@ -203,9 +203,11 @@ class _ScavengerHuntScreenState extends State<ScavengerHuntScreen> {
     if (!mounted) return;
     context.read<SoundService>().playSuccessSound();
     context.read<SparkOverlayController>().markCelebrating();
-    unawaited(context
-        .read<DailyMissionProvider>()
-        .incrementByType(DailyMissionType.camera),);
+    unawaited(
+      context
+          .read<DailyMissionProvider>()
+          .incrementByType(DailyMissionType.camera),
+    );
     try {
       unawaited(context.read<AchievementService>().recordCameraSuccess());
     } catch (_) {}

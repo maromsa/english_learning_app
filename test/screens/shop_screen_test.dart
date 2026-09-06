@@ -114,8 +114,8 @@ void main() {
   testWidgets('tapping an already-owned item offers no purchase button',
       (tester) async {
     final coinProvider = await _pumpShop(tester, coins: 500);
-    final goldFrame = ShopItem.defaultCatalog
-        .firstWhere((item) => item.id == _goldFrameId);
+    final goldFrame =
+        ShopItem.defaultCatalog.firstWhere((item) => item.id == _goldFrameId);
     await coinProvider.purchaseItem(goldFrame);
     await tester.pumpAndSettle();
 

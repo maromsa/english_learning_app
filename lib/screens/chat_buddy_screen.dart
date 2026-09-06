@@ -430,7 +430,8 @@ class _ChatBuddyScreenState extends State<ChatBuddyScreen> with RouteAware {
               Expanded(
                 child: _entries.isEmpty && !_isThinking
                     ? _EmptyChatState(
-                        onStart: geminiReady ? _startSession : null,)
+                        onStart: geminiReady ? _startSession : null,
+                      )
                     : ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -767,8 +768,11 @@ class _ScaffoldingBar extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.lightbulb_outline,
-                  color: AuroraTokens.butter, size: 20,),
+              Icon(
+                Icons.lightbulb_outline,
+                color: AuroraTokens.butter,
+                size: 20,
+              ),
               SizedBox(width: 6),
               Text(
                 'מילים לנסות בהמשך',
@@ -797,7 +801,8 @@ class _ScaffoldingBar extends StatelessWidget {
                   ),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: AuroraTokens.coral.withValues(alpha: 0.5),),
+                    color: AuroraTokens.coral.withValues(alpha: 0.5),
+                  ),
                 ),
                 child: Text(
                   word,

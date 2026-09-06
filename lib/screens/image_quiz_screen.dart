@@ -91,7 +91,8 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
     _flutterTts = FlutterTts();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Create engine with a per-user-per-level key so difficulty persists.
-      final userId = context.read<UserSessionProvider>().currentUser?.id ?? 'local_guest';
+      final userId =
+          context.read<UserSessionProvider>().currentUser?.id ?? 'local_guest';
       _difficultyEngine = DifficultyEngine(
         storageKey: 'difficulty_quiz_${userId}_${widget.levelId}',
       );
@@ -255,7 +256,8 @@ class _ImageQuizScreenState extends State<ImageQuizScreen> {
 
     if (isCorrect) {
       final multiplier = _difficultyEngine?.params.bonusMultiplier ?? 1.0;
-      final reward = ((_baseReward + _streak * _rewardPerStreak) * multiplier).round();
+      final reward =
+          ((_baseReward + _streak * _rewardPerStreak) * multiplier).round();
       final coinProvider = context.read<CoinProvider>();
       final sparkController = context.read<SparkOverlayController>();
       await coinProvider.addCoins(reward);

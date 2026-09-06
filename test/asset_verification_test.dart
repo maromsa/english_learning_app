@@ -42,7 +42,8 @@ void main() {
     expect(pubspec.existsSync(), isTrue, reason: 'pubspec.yaml not found');
 
     final declared = _parseFlutterAssetEntries(pubspec.readAsStringSync());
-    expect(declared, isNotEmpty, reason: 'No flutter.assets entries in pubspec');
+    expect(declared, isNotEmpty,
+        reason: 'No flutter.assets entries in pubspec');
 
     final missing = <String>[];
     for (final entry in declared) {
@@ -52,8 +53,7 @@ void main() {
     expect(
       missing,
       isEmpty,
-      reason:
-          'Declared pubspec assets missing on disk:\n${missing.join('\n')}',
+      reason: 'Declared pubspec assets missing on disk:\n${missing.join('\n')}',
     );
   });
 }
@@ -90,7 +90,10 @@ List<String> _parseFlutterAssetEntries(String content) {
       continue;
     }
 
-    if (inFlutter && line.isNotEmpty && !line.startsWith(' ') && !line.startsWith('#')) {
+    if (inFlutter &&
+        line.isNotEmpty &&
+        !line.startsWith(' ') &&
+        !line.startsWith('#')) {
       inFlutter = false;
       inAssets = false;
     }
@@ -156,7 +159,8 @@ List<String> _listAssetFiles(Directory directory) {
     return result;
   }
 
-  for (final entity in directory.listSync(recursive: true, followLinks: false)) {
+  for (final entity
+      in directory.listSync(recursive: true, followLinks: false)) {
     if (entity is! File) {
       continue;
     }

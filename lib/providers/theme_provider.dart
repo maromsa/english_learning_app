@@ -10,6 +10,7 @@ class ThemeProvider with ChangeNotifier {
   void _notify() {
     if (!_disposed) notifyListeners();
   }
+
   ThemeMode get themeMode => _themeMode;
 
   ThemeProvider() {
@@ -56,5 +57,4 @@ class ThemeProvider with ChangeNotifier {
     _disposed = true;
     super.dispose();
   }
-
 }
