@@ -68,8 +68,11 @@ class CurrentUserAvatar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
-                Icon(Icons.keyboard_arrow_down,
-                    size: 16, color: Colors.grey[600],),
+                Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 16,
+                  color: Colors.grey[600],
+                ),
               ],
             ),
           ),

@@ -45,7 +45,9 @@ class SyncEngine {
       // Process in chunks to respect Firestore batch limit.
       for (var i = 0; i < dirty.length; i += _batchLimit) {
         final chunk = dirty.sublist(
-            i, (i + _batchLimit).clamp(0, dirty.length),);
+          i,
+          (i + _batchLimit).clamp(0, dirty.length),
+        );
         await _uploadChunk(userId, chunk);
         synced += chunk.length;
       }
@@ -64,10 +66,8 @@ class SyncEngine {
     required String levelId,
   }) async {
     try {
-      final col = _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('srs_cards');
+      final col =
+          _firestore.collection('users').doc(userId).collection('srs_cards');
 
       final snapshot = await col
           .where('levelId', isEqualTo: levelId)
@@ -114,7 +114,9 @@ class SyncEngine {
   // ---------------------------------------------------------------------------
 
   Future<void> _uploadChunk(
-      String userId, List<Map<String, dynamic>> rows,) async {
+    String userId,
+    List<Map<String, dynamic>> rows,
+  ) async {
     final batch = _firestore.batch();
 
     // Group by (levelId, wordId) for the doc path.
@@ -131,18 +133,22 @@ class SyncEngine {
           .collection('srs_cards')
           .doc(docId);
 
-      batch.set(ref, {
-        'wordId': wordId,
-        'levelId': levelId,
-        'repetitions': row['repetitions'],
-        'easeFactor': row['ease_factor'],
-        'intervalDays': row['interval_days'],
-        'masteryLevel': row['mastery_level'],
-        'bestStars': row['best_stars'],
-        'nextReviewMs': row['next_review_ms'],
-        'lastReviewMs': row['last_review_ms'],
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true),);
+      batch.set(
+        ref,
+        {
+          'wordId': wordId,
+          'levelId': levelId,
+          'repetitions': row['repetitions'],
+          'easeFactor': row['ease_factor'],
+          'intervalDays': row['interval_days'],
+          'masteryLevel': row['mastery_level'],
+          'bestStars': row['best_stars'],
+          'nextReviewMs': row['next_review_ms'],
+          'lastReviewMs': row['last_review_ms'],
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
 
       levelWordPairs.add((levelId: levelId, wordId: wordId));
     }

@@ -4,6 +4,7 @@ import 'package:english_learning_app/providers/child_profile_provider.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/services/leaderboard_service.dart';
 import 'package:english_learning_app/utils/list_performance.dart';
+import 'package:english_learning_app/widgets/optimized_avatar.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:english_learning_app/widgets/ui/glass_card.dart';
 import 'package:flutter/material.dart';
@@ -11,10 +12,8 @@ import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:provider/provider.dart';
 
 class LeaderboardScreen extends StatefulWidget {
-  const LeaderboardScreen({
-    super.key,
-    LeaderboardService? leaderboardService,
-  }) : _leaderboardService = leaderboardService;
+  const LeaderboardScreen({super.key, LeaderboardService? leaderboardService})
+      : _leaderboardService = leaderboardService;
 
   final LeaderboardService? _leaderboardService;
 
@@ -27,6 +26,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   bool _loading = true;
   String? _errorMessage;
   LeaderboardResult? _result;
+  LeaderboardSortMode _sortMode = LeaderboardSortMode.coins;
 
   @override
   void initState() {
@@ -48,6 +48,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     try {
       final result = await _service.fetchLeaderboard(
         currentProfileId: currentId,
+        sortMode: _sortMode,
       );
       if (!mounted) {
         return;
@@ -67,6 +68,14 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     }
   }
 
+  void _onSortModeChanged(LeaderboardSortMode mode) {
+    if (mode == _sortMode) {
+      return;
+    }
+    setState(() => _sortMode = mode);
+    _loadLeaderboard();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,17 +84,17 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFFF8E1),
-              Color(0xFFE8F5E9),
-              Color(0xFFE3F2FD),
-            ],
+            colors: [Color(0xFFFFF8E1), Color(0xFFE8F5E9), Color(0xFFE3F2FD)],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
               _LeaderboardHeader(onBack: () => Navigator.pop(context)),
+              _LeaderboardSortToggle(
+                mode: _sortMode,
+                onChanged: _onSortModeChanged,
+              ),
               Expanded(child: _buildBody()),
             ],
           ),
@@ -166,12 +175,17 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         itemBuilder: (context, index) {
           if (entries.length >= 3 && index == 0) {
             return _PodiumRow(
-                topThree: entries.take(3).toList(growable: false),);
+              topThree: entries.take(3).toList(growable: false),
+              sortMode: _sortMode,
+            );
           }
 
           final listIndex = index - headerCount;
           if (listIndex >= 0 && listIndex < listEntries.length) {
-            return _LeaderboardTile(entry: listEntries[listIndex]);
+            return _LeaderboardTile(
+              entry: listEntries[listIndex],
+              sortMode: _sortMode,
+            );
           }
 
           if (footerCount == 1 && index == itemCount - 1) {
@@ -200,8 +214,10 @@ class _LeaderboardHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            icon:
-                const Icon(Icons.arrow_back_rounded, color: Color(0xFF5D4037)),
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: Color(0xFF5D4037),
+            ),
             onPressed: onBack,
           ),
           const Icon(Icons.emoji_events, color: Color(0xFFFFB300), size: 36),
@@ -232,10 +248,46 @@ class _LeaderboardHeader extends StatelessWidget {
   }
 }
 
+class _LeaderboardSortToggle extends StatelessWidget {
+  const _LeaderboardSortToggle({required this.mode, required this.onChanged});
+
+  final LeaderboardSortMode mode;
+  final ValueChanged<LeaderboardSortMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: SegmentedButton<LeaderboardSortMode>(
+        showSelectedIcon: false,
+        style: SegmentedButton.styleFrom(
+          backgroundColor: Colors.white,
+          selectedBackgroundColor: const Color(0xFFFFB300),
+          selectedForegroundColor: Colors.white,
+          foregroundColor: const Color(0xFF5D4037),
+        ),
+        segments: const [
+          ButtonSegment(
+            value: LeaderboardSortMode.coins,
+            label: Text(SparkStrings.leaderboardSortByCoins),
+          ),
+          ButtonSegment(
+            value: LeaderboardSortMode.streak,
+            label: Text(SparkStrings.leaderboardSortByStreak),
+          ),
+        ],
+        selected: {mode},
+        onSelectionChanged: (selection) => onChanged(selection.first),
+      ),
+    );
+  }
+}
+
 class _PodiumRow extends StatelessWidget {
-  const _PodiumRow({required this.topThree});
+  const _PodiumRow({required this.topThree, required this.sortMode});
 
   final List<LeaderboardEntry> topThree;
+  final LeaderboardSortMode sortMode;
 
   @override
   Widget build(BuildContext context) {
@@ -251,23 +303,43 @@ class _PodiumRow extends StatelessWidget {
           Expanded(
             child: second != null
                 ? _PodiumPlace(
-                    entry: second, medal: LeaderboardMedal.silver, height: 88,)
+                    entry: second,
+                    medal: LeaderboardMedal.silver,
+                    height: 88,
+                    sortMode: sortMode,
+                  )
                 : const SizedBox.shrink(),
           ),
           Expanded(
             child: _PodiumPlace(
-                entry: first, medal: LeaderboardMedal.gold, height: 110,),
+              entry: first,
+              medal: LeaderboardMedal.gold,
+              height: 110,
+              sortMode: sortMode,
+            ),
           ),
           Expanded(
             child: third != null
                 ? _PodiumPlace(
-                    entry: third, medal: LeaderboardMedal.bronze, height: 72,)
+                    entry: third,
+                    medal: LeaderboardMedal.bronze,
+                    height: 72,
+                    sortMode: sortMode,
+                  )
                 : const SizedBox.shrink(),
           ),
         ],
       ),
     );
   }
+}
+
+/// The stat the leaderboard is currently ranked by, as `emoji value`.
+String _primaryStat(LeaderboardEntry entry, LeaderboardSortMode mode) {
+  return switch (mode) {
+    LeaderboardSortMode.coins => '🪙 ${entry.totalCoins}',
+    LeaderboardSortMode.streak => '🔥 ${entry.currentStreak}',
+  };
 }
 
 enum LeaderboardMedal { gold, silver, bronze }
@@ -277,11 +349,13 @@ class _PodiumPlace extends StatelessWidget {
     required this.entry,
     required this.medal,
     required this.height,
+    required this.sortMode,
   });
 
   final LeaderboardEntry entry;
   final LeaderboardMedal medal;
   final double height;
+  final LeaderboardSortMode sortMode;
 
   @override
   Widget build(BuildContext context) {
@@ -307,7 +381,7 @@ class _PodiumPlace extends StatelessWidget {
           ),
         ),
         Text(
-          '🪙 ${entry.totalCoins}',
+          _primaryStat(entry, sortMode),
           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 6),
@@ -352,14 +426,19 @@ class _PodiumPlace extends StatelessWidget {
 }
 
 class _LeaderboardTile extends StatelessWidget {
-  const _LeaderboardTile({required this.entry});
+  const _LeaderboardTile({required this.entry, required this.sortMode});
 
   final LeaderboardEntry entry;
+  final LeaderboardSortMode sortMode;
 
   @override
   Widget build(BuildContext context) {
     final medal = _rankMedal(entry.rank);
     final isYou = entry.isCurrentUser;
+    final rankedByCoins = sortMode == LeaderboardSortMode.coins;
+    final secondary = rankedByCoins
+        ? '${SparkStrings.leaderboardStreakLabel} ${entry.currentStreak} 🔥'
+        : '🪙 ${entry.totalCoins}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -427,17 +506,17 @@ class _LeaderboardTile extends StatelessWidget {
               ),
           ],
         ),
-        subtitle: Text(
-          '${SparkStrings.leaderboardStreakLabel} ${entry.currentStreak} 🔥',
-          style: const TextStyle(fontSize: 12),
-        ),
+        subtitle: Text(secondary, style: const TextStyle(fontSize: 12)),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('🪙', style: TextStyle(fontSize: 18)),
+            Text(
+              rankedByCoins ? '🪙' : '🔥',
+              style: const TextStyle(fontSize: 18),
+            ),
             const SizedBox(width: 4),
             Text(
-              '${entry.totalCoins}',
+              '${rankedByCoins ? entry.totalCoins : entry.currentStreak}',
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -557,23 +636,25 @@ class _AvatarBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
+    final avatar = OptimizedAvatar(
       radius: radius,
+      emoji: entry.avatarId,
+      imageUrl: entry.avatarUrl,
       backgroundColor: Color(entry.avatarColor),
-      backgroundImage:
-          entry.avatarUrl != null ? NetworkImage(entry.avatarUrl!) : null,
-      child: entry.avatarUrl == null
-          ? Text(
-              entry.displayName.isNotEmpty
-                  ? entry.displayName[0].toUpperCase()
-                  : '?',
-              style: TextStyle(
-                fontSize: radius * 0.9,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            )
-          : null,
+      fallbackText: entry.displayName,
+    );
+
+    if (!highlight) {
+      return avatar;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFFFFB300), width: 3),
+      ),
+      padding: const EdgeInsets.all(2),
+      child: avatar,
     );
   }
 }

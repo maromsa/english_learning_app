@@ -57,8 +57,9 @@ class _FakeConnectivity extends DeviceConnectivity {
   final bool online;
 
   @override
-  Future<bool> isOnline(
-          {Duration timeout = const Duration(seconds: 3),}) async =>
+  Future<bool> isOnline({
+    Duration timeout = const Duration(seconds: 3),
+  }) async =>
       online;
 }
 

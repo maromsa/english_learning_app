@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 
 /// Broad grouping for the trophy room display.
 enum AchievementCategory {
-  firstSteps,   // beginners
-  learning,     // words/levels
-  streak,       // daily/quiz streaks
-  pronunciation,// speaking & stars
-  explorer,     // camera / scene / story
-  collector,    // coins / shop
-  dedication,   // long-term use
+  firstSteps, // beginners
+  learning, // words/levels
+  streak, // daily/quiz streaks
+  pronunciation, // speaking & stars
+  explorer, // camera / scene / story
+  collector, // coins / shop
+  dedication, // long-term use
 }
 
 class Achievement {

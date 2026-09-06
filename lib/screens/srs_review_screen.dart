@@ -53,6 +53,7 @@ class _ReviewCard {
 
   /// Whether the card was already answered in this session.
   bool answered = false;
+
   /// true=easy, false=hard
   bool? wasEasy;
 }
@@ -173,25 +174,28 @@ class _SrsReviewScreenState extends State<SrsReviewScreen>
         final key = '$levelId|${wordId.toLowerCase()}';
         final wordInfo = wordMap[key];
 
-        cards.add(_ReviewCard(
-          wordId: wordId,
-          levelId: levelId,
-          displayWord: wordInfo?['displayWord'] as String? ?? wordId,
-          imageUrl: wordInfo?['imageUrl'] as String?,
-          translation: wordInfo?['translation'] as String?,
-          srsCard: SrsCard(
+        cards.add(
+          _ReviewCard(
             wordId: wordId,
-            repetitions: (row['repetitions'] as int?) ?? 0,
-            easeFactor: (row['ease_factor'] as num?)?.toDouble() ?? 2.5,
-            intervalDays: (row['interval_days'] as int?) ?? 1,
-            masteryLevel: (row['mastery_level'] as num?)?.toDouble() ?? 0.0,
-            bestPronunciationStars: (row['best_stars'] as int?) ?? 0,
-            nextReviewDate: row['next_review_ms'] != null
-                ? DateTime.fromMillisecondsSinceEpoch(
-                    row['next_review_ms'] as int,)
-                : null,
+            levelId: levelId,
+            displayWord: wordInfo?['displayWord'] as String? ?? wordId,
+            imageUrl: wordInfo?['imageUrl'] as String?,
+            translation: wordInfo?['translation'] as String?,
+            srsCard: SrsCard(
+              wordId: wordId,
+              repetitions: (row['repetitions'] as int?) ?? 0,
+              easeFactor: (row['ease_factor'] as num?)?.toDouble() ?? 2.5,
+              intervalDays: (row['interval_days'] as int?) ?? 1,
+              masteryLevel: (row['mastery_level'] as num?)?.toDouble() ?? 0.0,
+              bestPronunciationStars: (row['best_stars'] as int?) ?? 0,
+              nextReviewDate: row['next_review_ms'] != null
+                  ? DateTime.fromMillisecondsSinceEpoch(
+                      row['next_review_ms'] as int,
+                    )
+                  : null,
+            ),
           ),
-        ),);
+        );
       }
 
       // Shuffle so the session feels fresh.
@@ -245,12 +249,14 @@ class _SrsReviewScreenState extends State<SrsReviewScreen>
 
     final session = context.read<UserSessionProvider>();
     final userId = session.currentUserId ?? 'local_guest';
-    unawaited(_srsService.recordReview(
-      userId: userId,
-      levelId: card.levelId,
-      word: card.displayWord,
-      grade: grade,
-    ),);
+    unawaited(
+      _srsService.recordReview(
+        userId: userId,
+        levelId: card.levelId,
+        word: card.displayWord,
+        grade: grade,
+      ),
+    );
 
     // Coin reward for easy answers.
     if (easy && mounted) {
@@ -373,8 +379,7 @@ class _SrsReviewScreenState extends State<SrsReviewScreen>
         children: [
           // Progress bar
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
             child: Column(
               children: [
                 Row(
@@ -389,24 +394,32 @@ class _SrsReviewScreenState extends State<SrsReviewScreen>
                     ),
                     Row(
                       children: [
-                        const Icon(Icons.check_circle_rounded,
-                            color: Colors.green, size: 16,),
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          color: Colors.green,
+                          size: 16,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '$_easyCount',
                           style: GoogleFonts.heebo(
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold,),
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(width: 12),
-                        const Icon(Icons.refresh_rounded,
-                            color: Colors.orange, size: 16,),
+                        const Icon(
+                          Icons.refresh_rounded,
+                          color: Colors.orange,
+                          size: 16,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '$_hardCount',
                           style: GoogleFonts.heebo(
-                              color: Colors.orange,
-                              fontWeight: FontWeight.bold,),
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -420,7 +433,8 @@ class _SrsReviewScreenState extends State<SrsReviewScreen>
                     backgroundColor:
                         AuroraTokens.inkMute.withValues(alpha: 0.15),
                     valueColor: const AlwaysStoppedAnimation<Color>(
-                        AuroraTokens.blueberry,),
+                      AuroraTokens.blueberry,
+                    ),
                     minHeight: 6,
                   ),
                 ),
@@ -903,7 +917,9 @@ class _NoDueCardsState extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AuroraTokens.blueberry,
                 padding: const EdgeInsets.symmetric(
-                    vertical: 14, horizontal: 32,),
+                  vertical: 14,
+                  horizontal: 32,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),

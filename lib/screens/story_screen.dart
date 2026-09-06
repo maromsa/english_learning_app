@@ -106,11 +106,11 @@ class _StoryScreenState extends State<StoryScreen>
       _storyCompleted = false; // reset for new story
       _storyFuture = _storyService
           .getStory(
-            userId: userId,
-            levelId: widget.levelId,
-            words: widget.words,
-            forceRefresh: forceRefresh,
-          )
+        userId: userId,
+        levelId: widget.levelId,
+        words: widget.words,
+        forceRefresh: forceRefresh,
+      )
           .then((story) {
         if (!mounted) return story;
         setState(() {
@@ -186,7 +186,8 @@ class _StoryScreenState extends State<StoryScreen>
           IconButton(
             tooltip: 'סיפור חדש',
             icon: const Icon(Icons.auto_stories),
-            onPressed: _isGenerating ? null : () => _loadStory(forceRefresh: true),
+            onPressed:
+                _isGenerating ? null : () => _loadStory(forceRefresh: true),
           ),
         ],
       ),
@@ -238,8 +239,11 @@ class _StoryScreenState extends State<StoryScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.auto_stories,
-                size: 72, color: Colors.deepPurple.shade200,),
+            Icon(
+              Icons.auto_stories,
+              size: 72,
+              color: Colors.deepPurple.shade200,
+            ),
             const SizedBox(height: 16),
             const Text(
               'לא הצלחנו לייצר סיפור עכשיו.',
@@ -257,7 +261,8 @@ class _StoryScreenState extends State<StoryScreen>
               icon: const Icon(Icons.refresh),
               label: const Text('נסה שוב'),
               style: FilledButton.styleFrom(
-                  backgroundColor: Colors.deepPurple.shade400,),
+                backgroundColor: Colors.deepPurple.shade400,
+              ),
             ),
           ],
         ),
@@ -394,8 +399,7 @@ class _StoryPageCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Card(
         elevation: 4,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -412,13 +416,17 @@ class _StoryPageCard extends StatelessWidget {
                     height: 180,
                     color: Colors.deepPurple.shade50,
                     child: const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                   ),
                   errorWidget: (_, __, ___) => Container(
                     height: 120,
                     color: Colors.deepPurple.shade50,
-                    child: Icon(Icons.image_not_supported,
-                        color: Colors.deepPurple.shade200, size: 40,),
+                    child: Icon(
+                      Icons.image_not_supported,
+                      color: Colors.deepPurple.shade200,
+                      size: 40,
+                    ),
                   ),
                 ),
               )
@@ -431,8 +439,11 @@ class _StoryPageCard extends StatelessWidget {
                       const BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 child: Center(
-                  child: Icon(Icons.auto_stories,
-                      color: Colors.deepPurple.shade200, size: 48,),
+                  child: Icon(
+                    Icons.auto_stories,
+                    color: Colors.deepPurple.shade200,
+                    size: 48,
+                  ),
                 ),
               ),
 
@@ -446,7 +457,9 @@ class _StoryPageCard extends StatelessWidget {
                     Text(
                       'עמוד $pageNumber / $totalPages',
                       style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade500,),
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
                     ),
                     const SizedBox(height: 12),
 
@@ -488,11 +501,13 @@ class _StoryPageCard extends StatelessWidget {
                         size: 18,
                       ),
                       label: Text(
-                          showHebrew ? 'הסתר עברית' : 'הצג בעברית',),
+                        showHebrew ? 'הסתר עברית' : 'הצג בעברית',
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.deepPurple.shade600,
                         side: BorderSide(
-                            color: Colors.deepPurple.shade200,),
+                          color: Colors.deepPurple.shade200,
+                        ),
                       ),
                     ),
                   ],
@@ -527,14 +542,16 @@ class _HighlightedText extends StatelessWidget {
       if (match.start > start) {
         spans.add(TextSpan(text: cleaned.substring(start, match.start)));
       }
-      spans.add(TextSpan(
-        text: cleaned.substring(match.start, match.end),
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Colors.deepPurple.shade600,
-          fontSize: 22,
+      spans.add(
+        TextSpan(
+          text: cleaned.substring(match.start, match.end),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.deepPurple.shade600,
+            fontSize: 22,
+          ),
         ),
-      ),);
+      );
       start = match.end;
     }
     if (start < cleaned.length) {
@@ -615,7 +632,8 @@ class _StoryNavBar extends StatelessWidget {
               icon: const Icon(Icons.check_circle),
               label: const Text('סיום'),
               style: FilledButton.styleFrom(
-                  backgroundColor: Colors.green.shade600,),
+                backgroundColor: Colors.green.shade600,
+              ),
             )
           else
             IconButton.filled(

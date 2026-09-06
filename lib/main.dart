@@ -156,21 +156,27 @@ Future<void> main() async {
   ); // Don't fail if one fails
 
   // Initialize background music service (music will only play on MapScreen)
-  unawaited(backgroundMusicService.initialize().catchError((error) {
-    debugPrint('Background music initialization failed: $error');
-  }),);
+  unawaited(
+    backgroundMusicService.initialize().catchError((error) {
+      debugPrint('Background music initialization failed: $error');
+    }),
+  );
 
   // Initialize sound service for UI feedback
-  unawaited(soundService.initialize().catchError((error) {
-    debugPrint('Sound service initialization failed: $error');
-  }),);
+  unawaited(
+    soundService.initialize().catchError((error) {
+      debugPrint('Sound service initialization failed: $error');
+    }),
+  );
 
   // Initialize local notifications and restore any scheduled ones.
-  unawaited(NotificationService.instance.initialize().then((_) {
-    return NotificationService.instance.restoreScheduledNotifications();
-  }).catchError((e) {
-    debugPrint('NotificationService init error: $e');
-  }),);
+  unawaited(
+    NotificationService.instance.initialize().then((_) {
+      return NotificationService.instance.restoreScheduledNotifications();
+    }).catchError((e) {
+      debugPrint('NotificationService init error: $e');
+    }),
+  );
 
   // Error handlers are already set up at the beginning of main()
 
@@ -179,7 +185,8 @@ Future<void> main() async {
   await userSessionProvider.loadActiveUser().timeout(
     const Duration(seconds: 3),
     onTimeout: () {
-      debugPrint('User session loading timed out, continuing without active user');
+      debugPrint(
+          'User session loading timed out, continuing without active user');
     },
   ).catchError((e) {
     debugPrint('Error loading active user: $e');

@@ -42,9 +42,9 @@ class ChildProfileSyncService {
 
   /// Publishes a minimal, privacy-safe leaderboard entry.
   ///
-  /// Only display name, coins, streak and avatar color are shared — never
-  /// photos or any other profile data. Failures are non-fatal: the profile
-  /// sync itself already succeeded.
+  /// Only display name, coins, streak, avatar color and the (non-identifying)
+  /// animal-emoji avatar choice are shared — never photos or any other profile
+  /// data. Failures are non-fatal: the profile sync itself already succeeded.
   Future<void> _publishLeaderboardEntry(
     String parentUid,
     ChildProfile profile,
@@ -56,6 +56,8 @@ class ChildProfileSyncService {
         'coins': profile.coins,
         'dailyStreak': profile.dailyStreak,
         'avatarColor': profile.avatarColor,
+        if (profile.avatarId != null && profile.avatarId!.isNotEmpty)
+          'avatarId': profile.avatarId,
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
@@ -117,7 +119,9 @@ class ChildProfileSyncService {
   }
 
   Future<bool> syncProfileToCloud(
-      String parentUid, ChildProfile profile,) async {
+    String parentUid,
+    ChildProfile profile,
+  ) async {
     try {
       final payload = profile.toMap(forCloud: true);
       payload.remove('pendingSync');

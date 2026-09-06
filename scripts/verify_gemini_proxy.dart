@@ -38,7 +38,7 @@ void main(List<String> args) async {
     'mode': 'text',
     'prompt':
         'Reply with exactly one short English sentence that includes the word "hello". '
-        'No markdown, no JSON.',
+            'No markdown, no JSON.',
     'system_instruction':
         'You are a friendly English tutor for children. Keep answers very short.',
   };

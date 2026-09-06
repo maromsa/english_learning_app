@@ -88,8 +88,7 @@ class _MemoryMatchScreenState extends State<MemoryMatchScreen> {
       (word.publicId != null && word.publicId!.isNotEmpty);
 
   List<_MemoryCard> _dealRound() {
-    final withImages =
-        widget.wordsForLevel.where(_hasResolvableImage).toList();
+    final withImages = widget.wordsForLevel.where(_hasResolvableImage).toList();
     final pool = withImages.length >= MemoryMatchScreen.minPairs
         ? withImages
         : widget.wordsForLevel;

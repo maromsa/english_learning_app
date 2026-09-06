@@ -16,8 +16,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class StreakShieldService with ChangeNotifier {
   StreakShieldService({SharedPreferences? prefs})
-      : _prefsFuture =
-            prefs != null ? Future.value(prefs) : SharedPreferences.getInstance();
+      : _prefsFuture = prefs != null
+            ? Future.value(prefs)
+            : SharedPreferences.getInstance();
 
   final Future<SharedPreferences> _prefsFuture;
   String? _userId;
@@ -35,8 +36,9 @@ class StreakShieldService with ChangeNotifier {
     _hasShield = false;
   }
 
-  String get _shieldKey =>
-      _userId == null ? 'streak_shield_active' : 'user_${_userId}_streak_shield';
+  String get _shieldKey => _userId == null
+      ? 'streak_shield_active'
+      : 'user_${_userId}_streak_shield';
 
   // --------------------------------------------------------------------------
   // State

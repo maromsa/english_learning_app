@@ -1,4 +1,5 @@
 import 'package:english_learning_app/models/child_profile.dart';
+import 'package:english_learning_app/models/leaderboard_entry.dart';
 import 'package:english_learning_app/services/child_profile_service.dart';
 import 'package:english_learning_app/services/leaderboard_service.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
@@ -106,6 +107,84 @@ void main() {
       expect(result.entries.first.totalCoins, 90);
       expect(result.entries.first.currentStreak, 5);
       expect(result.entries.first.isCurrentUser, isTrue);
+    });
+
+    test('sort mode streak ranks by streak then coins', () async {
+      await seedCloudProfile(
+        parentUid: 'p1',
+        profileId: 'a',
+        name: 'Alpha',
+        coins: 999,
+        dailyStreak: 2,
+      );
+      await seedCloudProfile(
+        parentUid: 'p2',
+        profileId: 'b',
+        name: 'Bravo',
+        coins: 10,
+        dailyStreak: 9,
+      );
+      await seedCloudProfile(
+        parentUid: 'p3',
+        profileId: 'c',
+        name: 'Charlie',
+        coins: 500,
+        dailyStreak: 9,
+      );
+
+      final result = await leaderboardService.fetchLeaderboard(
+        sortMode: LeaderboardSortMode.streak,
+      );
+
+      expect(
+        result.entries.map((e) => e.displayName),
+        ['Charlie', 'Bravo', 'Alpha'],
+      );
+      expect(result.entries[0].rank, 1);
+    });
+
+    test('carries the animal-emoji avatarId through to the entry', () async {
+      await profileService.saveProfile(
+        ChildProfile(
+          id: 'kid1',
+          displayName: 'Emoji Kid',
+          avatarColor: ChildProfile.defaultAvatarColors.first,
+          avatarId: '🦊',
+          coins: 30,
+          dailyStreak: 1,
+        ),
+      );
+
+      final result = await leaderboardService.fetchLeaderboard();
+
+      expect(result.entries.single.avatarId, '🦊');
+    });
+
+    test('keeps local avatarId when merging with a cloud entry that lacks one',
+        () async {
+      const profileId = 'kid1';
+      await seedCloudProfile(
+        parentUid: 'p1',
+        profileId: profileId,
+        name: 'Merge Kid',
+        coins: 10,
+        dailyStreak: 1,
+      );
+      await profileService.saveProfile(
+        ChildProfile(
+          id: profileId,
+          displayName: 'Merge Kid',
+          avatarColor: ChildProfile.defaultAvatarColors.first,
+          avatarId: '🐼',
+          coins: 80,
+          dailyStreak: 4,
+        ),
+      );
+
+      final result = await leaderboardService.fetchLeaderboard();
+
+      expect(result.entries.single.avatarId, '🐼');
+      expect(result.entries.single.totalCoins, 80);
     });
 
     test('returns empty when no profiles exist', () async {

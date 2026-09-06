@@ -80,10 +80,8 @@ class SparkStory {
           .whereType<Map<String, dynamic>>()
           .map(StoryPage.fromJson)
           .toList(),
-      words: (json['words'] as List<dynamic>?)
-              ?.whereType<String>()
-              .toList() ??
-          [],
+      words:
+          (json['words'] as List<dynamic>?)?.whereType<String>().toList() ?? [],
       generatedAt: json['generatedAt'] != null
           ? DateTime.tryParse(json['generatedAt'] as String) ?? DateTime.now()
           : DateTime.now(),

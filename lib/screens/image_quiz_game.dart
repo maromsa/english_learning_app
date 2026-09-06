@@ -170,16 +170,20 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       final userId = session.currentUser?.id ?? 'local_guest';
       final durationMinutes =
           DateTime.now().difference(_sessionStart).inMinutes.clamp(1, 60);
-      unawaited(ParentProgressService.recordSession(
-        userId: userId,
-        wordCount: _correctAnswers,
-        durationMinutes: durationMinutes,
-      ),);
-      unawaited(_srsService.syncToFirestore(
-        userId: userId,
-        levelId: _resolvedLevelId,
-        words: _wordsWithMastery,
-      ),);
+      unawaited(
+        ParentProgressService.recordSession(
+          userId: userId,
+          wordCount: _correctAnswers,
+          durationMinutes: durationMinutes,
+        ),
+      );
+      unawaited(
+        _srsService.syncToFirestore(
+          userId: userId,
+          levelId: _resolvedLevelId,
+          words: _wordsWithMastery,
+        ),
+      );
     } catch (_) {}
   }
 
@@ -337,10 +341,12 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       _feedbackMessage = SparkStrings.quizRemovedWrong;
     });
 
-    telemetry?.logHintUsed(
-      word: target.word,
-      optionsRemaining: remainingCount,
-    ).ignore();
+    telemetry
+        ?.logHintUsed(
+          word: target.word,
+          optionsRemaining: remainingCount,
+        )
+        .ignore();
   }
 
   // ---------------------------------------------------------------------------
@@ -393,12 +399,14 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
     try {
       final session = context.read<UserSessionProvider>();
       final userId = session.currentUser?.id ?? 'local_guest';
-      unawaited(_srsService.recordReview(
-        userId: userId,
-        levelId: _resolvedLevelId,
-        word: target.word,
-        grade: gradeFromCorrect(isCorrect),
-      ),);
+      unawaited(
+        _srsService.recordReview(
+          userId: userId,
+          levelId: _resolvedLevelId,
+          word: target.word,
+          grade: gradeFromCorrect(isCorrect),
+        ),
+      );
     } catch (_) {}
 
     if (!mounted) return;
@@ -411,20 +419,24 @@ class _ImageQuizGameState extends State<ImageQuizGame> {
       _feedbackMessage = feedback;
     });
 
-    telemetry?.logQuizAnswered(
-      word: target.word,
-      correct: isCorrect,
-      reward: reward,
-      streak: newStreak,
-      questionIndex: _currentIndex,
-      hintUsed: _hintUsed,
-    ).ignore();
+    telemetry
+        ?.logQuizAnswered(
+          word: target.word,
+          correct: isCorrect,
+          reward: reward,
+          streak: newStreak,
+          questionIndex: _currentIndex,
+          hintUsed: _hintUsed,
+        )
+        .ignore();
 
     try {
       if (mounted) {
-        unawaited(context.read<DailyMissionProvider>().incrementByType(
-              DailyMissionType.quizPlay,
-            ),);
+        unawaited(
+          context.read<DailyMissionProvider>().incrementByType(
+                DailyMissionType.quizPlay,
+              ),
+        );
       }
     } on ProviderNotFoundException {
       // Standalone/test context without DailyMissionProvider — safe to ignore.

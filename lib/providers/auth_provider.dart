@@ -140,7 +140,8 @@ class AuthProvider extends ChangeNotifier {
           const Duration(seconds: 15),
           onTimeout: () {
             throw TimeoutException(
-                'Sign-in credential verification timed out. Please try again.',);
+              'Sign-in credential verification timed out. Please try again.',
+            );
           },
         );
       }

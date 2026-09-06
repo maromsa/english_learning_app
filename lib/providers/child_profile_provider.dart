@@ -158,5 +158,4 @@ class ChildProfileProvider with ChangeNotifier {
     _disposed = true;
     super.dispose();
   }
-
 }

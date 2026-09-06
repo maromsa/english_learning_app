@@ -53,7 +53,9 @@ class AchievementsScreen extends StatelessWidget {
                   ),
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4,),
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     sliver: SliverGrid(
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
@@ -64,10 +66,10 @@ class AchievementsScreen extends StatelessWidget {
                       ),
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
-                          final achievement =
-                              byCategory[category]![index];
+                          final achievement = byCategory[category]![index];
                           return _AchievementCard(
-                              achievement: achievement,);
+                            achievement: achievement,
+                          );
                         },
                         childCount: byCategory[category]!.length,
                       ),
@@ -152,10 +154,8 @@ class _CategoryHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
       child: Text(
         '$emoji  $label',
-        style: Theme.of(context)
-            .textTheme
-            .titleSmall
-            ?.copyWith(fontWeight: FontWeight.bold, color: Colors.grey.shade700),
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.bold, color: Colors.grey.shade700),
       ),
     );
   }
@@ -187,7 +187,8 @@ class _AchievementCard extends StatelessWidget {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: isUnlocked
-                      ? _categoryColor(achievement.category).withValues(alpha: 0.12)
+                      ? _categoryColor(achievement.category)
+                          .withValues(alpha: 0.12)
                       : Colors.grey.shade100,
                   shape: BoxShape.circle,
                 ),
@@ -250,15 +251,19 @@ class _AchievementCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.monetization_on,
-                    size: 12, color: Colors.amber,),
+                const Icon(
+                  Icons.monetization_on,
+                  size: 12,
+                  color: Colors.amber,
+                ),
                 const SizedBox(width: 3),
                 Text(
                   '+${achievement.coinReward}',
                   style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.amber,),
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amber,
+                  ),
                 ),
               ],
             ),

@@ -328,7 +328,8 @@ class GeminiProxyService {
       final cached = _responseCache.get(cacheKey);
       if (cached != null) {
         debugPrint(
-            '[GeminiProxyService] Cache hit for mode=${payload['mode']}',);
+          '[GeminiProxyService] Cache hit for mode=${payload['mode']}',
+        );
         return cached;
       }
     }
@@ -407,7 +408,8 @@ class GeminiProxyService {
             'the proxy or Gemini backend returned a 5xx response.',
           );
           debugPrint(
-              '[GeminiProxyService] Response body: ${error.response?.data}',);
+            '[GeminiProxyService] Response body: ${error.response?.data}',
+          );
           return null;
         }
 
@@ -417,7 +419,8 @@ class GeminiProxyService {
           'message: ${error.message}',
         );
         debugPrint(
-            '[GeminiProxyService] Response body: ${error.response?.data}',);
+          '[GeminiProxyService] Response body: ${error.response?.data}',
+        );
         debugPrint('$stackTrace');
         return null;
       }

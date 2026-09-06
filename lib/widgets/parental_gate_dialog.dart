@@ -27,7 +27,8 @@ class ParentalGateDialog extends StatefulWidget {
       return showGeneralDialog<bool>(
         context: context,
         barrierDismissible: false,
-        barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+        barrierLabel:
+            MaterialLocalizations.of(context).modalBarrierDismissLabel,
         // Barrier is drawn inside [_ParentalGateDialogShell] under [PointerInterceptor].
         barrierColor: Colors.transparent,
         pageBuilder: (context, animation, secondaryAnimation) {
@@ -102,7 +103,8 @@ class _ParentalGateDialogState extends State<ParentalGateDialog> {
     }
     _correctAnswer = _factorA * _factorB;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _stealFocusFromPlatformView());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _stealFocusFromPlatformView());
     if (kIsWeb) {
       Future<void>.delayed(
         const Duration(milliseconds: 80),
