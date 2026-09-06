@@ -288,4 +288,6 @@ class SparkStrings {
   ) =>
       'מקום $rank · 🪙 $coins · 🔥 $streak';
   static const String leaderboardMapButton = 'לוח מובילים';
+  static const String leaderboardSortByCoins = '🪙 מטבעות';
+  static const String leaderboardSortByStreak = '🔥 רצף';
 }

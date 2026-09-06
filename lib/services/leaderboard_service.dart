@@ -23,10 +23,12 @@ class LeaderboardService {
 
   static const int defaultLimit = 50;
 
-  /// Fetches profiles, sorts by [totalCoins] then [currentStreak], assigns ranks.
+  /// Fetches profiles, ranks them by [sortMode] (the other stat breaks ties),
+  /// and assigns ranks.
   Future<LeaderboardResult> fetchLeaderboard({
     String? currentProfileId,
     int limit = defaultLimit,
+    LeaderboardSortMode sortMode = LeaderboardSortMode.coins,
   }) async {
     final merged = <String, _LeaderboardDraft>{};
 
@@ -63,11 +65,25 @@ class LeaderboardService {
 
     final sorted = merged.values.toList()
       ..sort((a, b) {
-        final coinCmp = b.totalCoins.compareTo(a.totalCoins);
-        if (coinCmp != 0) {
-          return coinCmp;
+        final primary = switch (sortMode) {
+          LeaderboardSortMode.coins =>
+            b.totalCoins.compareTo(a.totalCoins),
+          LeaderboardSortMode.streak =>
+            b.currentStreak.compareTo(a.currentStreak),
+        };
+        if (primary != 0) {
+          return primary;
         }
-        return b.currentStreak.compareTo(a.currentStreak);
+        final secondary = switch (sortMode) {
+          LeaderboardSortMode.coins =>
+            b.currentStreak.compareTo(a.currentStreak),
+          LeaderboardSortMode.streak =>
+            b.totalCoins.compareTo(a.totalCoins),
+        };
+        if (secondary != 0) {
+          return secondary;
+        }
+        return a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
       });
 
     final capped = sorted.take(limit).toList();
@@ -85,6 +101,7 @@ class LeaderboardService {
         currentStreak: draft.currentStreak,
         avatarColor: draft.avatarColor,
         avatarUrl: draft.avatarUrl,
+        avatarId: draft.avatarId,
         rank: i + 1,
         isCurrentUser: isCurrent,
       );
@@ -105,6 +122,7 @@ class LeaderboardService {
           currentStreak: draft.currentStreak,
           avatarColor: draft.avatarColor,
           avatarUrl: draft.avatarUrl,
+          avatarId: draft.avatarId,
           rank: index + 1,
           isCurrentUser: true,
         );
@@ -135,6 +153,7 @@ class LeaderboardService {
           : existing.currentStreak,
       avatarColor: profile.avatarColor,
       avatarUrl: profile.avatarUrl ?? existing.avatarUrl,
+      avatarId: profile.avatarId ?? existing.avatarId,
     );
   }
 }
@@ -147,6 +166,7 @@ class _LeaderboardDraft {
     required this.currentStreak,
     required this.avatarColor,
     this.avatarUrl,
+    this.avatarId,
   });
 
   factory _LeaderboardDraft.fromProfile(ChildProfile profile) {
@@ -157,6 +177,7 @@ class _LeaderboardDraft {
       currentStreak: profile.dailyStreak,
       avatarColor: profile.avatarColor,
       avatarUrl: profile.avatarUrl,
+      avatarId: profile.avatarId,
     );
   }
 
@@ -166,6 +187,7 @@ class _LeaderboardDraft {
   final int currentStreak;
   final int avatarColor;
   final String? avatarUrl;
+  final String? avatarId;
 
   _LeaderboardDraft copyWith({
     String? displayName,
@@ -173,6 +195,7 @@ class _LeaderboardDraft {
     int? currentStreak,
     int? avatarColor,
     String? avatarUrl,
+    String? avatarId,
   }) {
     return _LeaderboardDraft(
       profileId: profileId,
@@ -181,6 +204,7 @@ class _LeaderboardDraft {
       currentStreak: currentStreak ?? this.currentStreak,
       avatarColor: avatarColor ?? this.avatarColor,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      avatarId: avatarId ?? this.avatarId,
     );
   }
 }

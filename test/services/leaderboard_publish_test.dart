@@ -55,11 +55,31 @@ void main() {
           'coins',
           'dailyStreak',
           'avatarColor',
+          'avatarId',
           'updatedAt',
         }),
         isEmpty,
       );
       expect(data.containsKey('avatarUrl'), isFalse);
+    });
+
+    test('publishes the animal-emoji avatarId when the profile has one',
+        () async {
+      const parentUid = 'parent123';
+      final profile = await profileService.createProfile(
+        displayName: 'Noa',
+        avatarColor: ChildProfile.defaultAvatarColors.first,
+        avatarId: '🦄',
+      );
+
+      await syncService.syncProfileToCloud(parentUid, profile);
+
+      final data = (await firestore
+              .collection('leaderboard')
+              .doc('${parentUid}_${profile.id}')
+              .get())
+          .data()!;
+      expect(data['avatarId'], '🦄');
     });
 
     test('deleteFromCloud removes the leaderboard entry too', () async {
