@@ -8,6 +8,7 @@ class LeaderboardEntry {
     required this.avatarColor,
     required this.rank,
     this.avatarUrl,
+    this.avatarId,
     this.isCurrentUser = false,
   });
 
@@ -17,6 +18,10 @@ class LeaderboardEntry {
   final int currentStreak;
   final int avatarColor;
   final String? avatarUrl;
+
+  /// Optional kid-picked animal emoji (see `ChildProfile.avatarChoices`).
+  /// Takes precedence over [avatarUrl] and the coloured initial when set.
+  final String? avatarId;
   final int rank;
   final bool isCurrentUser;
 
@@ -27,6 +32,7 @@ class LeaderboardEntry {
     int? currentStreak,
     int? avatarColor,
     String? avatarUrl,
+    String? avatarId,
     int? rank,
     bool? isCurrentUser,
   }) {
@@ -37,11 +43,15 @@ class LeaderboardEntry {
       currentStreak: currentStreak ?? this.currentStreak,
       avatarColor: avatarColor ?? this.avatarColor,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      avatarId: avatarId ?? this.avatarId,
       rank: rank ?? this.rank,
       isCurrentUser: isCurrentUser ?? this.isCurrentUser,
     );
   }
 }
+
+/// How the leaderboard is ranked. The kid can flip between these.
+enum LeaderboardSortMode { coins, streak }
 
 /// Sorted leaderboard payload for the UI.
 class LeaderboardResult {
