@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/child_profile_provider.dart';
 import '../../providers/user_session_provider.dart';
 import '../optimized_avatar.dart';
 import 'user_switch_sheet.dart';
@@ -10,8 +11,8 @@ class CurrentUserAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<UserSessionProvider>(
-      builder: (context, sessionProvider, child) {
+    return Consumer2<UserSessionProvider, ChildProfileProvider>(
+      builder: (context, sessionProvider, profileProvider, child) {
         final user = sessionProvider.currentUser;
 
         if (user == null) {
@@ -20,6 +21,13 @@ class CurrentUserAvatar extends StatelessWidget {
             onPressed: () => _showSwitchSheet(context),
           );
         }
+
+        // Only show the emoji when the active profile matches the session user
+        // (avoids flashing a stale avatar mid-switch).
+        final activeProfile = profileProvider.activeProfile;
+        final emoji = activeProfile != null && activeProfile.id == user.id
+            ? activeProfile.avatarId
+            : null;
 
         return GestureDetector(
           onTap: () => _showSwitchSheet(context),
@@ -42,6 +50,7 @@ class CurrentUserAvatar extends StatelessWidget {
               children: [
                 // אווטר
                 OptimizedAvatar(
+                  emoji: emoji,
                   imageUrl: user.photoUrl,
                   radius: 16,
                   fallbackText: user.name.isNotEmpty ? user.name : '?',

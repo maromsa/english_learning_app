@@ -73,11 +73,13 @@ class ChildProfileService {
     required String displayName,
     required int avatarColor,
     String? avatarUrl,
+    String? avatarId,
   }) async {
     final profile = ChildProfile.create(
       displayName: displayName,
       avatarColor: avatarColor,
       avatarUrl: avatarUrl,
+      avatarId: avatarId,
     );
     await saveProfile(profile);
     return profile;

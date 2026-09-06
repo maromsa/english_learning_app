@@ -79,6 +79,7 @@ class _ChildProfileSelectionScreenState
       final profile = await provider.createProfile(
         displayName: result.displayName,
         avatarColor: result.avatarColor,
+        avatarId: result.avatarId,
       );
       await _selectProfile(profile);
     } finally {
@@ -290,24 +291,13 @@ class _ProfileCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              CircleAvatar(
+              OptimizedAvatar(
+                emoji: profile.avatarId,
+                imageUrl: profile.avatarUrl,
                 radius: 28,
+                fallbackText:
+                    profile.displayName.isNotEmpty ? profile.displayName : '?',
                 backgroundColor: Color(profile.avatarColor),
-                backgroundImage: profile.avatarUrl != null
-                    ? NetworkImage(profile.avatarUrl!)
-                    : null,
-                child: profile.avatarUrl == null
-                    ? Text(
-                        profile.displayName.isNotEmpty
-                            ? profile.displayName[0]
-                            : '?',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 22,
-                        ),
-                      )
-                    : null,
               ),
               const SizedBox(width: 16),
               Expanded(

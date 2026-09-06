@@ -11,6 +11,10 @@ class OptimizedAvatar extends StatelessWidget {
   final Color? backgroundColor;
   final String? fallbackText;
 
+  /// Optional emoji shown inside the circle. Takes precedence over [imageUrl]
+  /// and [fallbackText] when non-empty (used for kid-picked animal avatars).
+  final String? emoji;
+
   const OptimizedAvatar({
     super.key,
     this.imageUrl,
@@ -19,12 +23,24 @@ class OptimizedAvatar extends StatelessWidget {
     this.errorWidget,
     this.backgroundColor,
     this.fallbackText,
+    this.emoji,
   });
 
   @override
   Widget build(BuildContext context) {
     // Calculate memCache size based on radius (3x for high DPI screens)
     final memCacheSize = (radius * 2 * 3).round();
+
+    if (emoji != null && emoji!.isNotEmpty) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: backgroundColor ?? Colors.grey.shade300,
+        child: Text(
+          emoji!,
+          style: TextStyle(fontSize: radius * 1.1),
+        ),
+      );
+    }
 
     if (imageUrl == null || imageUrl!.isEmpty) {
       return CircleAvatar(
