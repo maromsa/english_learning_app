@@ -9,10 +9,15 @@ class ChildProfileDraft {
   const ChildProfileDraft({
     required this.displayName,
     required this.avatarColor,
+    this.avatarId,
   });
 
   final String displayName;
   final int avatarColor;
+
+  /// Chosen emoji avatar (one of [ChildProfile.avatarChoices]), or null to
+  /// keep the coloured-initial look.
+  final String? avatarId;
 }
 
 /// Lightweight "new player" dialog — a name field and an avatar-colour picker.
@@ -31,8 +36,15 @@ class ChildProfileCreateDialog extends StatefulWidget {
 class _ChildProfileCreateDialogState extends State<ChildProfileCreateDialog> {
   final _nameController = TextEditingController();
   int _selectedColor = ChildProfile.defaultAvatarColors.first;
+  String? _selectedAvatarId;
 
   bool get _canCreate => _nameController.text.trim().isNotEmpty;
+
+  String get _previewGlyph {
+    if (_selectedAvatarId != null) return _selectedAvatarId!;
+    final name = _nameController.text.trim();
+    return name.isNotEmpty ? name.characters.first.toUpperCase() : '🙂';
+  }
 
   @override
   void initState() {
@@ -53,7 +65,11 @@ class _ChildProfileCreateDialogState extends State<ChildProfileCreateDialog> {
     }
     Navigator.pop(
       context,
-      ChildProfileDraft(displayName: name, avatarColor: _selectedColor),
+      ChildProfileDraft(
+        displayName: name,
+        avatarColor: _selectedColor,
+        avatarId: _selectedAvatarId,
+      ),
     );
   }
 
@@ -118,6 +134,57 @@ class _ChildProfileCreateDialogState extends State<ChildProfileCreateDialog> {
     );
   }
 
+  Widget _avatarPreview() {
+    return Center(
+      child: CircleAvatar(
+        radius: 34,
+        backgroundColor: Color(_selectedColor),
+        child: Text(
+          _previewGlyph,
+          style: TextStyle(
+            fontSize: _selectedAvatarId != null ? 34 : 26,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _avatarChoiceChip({required String? emoji}) {
+    final selected = _selectedAvatarId == emoji;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: emoji ?? 'אותיות',
+      child: GestureDetector(
+        onTap: () => setState(
+          () => _selectedAvatarId = selected ? null : emoji,
+        ),
+        child: AnimatedContainer(
+          duration: AuroraTokens.dBounce,
+          curve: Curves.easeOut,
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: selected
+                ? AuroraTokens.plum.withValues(alpha: 0.15)
+                : AuroraTokens.paper2,
+            border: Border.all(
+              color: selected ? AuroraTokens.plum : Colors.transparent,
+              width: 3,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: emoji == null
+              ? const Icon(Icons.text_fields_rounded, size: 22)
+              : Text(emoji, style: const TextStyle(fontSize: 24)),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -141,7 +208,9 @@ class _ChildProfileCreateDialogState extends State<ChildProfileCreateDialog> {
                 textAlign: TextAlign.center,
                 style: textTheme.titleLarge,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              _avatarPreview(),
+              const SizedBox(height: 16),
               TextField(
                 controller: _nameController,
                 style: textTheme.bodyLarge,
@@ -167,6 +236,27 @@ class _ChildProfileCreateDialogState extends State<ChildProfileCreateDialog> {
                 runSpacing: 12,
                 children:
                     ChildProfile.defaultAvatarColors.map(_colorSwatch).toList(),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'בחרו חיה',
+                textAlign: TextAlign.center,
+                style: textTheme.titleSmall,
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 48,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: ChildProfile.avatarChoices.length + 1,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (context, index) => _avatarChoiceChip(
+                    emoji: index == 0
+                        ? null
+                        : ChildProfile.avatarChoices[index - 1],
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               KidButton.primary(

@@ -12,6 +12,7 @@ class ChildProfile {
     required this.displayName,
     required this.avatarColor,
     this.avatarUrl,
+    this.avatarId,
     this.totalStars = 0,
     this.dailyStreak = 0,
     this.completedWordsCount = 0,
@@ -53,6 +54,9 @@ class ChildProfile {
       displayName: (map['displayName'] as String?) ?? '',
       avatarColor: map['avatarColor'] as int? ?? defaultAvatarColors.first,
       avatarUrl: map['avatarUrl'] as String?,
+      avatarId: (map['avatarId'] as String?)?.isNotEmpty ?? false
+          ? map['avatarId'] as String
+          : null,
       totalStars: map['totalStars'] as int? ?? 0,
       dailyStreak: map['dailyStreak'] as int? ?? 0,
       completedWordsCount: map['completedWordsCount'] as int? ?? 0,
@@ -81,6 +85,7 @@ class ChildProfile {
     required String displayName,
     required int avatarColor,
     String? avatarUrl,
+    String? avatarId,
   }) {
     final now = DateTime.now();
     return ChildProfile(
@@ -88,6 +93,7 @@ class ChildProfile {
       displayName: displayName,
       avatarColor: avatarColor,
       avatarUrl: avatarUrl,
+      avatarId: (avatarId?.isNotEmpty ?? false) ? avatarId : null,
       createdAt: now,
       lastPlayedAt: now,
       pendingSync: true,
@@ -103,10 +109,32 @@ class ChildProfile {
     0xFF1ABC9C,
   ];
 
+  /// Fun animal emojis a child can pick as their avatar. An empty/absent
+  /// [avatarId] means "use the coloured initial" (the pre-avatar behaviour).
+  static const List<String> avatarChoices = <String>[
+    '🦊',
+    '🐼',
+    '🦁',
+    '🐸',
+    '🦄',
+    '🐰',
+    '🐨',
+    '🐯',
+    '🐵',
+    '🐧',
+    '🐢',
+    '🦉',
+  ];
+
   final String id;
   final String displayName;
   final int avatarColor;
   final String? avatarUrl;
+
+  /// Optional emoji avatar (one of [avatarChoices]). Null/empty → coloured
+  /// initial fallback. Kept nullable so profiles created before this feature
+  /// deserialize unchanged.
+  final String? avatarId;
   final int totalStars;
   final int dailyStreak;
   final int completedWordsCount;
@@ -126,6 +154,7 @@ class ChildProfile {
       'displayName': displayName,
       'avatarColor': avatarColor,
       if (avatarUrl != null) 'avatarUrl': avatarUrl,
+      if (avatarId != null && avatarId!.isNotEmpty) 'avatarId': avatarId,
       'totalStars': totalStars,
       'dailyStreak': dailyStreak,
       'completedWordsCount': completedWordsCount,
@@ -152,6 +181,7 @@ class ChildProfile {
     String? displayName,
     int? avatarColor,
     String? avatarUrl,
+    String? avatarId,
     int? totalStars,
     int? dailyStreak,
     int? completedWordsCount,
@@ -167,6 +197,7 @@ class ChildProfile {
       displayName: displayName ?? this.displayName,
       avatarColor: avatarColor ?? this.avatarColor,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      avatarId: avatarId ?? this.avatarId,
       totalStars: totalStars ?? this.totalStars,
       dailyStreak: dailyStreak ?? this.dailyStreak,
       completedWordsCount: completedWordsCount ?? this.completedWordsCount,

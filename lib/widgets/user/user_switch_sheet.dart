@@ -70,6 +70,7 @@ class _UserSwitchSheetState extends State<UserSwitchSheet> {
       final profile = await provider.createProfile(
         displayName: draft.displayName,
         avatarColor: draft.avatarColor,
+        avatarId: draft.avatarId,
       );
       if (!mounted) return;
       await provider.selectProfile(context, profile);
@@ -228,6 +229,7 @@ class _ProfileRow extends StatelessWidget {
           child: Row(
             children: [
               OptimizedAvatar(
+                emoji: profile.avatarId,
                 imageUrl: profile.avatarUrl,
                 radius: 26,
                 fallbackText:

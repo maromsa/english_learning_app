@@ -19,13 +19,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-ChildProfile _profile(String id, String name, {int stars = 0, int streak = 0}) {
+ChildProfile _profile(
+  String id,
+  String name, {
+  int stars = 0,
+  int streak = 0,
+  String? avatarId,
+}) {
   return ChildProfile(
     id: id,
     displayName: name,
     avatarColor: ChildProfile.defaultAvatarColors.first,
     totalStars: stars,
     dailyStreak: streak,
+    avatarId: avatarId,
   );
 }
 
@@ -45,6 +52,7 @@ class _FakeChildProfileProvider extends ChildProfileProvider {
   int createCalls = 0;
   String? lastCreatedName;
   int? lastCreatedColor;
+  String? lastCreatedAvatarId;
 
   @override
   bool get initialized => true;
@@ -74,11 +82,17 @@ class _FakeChildProfileProvider extends ChildProfileProvider {
     required String displayName,
     required int avatarColor,
     String? avatarUrl,
+    String? avatarId,
   }) async {
     createCalls++;
     lastCreatedName = displayName;
     lastCreatedColor = avatarColor;
-    final created = _profile('new_${_profiles.length}', displayName);
+    lastCreatedAvatarId = avatarId;
+    final created = _profile(
+      'new_${_profiles.length}',
+      displayName,
+      avatarId: avatarId,
+    );
     _profiles.add(created);
     notifyListeners();
     return created;
@@ -155,6 +169,23 @@ void main() {
       expect(find.text('הוסף שחקן חדש'), findsOneWidget);
     });
 
+    testWidgets('a profile with an emoji avatar shows it in its row',
+        (tester) async {
+      final provider = _FakeChildProfileProvider(
+        profiles: [
+          _profile('a', 'אלכס', avatarId: '🦊'),
+          _profile('b', 'דנה'),
+        ],
+        activeId: 'a',
+      );
+
+      await _pumpDirect(tester, provider);
+
+      expect(find.text('🦊'), findsOneWidget);
+      // דנה has no emoji → coloured-initial fallback, no stray emoji.
+      expect(find.text('🐼'), findsNothing);
+    });
+
     testWidgets('shows an empty state plus the add action when there are no '
         'profiles', (tester) async {
       final provider = _FakeChildProfileProvider(profiles: []);
@@ -218,13 +249,20 @@ void main() {
 
       await tester.enterText(find.byType(TextField), 'רון');
       await tester.pump();
+      // Pick an animal in the dialog's avatar strip (scope past the preview).
+      await tester.tap(
+        find.descendant(of: find.byType(ListView), matching: find.text('🐸')),
+      );
+      await tester.pump();
       await tester.tap(find.text('צור'));
       await tester.pumpAndSettle();
 
       expect(provider.createCalls, 1);
       expect(provider.lastCreatedName, 'רון');
+      expect(provider.lastCreatedAvatarId, '🐸');
       expect(provider.selectCalls, 1);
       expect(provider.lastSelected?.displayName, 'רון');
+      expect(provider.lastSelected?.avatarId, '🐸');
       expect(find.text('מי משחק עכשיו?'), findsNothing);
     });
   });

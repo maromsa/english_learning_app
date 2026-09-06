@@ -63,11 +63,13 @@ class ChildProfileProvider with ChangeNotifier {
     required String displayName,
     required int avatarColor,
     String? avatarUrl,
+    String? avatarId,
   }) async {
     final profile = await _profileService.createProfile(
       displayName: displayName,
       avatarColor: avatarColor,
       avatarUrl: avatarUrl,
+      avatarId: avatarId,
     );
     _profiles = await _profileService.getAllProfiles();
 
