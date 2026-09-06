@@ -256,14 +256,13 @@ firestore.rules        security + field whitelists (keep in sync with writes)
 Tracked here so they don't get rediscovered the hard way. Fix opportunistically
 or spin off tasks.
 
-1. **`avatarId` rejected by leaderboard security rules.**
-   `child_profile_sync_service.dart` writes `avatarId` to `/leaderboard/{id}`,
-   but `firestore.rules` `hasOnly([...])` omits it → the write fails with
-   `permission-denied` for every child who picked an animal avatar, and the
-   error is swallowed by a `debugPrint` catch. The leaderboard-avatars feature
-   is effectively non-functional in production until the rule is updated.
-   *Fix: add `'avatarId'` to the whitelist (+ `is string`, size bound) and add a
-   rules test.*
+1. ~~**`avatarId` rejected by leaderboard security rules.**~~ ✅ **Fixed.**
+   The `/leaderboard/{entryId}` `hasOnly([...])` whitelist now includes
+   `avatarId` with a `is string` + size guard, and
+   `test/firestore_rules_test.dart` statically guards the whitelist against
+   drift from the publisher payload. **Rules must be redeployed**
+   (`firebase deploy --only firestore:rules`) before / with PR #111 so the
+   `avatarId` write from `child_profile_sync_service.dart` succeeds.
 
 2. **CI does not enforce quality gates.** `.github/workflows/test.yml` runs
    `flutter analyze || true` and `dart format … continue-on-error: true`, so
