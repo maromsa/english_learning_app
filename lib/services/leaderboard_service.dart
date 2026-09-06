@@ -66,8 +66,7 @@ class LeaderboardService {
     final sorted = merged.values.toList()
       ..sort((a, b) {
         final primary = switch (sortMode) {
-          LeaderboardSortMode.coins =>
-            b.totalCoins.compareTo(a.totalCoins),
+          LeaderboardSortMode.coins => b.totalCoins.compareTo(a.totalCoins),
           LeaderboardSortMode.streak =>
             b.currentStreak.compareTo(a.currentStreak),
         };
@@ -77,13 +76,14 @@ class LeaderboardService {
         final secondary = switch (sortMode) {
           LeaderboardSortMode.coins =>
             b.currentStreak.compareTo(a.currentStreak),
-          LeaderboardSortMode.streak =>
-            b.totalCoins.compareTo(a.totalCoins),
+          LeaderboardSortMode.streak => b.totalCoins.compareTo(a.totalCoins),
         };
         if (secondary != 0) {
           return secondary;
         }
-        return a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
+        return a.displayName
+            .toLowerCase()
+            .compareTo(b.displayName.toLowerCase());
       });
 
     final capped = sorted.take(limit).toList();
@@ -136,7 +136,9 @@ class LeaderboardService {
   }
 
   void _upsertDraft(
-      Map<String, _LeaderboardDraft> merged, ChildProfile profile,) {
+    Map<String, _LeaderboardDraft> merged,
+    ChildProfile profile,
+  ) {
     final existing = merged[profile.id];
     if (existing == null) {
       merged[profile.id] = _LeaderboardDraft.fromProfile(profile);

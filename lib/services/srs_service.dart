@@ -244,7 +244,10 @@ class SrsService {
     int count = 0;
     for (final word in words) {
       final card = await getCard(
-          userId: userId, levelId: levelId, word: word.word,);
+        userId: userId,
+        levelId: levelId,
+        word: word.word,
+      );
       if (card.isDue) count++;
     }
     return count;
@@ -265,8 +268,9 @@ class SrsService {
     final cardMap = {for (final c in cards) c.wordId.toLowerCase(): c};
 
     final seen = allWords
-        .where((w) =>
-            (cardMap[w.word.toLowerCase()]?.lastReviewDate) != null,)
+        .where(
+          (w) => (cardMap[w.word.toLowerCase()]?.lastReviewDate) != null,
+        )
         .toList();
 
     seen.sort((a, b) {
@@ -366,7 +370,10 @@ class SrsService {
   }
 
   Future<SrsCard?> _loadFromPrefs(
-      String userId, String levelId, String word,) async {
+    String userId,
+    String levelId,
+    String word,
+  ) async {
     try {
       final prefs = await _prefsFuture;
       final key = _prefsKey(userId, levelId, word);
@@ -381,7 +388,10 @@ class SrsService {
   }
 
   Future<void> _saveToPrefs(
-      String userId, String levelId, SrsCard card,) async {
+    String userId,
+    String levelId,
+    SrsCard card,
+  ) async {
     try {
       final prefs = await _prefsFuture;
       final key = _prefsKey(userId, levelId, card.wordId);

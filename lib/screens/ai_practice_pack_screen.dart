@@ -409,14 +409,16 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen>
         _pack = pack;
         _completed = List<bool>.filled(pack.activities.length, false);
       });
-      unawaited(TelemetryService.maybeOf(context)?.logCustomEvent(
-        'ai_practice_pack_generated',
-        {
-          'skill': _selectedSkill,
-          'time': _selectedTime,
-          'energy': _selectedEnergy,
-        },
-      ),);
+      unawaited(
+        TelemetryService.maybeOf(context)?.logCustomEvent(
+          'ai_practice_pack_generated',
+          {
+            'skill': _selectedSkill,
+            'time': _selectedTime,
+            'energy': _selectedEnergy,
+          },
+        ),
+      );
     } on PracticePackGenerationException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -464,10 +466,12 @@ class _AiPracticePackScreenState extends State<AiPracticePackScreen>
             .incrementByType(DailyMissionType.speakPractice),
       );
     } catch (_) {}
-    unawaited(TelemetryService.maybeOf(context)?.logCustomEvent(
-      'ai_practice_activity_completed',
-      {'skill': _selectedSkill, 'activity_index': index},
-    ),);
+    unawaited(
+      TelemetryService.maybeOf(context)?.logCustomEvent(
+        'ai_practice_activity_completed',
+        {'skill': _selectedSkill, 'activity_index': index},
+      ),
+    );
   }
 
   List<String> _resolvedFocusWords() {

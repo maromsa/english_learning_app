@@ -98,8 +98,8 @@ class _VoiceChallengeScreenState extends State<VoiceChallengeScreen> {
       if (!mounted) return;
       _speechService = widget.speechFeedbackService ?? _readSpeechService();
       try {
-        _userId =
-            context.read<UserSessionProvider>().currentUser?.id ?? 'local_guest';
+        _userId = context.read<UserSessionProvider>().currentUser?.id ??
+            'local_guest';
       } catch (_) {
         _userId = 'local_guest';
       }
@@ -181,7 +181,9 @@ class _VoiceChallengeScreenState extends State<VoiceChallengeScreen> {
     SoundService().playSuccessSound();
 
     if (mounted) {
-      await context.read<CoinProvider>().addCoins(VoiceChallengeScreen.coinReward);
+      await context
+          .read<CoinProvider>()
+          .addCoins(VoiceChallengeScreen.coinReward);
     }
     if (!mounted) {
       _grading = false;
@@ -362,7 +364,8 @@ class _VoiceChallengeScreenState extends State<VoiceChallengeScreen> {
       ),
       child: Column(
         children: [
-          const Icon(Icons.mic_off_rounded, size: 40, color: AuroraTokens.inkMute),
+          const Icon(Icons.mic_off_rounded,
+              size: 40, color: AuroraTokens.inkMute),
           const SizedBox(height: AuroraTokens.s4),
           Text(
             SparkStrings.micStartFailed,

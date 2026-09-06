@@ -185,11 +185,10 @@ class SrsCard {
       intervalDays: (json['intervalDays'] as num?)?.toInt() ?? 1,
       nextReviewDate: _parseDate(json['nextReviewDate']),
       lastReviewDate: _parseDate(json['lastReviewDate']),
-      masteryLevel: ((json['masteryLevel'] as num?)?.toDouble() ?? 0.0)
-          .clamp(0.0, 1.0),
+      masteryLevel:
+          ((json['masteryLevel'] as num?)?.toDouble() ?? 0.0).clamp(0.0, 1.0),
       bestPronunciationStars:
-          ((json['bestPronunciationStars'] as num?)?.toInt() ?? 0)
-              .clamp(0, 3),
+          ((json['bestPronunciationStars'] as num?)?.toInt() ?? 0).clamp(0, 3),
     );
   }
 

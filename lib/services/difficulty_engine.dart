@@ -150,10 +150,9 @@ class DifficultyEngine extends ChangeNotifier {
       final raw = prefs.getString(key);
       if (raw == null) return;
       final json = jsonDecode(raw) as Map<String, dynamic>;
-      final answers = (json['answers'] as List<dynamic>?)
-              ?.map((e) => e as bool)
-              .toList() ??
-          [];
+      final answers =
+          (json['answers'] as List<dynamic>?)?.map((e) => e as bool).toList() ??
+              [];
       _window
         ..clear()
         ..addAll(answers.take(_windowSize));

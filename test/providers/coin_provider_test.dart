@@ -154,7 +154,8 @@ void main() {
         expect(provider.dailyStreak, 1);
       });
 
-      test('a rejected same-day re-claim leaves the streak untouched', () async {
+      test('a rejected same-day re-claim leaves the streak untouched',
+          () async {
         await coinProvider.claimDailyPracticeReward();
         expect(coinProvider.dailyStreak, 1);
 
@@ -202,7 +203,8 @@ void main() {
           .firstWhere((i) => i.id == ShopItem.streakShieldId);
 
       CoinProvider buildProvider(StreakShieldService shield) => CoinProvider(
-            userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
+            userDataService:
+                UserDataService(firestore: FakeFirebaseFirestore()),
             streakShieldService: shield,
           );
 
@@ -254,7 +256,8 @@ void main() {
         expect(shield.hasShield, isFalse);
       });
 
-      test('a bought shield absorbs a missed day instead of resetting the streak',
+      test(
+          'a bought shield absorbs a missed day instead of resetting the streak',
           () async {
         final threeDaysAgo = DateTime(2024, 1, 1);
         final today = DateTime(2024, 1, 4);

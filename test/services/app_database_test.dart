@@ -65,18 +65,29 @@ void main() {
       final db = await _makeTestDb();
 
       await db.upsertSrsCard(
-        userId: 'u1', levelId: 'l1', wordId: 'cat',
-        repetitions: 1, easeFactor: 2.5, intervalDays: 1,
-        masteryLevel: 0.25, bestStars: 0,
+        userId: 'u1',
+        levelId: 'l1',
+        wordId: 'cat',
+        repetitions: 1,
+        easeFactor: 2.5,
+        intervalDays: 1,
+        masteryLevel: 0.25,
+        bestStars: 0,
       );
       await db.upsertSrsCard(
-        userId: 'u1', levelId: 'l1', wordId: 'cat',
-        repetitions: 3, easeFactor: 2.7, intervalDays: 12,
-        masteryLevel: 0.75, bestStars: 3,
+        userId: 'u1',
+        levelId: 'l1',
+        wordId: 'cat',
+        repetitions: 3,
+        easeFactor: 2.7,
+        intervalDays: 12,
+        masteryLevel: 0.75,
+        bestStars: 3,
         dirty: false,
       );
 
-      final row = await db.getSrsCard(userId: 'u1', levelId: 'l1', wordId: 'cat');
+      final row =
+          await db.getSrsCard(userId: 'u1', levelId: 'l1', wordId: 'cat');
       expect(row!['repetitions'], 3);
       expect(row['mastery_level'], closeTo(0.75, 0.01));
       expect(row['dirty'], 0);
@@ -89,15 +100,25 @@ void main() {
       final future = DateTime.now().add(const Duration(days: 5));
 
       await db.upsertSrsCard(
-        userId: 'u1', levelId: 'l1', wordId: 'due_word',
-        repetitions: 2, easeFactor: 2.5, intervalDays: 3,
-        masteryLevel: 0.4, bestStars: 0,
+        userId: 'u1',
+        levelId: 'l1',
+        wordId: 'due_word',
+        repetitions: 2,
+        easeFactor: 2.5,
+        intervalDays: 3,
+        masteryLevel: 0.4,
+        bestStars: 0,
         nextReviewDate: past,
       );
       await db.upsertSrsCard(
-        userId: 'u1', levelId: 'l1', wordId: 'future_word',
-        repetitions: 2, easeFactor: 2.5, intervalDays: 6,
-        masteryLevel: 0.6, bestStars: 0,
+        userId: 'u1',
+        levelId: 'l1',
+        wordId: 'future_word',
+        repetitions: 2,
+        easeFactor: 2.5,
+        intervalDays: 6,
+        masteryLevel: 0.6,
+        bestStars: 0,
         nextReviewDate: future,
       );
 
@@ -110,19 +131,34 @@ void main() {
       final db = await _makeTestDb();
 
       await db.upsertSrsCard(
-        userId: 'u1', levelId: 'l1', wordId: 'new_word',
-        repetitions: 0, easeFactor: 2.5, intervalDays: 1,
-        masteryLevel: 0.0, bestStars: 0,
+        userId: 'u1',
+        levelId: 'l1',
+        wordId: 'new_word',
+        repetitions: 0,
+        easeFactor: 2.5,
+        intervalDays: 1,
+        masteryLevel: 0.0,
+        bestStars: 0,
       );
       await db.upsertSrsCard(
-        userId: 'u1', levelId: 'l1', wordId: 'weak_word',
-        repetitions: 1, easeFactor: 2.5, intervalDays: 1,
-        masteryLevel: 0.35, bestStars: 0,
+        userId: 'u1',
+        levelId: 'l1',
+        wordId: 'weak_word',
+        repetitions: 1,
+        easeFactor: 2.5,
+        intervalDays: 1,
+        masteryLevel: 0.35,
+        bestStars: 0,
       );
       await db.upsertSrsCard(
-        userId: 'u1', levelId: 'l1', wordId: 'strong_word',
-        repetitions: 5, easeFactor: 2.5, intervalDays: 48,
-        masteryLevel: 1.0, bestStars: 3,
+        userId: 'u1',
+        levelId: 'l1',
+        wordId: 'strong_word',
+        repetitions: 5,
+        easeFactor: 2.5,
+        intervalDays: 48,
+        masteryLevel: 1.0,
+        bestStars: 3,
       );
 
       final weak = await db.getWeakCards(userId: 'u1');
@@ -134,14 +170,26 @@ void main() {
       final db = await _makeTestDb();
 
       await db.upsertSrsCard(
-        userId: 'u1', levelId: 'l1', wordId: 'dirty',
-        repetitions: 1, easeFactor: 2.5, intervalDays: 1,
-        masteryLevel: 0.2, bestStars: 0, dirty: true,
+        userId: 'u1',
+        levelId: 'l1',
+        wordId: 'dirty',
+        repetitions: 1,
+        easeFactor: 2.5,
+        intervalDays: 1,
+        masteryLevel: 0.2,
+        bestStars: 0,
+        dirty: true,
       );
       await db.upsertSrsCard(
-        userId: 'u1', levelId: 'l1', wordId: 'clean',
-        repetitions: 1, easeFactor: 2.5, intervalDays: 1,
-        masteryLevel: 0.5, bestStars: 0, dirty: false,
+        userId: 'u1',
+        levelId: 'l1',
+        wordId: 'clean',
+        repetitions: 1,
+        easeFactor: 2.5,
+        intervalDays: 1,
+        masteryLevel: 0.5,
+        bestStars: 0,
+        dirty: false,
       );
 
       final dirty = await db.getDirtyCards('u1');
@@ -153,16 +201,28 @@ void main() {
       final db = await _makeTestDb();
 
       await db.upsertSrsCard(
-        userId: 'u1', levelId: 'l1', wordId: 'apple',
-        repetitions: 1, easeFactor: 2.5, intervalDays: 1,
-        masteryLevel: 0.2, bestStars: 0, dirty: true,
+        userId: 'u1',
+        levelId: 'l1',
+        wordId: 'apple',
+        repetitions: 1,
+        easeFactor: 2.5,
+        intervalDays: 1,
+        masteryLevel: 0.2,
+        bestStars: 0,
+        dirty: true,
       );
 
       await db.markCardsSynced(
-          userId: 'u1', levelId: 'l1', wordIds: ['apple'],);
+        userId: 'u1',
+        levelId: 'l1',
+        wordIds: ['apple'],
+      );
 
       final row = await db.getSrsCard(
-          userId: 'u1', levelId: 'l1', wordId: 'apple',);
+        userId: 'u1',
+        levelId: 'l1',
+        wordId: 'apple',
+      );
       expect(row!['dirty'], 0);
     });
 
@@ -170,20 +230,32 @@ void main() {
       final db = await _makeTestDb();
 
       await db.upsertSrsCard(
-        userId: 'u1', levelId: 'l1', wordId: 'apple',
-        repetitions: 1, easeFactor: 2.5, intervalDays: 1,
-        masteryLevel: 0.2, bestStars: 0,
+        userId: 'u1',
+        levelId: 'l1',
+        wordId: 'apple',
+        repetitions: 1,
+        easeFactor: 2.5,
+        intervalDays: 1,
+        masteryLevel: 0.2,
+        bestStars: 0,
       );
       await db.upsertSrsCard(
-        userId: 'u2', levelId: 'l1', wordId: 'apple',
-        repetitions: 1, easeFactor: 2.5, intervalDays: 1,
-        masteryLevel: 0.2, bestStars: 0,
+        userId: 'u2',
+        levelId: 'l1',
+        wordId: 'apple',
+        repetitions: 1,
+        easeFactor: 2.5,
+        intervalDays: 1,
+        masteryLevel: 0.2,
+        bestStars: 0,
       );
 
       await db.deleteUserData('u1');
 
-      final u1 = await db.getSrsCard(userId: 'u1', levelId: 'l1', wordId: 'apple');
-      final u2 = await db.getSrsCard(userId: 'u2', levelId: 'l1', wordId: 'apple');
+      final u1 =
+          await db.getSrsCard(userId: 'u1', levelId: 'l1', wordId: 'apple');
+      final u2 =
+          await db.getSrsCard(userId: 'u2', levelId: 'l1', wordId: 'apple');
       expect(u1, isNull);
       expect(u2, isNotNull);
     });
@@ -213,8 +285,10 @@ void main() {
     test('recordActivity accumulates same-day entries', () async {
       final db = await _makeTestDb();
 
-      await db.recordActivity(userId: 'u1', day: '2030-01-01', wordCount: 5, minutes: 2);
-      await db.recordActivity(userId: 'u1', day: '2030-01-01', wordCount: 8, minutes: 3);
+      await db.recordActivity(
+          userId: 'u1', day: '2030-01-01', wordCount: 5, minutes: 2);
+      await db.recordActivity(
+          userId: 'u1', day: '2030-01-01', wordCount: 8, minutes: 3);
 
       final rows = await db.getRecentActivity(userId: 'u1');
       expect(rows.length, 1);
@@ -225,13 +299,18 @@ void main() {
     test('getRecentActivity returns newest first', () async {
       final db = await _makeTestDb();
 
-      await db.recordActivity(userId: 'u1', day: '2030-01-01', wordCount: 5, minutes: 2);
-      await db.recordActivity(userId: 'u1', day: '2030-01-03', wordCount: 8, minutes: 3);
-      await db.recordActivity(userId: 'u1', day: '2030-01-02', wordCount: 3, minutes: 1);
+      await db.recordActivity(
+          userId: 'u1', day: '2030-01-01', wordCount: 5, minutes: 2);
+      await db.recordActivity(
+          userId: 'u1', day: '2030-01-03', wordCount: 8, minutes: 3);
+      await db.recordActivity(
+          userId: 'u1', day: '2030-01-02', wordCount: 3, minutes: 1);
 
       final rows = await db.getRecentActivity(userId: 'u1');
-      expect(rows.map((r) => r['day']).toList(),
-          ['2030-01-03', '2030-01-02', '2030-01-01'],);
+      expect(
+        rows.map((r) => r['day']).toList(),
+        ['2030-01-03', '2030-01-02', '2030-01-01'],
+      );
     });
 
     test('getRecentActivity respects limit', () async {

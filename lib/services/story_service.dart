@@ -212,12 +212,14 @@ Rules:
       if (!fetched.containsKey(word)) {
         fetched[word] = await _fetchImageUrl(word);
       }
-      enriched.add(StoryPage(
-        english: page.english,
-        hebrew: page.hebrew,
-        highlightWord: page.highlightWord,
-        imageUrl: fetched[word],
-      ),);
+      enriched.add(
+        StoryPage(
+          english: page.english,
+          hebrew: page.hebrew,
+          highlightWord: page.highlightWord,
+          imageUrl: fetched[word],
+        ),
+      );
     }
     return enriched;
   }
@@ -263,7 +265,10 @@ Rules:
   }
 
   Future<void> _saveToCache(
-      String userId, String levelId, SparkStory story,) async {
+    String userId,
+    String levelId,
+    SparkStory story,
+  ) async {
     try {
       final prefs = await _prefsFuture;
       await prefs.setString(

@@ -60,7 +60,10 @@ void main() {
     });
 
     final proxy = _FakeProxyService([
-      {'webformatURL': 'https://cdn.pixabay.com/photo1.jpg', 'tags': 'Apple, Fruit'},
+      {
+        'webformatURL': 'https://cdn.pixabay.com/photo1.jpg',
+        'tags': 'Apple, Fruit'
+      },
     ]);
     final validator = _FakeAiValidator(<bool>[true]);
     final service = WebImageService(
@@ -103,8 +106,14 @@ void main() {
     });
 
     final proxy = _FakeProxyService([
-      {'webformatURL': 'https://cdn.pixabay.com/photo_bad.jpg', 'tags': 'Stone'},
-      {'webformatURL': 'https://cdn.pixabay.com/photo_good.jpg', 'tags': 'Banana'},
+      {
+        'webformatURL': 'https://cdn.pixabay.com/photo_bad.jpg',
+        'tags': 'Stone'
+      },
+      {
+        'webformatURL': 'https://cdn.pixabay.com/photo_good.jpg',
+        'tags': 'Banana'
+      },
     ]);
     final validator = _FakeAiValidator(<bool>[false, true]);
     final service = WebImageService(

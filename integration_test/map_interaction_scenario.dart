@@ -13,7 +13,8 @@ const kMapEnterLevelIndex = 1;
 const kMapEnterLevelTitle = 'שלב 2: חיות';
 
 /// Registers the map postMessage bridge scenario (used by [map_interaction_test.dart]).
-void registerMapInteractionTests({IntegrationTestWidgetsFlutterBinding? binding}) {
+void registerMapInteractionTests(
+    {IntegrationTestWidgetsFlutterBinding? binding}) {
   testWidgets(
     'enter_level postMessage from 3D map navigates to level screen',
     (WidgetTester tester) async {

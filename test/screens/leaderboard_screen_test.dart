@@ -103,7 +103,8 @@ Future<_FakeLeaderboardService> _pump(WidgetTester tester) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('renders players with their animal-emoji avatars', (tester) async {
+  testWidgets('renders players with their animal-emoji avatars',
+      (tester) async {
     await _pump(tester);
 
     expect(find.text('Coinly'), findsOneWidget);

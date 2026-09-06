@@ -12,10 +12,8 @@ import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:provider/provider.dart';
 
 class LeaderboardScreen extends StatefulWidget {
-  const LeaderboardScreen({
-    super.key,
-    LeaderboardService? leaderboardService,
-  }) : _leaderboardService = leaderboardService;
+  const LeaderboardScreen({super.key, LeaderboardService? leaderboardService})
+      : _leaderboardService = leaderboardService;
 
   final LeaderboardService? _leaderboardService;
 
@@ -86,11 +84,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFFF8E1),
-              Color(0xFFE8F5E9),
-              Color(0xFFE3F2FD),
-            ],
+            colors: [Color(0xFFFFF8E1), Color(0xFFE8F5E9), Color(0xFFE3F2FD)],
           ),
         ),
         child: SafeArea(
@@ -220,8 +214,10 @@ class _LeaderboardHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            icon:
-                const Icon(Icons.arrow_back_rounded, color: Color(0xFF5D4037)),
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: Color(0xFF5D4037),
+            ),
             onPressed: onBack,
           ),
           const Icon(Icons.emoji_events, color: Color(0xFFFFB300), size: 36),
@@ -510,10 +506,7 @@ class _LeaderboardTile extends StatelessWidget {
               ),
           ],
         ),
-        subtitle: Text(
-          secondary,
-          style: const TextStyle(fontSize: 12),
-        ),
+        subtitle: Text(secondary, style: const TextStyle(fontSize: 12)),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

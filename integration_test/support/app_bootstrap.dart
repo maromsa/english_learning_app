@@ -42,12 +42,15 @@ Future<void> bootstrapMapIntegrationApp() async {
   final userSessionProvider = UserSessionProvider();
   final telemetryService = TelemetryService();
 
-  await Future.wait([
-    coinProvider.loadCoins(),
-    themeProvider.loadTheme(),
-    dailyMissionProvider.initialize(),
-    userSessionProvider.loadActiveUser(),
-  ], eagerError: false,);
+  await Future.wait(
+    [
+      coinProvider.loadCoins(),
+      themeProvider.loadTheme(),
+      dailyMissionProvider.initialize(),
+      userSessionProvider.loadActiveUser(),
+    ],
+    eagerError: false,
+  );
 
   runApp(
     MultiProvider(

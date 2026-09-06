@@ -99,7 +99,6 @@ Widget buildInlineOrNetworkWordImage(
       return placeholder ??
           const Center(child: CircularProgressIndicator(strokeWidth: 2));
     },
-    errorBuilder: (_, __, ___) =>
-        errorWidget ?? const Icon(Icons.broken_image),
+    errorBuilder: (_, __, ___) => errorWidget ?? const Icon(Icons.broken_image),
   );
 }

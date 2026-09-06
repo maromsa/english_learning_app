@@ -87,7 +87,6 @@ class _MapScreenState extends State<MapScreen>
   int _selectedNavIndex = 0; // For bottom navigation
   UserSessionProvider? _userSessionProvider;
 
-
   /// Floating pill dock + FAB layout (Flutter chrome only).
   static const double _floatingDockHeight = 68.0;
   static const double _floatingDockBottomMargin = 20.0;
@@ -416,7 +415,8 @@ class _MapScreenState extends State<MapScreen>
         );
       } catch (e) {
         debugPrint('Error in _loadProgress: $e');
-        unawaited(_updateUnlockStatuses()); // Ensure unlock statuses are updated
+        unawaited(
+            _updateUnlockStatuses()); // Ensure unlock statuses are updated
       }
 
       // Always set loading to false, even if there were errors
@@ -1193,9 +1193,11 @@ class _MapScreenState extends State<MapScreen>
   // ignore: unused_element
   void _handleAiShortcut(_QuickAiAction action) async {
     // Stop music before navigating to AI screen
-    unawaited(BackgroundMusicService().stop().catchError((error) {
-      debugPrint('Failed to stop music before AI shortcut: $error');
-    }),);
+    unawaited(
+      BackgroundMusicService().stop().catchError((error) {
+        debugPrint('Failed to stop music before AI shortcut: $error');
+      }),
+    );
 
     switch (action) {
       case _QuickAiAction.chatBuddy:
@@ -1251,122 +1253,122 @@ class _MapScreenState extends State<MapScreen>
         // 1. Minimal AppBar - Redesigned by Gemini 3 Pro
         appBar: _webPointerShieldAppBar(
           AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          centerTitle: true,
-          // leadingWidth must accommodate the avatar pill comfortably.
-          // 180 is preserved but the Padding is tightened to avoid cramping.
-          leading: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4.0),
-            child: CurrentUserAvatar(),
-          ),
-          leadingWidth: 180,
-          title: const _MapTitleCard(),
-          actions: [
-            Tooltip(
-              message: SparkStrings.leaderboardMapButton,
-              child: IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFFD54F), Color(0xFFFFB300)],
-                    ),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.amber.withValues(alpha: 0.5),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.emoji_events,
-                    color: Color(0xFF5D4037),
-                  ),
-                ),
-                onPressed: _navigateToLeaderboard,
-              ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            // leadingWidth must accommodate the avatar pill comfortably.
+            // 180 is preserved but the Padding is tightened to avoid cramping.
+            leading: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4.0),
+              child: CurrentUserAvatar(),
             ),
-            const SizedBox(width: 4),
-            // ── Character Selection button ────────────────────────────────────
-            Consumer<CharacterProvider>(
-              builder: (context, charProvider, _) {
-                return Tooltip(
-                  message: charProvider.hasCharacter
-                      ? 'שנה דמות (${charProvider.character!.characterName})'
-                      : 'בחר דמות',
-                  child: IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Theme.of(context).primaryColor,
-                          width: 2,
+            leadingWidth: 180,
+            title: const _MapTitleCard(),
+            actions: [
+              Tooltip(
+                message: SparkStrings.leaderboardMapButton,
+                child: IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFFD54F), Color(0xFFFFB300)],
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.amber.withValues(alpha: 0.5),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
-                      ),
-                      child: charProvider.hasCharacter
-                          ? const Icon(Icons.face, color: Colors.deepPurple)
-                          : const Icon(
-                              Icons.person_add_alt_1,
-                              color: Colors.deepPurple,
-                            ),
+                      ],
                     ),
-                    onPressed: _navigateToCharacterSelection,
+                    child: const Icon(
+                      Icons.emoji_events,
+                      color: Color(0xFF5D4037),
+                    ),
                   ),
-                );
-              },
-            ),
-            const SizedBox(width: 4),
-            // ── Parents area (gated) ─────────────────────────────────────────
-            Tooltip(
-              message: SparkStrings.parentsAreaButton,
-              child: IconButton(
+                  onPressed: _navigateToLeaderboard,
+                ),
+              ),
+              const SizedBox(width: 4),
+              // ── Character Selection button ────────────────────────────────────
+              Consumer<CharacterProvider>(
+                builder: (context, charProvider, _) {
+                  return Tooltip(
+                    message: charProvider.hasCharacter
+                        ? 'שנה דמות (${charProvider.character!.characterName})'
+                        : 'בחר דמות',
+                    child: IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Theme.of(context).primaryColor,
+                            width: 2,
+                          ),
+                        ),
+                        child: charProvider.hasCharacter
+                            ? const Icon(Icons.face, color: Colors.deepPurple)
+                            : const Icon(
+                                Icons.person_add_alt_1,
+                                color: Colors.deepPurple,
+                              ),
+                      ),
+                      onPressed: _navigateToCharacterSelection,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
+              // ── Parents area (gated) ─────────────────────────────────────────
+              Tooltip(
+                message: SparkStrings.parentsAreaButton,
+                child: IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.supervisor_account,
+                      color: Colors.indigo,
+                    ),
+                  ),
+                  onPressed: _openParentDashboard,
+                ),
+              ),
+              const SizedBox(width: 4),
+              // ── Settings button ───────────────────────────────────────────────
+              IconButton(
                 icon: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.9),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.supervisor_account,
-                    color: Colors.indigo,
-                  ),
+                  child: const Icon(Icons.settings, color: Colors.grey),
                 ),
-                onPressed: _openParentDashboard,
-              ),
-            ),
-            const SizedBox(width: 4),
-            // ── Settings button ───────────────────────────────────────────────
-            IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.settings, color: Colors.grey),
-              ),
-              onPressed: () async {
-                // Music will be stopped/resumed automatically by RouteAware
-                await Navigator.push(
-                  context,
-                  PageTransitions.slideFromRight(const SettingsScreen()),
-                );
+                onPressed: () async {
+                  // Music will be stopped/resumed automatically by RouteAware
+                  await Navigator.push(
+                    context,
+                    PageTransitions.slideFromRight(const SettingsScreen()),
+                  );
 
-                if (mounted) {
-                  await _loadProgress();
-                }
-              },
-            ),
-            // Right-edge breathing room — keeps the last icon away from the
-            // screen edge / notch area on all device shapes.
-            const SizedBox(width: 12),
-          ],
-        ),
+                  if (mounted) {
+                    await _loadProgress();
+                  }
+                },
+              ),
+              // Right-edge breathing room — keeps the last icon away from the
+              // screen edge / notch area on all device shapes.
+              const SizedBox(width: 12),
+            ],
+          ),
         ),
 
         // 2. Bottom Navigation for Secondary Actions - Redesigned by Gemini 3 Pro
@@ -1420,7 +1422,8 @@ class _MapScreenState extends State<MapScreen>
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  CircularProgressIndicator(color: Colors.white),
+                                  CircularProgressIndicator(
+                                      color: Colors.white),
                                   SizedBox(height: 16),
                                   Text(
                                     SparkStrings.mapLoading3d,
@@ -1453,20 +1456,27 @@ class _MapScreenState extends State<MapScreen>
                                 ),
                                 Consumer<StreakShieldService>(
                                   builder: (context, shield, _) {
-                                    if (!shield.hasShield) return const SizedBox.shrink();
+                                    if (!shield.hasShield) {
+                                      return const SizedBox.shrink();
+                                    }
                                     return Padding(
                                       padding: const EdgeInsets.only(right: 8),
                                       child: Tooltip(
                                         message: 'מגן רצף פעיל — יום אחד מוגן!',
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 6,),
+                                            horizontal: 10,
+                                            vertical: 6,
+                                          ),
                                           decoration: BoxDecoration(
-                                            color: Colors.blue.withValues(alpha: 0.85),
-                                            borderRadius: BorderRadius.circular(20),
+                                            color: Colors.blue
+                                                .withValues(alpha: 0.85),
+                                            borderRadius:
+                                                BorderRadius.circular(20),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: Colors.blue.withValues(alpha: 0.4),
+                                                color: Colors.blue
+                                                    .withValues(alpha: 0.4),
                                                 blurRadius: 8,
                                                 offset: const Offset(0, 2),
                                               ),
@@ -1475,8 +1485,11 @@ class _MapScreenState extends State<MapScreen>
                                           child: const Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.shield_rounded,
-                                                  color: Colors.white, size: 16,),
+                                              Icon(
+                                                Icons.shield_rounded,
+                                                color: Colors.white,
+                                                size: 16,
+                                              ),
                                               SizedBox(width: 4),
                                               Text(
                                                 'מגן',
@@ -1733,49 +1746,57 @@ class _MapScreenState extends State<MapScreen>
   }
 
   void _openChatBuddy() {
-    unawaited(BackgroundMusicService().stop().catchError((error) {
-      debugPrint('Failed to stop music before Chat Buddy: $error');
-    }),);
-    unawaited(Navigator.push(
-      context,
-      PageTransitions.slideFromRight(const ChatBuddyScreen()),
-    ),);
+    unawaited(
+      BackgroundMusicService().stop().catchError((error) {
+        debugPrint('Failed to stop music before Chat Buddy: $error');
+      }),
+    );
+    unawaited(
+      Navigator.push(
+        context,
+        PageTransitions.slideFromRight(const ChatBuddyScreen()),
+      ),
+    );
   }
 
   void _openAdventureLab() {
-    unawaited(BackgroundMusicService().stop().catchError((error) {
-      debugPrint('Failed to stop music before Adventure Lab: $error');
-    }),);
-    unawaited(Navigator.push(
-      context,
-      PageTransitions.fadeScale(
-        AdventureLabScreen(
-          levels: List<LevelData>.unmodifiable(levels),
-          totalStars: _totalStars,
+    unawaited(
+      BackgroundMusicService().stop().catchError((error) {
+        debugPrint('Failed to stop music before Adventure Lab: $error');
+      }),
+    );
+    unawaited(
+      Navigator.push(
+        context,
+        PageTransitions.fadeScale(
+          AdventureLabScreen(
+            levels: List<LevelData>.unmodifiable(levels),
+            totalStars: _totalStars,
+          ),
         ),
       ),
-    ),);
+    );
   }
 
   void _openInteractiveStory() {
     // Collect all words across loaded levels.
-    final allWords = levels
-        .expand((level) => level.words)
-        .toList();
+    final allWords = levels.expand((level) => level.words).toList();
     final levelId = levels.isNotEmpty ? levels.first.id : 'default';
     final levelTitle = levels.isNotEmpty ? levels.first.name : null;
-    unawaited(Navigator.push(
-      context,
-      PageTransitions.slideFromRight(
-        StoryScreen(
-          words: allWords.isEmpty
-              ? [WordData(word: 'apple', searchHint: 'פרי אדום')]
-              : allWords,
-          levelId: levelId,
-          levelTitle: levelTitle,
+    unawaited(
+      Navigator.push(
+        context,
+        PageTransitions.slideFromRight(
+          StoryScreen(
+            words: allWords.isEmpty
+                ? [WordData(word: 'apple', searchHint: 'פרי אדום')]
+                : allWords,
+            levelId: levelId,
+            levelTitle: levelTitle,
+          ),
         ),
       ),
-    ),);
+    );
   }
 
   void _showAiToolsMenu() {
@@ -1814,21 +1835,26 @@ class _MapScreenState extends State<MapScreen>
                 subtitle: const Text('תרגול מותאם אישית'),
                 onTap: () {
                   Navigator.pop(context);
-                  unawaited(BackgroundMusicService().stop().catchError((error) {
-                    debugPrint(
-                      'Failed to stop music before AI practice pack: $error',
-                    );
-                  }),);
-                  unawaited(Navigator.push(
-                    context,
-                    PageTransitions.slideFromRight(
-                      const AiPracticePackScreen(),
+                  unawaited(
+                    BackgroundMusicService().stop().catchError((error) {
+                      debugPrint(
+                        'Failed to stop music before AI practice pack: $error',
+                      );
+                    }),
+                  );
+                  unawaited(
+                    Navigator.push(
+                      context,
+                      PageTransitions.slideFromRight(
+                        const AiPracticePackScreen(),
+                      ),
                     ),
-                  ),);
+                  );
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.menu_book, color: Colors.deepPurple, size: 32),
+                leading: const Icon(Icons.menu_book,
+                    color: Colors.deepPurple, size: 32),
                 title: const Text('סיפור אינטראקטיבי'),
                 subtitle: const Text('סיפור של ספארק עם מילות הרמה שלך'),
                 onTap: () {
@@ -2043,7 +2069,9 @@ class _AdventureLabMapEntryState extends State<_AdventureLabMapEntry>
                   ),
                 ],
                 border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.85), width: 2,),
+                  color: Colors.white.withValues(alpha: 0.85),
+                  width: 2,
+                ),
               ),
               child: const Icon(
                 Icons.auto_stories_rounded,
@@ -2350,39 +2378,40 @@ class _Map3dWebViewState extends State<_Map3dWebView> {
                     children: [
                       const _MapSkyGradient(),
                       Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.wifi_off_rounded,
-                            color: Colors.white70,
-                            size: 56,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            SparkStrings.mapLoadFailed,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.wifi_off_rounded,
+                              color: Colors.white70,
+                              size: 56,
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            SparkStrings.offline,
-                            style: TextStyle(color: Colors.white70, fontSize: 14),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          KidButton.warning(
-                            label: SparkStrings.tryAgain,
-                            onPressed: _retry,
-                            leadingIcon: Icons.refresh,
-                          ),
-                        ],
+                            const SizedBox(height: 16),
+                            const Text(
+                              SparkStrings.mapLoadFailed,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              SparkStrings.offline,
+                              style: TextStyle(
+                                  color: Colors.white70, fontSize: 14),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 24),
+                            KidButton.warning(
+                              label: SparkStrings.tryAgain,
+                              onPressed: _retry,
+                              leadingIcon: Icons.refresh,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
                     ],
                   ),
                 ),

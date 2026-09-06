@@ -41,7 +41,8 @@ void main() {
 
     test('parses unclear JSON and legacy plain text', () {
       expect(
-        GeminiProxyService.parseCategoryIdentifyResponse('{"error": "unclear"}'),
+        GeminiProxyService.parseCategoryIdentifyResponse(
+            '{"error": "unclear"}'),
         isA<ObjectIdentificationUnclear>(),
       );
       expect(

@@ -70,7 +70,8 @@ void main() {
       expect(restored.avatarId, '🐼');
     });
 
-    test('toMap omits avatarId and fromMap tolerates its absence (legacy '
+    test(
+        'toMap omits avatarId and fromMap tolerates its absence (legacy '
         'profiles)', () {
       final legacy = ChildProfile.create(
         displayName: 'Old',

@@ -31,24 +31,24 @@ void registerMap3dView() {
   ui_web.platformViewRegistry.registerViewFactory(
     kMap3dViewType,
     (int viewId) {
-      final iframe = web.document.createElement('iframe')
-          as web.HTMLIFrameElement
-        // Flutter Web quirk: root pubspec assets land under assets/assets/…
-        ..src = 'assets/assets/map_3d/index.html'
-        // Explicit size constraints are required to avoid unbounded-constraint
-        // rendering errors (drawFrame / finalizeTree) in the Flutter Web pipeline.
-        ..style.border = 'none'
-        ..style.width = '100%'
-        ..style.height = '100%'
-        ..style.display = 'block'
-        ..style.position = 'absolute'
-        ..style.top = '0'
-        ..style.left = '0'
-        // Allow ES-module scripts, same-origin access and pointer lock for Three.js.
-        ..setAttribute(
-          'sandbox',
-          'allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-modals',
-        );
+      final iframe =
+          web.document.createElement('iframe') as web.HTMLIFrameElement
+            // Flutter Web quirk: root pubspec assets land under assets/assets/…
+            ..src = 'assets/assets/map_3d/index.html'
+            // Explicit size constraints are required to avoid unbounded-constraint
+            // rendering errors (drawFrame / finalizeTree) in the Flutter Web pipeline.
+            ..style.border = 'none'
+            ..style.width = '100%'
+            ..style.height = '100%'
+            ..style.display = 'block'
+            ..style.position = 'absolute'
+            ..style.top = '0'
+            ..style.left = '0'
+            // Allow ES-module scripts, same-origin access and pointer lock for Three.js.
+            ..setAttribute(
+              'sandbox',
+              'allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-modals',
+            );
       return iframe;
     },
   );
@@ -80,7 +80,11 @@ void Function() setupMap3dLoadListener(void Function() onLoaded) {
   };
 }
 
-const _kMap3dLoadMessageTypes = {'3D_MAP_LOADED', 'map3d_loaded', 'map3d_load_error'};
+const _kMap3dLoadMessageTypes = {
+  '3D_MAP_LOADED',
+  'map3d_loaded',
+  'map3d_load_error'
+};
 
 /// Extracts the payload from an iframe [postMessage] body.
 ///

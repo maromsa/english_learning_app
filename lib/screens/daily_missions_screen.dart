@@ -307,7 +307,9 @@ class _MissionBoardHeader extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4,),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -334,7 +336,9 @@ class _MissionBoardHeader extends StatelessWidget {
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4,),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -674,6 +678,7 @@ class _StreakBonusBanner extends StatelessWidget {
       final s = v.toStringAsFixed(2);
       return s.endsWith('0') ? s.substring(0, s.length - 1) : s;
     }
+
     final multiplierText = fmt(multiplier);
 
     return Container(
