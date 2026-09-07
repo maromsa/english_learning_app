@@ -25,6 +25,7 @@ class SparkVoiceService {
   final AudioPlayer _player = AudioPlayer();
   final Dio _dio = Dio();
   final SparkVoiceDiskCache _diskCache = createSparkVoiceDiskCache();
+
   /// In-memory MP3 cache, bounded to avoid unbounded growth in long sessions
   /// (each clip is tens of KB). Evicts oldest-inserted entries; the disk
   /// cache still holds everything.
@@ -47,6 +48,7 @@ class SparkVoiceService {
     final key = AppConfig.googleTtsApiKey;
     return key.isNotEmpty ? key : null;
   }
+
   final String _endpoint =
       'https://texttospeech.googleapis.com/v1/text:synthesize';
 
@@ -177,8 +179,7 @@ class SparkVoiceService {
       const double speakingRate = 0.85;
       const double pitch = 2.0;
 
-      final String ssmlText =
-          _generateSSML(text, emotion, speakingRate, pitch);
+      final String ssmlText = _generateSSML(text, emotion, speakingRate, pitch);
       final cacheKey = _cacheKey(ssmlText, voiceName, pitch, speakingRate);
 
       var bytes = _memoryCache[cacheKey];
@@ -410,7 +411,11 @@ class SparkVoiceService {
 
   /// Generate SSML with emotional prosody
   String _generateSSML(
-      String text, SparkEmotion emotion, double rate, double pitch,) {
+    String text,
+    SparkEmotion emotion,
+    double rate,
+    double pitch,
+  ) {
     switch (emotion) {
       case SparkEmotion.excited:
         pitch += 4.0;

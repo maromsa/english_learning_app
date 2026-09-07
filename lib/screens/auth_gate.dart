@@ -217,7 +217,8 @@ class _AuthGateState extends State<AuthGate> {
         ).timeout(
           const Duration(seconds: 8),
           onTimeout: () {
-            debugPrint('AuthGate: ActiveProfileScope.apply timed out, continuing');
+            debugPrint(
+                'AuthGate: ActiveProfileScope.apply timed out, continuing');
           },
         );
       }

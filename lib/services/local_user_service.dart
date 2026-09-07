@@ -165,9 +165,8 @@ class LocalUserService {
 
       // Update isActive flag for all users in a single batch write instead
       // of calling _saveUser() per user (which is O(N²) reads/writes).
-      final updated = users
-          .map((u) => u.copyWith(isActive: u.id == userId))
-          .toList();
+      final updated =
+          users.map((u) => u.copyWith(isActive: u.id == userId)).toList();
       final usersJson = jsonEncode(updated.map((u) => u.toMap()).toList());
       await prefs.setString(_usersKey, usersJson);
       await prefs.setString(_activeUserIdKey, userId);

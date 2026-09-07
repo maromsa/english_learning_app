@@ -40,7 +40,8 @@ class LevelRepository {
           try {
             wordsJson.add(WordData.fromJson(wordMap));
           } catch (e) {
-            debugPrint('LevelRepository: skipping malformed word in level $id: $e');
+            debugPrint(
+                'LevelRepository: skipping malformed word in level $id: $e');
           }
         }
         _wordsByLevelId[id] = wordsJson;

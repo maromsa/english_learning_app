@@ -29,11 +29,8 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
       
-      # NOTE: not yet blocking — ~88 files still need `dart format .` (tracked
-      # in CLAUDE.md gap #2). Drop `continue-on-error` once that sweep lands.
       - name: Verify formatting
         run: dart format --output=none --set-exit-if-changed .
-        continue-on-error: true
 
       - name: Analyze code
         run: flutter analyze

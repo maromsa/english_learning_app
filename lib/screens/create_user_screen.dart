@@ -69,10 +69,9 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     try {
       final storage = FirebaseStorage.instance;
       final extension = imageFile.path.split('.').last.toLowerCase();
-      final uid = Provider.of<AuthProvider>(context, listen: false)
-              .firebaseUser
-              ?.uid ??
-          'anon';
+      final uid =
+          Provider.of<AuthProvider>(context, listen: false).firebaseUser?.uid ??
+              'anon';
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.$extension';
       // Scope uploads under the user's UID so Storage rules can enforce ownership.
       final ref = storage.ref().child('user_profiles/$uid/$fileName');

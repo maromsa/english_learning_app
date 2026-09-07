@@ -47,7 +47,7 @@ service cloud.firestore {
         && entryId == request.auth.uid + '_' + request.resource.data.profileId
         && request.resource.data.keys().hasOnly([
           'profileId', 'displayName', 'coins', 'dailyStreak',
-          'avatarColor', 'updatedAt'
+          'avatarColor', 'avatarId', 'updatedAt'
         ])
         && request.resource.data.profileId is string
         && request.resource.data.profileId.size() > 0
@@ -58,7 +58,18 @@ service cloud.firestore {
         && request.resource.data.coins >= 0
         && request.resource.data.dailyStreak is int
         && request.resource.data.dailyStreak >= 0
-        && request.resource.data.avatarColor is int;
+        && request.resource.data.avatarColor is int
+        // avatarId is optional: the client only writes it when the child has
+        // picked an animal-emoji avatar. When present it must be a short,
+        // non-identifying string (one emoji, allowing for ZWJ sequences).
+        && (
+          !request.resource.data.keys().hasAny(['avatarId'])
+          || (
+            request.resource.data.avatarId is string
+            && request.resource.data.avatarId.size() > 0
+            && request.resource.data.avatarId.size() <= 12
+          )
+        );
       allow delete: if isSignedIn()
         && entryId.split('_')[0] == request.auth.uid;
     }

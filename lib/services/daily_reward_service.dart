@@ -16,6 +16,7 @@ class DailyRewardResult {
   final bool claimed;
   final int reward;
   final int streak;
+
   /// True when a Streak Shield was consumed to preserve the streak.
   final bool shieldUsed;
 }
@@ -77,7 +78,11 @@ class DailyRewardService {
       if (lastClaimDate == today) {
         streak = prefs.getInt(_streakKey) ?? 1;
         return DailyRewardResult(
-            claimed: false, reward: 0, streak: streak, shieldUsed: false,);
+          claimed: false,
+          reward: 0,
+          streak: streak,
+          shieldUsed: false,
+        );
       }
 
       // Compare calendar days, not a 24h duration: `add(Duration(days: 1))`
@@ -113,6 +118,10 @@ class DailyRewardService {
     await prefs.setInt(_streakKey, streak);
 
     return DailyRewardResult(
-        claimed: true, reward: reward, streak: streak, shieldUsed: shieldUsed,);
+      claimed: true,
+      reward: reward,
+      streak: streak,
+      shieldUsed: shieldUsed,
+    );
   }
 }

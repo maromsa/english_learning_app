@@ -8,8 +8,10 @@ enum DailyMissionType {
   // ── New mission types ──────────────────────────────────────────────────────
   /// Review SRS due cards (in Lightning or dedicated SRS session).
   srsReview,
+
   /// Read an interactive Spark story.
   storyRead,
+
   /// Get a perfect 3-star pronunciation on a word.
   pronunciationPerfect,
 }

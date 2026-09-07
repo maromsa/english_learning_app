@@ -37,8 +37,8 @@ class _Host extends StatelessWidget {
   }
 }
 
-Future<void> _open(WidgetTester tester, ValueChanged<ChildProfileDraft?> onResult)
-    async {
+Future<void> _open(
+    WidgetTester tester, ValueChanged<ChildProfileDraft?> onResult) async {
   await tester.pumpWidget(_Host(onResult));
   await tester.tap(find.text('open'));
   await tester.pumpAndSettle();

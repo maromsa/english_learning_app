@@ -5,8 +5,10 @@ class LevelData {
   final String id;
   final String name;
   final String? description;
+
   /// English category sent to Gemini for camera capture (e.g. "Fruits").
   final String? targetCategory;
+
   /// Hebrew label shown when category validation fails.
   final String? categoryLabelHe;
   final int reward;

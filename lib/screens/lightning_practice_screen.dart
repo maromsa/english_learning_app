@@ -283,16 +283,18 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
           levelId: widget.levelId,
           word: word.word,
         );
-        withMastery.add(WordData(
-          word: word.word,
-          searchHint: word.searchHint,
-          imageUrl: word.imageUrl,
-          publicId: word.publicId,
-          isCompleted: word.isCompleted,
-          stickerUnlocked: word.stickerUnlocked,
-          masteryLevel: card.masteryLevel,
-          lastReviewed: card.lastReviewDate,
-        ),);
+        withMastery.add(
+          WordData(
+            word: word.word,
+            searchHint: word.searchHint,
+            imageUrl: word.imageUrl,
+            publicId: word.publicId,
+            isCompleted: word.isCompleted,
+            stickerUnlocked: word.stickerUnlocked,
+            masteryLevel: card.masteryLevel,
+            lastReviewed: card.lastReviewDate,
+          ),
+        );
       }
 
       // Step 4: Pad with fallback words when the level pool is too small.
@@ -570,14 +572,16 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
     });
 
     final int elapsed = _sessionSeconds - _remainingSeconds;
-    _telemetry?.logLightningAnswer(
-      word: word,
-      correct: true,
-      streak: _currentStreak,
-      elapsedSeconds: elapsed < 0 ? 0 : elapsed,
-      remainingSeconds: _remainingSeconds,
-      reward: _pronunciationCoinReward,
-    ).ignore();
+    _telemetry
+        ?.logLightningAnswer(
+          word: word,
+          correct: true,
+          streak: _currentStreak,
+          elapsedSeconds: elapsed < 0 ? 0 : elapsed,
+          remainingSeconds: _remainingSeconds,
+          reward: _pronunciationCoinReward,
+        )
+        .ignore();
 
     Future<void>.delayed(const Duration(seconds: 2), () {
       if (!mounted || _sessionEnded) return;
@@ -625,12 +629,14 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
         // This updates the SM-2 ease factor and schedules the next review.
         final session = context.read<UserSessionProvider>();
         final userId = session.currentUser?.id ?? 'local_guest';
-        unawaited(_srsService.recordReview(
-          userId: userId,
-          levelId: widget.levelId,
-          word: _currentWord!.word,
-          grade: gradeFromCorrect(true),
-        ),);
+        unawaited(
+          _srsService.recordReview(
+            userId: userId,
+            levelId: widget.levelId,
+            word: _currentWord!.word,
+            grade: gradeFromCorrect(true),
+          ),
+        );
         try {
           unawaited(
             context.read<DailyMissionProvider>().incrementByType(
@@ -651,26 +657,30 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
       if (mounted) {
         final session = context.read<UserSessionProvider>();
         final userId = session.currentUser?.id ?? 'local_guest';
-        unawaited(_srsService.recordReview(
-          userId: userId,
-          levelId: widget.levelId,
-          word: _currentWord!.word,
-          grade: gradeFromCorrect(false),
-        ),);
+        unawaited(
+          _srsService.recordReview(
+            userId: userId,
+            levelId: widget.levelId,
+            word: _currentWord!.word,
+            grade: gradeFromCorrect(false),
+          ),
+        );
       }
     }
 
     final int elapsed = _sessionSeconds - _remainingSeconds;
     final telemetry = _telemetry;
     if (telemetry != null) {
-      unawaited(telemetry.logLightningAnswer(
-        word: _currentWord!.word,
-        correct: isCorrect,
-        streak: _currentStreak,
-        elapsedSeconds: elapsed < 0 ? 0 : elapsed,
-        remainingSeconds: _remainingSeconds,
-        reward: reward,
-      ),);
+      unawaited(
+        telemetry.logLightningAnswer(
+          word: _currentWord!.word,
+          correct: isCorrect,
+          streak: _currentStreak,
+          elapsedSeconds: elapsed < 0 ? 0 : elapsed,
+          remainingSeconds: _remainingSeconds,
+          reward: reward,
+        ),
+      );
     }
 
     if (!mounted) return;
@@ -746,32 +756,39 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
 
     final telemetry = _telemetry;
     if (telemetry != null) {
-      unawaited(telemetry.logLightningSession(
-        score: _score,
-        correct: _correctAnswers,
-        incorrect: _incorrectAnswers,
-        bestStreak: _bestStreak,
-        totalQuestions: _questionCount,
-      ),);
+      unawaited(
+        telemetry.logLightningSession(
+          score: _score,
+          correct: _correctAnswers,
+          incorrect: _incorrectAnswers,
+          bestStreak: _bestStreak,
+          totalQuestions: _questionCount,
+        ),
+      );
     }
 
     // Sync SRS state to Firestore + record session for parent dashboard.
     try {
       final session = context.read<UserSessionProvider>();
       final userId = session.currentUser?.id ?? 'local_guest';
-      unawaited(_srsService.syncToFirestore(
-        userId: userId,
-        levelId: widget.levelId,
-        words: _wordPool,
-      ),);
-      final playedSeconds = (_sessionSeconds - _remainingSeconds).clamp(0, _sessionSeconds);
+      unawaited(
+        _srsService.syncToFirestore(
+          userId: userId,
+          levelId: widget.levelId,
+          words: _wordPool,
+        ),
+      );
+      final playedSeconds =
+          (_sessionSeconds - _remainingSeconds).clamp(0, _sessionSeconds);
       // Report at least 1 minute, max 5 minutes. Round (not ceil) for accuracy.
       final durationMinutes = ((playedSeconds / 60).round()).clamp(1, 5);
-      unawaited(ParentProgressService.recordSession(
-        userId: userId,
-        wordCount: _correctAnswers,
-        durationMinutes: durationMinutes,
-      ),);
+      unawaited(
+        ParentProgressService.recordSession(
+          userId: userId,
+          wordCount: _correctAnswers,
+          durationMinutes: durationMinutes,
+        ),
+      );
     } catch (_) {}
 
     if (triggeredByTimer && mounted) {
@@ -1176,8 +1193,11 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.psychology,
-                  size: 64, color: Colors.deepOrange.shade300,),
+              Icon(
+                Icons.psychology,
+                size: 64,
+                color: Colors.deepOrange.shade300,
+              ),
               const SizedBox(height: 16),
               const Text(
                 SparkStrings.lightningNeedWords,
@@ -1375,10 +1395,14 @@ class _StatusChip extends StatelessWidget {
           child: Icon(icon, color: color),
         ),
         const SizedBox(height: 6),
-        Text(label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),),
-        Text(value,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+        ),
       ],
     );
   }
@@ -1413,8 +1437,10 @@ class _SummaryStat extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label,
-                  style: const TextStyle(fontSize: 13, color: Colors.black54),),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 13, color: Colors.black54),
+              ),
               Text(
                 value,
                 style:
@@ -1440,9 +1466,21 @@ class _DifficultyChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color, icon) = switch (level) {
-      DifficultyLevel.easy => ('קל', Colors.green.shade600, Icons.sentiment_satisfied),
-      DifficultyLevel.medium => ('בינוני', Colors.amber.shade700, Icons.sentiment_neutral),
-      DifficultyLevel.hard => ('קשה', Colors.red.shade600, Icons.sentiment_very_dissatisfied),
+      DifficultyLevel.easy => (
+          'קל',
+          Colors.green.shade600,
+          Icons.sentiment_satisfied
+        ),
+      DifficultyLevel.medium => (
+          'בינוני',
+          Colors.amber.shade700,
+          Icons.sentiment_neutral
+        ),
+      DifficultyLevel.hard => (
+          'קשה',
+          Colors.red.shade600,
+          Icons.sentiment_very_dissatisfied
+        ),
     };
 
     return Column(
@@ -1454,10 +1492,16 @@ class _DifficultyChip extends StatelessWidget {
           child: Icon(icon, color: color, size: 20),
         ),
         const SizedBox(height: 6),
-        const Text('רמה', style: TextStyle(fontSize: 12, color: Colors.black54)),
-        Text(label,
-            style: TextStyle(
-                fontWeight: FontWeight.w700, fontSize: 13, color: color,),),
+        const Text('רמה',
+            style: TextStyle(fontSize: 12, color: Colors.black54)),
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            color: color,
+          ),
+        ),
       ],
     );
   }

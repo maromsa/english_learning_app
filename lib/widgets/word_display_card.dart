@@ -435,8 +435,7 @@ class WordDisplayCard extends StatelessWidget {
       placeholder: (context, url) => const Center(
         child: CircularProgressIndicator(strokeWidth: 2),
       ),
-      errorWidget: (context, url, error) =>
-          _levelHeroErrorIcon(compactError),
+      errorWidget: (context, url, error) => _levelHeroErrorIcon(compactError),
       memCacheWidth: 500,
       memCacheHeight: 500,
       maxWidthDiskCache: 1000,

@@ -450,11 +450,15 @@ class AchievementService with ChangeNotifier {
   // Quick single-event triggers (convenience wrappers)
   // ---------------------------------------------------------------------------
 
-  Future<void> onStoryRead({int storiesRead = 1}) =>
-      checkForAchievements(streak: 0, storyRead: true, storiesRead: storiesRead);
+  Future<void> onStoryRead({int storiesRead = 1}) => checkForAchievements(
+      streak: 0, storyRead: true, storiesRead: storiesRead);
 
-  Future<void> onLightningCompleted({required int streak, int dailyStreak = 0,
-      int wordsLearned = 0, int masteredWords = 0,}) =>
+  Future<void> onLightningCompleted({
+    required int streak,
+    int dailyStreak = 0,
+    int wordsLearned = 0,
+    int masteredWords = 0,
+  }) =>
       checkForAchievements(
         streak: streak,
         lightningCompleted: true,
@@ -618,10 +622,9 @@ class AchievementService with ChangeNotifier {
   Future<void> loadAchievements() async {
     final prefs = await SharedPreferences.getInstance();
     for (final achievement in achievements) {
-      achievement.isUnlocked =
-          prefs.getBool(_achievementKey(achievement.id)) ??
-              prefs.getBool('achievement_${achievement.id}') ??
-              false;
+      achievement.isUnlocked = prefs.getBool(_achievementKey(achievement.id)) ??
+          prefs.getBool('achievement_${achievement.id}') ??
+          false;
     }
     _notify();
   }

@@ -30,8 +30,7 @@ void main() {
 
     test('decodeDataImageUrl parses standard base64 data URLs', () {
       final bytes = utf8.encode('hello');
-      final dataUrl =
-          'data:image/jpeg;base64,${base64Encode(bytes)}';
+      final dataUrl = 'data:image/jpeg;base64,${base64Encode(bytes)}';
       expect(decodeDataImageUrl(dataUrl), bytes);
     });
   });

@@ -133,8 +133,9 @@ Future<void> _openSheet(
                   context: context,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
-                  builder: (_) => ChangeNotifierProvider<ChildProfileProvider>
-                      .value(value: provider, child: const UserSwitchSheet()),
+                  builder: (_) =>
+                      ChangeNotifierProvider<ChildProfileProvider>.value(
+                          value: provider, child: const UserSwitchSheet()),
                 ),
                 child: const Text('open'),
               ),
@@ -186,7 +187,8 @@ void main() {
       expect(find.text('🐼'), findsNothing);
     });
 
-    testWidgets('shows an empty state plus the add action when there are no '
+    testWidgets(
+        'shows an empty state plus the add action when there are no '
         'profiles', (tester) async {
       final provider = _FakeChildProfileProvider(profiles: []);
 

@@ -358,7 +358,10 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _StatChip(
-                icon: Icons.monetization_on, label: 'מטבעות', value: '$coins',),
+              icon: Icons.monetization_on,
+              label: 'מטבעות',
+              value: '$coins',
+            ),
             _StatChip(
               icon: Icons.star_rate,
               label: 'כוכבים',
@@ -490,10 +493,12 @@ class _AdventureLabScreenState extends State<AdventureLabScreen>
       });
       // Read the quest scene aloud via Spark's voice.
       if (quest.scene.isNotEmpty) {
-        unawaited(SparkVoiceService().speak(
-          text: quest.scene,
-          isEnglish: false,
-        ),);
+        unawaited(
+          SparkVoiceService().speak(
+            text: quest.scene,
+            isEnglish: false,
+          ),
+        );
       }
     } on AdventureLabGenerationException catch (error) {
       if (!mounted) return;
@@ -614,14 +619,19 @@ class _QuestReveal extends StatelessWidget {
                         fontSize: 15,
                       ),
                     ),
-                    avatar: const Icon(Icons.translate,
-                        color: AuroraTokens.plum, size: 18,),
+                    avatar: const Icon(
+                      Icons.translate,
+                      color: AuroraTokens.plum,
+                      size: 18,
+                    ),
                     backgroundColor: Colors.white,
                     side: BorderSide(
-                        color: AuroraTokens.plum.withValues(alpha: 0.4),),
+                      color: AuroraTokens.plum.withValues(alpha: 0.4),
+                    ),
                   )
                       .animate(
-                          delay: (300 + quest.vocabulary.indexOf(word) * 60).ms,)
+                        delay: (300 + quest.vocabulary.indexOf(word) * 60).ms,
+                      )
                       .scale(
                         begin: const Offset(0.85, 0.85),
                         end: const Offset(1, 1),
@@ -663,7 +673,8 @@ class _CompleteQuestButton extends StatelessWidget {
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.check_circle_rounded, color: AuroraTokens.mint, size: 26),
+            Icon(Icons.check_circle_rounded,
+                color: AuroraTokens.mint, size: 26),
             SizedBox(width: 10),
             Text(
               'המשימה הושלמה! 🎉',
@@ -738,7 +749,10 @@ class _QuestCard extends StatelessWidget {
             Text(
               body,
               style: const TextStyle(
-                  fontSize: 16, height: 1.55, color: AuroraTokens.inkSoft,),
+                fontSize: 16,
+                height: 1.55,
+                color: AuroraTokens.inkSoft,
+              ),
             ),
           ],
         ),
@@ -818,14 +832,17 @@ class _StatChip extends StatelessWidget {
       children: [
         Icon(icon, color: AuroraTokens.plum, size: 22),
         const SizedBox(height: 2),
-        Text(label,
-            style: const TextStyle(fontSize: 11, color: AuroraTokens.inkMute),),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: AuroraTokens.inkMute),
+        ),
         Text(
           value,
           style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: AuroraTokens.ink,),
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: AuroraTokens.ink,
+          ),
         ),
       ],
     );

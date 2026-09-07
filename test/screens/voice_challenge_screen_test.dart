@@ -33,8 +33,12 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final List<WordData> _testWords = [
-  WordData(word: 'Apple', translation: 'תפוח', imageUrl: 'assets/images/apple.png'),
-  WordData(word: 'Banana', translation: 'בננה', imageUrl: 'assets/images/banana.png'),
+  WordData(
+      word: 'Apple', translation: 'תפוח', imageUrl: 'assets/images/apple.png'),
+  WordData(
+      word: 'Banana',
+      translation: 'בננה',
+      imageUrl: 'assets/images/banana.png'),
   WordData(word: 'Cat', translation: 'חתול', imageUrl: 'assets/images/cat.png'),
 ];
 
@@ -99,7 +103,8 @@ Future<void> _tick(WidgetTester tester, {int frames = 24}) async {
   }
 }
 
-Future<(CoinProvider, WordMasteryService, _FakeSpeechFeedbackService)> _pumpScreen(
+Future<(CoinProvider, WordMasteryService, _FakeSpeechFeedbackService)>
+    _pumpScreen(
   WidgetTester tester, {
   _FakeSpeechFeedbackService? speech,
   List<WordData>? words,
@@ -182,8 +187,8 @@ void main() {
 
     testWidgets('a strong attempt awards coins and advances to the next word',
         (tester) async {
-      final (coinProvider, _, _) =
-          await _pumpScreen(tester, speech: _FakeSpeechFeedbackService(stars: 3));
+      final (coinProvider, _, _) = await _pumpScreen(tester,
+          speech: _FakeSpeechFeedbackService(stars: 3));
       final startCoins = coinProvider.coins;
 
       await _speak(tester);
@@ -195,8 +200,8 @@ void main() {
 
     testWidgets('a weak attempt neither awards coins nor advances',
         (tester) async {
-      final (coinProvider, _, _) =
-          await _pumpScreen(tester, speech: _FakeSpeechFeedbackService(stars: 1));
+      final (coinProvider, _, _) = await _pumpScreen(tester,
+          speech: _FakeSpeechFeedbackService(stars: 1));
       final startCoins = coinProvider.coins;
 
       await _speak(tester);
@@ -249,7 +254,8 @@ void main() {
       expect(find.text('מילה 1 מתוך 1'), findsOneWidget);
     });
 
-    testWidgets('renders an empty state when there are no words', (tester) async {
+    testWidgets('renders an empty state when there are no words',
+        (tester) async {
       await _pumpScreen(tester, words: []);
 
       expect(find.text('אין מספיק מילים לאתגר הזה'), findsOneWidget);

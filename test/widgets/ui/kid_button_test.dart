@@ -57,8 +57,11 @@ void main() {
     testWidgets('tapping calls onPressed exactly once',
         (WidgetTester tester) async {
       var pressCount = 0;
-      await pumpKidButton(tester,
-          label: 'Tap me', onPressed: () => pressCount++,);
+      await pumpKidButton(
+        tester,
+        label: 'Tap me',
+        onPressed: () => pressCount++,
+      );
 
       await tester.tap(find.byType(KidButton));
       await tester.pumpAndSettle();

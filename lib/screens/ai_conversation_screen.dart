@@ -84,7 +84,6 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       _telemetry = TelemetryService.maybeOf(context);
       _telemetry?.startScreenSession('ai_conversation');
     });
-
   }
 
   Future<void> _initSpeech() async {
@@ -139,7 +138,8 @@ class _AiConversationScreenState extends State<AiConversationScreen>
   Future<void> _configureTts() async {
     await _tts.setLanguage('he-IL');
     await _tts.setSpeechRate(
-        0.5,); // Slower rate for children - clear and understandable
+      0.5,
+    ); // Slower rate for children - clear and understandable
     await _tts.setPitch(1.0); // Natural pitch
   }
 
@@ -247,7 +247,9 @@ class _AiConversationScreenState extends State<AiConversationScreen>
                   : ListView.builder(
                       controller: _scrollController,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 20,),
+                        horizontal: 16,
+                        vertical: 20,
+                      ),
                       itemCount: _entries.length + (_isBusy ? 1 : 0),
                       itemBuilder: (context, index) {
                         // Loading Indicator at the end
@@ -426,7 +428,6 @@ class _AiConversationScreenState extends State<AiConversationScreen>
     );
   }
 
-
   Widget _buildFocusWordsPreview() {
     final words = _resolveFocusWords();
     if (words.isEmpty) {
@@ -570,7 +571,8 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       _errorMessage = null;
     });
 
-    final sparkController = Provider.of<SparkOverlayController>(context, listen: false);
+    final sparkController =
+        Provider.of<SparkOverlayController>(context, listen: false);
     sparkController.markThinking();
 
     final setup = ConversationSetup(
@@ -621,10 +623,12 @@ class _AiConversationScreenState extends State<AiConversationScreen>
 
       await _speakSpark(response.message);
       if (mounted) {
-        unawaited(TelemetryService.maybeOf(context)?.logCustomEvent(
-          'ai_conversation_started',
-          {'topic': _selectedTopic, 'skill': _selectedSkill},
-        ),);
+        unawaited(
+          TelemetryService.maybeOf(context)?.logCustomEvent(
+            'ai_conversation_started',
+            {'topic': _selectedTopic, 'skill': _selectedSkill},
+          ),
+        );
       }
     } on ConversationGenerationException catch (error) {
       sparkController.markIdle();
@@ -672,7 +676,8 @@ class _AiConversationScreenState extends State<AiConversationScreen>
     });
     _scrollToBottom();
 
-    final sparkController = Provider.of<SparkOverlayController>(context, listen: false);
+    final sparkController =
+        Provider.of<SparkOverlayController>(context, listen: false);
     sparkController.markThinking();
 
     try {
@@ -726,10 +731,12 @@ class _AiConversationScreenState extends State<AiConversationScreen>
       await _speakSpark(response.message);
       await _rewardLearner();
       if (mounted) {
-        unawaited(TelemetryService.maybeOf(context)?.logCustomEvent(
-          'ai_conversation_turn',
-          {'topic': _selectedTopic, 'skill': _selectedSkill},
-        ),);
+        unawaited(
+          TelemetryService.maybeOf(context)?.logCustomEvent(
+            'ai_conversation_turn',
+            {'topic': _selectedTopic, 'skill': _selectedSkill},
+          ),
+        );
       }
     } on ConversationGenerationException catch (error) {
       sparkController.markIdle();
@@ -1102,7 +1109,9 @@ class _SparkMessageBubble extends StatelessWidget {
                       Text(
                         entry.message,
                         style: const TextStyle(
-                            fontSize: 16, color: Colors.black87,),
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
                         textDirection: TextDirection.rtl,
                       ),
                     ],
@@ -1363,7 +1372,6 @@ class _TypingIndicatorState extends State<_TypingIndicator>
     );
   }
 }
-
 
 class _Option {
   const _Option({required this.id, required this.label});

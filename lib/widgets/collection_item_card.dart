@@ -22,10 +22,26 @@ class CollectionItemCard extends StatelessWidget {
   final CollectionWordItem item;
 
   static const ColorFilter _lockedGrayscale = ColorFilter.matrix(<double>[
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0, 0, 0, 0.55, 0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0.55,
+    0,
   ]);
 
   @override
@@ -88,9 +104,7 @@ class CollectionItemCard extends StatelessWidget {
             style: GoogleFonts.quicksand(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: mastered
-                  ? AuroraTokens.ink
-                  : AuroraTokens.inkMute,
+              color: mastered ? AuroraTokens.ink : AuroraTokens.inkMute,
               letterSpacing: 0.3,
             ),
           ),
@@ -108,9 +122,7 @@ class CollectionItemCard extends StatelessWidget {
     required bool mastered,
     required bool showGoldFrame,
   }) {
-    final innerRadius = showGoldFrame
-        ? AuroraTokens.rMd - 3
-        : AuroraTokens.rMd;
+    final innerRadius = showGoldFrame ? AuroraTokens.rMd - 3 : AuroraTokens.rMd;
     final image = ClipRRect(
       borderRadius: BorderRadius.circular(innerRadius),
       child: mastered
@@ -209,9 +221,8 @@ class CollectionItemCard extends StatelessWidget {
 
   Widget _placeholder({required bool dimmed}) {
     return Container(
-      color: dimmed
-          ? AuroraTokens.hair.withValues(alpha: 0.6)
-          : AuroraTokens.hair,
+      color:
+          dimmed ? AuroraTokens.hair.withValues(alpha: 0.6) : AuroraTokens.hair,
       alignment: Alignment.center,
       child: Icon(
         Icons.image_outlined,

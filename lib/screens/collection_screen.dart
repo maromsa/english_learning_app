@@ -217,8 +217,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
           return a.item.word.word.compareTo(b.item.word.word);
         });
       case _SortMode.alphabetical:
-        list.sort((a, b) =>
-            a.item.word.word.toLowerCase().compareTo(b.item.word.word.toLowerCase()),);
+        list.sort(
+          (a, b) => a.item.word.word
+              .toLowerCase()
+              .compareTo(b.item.word.word.toLowerCase()),
+        );
       case _SortMode.masteryDesc:
         list.sort((a, b) {
           final cmp = b.masteryPct.compareTo(a.masteryPct);
@@ -233,9 +236,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
     _sortEntries(sorted);
     if (_query.isEmpty) return sorted;
     return sorted
-        .where((e) =>
-            e.item.word.word.toLowerCase().contains(_query) ||
-            (e.item.word.translation ?? '').toLowerCase().contains(_query),)
+        .where(
+          (e) =>
+              e.item.word.word.toLowerCase().contains(_query) ||
+              (e.item.word.translation ?? '').toLowerCase().contains(_query),
+        )
         .toList();
   }
 
@@ -312,13 +317,20 @@ class _CollectionScreenState extends State<CollectionScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.book_outlined,
-                  size: 56, color: AuroraTokens.inkMute.withValues(alpha: 0.5),),
+              Icon(
+                Icons.book_outlined,
+                size: 56,
+                color: AuroraTokens.inkMute.withValues(alpha: 0.5),
+              ),
               const SizedBox(height: 16),
-              Text(_errorMessage!,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.heebo(
-                      fontSize: 16, color: AuroraTokens.inkSoft,),),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.heebo(
+                  fontSize: 16,
+                  color: AuroraTokens.inkSoft,
+                ),
+              ),
               const SizedBox(height: 20),
               FilledButton.icon(
                 onPressed: _loadCollection,
@@ -367,7 +379,9 @@ class _CollectionScreenState extends State<CollectionScreen> {
                         : null,
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
-                        vertical: 10, horizontal: 12,),
+                      vertical: 10,
+                      horizontal: 12,
+                    ),
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
@@ -395,7 +409,9 @@ class _CollectionScreenState extends State<CollectionScreen> {
                   child: Text(
                     _query.isEmpty ? 'עדיין אין מילים' : 'לא נמצאו תוצאות',
                     style: GoogleFonts.heebo(
-                        fontSize: 16, color: AuroraTokens.inkMute,),
+                      fontSize: 16,
+                      color: AuroraTokens.inkMute,
+                    ),
                   ),
                 )
               : ListView.builder(
@@ -441,25 +457,29 @@ class _StatsHeader extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _StatChip(
-              icon: Icons.fiber_new_rounded,
-              label: 'חדשות',
-              count: newCount,
-              color: Colors.blue,),
+            icon: Icons.fiber_new_rounded,
+            label: 'חדשות',
+            count: newCount,
+            color: Colors.blue,
+          ),
           _StatChip(
-              icon: Icons.schedule_rounded,
-              label: 'לחזרה',
-              count: dueCount,
-              color: Colors.orange,),
+            icon: Icons.schedule_rounded,
+            label: 'לחזרה',
+            count: dueCount,
+            color: Colors.orange,
+          ),
           _StatChip(
-              icon: Icons.star_rounded,
-              label: 'שולטות',
-              count: masteredCount,
-              color: Colors.green,),
+            icon: Icons.star_rounded,
+            label: 'שולטות',
+            count: masteredCount,
+            color: Colors.green,
+          ),
           _StatChip(
-              icon: Icons.library_books_rounded,
-              label: 'סה"כ',
-              count: total,
-              color: Colors.purple,),
+            icon: Icons.library_books_rounded,
+            label: 'סה"כ',
+            count: total,
+            color: Colors.purple,
+          ),
         ],
       ),
     );
@@ -521,27 +541,33 @@ class _SortButton extends StatelessWidget {
       itemBuilder: (_) => const [
         PopupMenuItem(
           value: _SortMode.dueFirst,
-          child: Row(children: [
-            Icon(Icons.schedule_rounded, size: 18),
-            SizedBox(width: 8),
-            Text('לחזרה ראשונות'),
-          ],),
+          child: Row(
+            children: [
+              Icon(Icons.schedule_rounded, size: 18),
+              SizedBox(width: 8),
+              Text('לחזרה ראשונות'),
+            ],
+          ),
         ),
         PopupMenuItem(
           value: _SortMode.alphabetical,
-          child: Row(children: [
-            Icon(Icons.sort_by_alpha_rounded, size: 18),
-            SizedBox(width: 8),
-            Text('א׳ עד ת׳'),
-          ],),
+          child: Row(
+            children: [
+              Icon(Icons.sort_by_alpha_rounded, size: 18),
+              SizedBox(width: 8),
+              Text('א׳ עד ת׳'),
+            ],
+          ),
         ),
         PopupMenuItem(
           value: _SortMode.masteryDesc,
-          child: Row(children: [
-            Icon(Icons.star_rounded, size: 18),
-            SizedBox(width: 8),
-            Text('שליטה גבוהה ראשונה'),
-          ],),
+          child: Row(
+            children: [
+              Icon(Icons.star_rounded, size: 18),
+              SizedBox(width: 8),
+              Text('שליטה גבוהה ראשונה'),
+            ],
+          ),
         ),
       ],
       child: Container(
@@ -550,8 +576,11 @@ class _SortButton extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
         ),
-        child: Icon(Icons.sort_rounded,
-            size: 22, color: Colors.grey.shade700,),
+        child: Icon(
+          Icons.sort_rounded,
+          size: 22,
+          color: Colors.grey.shade700,
+        ),
       ),
     );
   }
@@ -637,8 +666,11 @@ class _WordCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: List.generate(
                             entry.pronunciationStars,
-                            (_) => const Icon(Icons.star,
-                                size: 12, color: Colors.amber,),
+                            (_) => const Icon(
+                              Icons.star,
+                              size: 12,
+                              color: Colors.amber,
+                            ),
                           ),
                         ),
                     ],
@@ -736,8 +768,7 @@ class _WordCard extends StatelessWidget {
                       color: Colors.indigo.shade400,
                       iconSize: 22,
                       style: IconButton.styleFrom(
-                        backgroundColor:
-                            Colors.indigo.withValues(alpha: 0.08),
+                        backgroundColor: Colors.indigo.withValues(alpha: 0.08),
                         shape: const CircleBorder(),
                       ),
                       onPressed: onPlay,
