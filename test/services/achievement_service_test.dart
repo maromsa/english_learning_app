@@ -111,5 +111,45 @@ void main() {
       expect(coinCollector.requirementValue, 500);
       expect(mapBuilder.requirementValue, 10);
     });
+
+    group('progressToward', () {
+      test('reflects the highest observed value / requirementValue', () async {
+        await achievementService.checkForAchievements(
+            streak: 0, wordsLearned: 4);
+        expect(
+            achievementService.progressToward('words_10'), closeTo(0.4, 1e-9));
+
+        // Lower subsequent readings never drag the ring backwards.
+        await achievementService.checkForAchievements(
+            streak: 0, wordsLearned: 1);
+        expect(
+            achievementService.progressToward('words_10'), closeTo(0.4, 1e-9));
+      });
+
+      test('is null for binary achievements and once unlocked', () async {
+        // No requirementValue -> no partial ring.
+        expect(achievementService.progressToward('first_story'), isNull);
+
+        // Partway there while still locked.
+        await achievementService.checkForAchievements(
+            streak: 0, wordsLearned: 24);
+        expect(
+            achievementService.progressToward('words_25'), closeTo(0.96, 1e-9));
+
+        // Crossing the threshold unlocks it -> the ring disappears.
+        await achievementService.checkForAchievements(
+            streak: 0, wordsLearned: 25);
+        expect(achievementService.isUnlocked('words_25'), isTrue);
+        expect(achievementService.progressToward('words_25'), isNull);
+      });
+
+      test('persists across reloads', () async {
+        await achievementService.checkForAchievements(
+            streak: 0, wordsLearned: 5);
+        await achievementService.loadAchievements();
+        expect(
+            achievementService.progressToward('words_10'), closeTo(0.5, 1e-9));
+      });
+    });
   });
 }
