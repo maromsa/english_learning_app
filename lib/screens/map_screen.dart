@@ -27,6 +27,7 @@ import '../services/level_progress_service.dart';
 import '../services/level_repository.dart';
 import '../services/local_user_data_service.dart';
 import '../services/map_bridge_service.dart';
+import '../services/map_unlock_celebration_service.dart';
 import '../services/streak_shield_service.dart';
 import '../utils/aurora_tokens.dart';
 import '../utils/hero_tags.dart';
@@ -79,7 +80,12 @@ class _MapScreenState extends State<MapScreen>
   List<LevelData> levels = [];
   late final LevelRepository _levelRepository;
   late final LocalUserDataService _localUserDataService;
+  late final MapUnlockCelebrationService _mapUnlockCelebrationService;
   final LevelProgressService _levelProgressService = LevelProgressService();
+
+  /// Re-entrancy guard so the map-unlock celebration can never fire twice or
+  /// loop while an earlier check is still running / awaiting persistence.
+  bool _isCheckingMapUnlock = false;
   bool _isLoading = true;
   String? _errorMessage;
   String? _currentUserId;
@@ -116,6 +122,7 @@ class _MapScreenState extends State<MapScreen>
     super.initState();
     _levelRepository = LevelRepository();
     _localUserDataService = LocalUserDataService();
+    _mapUnlockCelebrationService = MapUnlockCelebrationService();
 
     // Initialize scroll controller and animation (keeping for fallback or transition)
     _scrollController = ScrollController();
@@ -437,6 +444,7 @@ class _MapScreenState extends State<MapScreen>
           Future.delayed(const Duration(milliseconds: 100), () {
             if (mounted) {
               _scrollToCurrentLevel();
+              unawaited(_maybeCelebrateMapUnlock());
             }
           });
         });
@@ -850,6 +858,72 @@ class _MapScreenState extends State<MapScreen>
 
   int get _totalStars => levels.fold<int>(0, (sum, level) => sum + level.stars);
 
+  /// Profile id used to namespace map-unlock celebration state. Falls back to a
+  /// stable guest token so unauthenticated players still get the celebration
+  /// exactly once (matches [_navigateToCharacterSelection]).
+  String get _celebrationUserId => _currentUserId ?? 'local_guest';
+
+  /// Compares the learner's highest unlocked level against the highest level
+  /// they've already celebrated. If a new one is unlocked: focus the 3D map on
+  /// it, fire a big celebration, and persist the acknowledgement so it never
+  /// fires again. Guarded against re-entrancy / looping.
+  Future<void> _maybeCelebrateMapUnlock() async {
+    if (_isCheckingMapUnlock || !mounted || levels.isEmpty) return;
+    _isCheckingMapUnlock = true;
+    try {
+      // Make sure isUnlocked flags reflect the latest progress before comparing.
+      await _updateUnlockStatuses();
+      if (!mounted) return;
+
+      final pending = await _mapUnlockCelebrationService.resolvePendingUnlock(
+        _celebrationUserId,
+        levels,
+      );
+      if (pending == null || !mounted) return;
+
+      // a. Bring the newly unlocked level into view on the 3D map.
+      _focusMapOnLevel(pending.levelIndex);
+
+      // b. Reward the child with a highly visual celebration.
+      await Celebration.fire(
+        context,
+        tier: CelebrationTier.big,
+        compliment: SparkStrings.levelUnlocked,
+      );
+
+      // c. Remember it so the celebration doesn't replay on the next load.
+      await _mapUnlockCelebrationService.setHighestAcknowledgedLevel(
+        _celebrationUserId,
+        pending.newLevel,
+      );
+    } catch (e, stackTrace) {
+      debugPrint('Error celebrating map unlock: $e');
+      debugPrint('$stackTrace');
+    } finally {
+      _isCheckingMapUnlock = false;
+    }
+  }
+
+  /// Ask the 3D map to move the character to [levelIndex] so the child sees the
+  /// freshly unlocked marker. No-op if the map isn't ready or the index is out
+  /// of range.
+  void _focusMapOnLevel(int levelIndex) {
+    if (levelIndex < 0 || levelIndex >= levels.length) return;
+    try {
+      if (kIsWeb) {
+        postMessageToMap3dIframe({
+          'type': 'focus_level',
+          'index': levelIndex,
+        });
+        return;
+      }
+      if (!_isWebMapReady) return;
+      _webViewController?.runJavaScript('window.focusLevel($levelIndex)');
+    } catch (e) {
+      debugPrint('Error focusing map on level $levelIndex: $e');
+    }
+  }
+
   /// Navigate to [CharacterSelectionScreen] so the player can change their
   /// avatar at any time from the map.
   ///
@@ -1146,6 +1220,11 @@ class _MapScreenState extends State<MapScreen>
           );
         }
       }
+    }
+
+    // Completing a level may have unlocked the next one — celebrate it.
+    if (mounted) {
+      await _maybeCelebrateMapUnlock();
     }
   }
 
