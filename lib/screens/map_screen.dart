@@ -1292,6 +1292,34 @@ class _MapScreenState extends State<MapScreen>
                 ),
               ),
               const SizedBox(width: 4),
+              // ── Achievements Showcase (Trophy Room) ──────────────────────────
+              Tooltip(
+                message: 'הישגים',
+                child: IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFB388FF), Color(0xFF7C4DFF)],
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.deepPurple.withValues(alpha: 0.5),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.military_tech,
+                      color: Colors.white,
+                    ),
+                  ),
+                  onPressed: _navigateToAchievements,
+                ),
+              ),
+              const SizedBox(width: 4),
               // ── Character Selection button ────────────────────────────────────
               Consumer<CharacterProvider>(
                 builder: (context, charProvider, _) {
