@@ -504,6 +504,9 @@ window.addEventListener('message', (event) => {
     if (msg.type === 'update_levels' && Array.isArray(msg.levels)) {
         window.updateLevels(msg.levels);
     }
+    if (msg.type === 'focus_level' && typeof msg.index === 'number') {
+        window.focusLevel(msg.index);
+    }
 });
 
 // Global functions callable from Flutter
@@ -511,6 +514,16 @@ window.updateLevels = function(levelsData) {
     console.log('Updating levels:', levelsData);
     levels = levelsData;
     setupLevelMarkers();
+};
+
+// Move the character to a level marker so the host can highlight a freshly
+// unlocked level. Safe to call before markers exist or with an out-of-range
+// index — it simply no-ops.
+window.focusLevel = function(index) {
+    if (typeof index !== 'number' || index < 0) return;
+    if (!Array.isArray(LEVEL_POSITIONS) || index >= LEVEL_POSITIONS.length) return;
+    console.log('Focus level:', index);
+    moveToLevel(index);
 };
 
 window.setAvatar = function(avatarType) {
