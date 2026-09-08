@@ -7,6 +7,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/widgets/pronunciation_mic_button.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
+import 'package:english_learning_app/widgets/word_speaker_button.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -1139,6 +1140,29 @@ class _LightningPracticeScreenState extends State<LightningPracticeScreen> {
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
               ),
+            ),
+          ),
+          // Let the child hear the correct pronunciation before attempting it.
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                WordSpeakerButton(
+                  word: targetWord,
+                  size: 40,
+                  color: Colors.deepOrange.shade700,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  SparkStrings.tapToHearWord,
+                  style: TextStyle(
+                    color: Colors.deepOrange.shade900,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ),
           ),
           PronunciationMicButton(

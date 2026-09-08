@@ -26,6 +26,12 @@ class SparkStrings {
       'אין גישה למיקרופון. פתחו הגדרות ואשרו הקלטה.';
   static const String micOpenSettings = 'הגדרות';
 
+  /// Label next to the 🔊 [WordSpeakerButton] — "listen to the word first".
+  static const String tapToHearWord = 'הקשיבו למילה';
+
+  /// Accessibility label for [WordSpeakerButton] — "play the word".
+  static String hearWordSemantics(String word) => 'השמעת המילה $word';
+
   /// Semantics for [SparkOrb] (assistive tech only).
   static const String orbSemanticsIdle = 'מיקרופון — לחצו לדבר';
   static const String orbSemanticsSuccess = 'כל הכבוד!';
