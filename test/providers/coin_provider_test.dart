@@ -2,6 +2,7 @@
 import 'package:english_learning_app/models/shop_item.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/services/daily_reward_service.dart';
+import 'package:english_learning_app/services/local_user_data_service.dart';
 import 'package:english_learning_app/services/streak_shield_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
@@ -287,6 +288,41 @@ void main() {
         // than resetting to 1.
         expect(provider.dailyStreak, 9);
         expect(shield.hasShield, isFalse);
+      });
+    });
+
+    group('weekly "coins earned" log (feeds the Weekly Parent Recap)', () {
+      final local = LocalUserDataService();
+
+      test('addCoins records the reward against the active profile', () async {
+        coinProvider.setUserId('kidA', isLocalUser: true);
+
+        await coinProvider.addCoins(30);
+        await coinProvider.addCoins(20);
+
+        expect(await local.weeklyCoinsEarned('kidA'), 50);
+      });
+
+      test('spendCoins does not touch the earned log', () async {
+        coinProvider.setUserId('kidB', isLocalUser: true);
+        await coinProvider.setCoins(100);
+
+        await coinProvider.spendCoins(40);
+
+        expect(await local.weeklyCoinsEarned('kidB'), 0);
+      });
+
+      test('claiming the daily practice reward logs its 50 coins', () async {
+        coinProvider.setUserId('kidC', isLocalUser: true);
+
+        await coinProvider.claimDailyPracticeReward();
+
+        expect(await local.weeklyCoinsEarned('kidC'), 50);
+      });
+
+      test('a guest (no profile id) is a no-op', () async {
+        await coinProvider.addCoins(25);
+        expect(await local.weeklyCoinsEarned('anyone'), 0);
       });
     });
   });

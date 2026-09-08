@@ -261,6 +261,20 @@ class SparkStrings {
   static const String parentDashboardNote =
       'הנתונים נשמרים במכשיר זה. ברצף יומי — לכל המשפחה במכשיר משותף.';
 
+  // ─── Weekly recap card (parent) ──────────
+  static const String weeklyRecapTitle = 'הסיכום השבועי';
+  static const String weeklyRecapSubtitle = '7 הימים האחרונים';
+  static String weeklyRecapActiveDays(int days) => '$days מתוך 7 ימי תרגול';
+  static const String weeklyRecapWords = 'מילים שתורגלו';
+  static const String weeklyRecapMinutes = 'דקות תרגול';
+  static const String weeklyRecapCoins = 'מטבעות שנאספו';
+  static String weeklyRecapBestDay(String day, int words) =>
+      'היום החזק ביותר: $day עם $words מילים 🌟';
+  static String weeklyRecapMastered(int count) =>
+      '$count מילים תורגלו לשליטה מלאה השבוע 🏆';
+  static const String weeklyRecapEmpty =
+      'עדיין אין פעילות השבוע — נתראה במפה! 🗺️';
+
   // ─── Offline practice packs (parent) ──────────
   static const String offlineDownloadsTitle = 'הורדה לאופליין';
   static const String offlineDownloadsDescription =

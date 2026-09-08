@@ -12,11 +12,14 @@ import 'dart:async';
 
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/parent_dashboard_stats.dart';
+import 'package:english_learning_app/models/weekly_recap.dart';
 import 'package:english_learning_app/providers/child_profile_provider.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
 import 'package:english_learning_app/screens/child_profile_selection_screen.dart';
 import 'package:english_learning_app/services/parent_progress_service.dart';
+import 'package:english_learning_app/services/weekly_recap_service.dart';
 import 'package:english_learning_app/widgets/offline_downloads_card.dart';
+import 'package:english_learning_app/widgets/weekly_recap_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -24,23 +27,31 @@ class ParentDashboardScreen extends StatefulWidget {
   const ParentDashboardScreen({
     super.key,
     this.progressService,
+    this.recapService,
   });
 
   final ParentProgressService? progressService;
+
+  /// Overridable for tests.
+  final WeeklyRecapService? recapService;
 
   @override
   State<ParentDashboardScreen> createState() => _ParentDashboardScreenState();
 }
 
+typedef _DashboardData = ({ParentDashboardStats stats, WeeklyRecap recap});
+
 class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   late final ParentProgressService _progressService;
-  Future<ParentDashboardStats>? _statsFuture;
+  late final WeeklyRecapService _recapService;
+  Future<_DashboardData>? _statsFuture;
   bool _startedLoad = false;
 
   @override
   void initState() {
     super.initState();
     _progressService = widget.progressService ?? ParentProgressService();
+    _recapService = widget.recapService ?? WeeklyRecapService();
   }
 
   @override
@@ -52,7 +63,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
     }
   }
 
-  Future<ParentDashboardStats> _loadStats() async {
+  Future<_DashboardData> _loadStats() async {
     final session = context.read<UserSessionProvider>();
     final profileProvider = context.read<ChildProfileProvider>();
     final userId = session.currentUserId ?? profileProvider.activeProfileId;
@@ -65,12 +76,15 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         SparkStrings.parentDashboardDefaultChild;
     final lastPlayedAt = profileProvider.activeProfile?.lastPlayedAt;
 
-    return _progressService.loadStats(
+    final statsFuture = _progressService.loadStats(
       userId: userId,
       childName: childName,
       isLocalUser: true,
       lastPlayedAt: lastPlayedAt,
     );
+    final recapFuture = _recapService.loadRecap(userId: userId);
+
+    return (stats: await statsFuture, recap: await recapFuture);
   }
 
   @override
@@ -104,7 +118,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
           ),
         ],
       ),
-      body: FutureBuilder<ParentDashboardStats>(
+      body: FutureBuilder<_DashboardData>(
         future: _statsFuture ??= _loadStats(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -116,7 +130,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
               onRetry: () => setState(() => _statsFuture = _loadStats()),
             );
           }
-          final stats = snapshot.data!;
+          final stats = snapshot.data!.stats;
+          final recap = snapshot.data!.recap;
           return RefreshIndicator(
             onRefresh: () async {
               setState(() => _statsFuture = _loadStats());
@@ -126,6 +141,10 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 _HeaderCard(stats: stats),
+                const SizedBox(height: 20),
+
+                // ── Weekly Recap ───────────────────────────────────────────
+                WeeklyRecapCard(recap: recap),
                 const SizedBox(height: 20),
 
                 // ── Weekly Activity Chart ──────────────────────────────────

@@ -329,7 +329,18 @@ class CoinProvider with ChangeNotifier {
     final previous = _coins;
     _coins += amount;
     _notify();
+    await _recordCoinsEarned(amount);
     await _saveCoins(previousCoins: previous);
+  }
+
+  /// Logs this reward into the per-profile daily "coins earned" tally that
+  /// feeds the Weekly Parent Recap. Guest (no profile id) is a no-op. The
+  /// underlying write is self-guarded and never throws, so this can't fail the
+  /// coin grant that called it.
+  Future<void> _recordCoinsEarned(int amount) async {
+    final userId = _currentUserId;
+    if (userId == null) return;
+    await _localUserDataService.recordCoinsEarned(userId, amount);
   }
 
   Future<void> setCoins(int amount) async {
@@ -391,6 +402,9 @@ class CoinProvider with ChangeNotifier {
     if (_lastDailyPracticeRewardDate != today) {
       return false;
     }
+
+    // The claim stuck — log the 50-coin grant into the weekly recap tally.
+    await _recordCoinsEarned(dailyPracticeRewardCoins);
 
     // Clearing the Daily Practice queue is the child's once-a-day engagement
     // signal, so it also advances the 🔥 daily streak. claimReward() owns the
