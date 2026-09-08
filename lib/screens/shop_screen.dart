@@ -2,8 +2,10 @@ import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/customization_item.dart';
 import '../models/shop_item.dart';
 import '../providers/coin_provider.dart';
+import '../providers/shop_customization_provider.dart';
 import '../services/streak_shield_service.dart';
 import '../utils/app_theme.dart';
 import '../widgets/ui/_barrel.dart';
@@ -68,6 +70,56 @@ class _ShopScreenState extends State<ShopScreen>
       context: context,
       barrierDismissible: false,
       builder: (context) => _PurchaseSuccessDialog(item: item),
+    );
+  }
+
+  Future<void> _handleCustomizationBuy(CustomizationItem item) async {
+    final coinProvider = Provider.of<CoinProvider>(context, listen: false);
+    final customization =
+        Provider.of<ShopCustomizationProvider>(context, listen: false);
+
+    if (coinProvider.coins < item.cost) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(SparkStrings.shopNotEnoughCoins),
+            backgroundColor: AppTheme.primaryOrange,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() => _isPurchasing = true);
+    final success = await customization.buy(item, coinProvider);
+    if (!mounted) return;
+    setState(() => _isPurchasing = false);
+
+    if (success) {
+      await Celebration.fire(context, tier: CelebrationTier.small);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${item.name} נרכש והופעל!'),
+          backgroundColor: AppTheme.primaryGreen,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleCustomizationEquip(CustomizationItem item) async {
+    final customization =
+        Provider.of<ShopCustomizationProvider>(context, listen: false);
+    await customization.equip(item);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${item.name} הופעל!'),
+        backgroundColor: AppTheme.primaryGreen,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -149,6 +201,12 @@ class _ShopScreenState extends State<ShopScreen>
                       ),
                     ],
                   ),
+                ),
+
+                _CustomizationSection(
+                  isPurchasing: _isPurchasing,
+                  onBuy: _handleCustomizationBuy,
+                  onEquip: _handleCustomizationEquip,
                 ),
 
                 Expanded(
@@ -742,6 +800,226 @@ class _PurchaseSuccessDialog extends StatelessWidget {
               fullWidth: true,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Themes & Sounds customization
+// ---------------------------------------------------------------------------
+
+class _CustomizationSection extends StatelessWidget {
+  final bool isPurchasing;
+  final Future<void> Function(CustomizationItem) onBuy;
+  final Future<void> Function(CustomizationItem) onEquip;
+
+  const _CustomizationSection({
+    required this.isPurchasing,
+    required this.onBuy,
+    required this.onEquip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final coins = context.watch<CoinProvider>().coins;
+    final customization = context.watch<ShopCustomizationProvider>();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryPurple.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.palette_rounded, color: AppTheme.primaryPurple),
+              SizedBox(width: 8),
+              Text(
+                'ערכות נושא וסאונד',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                  color: AppTheme.primaryPurple,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 158,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: CustomizationItem.catalog.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final item = CustomizationItem.catalog[index];
+                return _CustomizationCard(
+                  item: item,
+                  isOwned: customization.isOwned(item),
+                  isEquipped: customization.isEquipped(item),
+                  canAfford: coins >= item.cost,
+                  isBusy: isPurchasing,
+                  onBuy: () => onBuy(item),
+                  onEquip: () => onEquip(item),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CustomizationCard extends StatelessWidget {
+  final CustomizationItem item;
+  final bool isOwned;
+  final bool isEquipped;
+  final bool canAfford;
+  final bool isBusy;
+  final VoidCallback onBuy;
+  final VoidCallback onEquip;
+
+  const _CustomizationCard({
+    required this.item,
+    required this.isOwned,
+    required this.isEquipped,
+    required this.canAfford,
+    required this.isBusy,
+    required this.onBuy,
+    required this.onEquip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = item.kind == CustomizationKind.theme
+        ? AppTheme.primaryPurple
+        : AppTheme.primaryOrange;
+
+    return Container(
+      width: 132,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isEquipped ? accent : Colors.grey.shade300,
+          width: isEquipped ? 2 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Icon(item.icon, color: accent, size: 28),
+          Text(
+            item.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: Color(0xFF1A1A1A),
+            ),
+          ),
+          Text(
+            item.kind == CustomizationKind.theme ? 'ערכת נושא' : 'סאונד ניצחון',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+          ),
+          _buildActionButton(accent),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton(Color accent) {
+    if (isEquipped) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle, size: 15, color: accent),
+            const SizedBox(width: 4),
+            Text(
+              'פעיל',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                color: accent,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (isOwned) {
+      return _MiniButton(
+        label: 'הפעל',
+        color: accent,
+        onPressed: isBusy ? null : onEquip,
+      );
+    }
+
+    return _MiniButton(
+      label: 'קנה · ${item.cost}',
+      color: canAfford ? AppTheme.primaryGreen : Colors.grey,
+      onPressed: (isBusy || !canAfford) ? null : onBuy,
+    );
+  }
+}
+
+class _MiniButton extends StatelessWidget {
+  final String label;
+  final Color color;
+  final VoidCallback? onPressed;
+
+  const _MiniButton({
+    required this.label,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: onPressed == null ? Colors.grey.shade300 : color,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
     );

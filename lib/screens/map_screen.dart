@@ -7,6 +7,7 @@ import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/shop_customization_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/chat_buddy_screen.dart';
@@ -380,6 +381,15 @@ class _MapScreenState extends State<MapScreen>
         final coinProvider = Provider.of<CoinProvider>(context, listen: false);
         coinProvider.setUserId(_currentUserId, isLocalUser: _isLocalUser);
         await coinProvider.loadCoins();
+      }
+
+      // Point shop customization at this profile (guest when null) and load
+      // the equipped theme / victory sound.
+      if (mounted) {
+        final customization =
+            Provider.of<ShopCustomizationProvider>(context, listen: false);
+        customization.setUserId(_currentUserId, isLocalUser: _isLocalUser);
+        await customization.load();
       }
     } catch (e) {
       debugPrint('Error loading current user: $e');
@@ -2180,22 +2190,13 @@ class _MapSkyGradient extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment(0, -0.15),
-          radius: 1.15,
-          colors: [
-            Color(0xFFB8E4FF),
-            Color(0xFF6EB5F5),
-            Color(0xFF4A7FD4),
-            Color(0xFF4E3F8C),
-            Color(0xFF2D1B4E),
-          ],
-          stops: [0.0, 0.35, 0.62, 0.85, 1.0],
-        ),
-      ),
-      child: SizedBox.expand(),
+    // Recolours when the child equips a shop map theme; the default palette is
+    // an exact match for the map's original hardcoded gradient.
+    final palette =
+        context.watch<ShopCustomizationProvider>().equippedMapPalette;
+    return DecoratedBox(
+      decoration: BoxDecoration(gradient: palette.toGradient()),
+      child: const SizedBox.expand(),
     );
   }
 }
