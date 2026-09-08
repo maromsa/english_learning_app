@@ -100,7 +100,6 @@ class _MapScreenState extends State<MapScreen>
   static const double _fabGapAboveDock = 14.0;
   static const double _mapFabSize = 64.0;
 
-  late ScrollController _scrollController;
   late AnimationController _pulseController;
 
   // WebView Controller for 3D Map (mobile only — null on Flutter Web)
@@ -124,8 +123,6 @@ class _MapScreenState extends State<MapScreen>
     _localUserDataService = LocalUserDataService();
     _mapUnlockCelebrationService = MapUnlockCelebrationService();
 
-    // Initialize scroll controller and animation (keeping for fallback or transition)
-    _scrollController = ScrollController();
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -359,15 +356,6 @@ class _MapScreenState extends State<MapScreen>
         });
       }
     });
-
-    // Scroll to current level when returning to map
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted) {
-          _scrollToCurrentLevel();
-        }
-      });
-    });
   }
 
   @override
@@ -438,12 +426,9 @@ class _MapScreenState extends State<MapScreen>
         _sendLevelsToJs(); // Send levels to 3D map
         unawaited(_prefetchLevelWords());
 
-        // Scroll to current level after build
-        // Use a small delay to ensure scroll controller is ready
         WidgetsBinding.instance.addPostFrameCallback((_) {
           Future.delayed(const Duration(milliseconds: 100), () {
             if (mounted) {
-              _scrollToCurrentLevel();
               unawaited(_maybeCelebrateMapUnlock());
             }
           });
@@ -1991,18 +1976,12 @@ class _MapScreenState extends State<MapScreen>
           .unregisterWordMasteredListener(_wordMasteredListener!);
       _wordMasteredListener = null;
     }
-    _scrollController.dispose();
     _pulseController.dispose();
     // Stop music when leaving MapScreen
     BackgroundMusicService().stop().catchError((e) {
       debugPrint('Failed to stop music on dispose: $e');
     });
     super.dispose();
-  }
-
-  // Scroll to current level after levels are loaded
-  void _scrollToCurrentLevel() {
-    // Not used in 3D map
   }
 
   // ignore: unused_element

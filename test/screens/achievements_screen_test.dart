@@ -102,4 +102,50 @@ void main() {
 
     expect(find.text('עדיין נעול 🔒'), findsOneWidget);
   });
+
+  testWidgets(
+      'locked achievement with partial progress renders an encouraging ring',
+      (tester) async {
+    final service = await _makeService(tester, const []);
+    await tester.runAsync(() async {
+      // 3 of the 10 words needed for `words_10` -> 30% of the way there.
+      await service.checkForAchievements(streak: 0, wordsLearned: 3);
+      await pumpEventQueue();
+    });
+    await _pump(tester, service);
+
+    // Fraction is computed from observed value / requirementValue.
+    expect(service.progressToward('words_10'), closeTo(0.3, 0.0001));
+    expect(service.isUnlocked('words_10'), isFalse);
+
+    final scrollable = find.byType(Scrollable).first;
+
+    // The locked `words_10` medal now carries a progress ring (a CustomPaint)
+    // and the percentage is exposed to screen readers, not printed on the grid.
+    final wordsTile = find.byKey(const Key('achievement_words_10'));
+    await tester.scrollUntilVisible(wordsTile, 120, scrollable: scrollable);
+    expect(
+      find.descendant(of: wordsTile, matching: find.byType(CustomPaint)),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel(RegExp('נעול, 30 אחוז')), findsOneWidget);
+
+    // An untouched count-based achievement stays a plain grey disc (no ring,
+    // no "0%" nag).
+    final srsTile = find.byKey(const Key('achievement_srs_mastered_10'));
+    await tester.scrollUntilVisible(srsTile, 120, scrollable: scrollable);
+    expect(
+      find.descendant(of: srsTile, matching: find.byType(CustomPaint)),
+      findsNothing,
+    );
+  });
+
+  testWidgets('progressToward returns null once the achievement is unlocked',
+      (tester) async {
+    final service = await _makeService(tester, const ['streak_5']);
+    await _pump(tester, service);
+
+    expect(service.isUnlocked('streak_5'), isTrue);
+    expect(service.progressToward('streak_5'), isNull);
+  });
 }

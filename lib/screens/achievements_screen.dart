@@ -84,9 +84,13 @@ class AchievementsScreen extends StatelessWidget {
                             childAspectRatio: 0.78,
                           ),
                           delegate: SliverChildBuilderDelegate(
-                            (context, index) => _MedalTile(
-                              achievement: byCategory[category]![index],
-                            ),
+                            (context, index) {
+                              final item = byCategory[category]![index];
+                              return _MedalTile(
+                                achievement: item,
+                                progress: service.progressToward(item.id) ?? 0,
+                              );
+                            },
                             childCount: byCategory[category]!.length,
                           ),
                         ),
@@ -139,13 +143,20 @@ _CatTheme _categoryTheme(AchievementCategory cat) {
 /// Static progress ring — no animation controller, so `pumpAndSettle` in
 /// widget tests always terminates (unlike [CircularProgressIndicator]).
 class _RingPainter extends CustomPainter {
-  const _RingPainter(this.ratio);
+  const _RingPainter(
+    this.ratio, {
+    this.trackColor = const Color(0x99FFFFFF), // white @ 60%
+    this.progressColor = const Color(0xFFFFB300), // reward gold
+    this.stroke = 12.0,
+  });
 
   final double ratio;
+  final Color trackColor;
+  final Color progressColor;
+  final double stroke;
 
   @override
   void paint(Canvas canvas, Size size) {
-    const stroke = 12.0;
     final rect = Offset.zero & size;
     final center = rect.center;
     final radius = (size.shortestSide - stroke) / 2;
@@ -154,7 +165,7 @@ class _RingPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.round
-      ..color = Colors.white.withValues(alpha: 0.6);
+      ..color = trackColor;
     canvas.drawCircle(center, radius, track);
 
     if (ratio > 0) {
@@ -162,7 +173,7 @@ class _RingPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = stroke
         ..strokeCap = StrokeCap.round
-        ..color = const Color(0xFFFFB300);
+        ..color = progressColor;
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         -1.5707963267948966, // -pi/2, start at 12 o'clock
@@ -174,7 +185,11 @@ class _RingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_RingPainter oldDelegate) => oldDelegate.ratio != ratio;
+  bool shouldRepaint(_RingPainter oldDelegate) =>
+      oldDelegate.ratio != ratio ||
+      oldDelegate.trackColor != trackColor ||
+      oldDelegate.progressColor != progressColor ||
+      oldDelegate.stroke != stroke;
 }
 
 class _TrophyHero extends StatelessWidget {
@@ -299,9 +314,12 @@ class _CategoryBanner extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _MedalTile extends StatelessWidget {
-  const _MedalTile({required this.achievement});
+  const _MedalTile({required this.achievement, this.progress = 0});
 
   final Achievement achievement;
+
+  /// Fraction (0.0–1.0) toward unlocking — only meaningful while locked.
+  final double progress;
 
   @override
   Widget build(BuildContext context) {
@@ -309,7 +327,11 @@ class _MedalTile extends StatelessWidget {
     final t = _categoryTheme(achievement.category);
 
     return Semantics(
-      label: unlocked ? 'הישג פתוח: ${achievement.title}' : 'הישג נעול',
+      label: unlocked
+          ? 'הישג פתוח: ${achievement.title}'
+          : progress > 0
+              ? 'הישג נעול, ${(progress * 100).round()} אחוז'
+              : 'הישג נעול',
       button: true,
       child: GestureDetector(
         key: Key('achievement_${achievement.id}'),
@@ -322,7 +344,7 @@ class _MedalTile extends StatelessWidget {
                 aspectRatio: 1,
                 child: unlocked
                     ? _UnlockedMedal(icon: achievement.icon, color: t.color)
-                    : const _LockedMedal(),
+                    : _LockedMedal(progress: progress),
               ),
             ),
             const SizedBox(height: 6),
@@ -431,11 +453,18 @@ class _UnlockedMedal extends StatelessWidget {
 }
 
 class _LockedMedal extends StatelessWidget {
-  const _LockedMedal();
+  const _LockedMedal({this.progress = 0});
+
+  /// Fraction (0.0–1.0) toward unlocking. `0` renders a plain grey disc (no
+  /// "you haven't started" nag); any positive value draws an encouraging ring
+  /// around the padlock so kids can see how close they are.
+  final double progress;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    final hasProgress = progress > 0;
+
+    final disc = Stack(
       alignment: Alignment.center,
       children: [
         DecoratedBox(
@@ -458,6 +487,32 @@ class _LockedMedal extends StatelessWidget {
               color: Colors.black.withValues(alpha: 0.3),
             ),
           ),
+        ),
+      ],
+    );
+
+    if (!hasProgress) return disc;
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _RingPainter(
+              progress,
+              // Very light grey track, soft gold fill — same "reward" hue as
+              // the hero ring and medal faces, just gentler for a not-yet prize.
+              trackColor: const Color(0x11000000),
+              progressColor: const Color(0xFFFFCA28),
+              stroke: 6,
+            ),
+          ),
+        ),
+        // Inset the disc so the ring reads as a frame around it.
+        FractionallySizedBox(
+          widthFactor: 0.78,
+          heightFactor: 0.78,
+          child: disc,
         ),
       ],
     );

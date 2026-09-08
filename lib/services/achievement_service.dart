@@ -7,6 +7,7 @@
 // Firestore via UserDataService.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,6 +34,13 @@ class AchievementService with ChangeNotifier {
   String? _currentUserId;
   bool _listenerAttached = true;
   bool _disposed = false;
+
+  /// Highest observed raw value toward each count-based achievement
+  /// (e.g. `{'words_10': 6}`). Drives the progress rings on locked medals in
+  /// the trophy room. Local-only and best-effort: it is derived from stats
+  /// (coins, words, streaks) that are themselves the synced source of truth, so
+  /// a lost or stale entry self-heals on the next practice event — never a P0.
+  final Map<String, int> _progress = {};
 
   void _notify() {
     if (!_disposed) notifyListeners();
@@ -318,6 +326,12 @@ class AchievementService with ChangeNotifier {
     final coins = provider.coins;
     final ownedCount = provider.ownedShopItemsCount;
 
+    _track({
+      'coin_collector': coins,
+      'rich_kid': coins,
+      'map_builder': ownedCount,
+    });
+
     if (coins >= 500 && !isUnlocked('coin_collector')) {
       unawaited(unlockAchievement('coin_collector'));
     }
@@ -353,6 +367,24 @@ class AchievementService with ChangeNotifier {
     int allMissionsStreak = 0,
     bool triedAllModes = false,
   }) async {
+    _track({
+      'words_10': wordsLearned,
+      'words_25': wordsLearned,
+      'words_50': wordsLearned,
+      'srs_mastered_10': masteredWords,
+      'srs_mastered_25': masteredWords,
+      'streak_5': streak,
+      'streak_10': streak,
+      'daily_streak_3': dailyStreak,
+      'daily_streak_7': dailyStreak,
+      'daily_streak_30': dailyStreak,
+      'pronunciation_5': perfectPronunciationCount,
+      'pronunciation_20': perfectPronunciationCount,
+      'camera_5': cameraSuccessCount,
+      'story_3': storiesRead,
+      'missions_complete_week': allMissionsStreak,
+    });
+
     // First steps
     if (!isUnlocked('first_correct')) {
       await unlockAchievement('first_correct');
@@ -626,7 +658,65 @@ class AchievementService with ChangeNotifier {
           prefs.getBool('achievement_${achievement.id}') ??
           false;
     }
+    await _loadProgress();
     _notify();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Progress toward locked achievements (trophy-room rings)
+  // ---------------------------------------------------------------------------
+
+  String _progressStorageKey() => _currentUserId != null
+      ? 'user_${_currentUserId}_achievement_progress'
+      : 'achievement_progress';
+
+  /// Records the latest observed value for one or more count-based achievements,
+  /// keeping only the highest seen. Persists + notifies when anything advanced.
+  void _track(Map<String, int> observed) {
+    var changed = false;
+    observed.forEach((id, value) {
+      if (value <= 0) return;
+      final previous = _progress[id] ?? 0;
+      if (value > previous) {
+        _progress[id] = value;
+        changed = true;
+      }
+    });
+    if (changed) {
+      unawaited(_saveProgress());
+      _notify();
+    }
+  }
+
+  Future<void> _saveProgress() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_progressStorageKey(), jsonEncode(_progress));
+  }
+
+  Future<void> _loadProgress() async {
+    final prefs = await SharedPreferences.getInstance();
+    _progress.clear();
+    final raw = prefs.getString(_progressStorageKey());
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      decoded.forEach((key, value) {
+        if (value is num) _progress[key] = value.toInt();
+      });
+    } catch (_) {
+      // Corrupt cache — rings just start from zero again.
+    }
+  }
+
+  /// Fraction (0.0–1.0) toward a still-locked, count-based achievement, or
+  /// `null` when it is already unlocked or has no numeric target (binary
+  /// achievements like "read your first story" cannot show a partial ring).
+  double? progressToward(String id) {
+    final achievement = _findAchievement(id);
+    if (achievement == null || achievement.isUnlocked) return null;
+    final target = achievement.requirementValue;
+    if (target == null || target <= 0) return null;
+    return ((_progress[id] ?? 0) / target).clamp(0.0, 1.0);
   }
 
   // ---------------------------------------------------------------------------
