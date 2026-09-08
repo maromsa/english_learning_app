@@ -12,6 +12,11 @@ class SoundService {
 
   bool _initialized = false;
 
+  /// Optional override for the level-complete fanfare / epic sting, set by
+  /// `ShopCustomizationProvider` when the child equips a shop victory sound.
+  /// `null` → the built-in twinkling-map fanfare.
+  String? victorySoundAsset;
+
   /// Short neutral tap — used for micro UI feedback and as a safe fallback.
   @visibleForTesting
   static const String uiClickAsset = 'assets/audio/ui_click.wav';
@@ -47,7 +52,7 @@ class SoundService {
         return uiClickAsset;
       case fanfare:
       case epic:
-        return 'assets/audio/the_twinkling_map.mp3';
+        return victorySoundAsset ?? 'assets/audio/the_twinkling_map.mp3';
       case 'success':
         return uiClickAsset;
       case 'error':

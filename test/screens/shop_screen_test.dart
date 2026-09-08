@@ -5,10 +5,13 @@
 // (success and insufficient-funds paths).
 
 import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/models/customization_item.dart';
 import 'package:english_learning_app/models/shop_item.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/shop_customization_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
+import 'package:english_learning_app/services/shop_customization_service.dart';
 import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/services/streak_shield_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
@@ -23,7 +26,12 @@ const _goldFrameName = 'מסגרת זהב למדבקות'; // cost: 100
 const _sparkHatName = 'כובע לספארק'; // cost: 250
 const _streakShieldName = 'מגן רצף'; // cost: 150, consumable
 
-Future<CoinProvider> _pumpShop(
+typedef _ShopHandles = ({
+  CoinProvider coins,
+  ShopCustomizationProvider customization,
+});
+
+Future<_ShopHandles> _pumpShop(
   WidgetTester tester, {
   required int coins,
   StreakShieldService? shieldService,
@@ -36,11 +44,21 @@ Future<CoinProvider> _pumpShop(
   );
   await coinProvider.setCoins(coins);
 
+  final customization = ShopCustomizationProvider(
+    service: ShopCustomizationService(
+      prefs: await SharedPreferences.getInstance(),
+    ),
+  );
+  await customization.load();
+
   await tester.pumpWidget(
     MultiProvider(
       providers: [
         ChangeNotifierProvider<CoinProvider>.value(value: coinProvider),
         ChangeNotifierProvider<StreakShieldService>.value(value: shield),
+        ChangeNotifierProvider<ShopCustomizationProvider>.value(
+          value: customization,
+        ),
         // Purchase success runs Celebration.fire, which reads both of these.
         Provider<SoundService>.value(value: SoundService()),
         ChangeNotifierProvider<SparkOverlayController>(
@@ -51,7 +69,7 @@ Future<CoinProvider> _pumpShop(
     ),
   );
   await tester.pumpAndSettle();
-  return coinProvider;
+  return (coins: coinProvider, customization: customization);
 }
 
 void main() {
@@ -73,9 +91,12 @@ void main() {
   testWidgets(
       'successfully completes a purchase when the balance is sufficient',
       (tester) async {
-    final coinProvider = await _pumpShop(tester, coins: 150);
+    final coinProvider = (await _pumpShop(tester, coins: 150)).coins;
 
     // Open the item details sheet for the Gold Sticker Frame (100 coins).
+    // The Themes & Sounds strip sits above the grid, so scroll it into view.
+    await tester.ensureVisible(find.text(_goldFrameName));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(_goldFrameName));
     await tester.pumpAndSettle();
     expect(find.textContaining('קנה עכשיו'), findsOneWidget);
@@ -98,8 +119,10 @@ void main() {
   testWidgets(
       'shows a friendly message and does not charge when coins are insufficient',
       (tester) async {
-    final coinProvider = await _pumpShop(tester, coins: 10);
+    final coinProvider = (await _pumpShop(tester, coins: 10)).coins;
 
+    await tester.ensureVisible(find.text(_goldFrameName));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(_goldFrameName));
     await tester.pumpAndSettle();
 
@@ -113,12 +136,14 @@ void main() {
 
   testWidgets('tapping an already-owned item offers no purchase button',
       (tester) async {
-    final coinProvider = await _pumpShop(tester, coins: 500);
+    final coinProvider = (await _pumpShop(tester, coins: 500)).coins;
     final goldFrame =
         ShopItem.defaultCatalog.firstWhere((item) => item.id == _goldFrameId);
     await coinProvider.purchaseItem(goldFrame);
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text(_goldFrameName));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(_goldFrameName));
     await tester.pumpAndSettle();
 
@@ -131,7 +156,7 @@ void main() {
       'of the cosmetic list, and the card then reads as owned', (tester) async {
     final shield = StreakShieldService();
     final coinProvider =
-        await _pumpShop(tester, coins: 300, shieldService: shield);
+        (await _pumpShop(tester, coins: 300, shieldService: shield)).coins;
 
     final shieldItem = ShopItem.defaultCatalog
         .firstWhere((i) => i.id == ShopItem.streakShieldId);
@@ -160,5 +185,81 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('כבר בבעלותך'), findsOneWidget);
     expect(find.textContaining('קנה עכשיו'), findsNothing);
+  });
+
+  group('Themes & Sounds section', () {
+    testWidgets('renders the section with the default theme active',
+        (tester) async {
+      await _pumpShop(tester, coins: 0);
+
+      expect(find.text('ערכות נושא וסאונד'), findsOneWidget);
+      expect(find.text('חלל'), findsOneWidget); // Space theme card
+      expect(find.text('פעיל'), findsWidgets); // default theme + sound active
+    });
+
+    testWidgets('buying a theme deducts coins, equips it, and persists',
+        (tester) async {
+      final handles = await _pumpShop(tester, coins: 400);
+
+      // Space theme costs 300.
+      await tester.tap(find.text('קנה · 300'));
+      await tester.pumpAndSettle();
+
+      expect(handles.coins.coins, 100);
+      expect(
+        handles.customization.equippedThemeId,
+        CustomizationItem.spaceThemeId,
+      );
+      expect(
+        handles.customization.isOwned(CustomizationItem.spaceTheme),
+        isTrue,
+      );
+
+      // Reloading from SharedPreferences keeps the purchase + equipped state.
+      final reloaded = ShopCustomizationProvider(
+        service: ShopCustomizationService(
+          prefs: await SharedPreferences.getInstance(),
+        ),
+      );
+      await reloaded.load();
+      expect(reloaded.equippedThemeId, CustomizationItem.spaceThemeId);
+      expect(reloaded.isOwned(CustomizationItem.spaceTheme), isTrue);
+    });
+
+    testWidgets('does not buy a theme the child cannot afford', (tester) async {
+      final handles = await _pumpShop(tester, coins: 50);
+
+      // "קנה · 300" is disabled (grey) — tapping it is a no-op.
+      await tester.tap(find.text('קנה · 300'));
+      await tester.pumpAndSettle();
+
+      expect(handles.coins.coins, 50);
+      expect(
+        handles.customization.equippedThemeId,
+        CustomizationItem.defaultThemeId,
+      );
+    });
+
+    testWidgets('an owned-but-not-equipped item shows הפעל and can be equipped',
+        (tester) async {
+      final handles = await _pumpShop(tester, coins: 400);
+
+      // Buy the gold theme (250), which auto-equips it...
+      await tester.tap(find.text('קנה · 250'));
+      await tester.pumpAndSettle();
+      expect(
+        handles.customization.equippedThemeId,
+        CustomizationItem.goldThemeId,
+      );
+
+      // ...now the default "קלאסי" theme is owned but not equipped → הפעל.
+      expect(find.text('הפעל'), findsWidgets);
+      await tester.tap(find.text('הפעל').first);
+      await tester.pumpAndSettle();
+      expect(
+        handles.customization.equippedThemeId,
+        CustomizationItem.defaultThemeId,
+      );
+    });
   });
 }

@@ -6,6 +6,7 @@ import 'package:english_learning_app/providers/auth_provider.dart';
 import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
+import 'package:english_learning_app/providers/shop_customization_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/theme_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
@@ -102,6 +103,7 @@ Future<void> main() async {
   // to grant "מגן רצף" and to protect the daily streak.
   final coinProvider = CoinProvider(streakShieldService: streakShieldService);
   final themeProvider = ThemeProvider();
+  final shopCustomizationProvider = ShopCustomizationProvider();
   final sparkOverlayController = SparkOverlayController();
   final achievementService = AchievementService(
     coinProvider: coinProvider,
@@ -132,6 +134,14 @@ Future<void> main() async {
         },
       ).catchError((e) {
         debugPrint('Error loading theme: $e');
+      }),
+      shopCustomizationProvider.load().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('Shop customization loading timed out, using defaults');
+        },
+      ).catchError((e) {
+        debugPrint('Error loading shop customization: $e');
       }),
       dailyMissionProvider.initialize().timeout(
         const Duration(seconds: 3),
@@ -200,6 +210,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: childProfileProvider),
         ChangeNotifierProvider.value(value: coinProvider),
         ChangeNotifierProvider.value(value: themeProvider),
+        ChangeNotifierProvider.value(value: shopCustomizationProvider),
         ChangeNotifierProvider.value(value: achievementService),
         ChangeNotifierProvider.value(value: characterProvider),
         ChangeNotifierProvider.value(value: dailyMissionProvider),
