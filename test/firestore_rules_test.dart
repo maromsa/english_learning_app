@@ -61,6 +61,26 @@ void main() {
       reason: 'avatarId must be validated as a string in firestore.rules',
     );
   });
+
+  test('shop customization fields never enter the leaderboard whitelist', () {
+    // Purchases (unlocked themes / sounds, equipped ids) sync via the private
+    // childProfiles document, never the public leaderboard (privacy contract,
+    // CLAUDE.md §2.3). This guards against someone wiring them into the
+    // leaderboard publisher + widening the whitelist to match.
+    final whitelist = _leaderboardHasOnlyFields(rulesText);
+    const shopFields = <String>{
+      'unlockedThemes',
+      'unlockedSounds',
+      'equippedTheme',
+      'equippedSound',
+    };
+    expect(
+      whitelist.intersection(shopFields),
+      isEmpty,
+      reason:
+          'shop customization data must not be published to the leaderboard',
+    );
+  });
 }
 
 Directory _findProjectRoot() {

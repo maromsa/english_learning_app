@@ -18,6 +18,10 @@ class ChildProfile {
     this.completedWordsCount = 0,
     this.achievements = const {},
     this.coins = 0,
+    this.unlockedThemes = const [],
+    this.unlockedSounds = const [],
+    this.equippedTheme,
+    this.equippedSound,
     this.createdAt,
     this.lastPlayedAt,
     this.updatedAt,
@@ -49,6 +53,18 @@ class ChildProfile {
       }
     });
 
+    // Tolerant of profiles written before shop-customization existed and of a
+    // malformed value: anything that isn't a list of strings becomes empty.
+    List<String> toStringList(dynamic value) {
+      if (value is List) {
+        return value.whereType<String>().where((e) => e.isNotEmpty).toList();
+      }
+      return const [];
+    }
+
+    String? toNonEmptyString(dynamic value) =>
+        (value is String && value.isNotEmpty) ? value : null;
+
     return ChildProfile(
       id: (map['id'] as String?) ?? '',
       displayName: (map['displayName'] as String?) ?? '',
@@ -62,6 +78,10 @@ class ChildProfile {
       completedWordsCount: map['completedWordsCount'] as int? ?? 0,
       achievements: achievements,
       coins: map['coins'] as int? ?? 0,
+      unlockedThemes: toStringList(map['unlockedThemes']),
+      unlockedSounds: toStringList(map['unlockedSounds']),
+      equippedTheme: toNonEmptyString(map['equippedTheme']),
+      equippedSound: toNonEmptyString(map['equippedSound']),
       createdAt: toDate(map['createdAt']),
       lastPlayedAt: toDate(map['lastPlayedAt']),
       updatedAt: toDate(map['updatedAt']),
@@ -140,6 +160,17 @@ class ChildProfile {
   final int completedWordsCount;
   final Map<String, bool> achievements;
   final int coins;
+
+  /// Magic Shop cosmetic ids the child has unlocked. Cloud-mirrored so a
+  /// purchase survives a reinstall / new device. Merge strategy: union.
+  final List<String> unlockedThemes;
+  final List<String> unlockedSounds;
+
+  /// Currently equipped customization ids (null → the built-in default).
+  /// Merge strategy: newer [updatedAt] wins.
+  final String? equippedTheme;
+  final String? equippedSound;
+
   final DateTime? createdAt;
   final DateTime? lastPlayedAt;
   final DateTime? updatedAt;
@@ -160,6 +191,10 @@ class ChildProfile {
       'completedWordsCount': completedWordsCount,
       'achievements': achievements,
       'coins': coins,
+      if (unlockedThemes.isNotEmpty) 'unlockedThemes': unlockedThemes,
+      if (unlockedSounds.isNotEmpty) 'unlockedSounds': unlockedSounds,
+      if (equippedTheme != null) 'equippedTheme': equippedTheme,
+      if (equippedSound != null) 'equippedSound': equippedSound,
       if (createdAt != null)
         'createdAt': forCloud
             ? Timestamp.fromDate(createdAt!)
@@ -187,6 +222,10 @@ class ChildProfile {
     int? completedWordsCount,
     Map<String, bool>? achievements,
     int? coins,
+    List<String>? unlockedThemes,
+    List<String>? unlockedSounds,
+    String? equippedTheme,
+    String? equippedSound,
     DateTime? createdAt,
     DateTime? lastPlayedAt,
     DateTime? updatedAt,
@@ -203,6 +242,10 @@ class ChildProfile {
       completedWordsCount: completedWordsCount ?? this.completedWordsCount,
       achievements: achievements ?? this.achievements,
       coins: coins ?? this.coins,
+      unlockedThemes: unlockedThemes ?? this.unlockedThemes,
+      unlockedSounds: unlockedSounds ?? this.unlockedSounds,
+      equippedTheme: equippedTheme ?? this.equippedTheme,
+      equippedSound: equippedSound ?? this.equippedSound,
       createdAt: createdAt ?? this.createdAt,
       lastPlayedAt: lastPlayedAt ?? this.lastPlayedAt,
       updatedAt: updatedAt ?? this.updatedAt,

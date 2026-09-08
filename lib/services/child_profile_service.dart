@@ -126,6 +126,10 @@ class ChildProfileService {
     int? completedWordsCount,
     Map<String, bool>? achievements,
     int? coins,
+    List<String>? unlockedThemes,
+    List<String>? unlockedSounds,
+    String? equippedTheme,
+    String? equippedSound,
   }) async {
     final profile = await getProfileById(profileId);
     if (profile == null) {
@@ -139,6 +143,10 @@ class ChildProfileService {
         completedWordsCount: completedWordsCount ?? profile.completedWordsCount,
         achievements: achievements ?? profile.achievements,
         coins: coins ?? profile.coins,
+        unlockedThemes: unlockedThemes ?? profile.unlockedThemes,
+        unlockedSounds: unlockedSounds ?? profile.unlockedSounds,
+        equippedTheme: equippedTheme ?? profile.equippedTheme,
+        equippedSound: equippedSound ?? profile.equippedSound,
         updatedAt: DateTime.now(),
         pendingSync: true,
       ),

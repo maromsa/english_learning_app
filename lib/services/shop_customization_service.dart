@@ -122,4 +122,55 @@ class ShopCustomizationService {
       debugPrint('Error saving equipped sound: $e');
     }
   }
+
+  // ── Cloud-sync bridge ──────────────────────────────────────────────────────
+
+  /// The full customization state for [userId] in one read — used by
+  /// `ChildProfileSyncService` to build the cloud snapshot.
+  Future<ShopCustomizationSnapshot> readSnapshot(String? userId) async {
+    return ShopCustomizationSnapshot(
+      unlockedThemeIds: await getUnlockedThemeIds(userId),
+      unlockedSoundIds: await getUnlockedSoundIds(userId),
+      equippedThemeId: await getEquippedThemeId(userId),
+      equippedSoundId: await getEquippedSoundId(userId),
+    );
+  }
+
+  /// Applies a snapshot pulled from the cloud onto the device store for
+  /// [userId], **unioning** unlocked ids with whatever is already there so a
+  /// locally-purchased item can never be dropped by a stale cloud copy.
+  /// Equipped ids are overwritten only when non-null and non-empty.
+  Future<void> applyMergedSnapshot(
+    String? userId, {
+    Set<String> unlockedThemeIds = const {},
+    Set<String> unlockedSoundIds = const {},
+    String? equippedThemeId,
+    String? equippedSoundId,
+  }) async {
+    final themes = {...await getUnlockedThemeIds(userId), ...unlockedThemeIds};
+    final sounds = {...await getUnlockedSoundIds(userId), ...unlockedSoundIds};
+    await saveUnlockedThemeIds(userId, themes);
+    await saveUnlockedSoundIds(userId, sounds);
+    if (equippedThemeId != null && equippedThemeId.isNotEmpty) {
+      await saveEquippedThemeId(userId, equippedThemeId);
+    }
+    if (equippedSoundId != null && equippedSoundId.isNotEmpty) {
+      await saveEquippedSoundId(userId, equippedSoundId);
+    }
+  }
+}
+
+/// Immutable view of a child's shop customization state for cloud sync.
+class ShopCustomizationSnapshot {
+  const ShopCustomizationSnapshot({
+    required this.unlockedThemeIds,
+    required this.unlockedSoundIds,
+    required this.equippedThemeId,
+    required this.equippedSoundId,
+  });
+
+  final Set<String> unlockedThemeIds;
+  final Set<String> unlockedSoundIds;
+  final String equippedThemeId;
+  final String equippedSoundId;
 }

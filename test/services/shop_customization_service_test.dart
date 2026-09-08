@@ -77,4 +77,49 @@ void main() {
     // A named profile does not see the guest's picks.
     expect(await service.getUnlockedThemeIds('u1'), isEmpty);
   });
+
+  group('cloud-sync bridge', () {
+    test('readSnapshot returns the full state', () async {
+      await service
+          .saveUnlockedThemeIds('u1', {CustomizationItem.spaceThemeId});
+      await service
+          .saveUnlockedSoundIds('u1', {CustomizationItem.funnySoundId});
+      await service.saveEquippedThemeId('u1', CustomizationItem.spaceThemeId);
+
+      final snap = await service.readSnapshot('u1');
+      expect(snap.unlockedThemeIds, {CustomizationItem.spaceThemeId});
+      expect(snap.unlockedSoundIds, {CustomizationItem.funnySoundId});
+      expect(snap.equippedThemeId, CustomizationItem.spaceThemeId);
+      expect(snap.equippedSoundId, CustomizationItem.defaultSoundId);
+    });
+
+    test('applyMergedSnapshot unions and never drops a local unlock', () async {
+      await service
+          .saveUnlockedThemeIds('u1', {CustomizationItem.spaceThemeId});
+
+      await service.applyMergedSnapshot(
+        'u1',
+        unlockedThemeIds: {CustomizationItem.goldThemeId},
+        equippedThemeId: CustomizationItem.goldThemeId,
+      );
+
+      expect(
+        await service.getUnlockedThemeIds('u1'),
+        {CustomizationItem.spaceThemeId, CustomizationItem.goldThemeId},
+      );
+      expect(
+        await service.getEquippedThemeId('u1'),
+        CustomizationItem.goldThemeId,
+      );
+    });
+
+    test('applyMergedSnapshot ignores an empty equipped id', () async {
+      await service.saveEquippedThemeId('u1', CustomizationItem.spaceThemeId);
+      await service.applyMergedSnapshot('u1', equippedThemeId: '');
+      expect(
+        await service.getEquippedThemeId('u1'),
+        CustomizationItem.spaceThemeId,
+      );
+    });
+  });
 }

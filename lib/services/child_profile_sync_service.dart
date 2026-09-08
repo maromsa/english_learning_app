@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/child_profile.dart';
 import 'child_profile_service.dart';
+import 'shop_customization_service.dart';
 
 /// Syncs child profiles between local storage and Firestore.
 ///
@@ -11,11 +12,15 @@ class ChildProfileSyncService {
   ChildProfileSyncService({
     FirebaseFirestore? firestore,
     ChildProfileService? profileService,
+    ShopCustomizationService? shopCustomizationService,
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _profileService = profileService ?? ChildProfileService();
+        _profileService = profileService ?? ChildProfileService(),
+        _shopCustomizationService =
+            shopCustomizationService ?? ShopCustomizationService();
 
   final FirebaseFirestore _firestore;
   final ChildProfileService _profileService;
+  final ShopCustomizationService _shopCustomizationService;
 
   CollectionReference<Map<String, dynamic>> _profilesCollection(
     String parentUid,
@@ -93,20 +98,88 @@ class ChildProfileSyncService {
         final localUpdated = localProfile.updatedAt ?? localProfile.createdAt;
         final cloudUpdated = cloudProfile.updatedAt ?? cloudProfile.createdAt;
 
-        if (localProfile.pendingSync &&
+        final keepLocal = localProfile.pendingSync &&
             localUpdated != null &&
-            (cloudUpdated == null || !localUpdated.isBefore(cloudUpdated))) {
-          continue;
-        }
+            (cloudUpdated == null || !localUpdated.isBefore(cloudUpdated));
 
-        merged[cloudProfile.id] = cloudProfile.copyWith(pendingSync: false);
+        // Whichever side wins the profile-level pick, shop purchases are
+        // merged field-by-field so an unlock on the losing side is never lost
+        // (CLAUDE.md §2.3: lists union, equipped scalars follow newer updatedAt).
+        final base = keepLocal
+            ? localProfile
+            : cloudProfile.copyWith(pendingSync: false);
+        merged[cloudProfile.id] = _mergeShopFields(
+          base: base,
+          local: localProfile,
+          cloud: cloudProfile,
+        );
       }
 
       await _profileService.saveProfiles(merged.values.toList());
+      // Reflect merged unlocks back onto each profile's device store so a
+      // cloud-only purchase is usable on this device immediately.
+      for (final profile in merged.values) {
+        await _writeShopStateToDevice(profile);
+      }
       await syncPendingToCloud(parentUid);
     } catch (e, stackTrace) {
       debugPrint('ChildProfileSyncService.syncFromCloud failed: $e');
       debugPrint('$stackTrace');
+    }
+  }
+
+  /// Returns [base] with shop fields replaced by a loss-proof merge of [local]
+  /// and [cloud]: unlocked lists are unioned; equipped ids come from whichever
+  /// profile has the newer `updatedAt` (falling back to any non-null value).
+  ChildProfile _mergeShopFields({
+    required ChildProfile base,
+    required ChildProfile local,
+    required ChildProfile cloud,
+  }) {
+    final themes = <String>{...local.unlockedThemes, ...cloud.unlockedThemes};
+    final sounds = <String>{...local.unlockedSounds, ...cloud.unlockedSounds};
+
+    final localUpdated = local.updatedAt ?? local.createdAt;
+    final cloudUpdated = cloud.updatedAt ?? cloud.createdAt;
+    final cloudIsNewer = localUpdated == null ||
+        (cloudUpdated != null && cloudUpdated.isAfter(localUpdated));
+    final preferred = cloudIsNewer ? cloud : local;
+    final other = cloudIsNewer ? local : cloud;
+
+    // If the union grew past what `base` carried, the winning side is missing
+    // an unlock the other side had — mark it dirty so the merged set is
+    // re-uploaded and the cloud converges on the next push.
+    final grewBeyondBase = themes.length > base.unlockedThemes.length ||
+        sounds.length > base.unlockedSounds.length;
+
+    return base.copyWith(
+      unlockedThemes: themes.toList(),
+      unlockedSounds: sounds.toList(),
+      equippedTheme: preferred.equippedTheme ?? other.equippedTheme,
+      equippedSound: preferred.equippedSound ?? other.equippedSound,
+      pendingSync: grewBeyondBase ? true : base.pendingSync,
+    );
+  }
+
+  /// Persists a profile's (merged) shop state into its per-child device store
+  /// so `ShopCustomizationProvider` picks it up on its next load.
+  Future<void> _writeShopStateToDevice(ChildProfile profile) async {
+    if (profile.unlockedThemes.isEmpty &&
+        profile.unlockedSounds.isEmpty &&
+        profile.equippedTheme == null &&
+        profile.equippedSound == null) {
+      return;
+    }
+    try {
+      await _shopCustomizationService.applyMergedSnapshot(
+        profile.id,
+        unlockedThemeIds: profile.unlockedThemes.toSet(),
+        unlockedSoundIds: profile.unlockedSounds.toSet(),
+        equippedThemeId: profile.equippedTheme,
+        equippedSoundId: profile.equippedSound,
+      );
+    } catch (e) {
+      debugPrint('ChildProfileSyncService: shop state write-back failed: $e');
     }
   }
 
