@@ -213,6 +213,25 @@ class SparkStrings {
   static const String achievementNew = 'הישג חדש! 🎉';
   static String wordsProgress(int done, int total) => '$done מתוך $total מילים';
 
+  // ─── Sentence practice ────────────────────────
+  static const String sentencePracticeTitle = 'משפט חסר';
+  static const String sentencePracticeInstruction = 'בחרו את המילה החסרה';
+
+  /// Label next to the 🔊 button on the sentence screen — "listen to the
+  /// whole sentence".
+  static const String sentenceListenPrompt = 'הקשיבו למשפט';
+
+  /// Accessibility label for the sentence 🔊 button.
+  static String hearSentenceSemantics(String sentence) =>
+      'השמעת המשפט: $sentence';
+
+  static String sentencePracticeProgress(int current, int total) =>
+      'משפט $current מתוך $total';
+  static const String sentencePracticeSummaryTitle = 'סיימנו את המשפטים!';
+  static String sentencePracticeScore(int correct, int total) =>
+      '$correct מתוך $total נכון';
+  static const String sentencePracticeEmpty = 'אין עדיין משפטים לתרגול';
+
   // ─── Generic button labels ────────────────────
   static const String tryAgain = 'ננסה שוב';
   static const String continueBtn = 'נמשיך!';
