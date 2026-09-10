@@ -278,6 +278,63 @@ void main() {
   });
 
   testWidgets(
+      'shows the sentence practice entry only when onSentencePractice is '
+      'supplied', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: GameMenuSheet()),
+      ),
+    );
+    expect(find.text('משפט חסר'), findsNothing);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: GameMenuSheet(onSentencePractice: () {}),
+        ),
+      ),
+    );
+    expect(find.text('משפט חסר'), findsOneWidget);
+    expect(find.byIcon(Icons.short_text_rounded), findsOneWidget);
+  });
+
+  testWidgets('tapping "משפט חסר" fires the callback and closes the sheet',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    var tapped = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () => showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) =>
+                      GameMenuSheet(onSentencePractice: () => tapped++),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('משפט חסר'), findsOneWidget);
+
+    await tester.tap(find.text('משפט חסר'));
+    await tester.pumpAndSettle();
+
+    expect(tapped, 1);
+    expect(find.text('משפט חסר'), findsNothing); // sheet popped
+  });
+
+  testWidgets(
       'shows the daily practice entry only when onDailyPractice is supplied',
       (tester) async {
     await tester.pumpWidget(
