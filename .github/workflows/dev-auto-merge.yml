@@ -108,6 +108,12 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GH_REPO tells `gh` which repo to target. Without it, `gh` falls
+          # back to inferring the repo from a local git checkout — and this
+          # job doesn't check one out (no need to, it only calls the API).
+          # Confirmed live: omitting this makes every `gh pr *` call below
+          # fail with "fatal: not a git repository".
+          GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
@@ -166,6 +172,7 @@ jobs:
       - name: Merge pull request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
@@ -177,4 +184,4 @@ jobs:
             exit 0
           fi
 
-          gh pr merge "$PR_NUMBER" --squash --delete-branch --repo "${{ github.repository }}"
+          gh pr merge "$PR_NUMBER" --squash --delete-branch
