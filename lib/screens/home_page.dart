@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:confetti/confetti.dart';
 import 'package:english_learning_app/app_config.dart';
+import 'package:english_learning_app/data/sentence_practice_catalog.dart';
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/daily_mission.dart';
 import 'package:english_learning_app/models/object_identification_result.dart';
@@ -20,6 +21,7 @@ import 'package:english_learning_app/screens/level_completion_screen.dart';
 import 'package:english_learning_app/screens/lightning_practice_screen.dart';
 import 'package:english_learning_app/screens/memory_match_screen.dart';
 import 'package:english_learning_app/screens/scavenger_hunt_screen.dart';
+import 'package:english_learning_app/screens/sentence_practice_screen.dart';
 import 'package:english_learning_app/screens/shop_screen.dart';
 import 'package:english_learning_app/screens/voice_challenge_screen.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
@@ -948,6 +950,18 @@ class _MyHomePageState extends State<MyHomePage> {
                       levelId: widget.levelId,
                       wordsForLevel: widget.wordsForLevel,
                       levelTitle: widget.title,
+                    ),
+                  ),
+                );
+              },
+        onSentencePractice: _speechBusy
+            ? null
+            : () {
+                Navigator.push(
+                  context,
+                  PageTransitions.fadeScale(
+                    SentencePracticeScreen(
+                      questions: SentencePracticeCatalog.session(),
                     ),
                   ),
                 );
@@ -1934,6 +1948,7 @@ class GameMenuSheet extends StatelessWidget {
   final VoidCallback? onLightning;
   final VoidCallback? onMemoryMatch;
   final VoidCallback? onVoiceChallenge;
+  final VoidCallback? onSentencePractice;
 
   const GameMenuSheet({
     super.key,
@@ -1948,6 +1963,7 @@ class GameMenuSheet extends StatelessWidget {
     this.onLightning,
     this.onMemoryMatch,
     this.onVoiceChallenge,
+    this.onSentencePractice,
   });
 
   List<_GameMenuEntry> _buildEntries() {
@@ -2062,6 +2078,16 @@ class GameMenuSheet extends StatelessWidget {
           label: 'אתגר דיבור',
           gradient: const [AuroraTokens.coral, AuroraTokens.plum],
           onTap: onVoiceChallenge!,
+        ),
+      );
+    }
+    if (onSentencePractice != null) {
+      entries.add(
+        _GameMenuEntry(
+          icon: Icons.short_text_rounded,
+          label: SparkStrings.sentencePracticeTitle,
+          gradient: const [AuroraTokens.sky, AuroraTokens.blueberry],
+          onTap: onSentencePractice!,
         ),
       );
     }
