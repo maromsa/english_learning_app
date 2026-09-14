@@ -7,6 +7,7 @@ import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/equipped_avatar_provider.dart';
 import 'package:english_learning_app/providers/shop_customization_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/sticker_album_provider.dart';
@@ -400,6 +401,15 @@ class _MapScreenState extends State<MapScreen>
             Provider.of<StickerAlbumProvider>(context, listen: false);
         stickerAlbum.setUserId(_currentUserId);
         await stickerAlbum.load();
+      }
+
+      // Point the equipped avatar at this profile (guest when null) and
+      // load its saved hat/shirt/accessory/background.
+      if (mounted) {
+        final equippedAvatar =
+            Provider.of<EquippedAvatarProvider>(context, listen: false);
+        equippedAvatar.setUserId(_currentUserId);
+        await equippedAvatar.load();
       }
     } catch (e) {
       debugPrint('Error loading current user: $e');
