@@ -9,6 +9,7 @@ import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/shop_customization_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
+import 'package:english_learning_app/providers/sticker_album_provider.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/chat_buddy_screen.dart';
 import 'package:english_learning_app/screens/home_page.dart';
@@ -390,6 +391,15 @@ class _MapScreenState extends State<MapScreen>
             Provider.of<ShopCustomizationProvider>(context, listen: false);
         customization.setUserId(_currentUserId, isLocalUser: _isLocalUser);
         await customization.load();
+      }
+
+      // Point the sticker album at this profile (guest when null) and load
+      // its owned stickers + placements.
+      if (mounted) {
+        final stickerAlbum =
+            Provider.of<StickerAlbumProvider>(context, listen: false);
+        stickerAlbum.setUserId(_currentUserId);
+        await stickerAlbum.load();
       }
     } catch (e) {
       debugPrint('Error loading current user: $e');
