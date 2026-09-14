@@ -6,6 +6,7 @@ import 'package:english_learning_app/providers/auth_provider.dart';
 import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
+import 'package:english_learning_app/providers/equipped_avatar_provider.dart';
 import 'package:english_learning_app/providers/shop_customization_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/sticker_album_provider.dart';
@@ -106,6 +107,7 @@ Future<void> main() async {
   final themeProvider = ThemeProvider();
   final shopCustomizationProvider = ShopCustomizationProvider();
   final stickerAlbumProvider = StickerAlbumProvider();
+  final equippedAvatarProvider = EquippedAvatarProvider();
   final sparkOverlayController = SparkOverlayController();
   final achievementService = AchievementService(
     coinProvider: coinProvider,
@@ -222,6 +224,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider.value(value: shopCustomizationProvider),
         ChangeNotifierProvider.value(value: stickerAlbumProvider),
+        ChangeNotifierProvider.value(value: equippedAvatarProvider),
         ChangeNotifierProvider.value(value: achievementService),
         ChangeNotifierProvider.value(value: characterProvider),
         ChangeNotifierProvider.value(value: dailyMissionProvider),
