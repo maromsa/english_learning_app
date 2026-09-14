@@ -155,6 +155,14 @@ Future<void> main() async {
       ).catchError((e) {
         debugPrint('Error loading sticker album: $e');
       }),
+      equippedAvatarProvider.load().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('Equipped avatar loading timed out, using defaults');
+        },
+      ).catchError((e) {
+        debugPrint('Error loading equipped avatar: $e');
+      }),
       dailyMissionProvider.initialize().timeout(
         const Duration(seconds: 3),
         onTimeout: () {

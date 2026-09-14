@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -248,9 +250,11 @@ class _AvatarStoreGrid extends StatelessWidget {
         return _AvatarStoreTile(
           item: item,
           isEquipped: isEquipped,
-          onTap: () => isEquipped
-              ? provider.unequipItem(item.type)
-              : provider.equipItem(item),
+          onTap: () => unawaited(
+            isEquipped
+                ? provider.unequipItem(item.type)
+                : provider.equipItem(item),
+          ),
         );
       },
     );
