@@ -1,0 +1,187 @@
+# Auto-merges pull requests into `dev` once our quality gates are green.
+#
+# Scope, by construction — not by convention:
+#   `on.pull_request.branches` below is `[dev]` only. GitHub never fires this
+#   workflow for a PR whose base is `main`/`master` (or anything else) — there
+#   is no code path in this file that can touch that branch. The `main` merge
+#   stays a manual step, forever, per CLAUDE.md.
+#
+# What "quality gates" means here: this workflow runs its *own* full
+# analyze/format/test pass (mirrors test.yml) rather than trusting another
+# workflow's check — a PR only merges if THIS run is green. It also refuses
+# to auto-merge anything that looks like a security-rule change, a
+# credential/secret, a CI workflow edit, or a pubspec version bump — those
+# get flagged for manual review instead (see the `restricted-paths-check`
+# job). That heuristic is best-effort, not exhaustive: still skim anything
+# touching Firestore rules, auth, or payments before trusting it blindly.
+#
+# ---------------------------------------------------------------------------
+# ONE-TIME MANUAL SETUP (do this in the GitHub repo settings — Claude cannot):
+#
+#   1. Settings → Actions → General → "Workflow permissions"
+#      → select "Read and write permissions".
+#      Without this, GITHUB_TOKEN is read-only and the merge step in this
+#      workflow will fail with a 403 — this is the #1 reason auto-merge
+#      workflows silently don't work.
+#
+#   2. Settings → General → Pull Requests → confirm "Allow squash merging"
+#      is enabled (recent history suggests it already is).
+#
+#   3. Optional, but recommended defense-in-depth: add a branch-protection
+#      rule on `dev` (Settings → Branches) requiring this workflow's
+#      `quality-gate` job to pass before ANY merge (human or automated) is
+#      even allowed. This workflow already enforces that gate itself, so
+#      that rule is belt-and-suspenders, not load-bearing.
+# ---------------------------------------------------------------------------
+
+name: Dev auto-merge
+
+on:
+  pull_request:
+    branches: [dev]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: dev-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  quality-gate:
+    name: Quality gate (format + analyze + test)
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: 'stable'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze code
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        env:
+          GEMINI_PROXY_URL: ${{ secrets.GEMINI_PROXY_URL }}
+        run: flutter test --dart-define=GEMINI_PROXY_URL=$GEMINI_PROXY_URL
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Cloud Functions dependencies
+        run: npm ci --prefix functions
+
+      - name: Run Cloud Functions tests
+        run: npm test --prefix functions
+
+  restricted-paths-check:
+    name: Restricted-path guard
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    outputs:
+      safe: ${{ steps.check.outputs.safe }}
+    steps:
+      - name: Inspect changed files
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GH_REPO tells `gh` which repo to target. Without it, `gh` falls
+          # back to inferring the repo from a local git checkout — and this
+          # job doesn't check one out (no need to, it only calls the API).
+          # Confirmed live: omitting this makes every `gh pr *` call below
+          # fail with "fatal: not a git repository".
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          files="$(gh pr view "$PR_NUMBER" --json files -q '.files[].path')"
+          echo "Changed files:"
+          echo "$files"
+
+          safe=true
+
+          # Firestore security rules / indexes — never auto-merge a rules change.
+          if echo "$files" | grep -Eiq '^firestore\.(rules|indexes\.json)$'; then
+            echo "::warning::firestore.rules/indexes changed — needs manual review"
+            safe=false
+          fi
+
+          # Anything that looks like a credential, secret, or env file.
+          if echo "$files" | grep -Eiq '(^|/)\.env|serviceaccount.*\.json$|credentials?.*\.json$|secret'; then
+            echo "::warning::credential/secret-looking path changed — needs manual review"
+            safe=false
+          fi
+
+          # CI workflow edits — a workflow should never auto-approve edits to itself.
+          if echo "$files" | grep -Eq '^\.github/workflows/'; then
+            echo "::warning::CI workflow file changed — needs manual review"
+            safe=false
+          fi
+
+          # pubspec.yaml is common (adding a dependency), so only flag an
+          # actual `version:` bump inside it, not any touch to the file.
+          if echo "$files" | grep -Fxq 'pubspec.yaml'; then
+            diff_text="$(gh pr diff "$PR_NUMBER")"
+            version_touched="$(echo "$diff_text" | awk '/^diff --git a\/pubspec\.yaml /{flag=1; next} /^diff --git /{flag=0} flag' | grep -Ec '^[+-]version:' || true)"
+            if [ "${version_touched:-0}" -gt 0 ]; then
+              echo "::warning::pubspec.yaml version bump — needs manual review"
+              safe=false
+            fi
+          fi
+
+          echo "safe=$safe" >> "$GITHUB_OUTPUT"
+
+  auto-merge:
+    name: Auto-merge into dev
+    needs: [quality-gate, restricted-paths-check]
+    # NOTE: defining a job-level `if:` REPLACES the implicit `success()` guard
+    # GitHub adds for jobs with `needs` — it doesn't add to it. `success()`
+    # must be spelled out here, or this job would still run (and could merge)
+    # even after quality-gate fails.
+    if: |
+      success() &&
+      github.event.pull_request.base.ref == 'dev' &&
+      github.event.pull_request.draft == false &&
+      needs.restricted-paths-check.outputs.safe == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          state="$(gh pr view "$PR_NUMBER" --json state -q '.state')"
+          echo "PR #$PR_NUMBER state: $state"
+          if [ "$state" != "OPEN" ]; then
+            echo "PR is not open — nothing to do."
+            exit 0
+          fi
+
+          gh pr merge "$PR_NUMBER" --squash --delete-branch
