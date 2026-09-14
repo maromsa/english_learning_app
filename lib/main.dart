@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:english_learning_app/firebase_options.dart';
 import 'package:english_learning_app/providers/auth_provider.dart';
+import 'package:english_learning_app/providers/avatar_inventory_provider.dart';
 import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
@@ -108,6 +109,7 @@ Future<void> main() async {
   final shopCustomizationProvider = ShopCustomizationProvider();
   final stickerAlbumProvider = StickerAlbumProvider();
   final equippedAvatarProvider = EquippedAvatarProvider();
+  final avatarInventoryProvider = AvatarInventoryProvider();
   final sparkOverlayController = SparkOverlayController();
   final achievementService = AchievementService(
     coinProvider: coinProvider,
@@ -162,6 +164,14 @@ Future<void> main() async {
         },
       ).catchError((e) {
         debugPrint('Error loading equipped avatar: $e');
+      }),
+      avatarInventoryProvider.load().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('Avatar inventory loading timed out, using defaults');
+        },
+      ).catchError((e) {
+        debugPrint('Error loading avatar inventory: $e');
       }),
       dailyMissionProvider.initialize().timeout(
         const Duration(seconds: 3),
@@ -233,6 +243,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: shopCustomizationProvider),
         ChangeNotifierProvider.value(value: stickerAlbumProvider),
         ChangeNotifierProvider.value(value: equippedAvatarProvider),
+        ChangeNotifierProvider.value(value: avatarInventoryProvider),
         ChangeNotifierProvider.value(value: achievementService),
         ChangeNotifierProvider.value(value: characterProvider),
         ChangeNotifierProvider.value(value: dailyMissionProvider),

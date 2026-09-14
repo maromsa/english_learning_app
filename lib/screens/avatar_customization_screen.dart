@@ -4,66 +4,26 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../data/avatar_catalog.dart';
 import '../models/avatar_item.dart';
+import '../providers/avatar_inventory_provider.dart';
+import '../providers/coin_provider.dart';
 import '../providers/equipped_avatar_provider.dart';
 import '../utils/aurora_tokens.dart';
 import '../widgets/ui/glass_card.dart';
 
-/// Placeholder catalog shown in the store grid until a real avatar item
-/// catalog / service lands. Assets aren't mapped yet, so each item renders
-/// as an icon + color swatch rather than [AvatarItem.assetPath].
-const List<AvatarItem> _placeholderCatalog = [
-  AvatarItem(
-    id: 'hat_wizard',
-    name: 'כובע קוסם',
-    type: AvatarItemType.hat,
-    assetPath: 'assets/images/avatar/hat_wizard.png',
-    cost: 50,
-  ),
-  AvatarItem(
-    id: 'hat_pirate',
-    name: 'כובע פיראט',
-    type: AvatarItemType.hat,
-    assetPath: 'assets/images/avatar/hat_pirate.png',
-    cost: 40,
-  ),
-  AvatarItem(
-    id: 'shirt_red',
-    name: 'חולצה אדומה',
-    type: AvatarItemType.shirt,
-    assetPath: 'assets/images/avatar/shirt_red.png',
-    cost: 20,
-  ),
-  AvatarItem(
-    id: 'shirt_blue',
-    name: 'חולצה כחולה',
-    type: AvatarItemType.shirt,
-    assetPath: 'assets/images/avatar/shirt_blue.png',
-    cost: 20,
-  ),
-  AvatarItem(
-    id: 'accessory_glasses',
-    name: 'משקפיים',
-    type: AvatarItemType.accessory,
-    assetPath: 'assets/images/avatar/accessory_glasses.png',
-    cost: 15,
-  ),
-  AvatarItem(
-    id: 'background_forest',
-    name: 'רקע יער',
-    type: AvatarItemType.background,
-    assetPath: 'assets/images/avatar/background_forest.png',
-    cost: 30,
-  ),
-];
-
 /// Avatar Customization screen: a preview of the currently equipped items on
-/// top, and a store/inventory grid below where tapping an item equips it.
+/// top, and a store/inventory grid below.
+///
+/// Tapping a tile equips it if already owned; if not owned, it attempts a
+/// purchase via [AvatarInventoryProvider.purchaseItem] (debiting
+/// [CoinProvider]) and equips it on success, or shows a SnackBar if the
+/// child can't afford it.
 class AvatarCustomizationScreen extends StatelessWidget {
   const AvatarCustomizationScreen({
     super.key,
     List<AvatarItem>? catalog,
-  }) : _catalog = catalog ?? _placeholderCatalog;
+  }) : _catalog = catalog ?? AvatarCatalog.items;
 
   final List<AvatarItem> _catalog;
 
@@ -233,7 +193,8 @@ class _AvatarStoreGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<EquippedAvatarProvider>();
+    final equippedProvider = context.watch<EquippedAvatarProvider>();
+    final inventoryProvider = context.watch<AvatarInventoryProvider>();
 
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -246,15 +207,18 @@ class _AvatarStoreGrid extends StatelessWidget {
       itemCount: catalog.length,
       itemBuilder: (context, index) {
         final item = catalog[index];
-        final isEquipped = _isEquipped(provider, item);
+        final isEquipped = _isEquipped(equippedProvider, item);
+        final isOwned = inventoryProvider.isOwned(item);
         return _AvatarStoreTile(
           item: item,
           isEquipped: isEquipped,
-          onTap: () => unawaited(
-            isEquipped
-                ? provider.unequipItem(item.type)
-                : provider.equipItem(item),
-          ),
+          isOwned: isOwned,
+          onTap: () => unawaited(_handleTap(
+            context: context,
+            item: item,
+            isEquipped: isEquipped,
+            isOwned: isOwned,
+          )),
         );
       },
     );
@@ -269,17 +233,57 @@ class _AvatarStoreGrid extends StatelessWidget {
       AvatarItemType.background => equipped.backgroundId == item.id,
     };
   }
+
+  /// If [item] is owned, equips/unequips it. If not, attempts to purchase
+  /// it with coins and equips it on success; otherwise shows a SnackBar
+  /// telling the child they don't have enough coins.
+  Future<void> _handleTap({
+    required BuildContext context,
+    required AvatarItem item,
+    required bool isEquipped,
+    required bool isOwned,
+  }) async {
+    final equippedProvider =
+        Provider.of<EquippedAvatarProvider>(context, listen: false);
+
+    if (isOwned) {
+      await (isEquipped
+          ? equippedProvider.unequipItem(item.type)
+          : equippedProvider.equipItem(item));
+      return;
+    }
+
+    final inventoryProvider =
+        Provider.of<AvatarInventoryProvider>(context, listen: false);
+    final coinProvider = Provider.of<CoinProvider>(context, listen: false);
+
+    final purchased = await inventoryProvider.purchaseItem(item, coinProvider);
+
+    if (!context.mounted) return;
+
+    if (purchased) {
+      await equippedProvider.equipItem(item);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('אין לך מספיק מטבעות (${item.cost} 🪙)'),
+        ),
+      );
+    }
+  }
 }
 
 class _AvatarStoreTile extends StatelessWidget {
   const _AvatarStoreTile({
     required this.item,
     required this.isEquipped,
+    required this.isOwned,
     required this.onTap,
   });
 
   final AvatarItem item;
   final bool isEquipped;
+  final bool isOwned;
   final VoidCallback onTap;
 
   static const Map<AvatarItemType, IconData> _icons = {
@@ -316,10 +320,27 @@ class _AvatarStoreTile extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                _icons[item.type],
-                size: 30,
-                color: isEquipped ? AuroraTokens.mint : AuroraTokens.plum,
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    _icons[item.type],
+                    size: 30,
+                    color: !isOwned
+                        ? Colors.grey.shade400
+                        : (isEquipped ? AuroraTokens.mint : AuroraTokens.plum),
+                  ),
+                  if (!isOwned)
+                    const Positioned(
+                      right: -4,
+                      bottom: -4,
+                      child: Icon(
+                        Icons.lock_rounded,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 6),
               Text(
@@ -330,7 +351,7 @@ class _AvatarStoreTile extends StatelessWidget {
                 style: GoogleFonts.heebo(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: AuroraTokens.ink,
+                  color: isOwned ? AuroraTokens.ink : Colors.grey.shade500,
                 ),
               ),
               const SizedBox(height: 4),
