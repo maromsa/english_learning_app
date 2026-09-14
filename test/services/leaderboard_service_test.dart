@@ -1,4 +1,5 @@
 import 'package:english_learning_app/models/child_profile.dart';
+import 'package:english_learning_app/models/equipped_avatar.dart';
 import 'package:english_learning_app/models/leaderboard_entry.dart';
 import 'package:english_learning_app/services/child_profile_service.dart';
 import 'package:english_learning_app/services/leaderboard_service.dart';
@@ -185,6 +186,52 @@ void main() {
 
       expect(result.entries.single.avatarId, '🐼');
       expect(result.entries.single.totalCoins, 80);
+    });
+
+    test('carries the equipped avatar through to the entry', () async {
+      await profileService.saveProfile(
+        ChildProfile(
+          id: 'kid1',
+          displayName: 'Dressed Kid',
+          avatarColor: ChildProfile.defaultAvatarColors.first,
+          equippedAvatar:
+              const EquippedAvatar(hatId: 'hat_wizard', shirtId: 'shirt_red'),
+          coins: 30,
+          dailyStreak: 1,
+        ),
+      );
+
+      final result = await leaderboardService.fetchLeaderboard();
+
+      expect(result.entries.single.equippedAvatar?.hatId, 'hat_wizard');
+      expect(result.entries.single.equippedAvatar?.shirtId, 'shirt_red');
+    });
+
+    test(
+        'keeps local equippedAvatar when merging with a cloud entry that '
+        'lacks one', () async {
+      const profileId = 'kid1';
+      await seedCloudProfile(
+        parentUid: 'p1',
+        profileId: profileId,
+        name: 'Merge Kid',
+        coins: 10,
+        dailyStreak: 1,
+      );
+      await profileService.saveProfile(
+        ChildProfile(
+          id: profileId,
+          displayName: 'Merge Kid',
+          avatarColor: ChildProfile.defaultAvatarColors.first,
+          equippedAvatar: const EquippedAvatar(hatId: 'hat_pirate'),
+          coins: 80,
+          dailyStreak: 4,
+        ),
+      );
+
+      final result = await leaderboardService.fetchLeaderboard();
+
+      expect(result.entries.single.equippedAvatar?.hatId, 'hat_pirate');
     });
 
     test('returns empty when no profiles exist', () async {

@@ -1,4 +1,5 @@
 import 'package:english_learning_app/models/child_profile.dart';
+import 'package:english_learning_app/models/equipped_avatar.dart';
 import 'package:english_learning_app/services/child_profile_service.dart';
 import 'package:english_learning_app/services/child_profile_sync_service.dart';
 import 'package:english_learning_app/services/leaderboard_service.dart';
@@ -56,11 +57,40 @@ void main() {
           'dailyStreak',
           'avatarColor',
           'avatarId',
+          'equippedAvatar',
           'updatedAt',
         }),
         isEmpty,
       );
       expect(data.containsKey('avatarUrl'), isFalse);
+    });
+
+    test('publishes equippedAvatar when the profile has equipped items',
+        () async {
+      const parentUid = 'parent123';
+      final profile = await profileService.createProfile(
+        displayName: 'Noa',
+        avatarColor: ChildProfile.defaultAvatarColors.first,
+      );
+      await profileService.saveProfile(
+        profile.copyWith(
+          equippedAvatar:
+              const EquippedAvatar(hatId: 'hat_wizard', shirtId: 'shirt_red'),
+        ),
+      );
+      final updated = await profileService.getProfileById(profile.id);
+
+      await syncService.syncProfileToCloud(parentUid, updated!);
+
+      final data = (await firestore
+              .collection('leaderboard')
+              .doc('${parentUid}_${profile.id}')
+              .get())
+          .data()!;
+      expect(data['equippedAvatar'], {
+        'hatId': 'hat_wizard',
+        'shirtId': 'shirt_red',
+      });
     });
 
     test('publishes the animal-emoji avatarId when the profile has one',

@@ -2,12 +2,15 @@
 //
 // Unit tests for EquippedAvatarProvider: initial state, equipItem overriding
 // the correct slot, unequipItem clearing it, persistence on every change,
-// and restoring saved state on load().
+// restoring saved state on load(), and the debounced Firestore sync used to
+// mirror the equipped avatar onto the leaderboard.
 
 import 'package:english_learning_app/models/avatar_item.dart';
 import 'package:english_learning_app/models/equipped_avatar.dart';
 import 'package:english_learning_app/providers/equipped_avatar_provider.dart';
+import 'package:english_learning_app/services/child_profile_sync_service.dart';
 import 'package:english_learning_app/services/equipped_avatar_service.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -68,15 +71,47 @@ class _RecordingEquippedAvatarService extends EquippedAvatarService {
   }
 }
 
+/// Records every `updateEquippedAvatar()` call so tests can assert the
+/// debounced cloud sync fired (or didn't) without depending on real network
+/// timing.
+class _RecordingChildProfileSyncService extends ChildProfileSyncService {
+  _RecordingChildProfileSyncService()
+      : super(firestore: FakeFirebaseFirestore());
+
+  int callCount = 0;
+  String? lastParentUid;
+  String? lastProfileId;
+  EquippedAvatar? lastEquipped;
+
+  @override
+  Future<bool> updateEquippedAvatar(
+    String parentUid,
+    String profileId,
+    EquippedAvatar equipped,
+  ) async {
+    callCount++;
+    lastParentUid = parentUid;
+    lastProfileId = profileId;
+    lastEquipped = equipped;
+    return super.updateEquippedAvatar(parentUid, profileId, equipped);
+  }
+}
+
 Future<EquippedAvatarProvider> _provider({
   String? userId,
+  String? parentUid,
   EquippedAvatarService? service,
+  ChildProfileSyncService? syncService,
+  Duration cloudSyncDebounce = const Duration(milliseconds: 30),
 }) async {
   final provider = EquippedAvatarProvider(
     service: service ??
         EquippedAvatarService(prefs: await SharedPreferences.getInstance()),
+    syncService: syncService ?? _RecordingChildProfileSyncService(),
+    cloudSyncDebounce: cloudSyncDebounce,
   );
   provider.setUserId(userId);
+  provider.setParentUid(parentUid);
   await provider.load();
   return provider;
 }
@@ -215,6 +250,118 @@ void main() {
         () async {
       final provider = await _provider(userId: 'brand_new_child');
       expect(provider.equipped, EquippedAvatar.empty());
+    });
+  });
+
+  group('EquippedAvatarProvider cloud sync', () {
+    test(
+        'equipItem does not push to the cloud without a parentUid (guest '
+        '/ local profile)', () async {
+      final sync = _RecordingChildProfileSyncService();
+      final provider = await _provider(userId: 'child_1', syncService: sync);
+
+      await provider.equipItem(_hat);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(sync.callCount, 0);
+    });
+
+    test('equipItem schedules a debounced push once a parentUid is set',
+        () async {
+      final sync = _RecordingChildProfileSyncService();
+      final provider = await _provider(
+        userId: 'child_1',
+        parentUid: 'parent_1',
+        syncService: sync,
+      );
+
+      await provider.equipItem(_hat);
+      // Not yet — the debounce window hasn't elapsed.
+      expect(sync.callCount, 0);
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(sync.callCount, 1);
+      expect(sync.lastParentUid, 'parent_1');
+      expect(sync.lastProfileId, 'child_1');
+      expect(sync.lastEquipped?.hatId, _hat.id);
+    });
+
+    test('rapid equip calls collapse into a single debounced cloud write',
+        () async {
+      final sync = _RecordingChildProfileSyncService();
+      final provider = await _provider(
+        userId: 'child_1',
+        parentUid: 'parent_1',
+        syncService: sync,
+      );
+
+      await provider.equipItem(_hat);
+      await provider.equipItem(_otherHat);
+      await provider.equipItem(_shirt);
+
+      expect(sync.callCount, 0, reason: 'still inside the debounce window');
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      // Exactly one write, carrying the final state.
+      expect(sync.callCount, 1);
+      expect(sync.lastEquipped?.hatId, _otherHat.id);
+      expect(sync.lastEquipped?.shirtId, _shirt.id);
+    });
+
+    test('unequipItem also schedules a debounced cloud push', () async {
+      final sync = _RecordingChildProfileSyncService();
+      final provider = await _provider(
+        userId: 'child_1',
+        parentUid: 'parent_1',
+        syncService: sync,
+      );
+      await provider.equipItem(_hat);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(sync.callCount, 1);
+
+      await provider.unequipItem(AvatarItemType.hat);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(sync.callCount, 2);
+      expect(sync.lastEquipped?.hatId, isNull);
+    });
+
+    test(
+        'flushCloudSync pushes immediately without waiting for the '
+        'debounce window', () async {
+      final sync = _RecordingChildProfileSyncService();
+      final provider = await _provider(
+        userId: 'child_1',
+        parentUid: 'parent_1',
+        syncService: sync,
+        cloudSyncDebounce: const Duration(seconds: 30),
+      );
+
+      await provider.equipItem(_hat);
+      expect(sync.callCount, 0);
+
+      await provider.flushCloudSync();
+
+      expect(sync.callCount, 1);
+      expect(sync.lastEquipped?.hatId, _hat.id);
+    });
+
+    test('a pending cloud sync is cancelled on dispose', () async {
+      final sync = _RecordingChildProfileSyncService();
+      final provider = await _provider(
+        userId: 'child_1',
+        parentUid: 'parent_1',
+        syncService: sync,
+      );
+
+      await provider.equipItem(_hat);
+      provider.dispose();
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(sync.callCount, 0);
     });
   });
 }

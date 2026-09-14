@@ -1,4 +1,5 @@
 import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/models/equipped_avatar.dart';
 import 'package:english_learning_app/models/leaderboard_entry.dart';
 import 'package:english_learning_app/providers/child_profile_provider.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
@@ -644,8 +645,32 @@ class _AvatarBubble extends StatelessWidget {
       fallbackText: entry.displayName,
     );
 
+    final equipped = entry.equippedAvatar;
+    final content = (equipped == null || _isEmpty(equipped))
+        ? avatar
+        : Stack(
+            clipBehavior: Clip.none,
+            children: [
+              avatar,
+              if (equipped.hatId != null)
+                const Positioned(
+                  top: -4,
+                  left: -2,
+                  child: _EquippedBadge(icon: Icons.checkroom_rounded),
+                ),
+              if (equipped.accessoryId != null)
+                const Positioned(
+                  bottom: -2,
+                  right: -2,
+                  child: _EquippedBadge(
+                    icon: Icons.face_retouching_natural_rounded,
+                  ),
+                ),
+            ],
+          );
+
     if (!highlight) {
-      return avatar;
+      return content;
     }
 
     return Container(
@@ -654,7 +679,41 @@ class _AvatarBubble extends StatelessWidget {
         border: Border.all(color: const Color(0xFFFFB300), width: 3),
       ),
       padding: const EdgeInsets.all(2),
-      child: avatar,
+      child: content,
+    );
+  }
+
+  bool _isEmpty(EquippedAvatar equipped) =>
+      equipped.hatId == null &&
+      equipped.shirtId == null &&
+      equipped.accessoryId == null &&
+      equipped.backgroundId == null;
+}
+
+/// Small icon badge overlaid on an [_AvatarBubble] to hint at an equipped
+/// Avatar Customization item (hat / accessory). Uses the same placeholder
+/// icons as the store grid in `avatar_customization_screen.dart` until real
+/// per-item art lands.
+class _EquippedBadge extends StatelessWidget {
+  const _EquippedBadge({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 2,
+          ),
+        ],
+      ),
+      child: Icon(icon, size: 12, color: const Color(0xFF6A1B9A)),
     );
   }
 }

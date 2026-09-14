@@ -7,6 +7,7 @@ import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/models/word_data.dart';
 import 'package:english_learning_app/providers/avatar_inventory_provider.dart';
 import 'package:english_learning_app/providers/character_provider.dart';
+import 'package:english_learning_app/providers/child_profile_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/equipped_avatar_provider.dart';
 import 'package:english_learning_app/providers/shop_customization_provider.dart';
@@ -405,11 +406,17 @@ class _MapScreenState extends State<MapScreen>
       }
 
       // Point the equipped avatar at this profile (guest when null) and
-      // load its saved hat/shirt/accessory/background.
+      // load its saved hat/shirt/accessory/background. Also point its cloud
+      // sync at the signed-in parent's Firestore account (null for guests /
+      // local profiles, which then stay local-only) so equip/unequip
+      // publishes to the leaderboard.
       if (mounted) {
         final equippedAvatar =
             Provider.of<EquippedAvatarProvider>(context, listen: false);
         equippedAvatar.setUserId(_currentUserId);
+        final parentUid =
+            Provider.of<ChildProfileProvider>(context, listen: false).parentUid;
+        equippedAvatar.setParentUid(parentUid);
         await equippedAvatar.load();
       }
 

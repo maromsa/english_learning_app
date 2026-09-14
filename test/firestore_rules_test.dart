@@ -24,6 +24,7 @@ void main() {
     'dailyStreak',
     'avatarColor',
     'avatarId',
+    'equippedAvatar',
     'updatedAt',
   };
 
@@ -59,6 +60,15 @@ void main() {
       leaderboardBlock.contains('avatarId is string'),
       isTrue,
       reason: 'avatarId must be validated as a string in firestore.rules',
+    );
+  });
+
+  test('equippedAvatar in the leaderboard rule carries a type guard', () {
+    final leaderboardBlock = _leaderboardMatchBlock(rulesText);
+    expect(
+      leaderboardBlock.contains('equippedAvatar is map'),
+      isTrue,
+      reason: 'equippedAvatar must be validated as a map in firestore.rules',
     );
   });
 

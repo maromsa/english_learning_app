@@ -1,4 +1,5 @@
 import 'package:english_learning_app/models/child_profile.dart';
+import 'package:english_learning_app/models/equipped_avatar.dart';
 import 'package:english_learning_app/models/local_user.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -163,6 +164,63 @@ void main() {
         expect(updated.unlockedThemes, ['theme_gold']);
         expect(updated.equippedTheme, 'theme_gold');
         expect(updated.copyWith().unlockedThemes, ['theme_gold']);
+      });
+    });
+
+    group('equippedAvatar field', () {
+      test('defaults to null', () {
+        final profile = ChildProfile.create(
+          displayName: 'Noa',
+          avatarColor: ChildProfile.defaultAvatarColors.first,
+        );
+        expect(profile.equippedAvatar, isNull);
+      });
+
+      test('round-trips through toMap / fromMap', () {
+        final profile = ChildProfile.create(
+          displayName: 'Maya',
+          avatarColor: 0xFFFF0000,
+        ).copyWith(
+          equippedAvatar: const EquippedAvatar(
+            hatId: 'hat_wizard',
+            shirtId: 'shirt_red',
+          ),
+        );
+
+        final restored = ChildProfile.fromMap(profile.toMap());
+        expect(restored.equippedAvatar?.hatId, 'hat_wizard');
+        expect(restored.equippedAvatar?.shirtId, 'shirt_red');
+        expect(restored.equippedAvatar?.accessoryId, isNull);
+      });
+
+      test('toMap omits an empty equippedAvatar (legacy docs)', () {
+        final map = ChildProfile.create(
+          displayName: 'Old',
+          avatarColor: 0xFF00FF00,
+        ).toMap();
+        expect(map.containsKey('equippedAvatar'), isFalse);
+      });
+
+      test('fromMap tolerates a missing or malformed value', () {
+        expect(ChildProfile.fromMap(const {}).equippedAvatar, isNull);
+        expect(
+          ChildProfile.fromMap(const {'equippedAvatar': 'not-a-map'})
+              .equippedAvatar,
+          isNull,
+        );
+      });
+
+      test('copyWith updates equippedAvatar', () {
+        final profile = ChildProfile.create(
+          displayName: 'Lior',
+          avatarColor: ChildProfile.defaultAvatarColors.first,
+        );
+        final updated = profile.copyWith(
+          equippedAvatar: const EquippedAvatar(hatId: 'hat_pirate'),
+        );
+        expect(updated.equippedAvatar?.hatId, 'hat_pirate');
+        // Omitting the arg keeps the existing value.
+        expect(updated.copyWith().equippedAvatar?.hatId, 'hat_pirate');
       });
     });
   });
