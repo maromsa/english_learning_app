@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/level_data.dart';
 import 'package:english_learning_app/models/word_data.dart';
+import 'package:english_learning_app/providers/avatar_inventory_provider.dart';
 import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/equipped_avatar_provider.dart';
@@ -410,6 +411,15 @@ class _MapScreenState extends State<MapScreen>
             Provider.of<EquippedAvatarProvider>(context, listen: false);
         equippedAvatar.setUserId(_currentUserId);
         await equippedAvatar.load();
+      }
+
+      // Point the avatar inventory at this profile (guest when null) and
+      // load which avatar items this child has purchased/unlocked.
+      if (mounted) {
+        final avatarInventory =
+            Provider.of<AvatarInventoryProvider>(context, listen: false);
+        avatarInventory.setUserId(_currentUserId);
+        await avatarInventory.load();
       }
     } catch (e) {
       debugPrint('Error loading current user: $e');
