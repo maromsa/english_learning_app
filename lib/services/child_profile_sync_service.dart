@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/child_profile.dart';
+import '../models/equipped_avatar.dart';
 import 'child_profile_service.dart';
 import 'shop_customization_service.dart';
 
@@ -63,10 +64,44 @@ class ChildProfileSyncService {
         'avatarColor': profile.avatarColor,
         if (profile.avatarId != null && profile.avatarId!.isNotEmpty)
           'avatarId': profile.avatarId,
+        if (profile.equippedAvatar != null &&
+            profile.equippedAvatar!.toJson().isNotEmpty)
+          'equippedAvatar': profile.equippedAvatar!.toJson(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
       debugPrint('ChildProfileSyncService: leaderboard publish failed: $e');
+    }
+  }
+
+  /// Pushes just the equipped-avatar slots for [profileId] to both the
+  /// private profile document and the public leaderboard entry.
+  ///
+  /// Used by [EquippedAvatarProvider] on every equip/unequip (debounced) so
+  /// the leaderboard reflects what a child is wearing without requiring a
+  /// full profile sync. A merge write, so it never clobbers other fields —
+  /// safe to call even if the leaderboard entry hasn't been published yet
+  /// (in which case Firestore rules reject the create until the required
+  /// fields exist, and this is a best-effort, non-fatal no-op like every
+  /// other sync path in this service).
+  Future<bool> updateEquippedAvatar(
+    String parentUid,
+    String profileId,
+    EquippedAvatar equipped,
+  ) async {
+    try {
+      final payload = <String, dynamic>{
+        'equippedAvatar': equipped.toJson(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      await _profileDoc(parentUid, profileId)
+          .set(payload, SetOptions(merge: true));
+      await _leaderboardDoc(parentUid, profileId)
+          .set(payload, SetOptions(merge: true));
+      return true;
+    } catch (e) {
+      debugPrint('ChildProfileSyncService.updateEquippedAvatar failed: $e');
+      return false;
     }
   }
 
