@@ -7,6 +7,7 @@ import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_streak_provider.dart';
 import 'package:english_learning_app/services/audio_settings.dart';
 import 'package:english_learning_app/services/sound_service.dart';
+import 'package:english_learning_app/services/speech_service.dart';
 import 'package:english_learning_app/services/tts_service.dart';
 import 'package:english_learning_app/utils/aurora_tokens.dart';
 import 'package:english_learning_app/widgets/streak_milestone_dialog.dart';
@@ -20,11 +21,13 @@ import 'package:provider/provider.dart';
 ///
 /// The child reads a Hebrew translation, taps 🔊 to hear the **full** English
 /// sentence (via [TtsService] / on-device TTS, through [WordSpeakerButton]),
+/// taps 🎤 to **say** the sentence (via [SpeechService] / on-device STT),
 /// and picks the missing word from a set of option cards. A new sentence is
 /// also auto-read when it first appears. A correct pick plays the victory
 /// sound, awards coins through [CoinProvider], fires a micro [Celebration],
-/// and advances to the next sentence. A wrong pick nudges the child to try
-/// again.
+/// and advances to the next sentence. A close spoken match awards a small
+/// bonus and a green check. A wrong pick / missed pronunciation nudges the
+/// child to try again.
 ///
 /// The screen is self-contained: it takes its [questions] directly (mirroring
 /// `MemoryMatchScreen.wordsForLevel`) so it stays trivial to widget-test.
@@ -35,6 +38,7 @@ class SentencePracticeScreen extends StatefulWidget {
     this.coinReward = defaultCoinReward,
     this.speak,
     this.ttsService,
+    this.speechService,
   });
 
   /// The sentence exercises for this session. Unplayable entries (missing
@@ -52,11 +56,30 @@ class SentencePracticeScreen extends StatefulWidget {
   /// the instance registered on [MultiProvider] in `main.dart`.
   final TtsService? ttsService;
 
+  /// Optional [SpeechService] override. Production leaves this null and reads
+  /// the instance registered on [MultiProvider] in `main.dart`.
+  final SpeechService? speechService;
+
   /// Key on the 🔊 control, so tests can tap pronunciation without hunting
   /// through the tree.
   static const Key speakerKey = ValueKey<String>('sentence_tts_button');
 
+  /// Key on the 🎤 control, so tests can start listening without hunting.
+  static const Key micKey = ValueKey<String>('sentence_mic_button');
+
+  /// Visible while the recognizer is capturing audio.
+  static const Key listeningBadgeKey =
+      ValueKey<String>('sentence_mic_listening');
+
+  /// Green check shown after a successful spoken match.
+  static const Key pronunciationSuccessKey =
+      ValueKey<String>('sentence_pronunciation_success');
+
   static const int defaultCoinReward = 15;
+
+  /// Extra coins for saying the English sentence clearly. Awarded at most
+  /// once per sentence so retries stay encouraging, not farmable.
+  static const int pronunciationBonusCoins = 5;
 
   @override
   State<SentencePracticeScreen> createState() => _SentencePracticeScreenState();
@@ -73,6 +96,14 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
   int _correctCount = 0;
   bool _finished = false;
   TtsService? _tts;
+  SpeechService? _speech;
+  bool _listening = false;
+  bool _pronunciationSuccess = false;
+  bool _pronunciationFailed = false;
+  bool _pronunciationBonusAwarded = false;
+  bool _handlingSpeech = false;
+  bool _permissionDenied = false;
+  String _transcript = '';
 
   SentenceQuestion get _current => _questions[_index];
 
@@ -82,6 +113,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _tts = widget.ttsService ?? _tryReadTts();
+      _speech = widget.speechService ?? _tryReadSpeech();
       unawaited(_speakCurrent());
     });
   }
@@ -89,6 +121,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
   @override
   void dispose() {
     unawaited(_tts?.stop());
+    unawaited(_speech?.stopListening());
     super.dispose();
   }
 
@@ -98,6 +131,144 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
     } catch (_) {
       return null;
     }
+  }
+
+  SpeechService? _tryReadSpeech() {
+    try {
+      return context.read<SpeechService>();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _resetPronunciationState() {
+    _listening = false;
+    _pronunciationSuccess = false;
+    _pronunciationFailed = false;
+    _pronunciationBonusAwarded = false;
+    _handlingSpeech = false;
+    _permissionDenied = false;
+    _transcript = '';
+    unawaited(_speech?.stopListening());
+  }
+
+  Future<void> _onMicPressed() async {
+    if (_advancing || _finished) return;
+    if (_listening) {
+      await _stopListening();
+      return;
+    }
+    await _startListening();
+  }
+
+  Future<void> _startListening() async {
+    if (_listening || _advancing || _finished) return;
+    final speech = _speech ?? widget.speechService ?? _tryReadSpeech();
+    _speech = speech;
+    if (speech == null) {
+      if (!mounted) return;
+      setState(() {
+        _permissionDenied = true;
+        _pronunciationFailed = false;
+      });
+      return;
+    }
+
+    await _tts?.stop();
+    if (!mounted) return;
+    setState(() {
+      _listening = true;
+      _pronunciationFailed = false;
+      _permissionDenied = false;
+      _transcript = '';
+    });
+
+    final ready = await speech.initialize();
+    if (!mounted) return;
+    if (!ready) {
+      setState(() {
+        _listening = false;
+        _permissionDenied = true;
+      });
+      return;
+    }
+
+    try {
+      await speech.startListening(
+        _onSpeechResult,
+        onDone: _onListenDone,
+      );
+    } catch (e) {
+      debugPrint('SentencePracticeScreen listen failed: $e');
+      if (!mounted) return;
+      setState(() => _listening = false);
+    }
+  }
+
+  Future<void> _stopListening() async {
+    if (!_listening) return;
+    await _speech?.stopListening();
+    if (!mounted) return;
+    await _handleRecognized(_transcript);
+  }
+
+  void _onSpeechResult(String recognized) {
+    unawaited(_handleRecognized(recognized));
+  }
+
+  void _onListenDone() {
+    if (_handlingSpeech || _pronunciationSuccess || !_listening) return;
+    unawaited(_handleRecognized(_transcript));
+  }
+
+  Future<void> _handleRecognized(String recognized) async {
+    if (_handlingSpeech || _finished) return;
+    _handlingSpeech = true;
+    try {
+      await _speech?.stopListening();
+      if (!mounted) return;
+
+      final heard = recognized.trim();
+      if (heard.isEmpty) {
+        setState(() {
+          _listening = false;
+          _pronunciationFailed = true;
+        });
+        return;
+      }
+
+      final matched = SpeechService.matches(
+        _current.fullEnglishSentence,
+        heard,
+      );
+      setState(() {
+        _listening = false;
+        _transcript = heard;
+        _pronunciationSuccess = matched;
+        _pronunciationFailed = !matched;
+      });
+      if (!matched) return;
+      await _awardPronunciationBonus();
+    } finally {
+      _handlingSpeech = false;
+    }
+  }
+
+  Future<void> _awardPronunciationBonus() async {
+    if (_pronunciationBonusAwarded) return;
+    _pronunciationBonusAwarded = true;
+    SoundService().playSuccessSound();
+    await context.read<CoinProvider>().addCoins(
+          SentencePracticeScreen.pronunciationBonusCoins,
+        );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(SparkStrings.sentencePronunciationSuccess),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   Future<void> _speakCurrent() async {
@@ -170,10 +341,12 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
       _advancing = false;
       if (_index + 1 >= _questions.length) {
         _finished = true;
+        _resetPronunciationState();
       } else {
         _index++;
         _selected = null;
         _answeredCorrectly = false;
+        _resetPronunciationState();
       }
     });
     if (_finished) {
@@ -191,6 +364,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
       _advancing = false;
       _correctCount = 0;
       _finished = false;
+      _resetPronunciationState();
     });
     unawaited(_speakCurrent());
   }
@@ -294,26 +468,77 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                     ),
                   ),
                   const SizedBox(height: AuroraTokens.s8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: AuroraTokens.s8,
+                    runSpacing: AuroraTokens.s4,
                     children: [
-                      WordSpeakerButton(
-                        key: SentencePracticeScreen.speakerKey,
-                        word: question.fullEnglishSentence,
-                        semanticLabel: SparkStrings.hearSentenceSemantics(
-                          question.fullEnglishSentence,
-                        ),
-                        speak: _onSpeakerTap,
-                        color: AuroraTokens.plum,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          WordSpeakerButton(
+                            key: SentencePracticeScreen.speakerKey,
+                            word: question.fullEnglishSentence,
+                            semanticLabel: SparkStrings.hearSentenceSemantics(
+                              question.fullEnglishSentence,
+                            ),
+                            speak: _onSpeakerTap,
+                            color: AuroraTokens.plum,
+                          ),
+                          const SizedBox(width: AuroraTokens.s4),
+                          Text(
+                            SparkStrings.sentenceListenPrompt,
+                            style: GoogleFonts.heebo(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AuroraTokens.inkSoft,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: AuroraTokens.s4),
-                      Text(
-                        SparkStrings.sentenceListenPrompt,
-                        style: GoogleFonts.heebo(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AuroraTokens.inkSoft,
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _SentenceMicButton(
+                            key: SentencePracticeScreen.micKey,
+                            listening: _listening,
+                            success: _pronunciationSuccess,
+                            semanticLabel: SparkStrings.speakSentenceSemantics(
+                              question.fullEnglishSentence,
+                            ),
+                            onPressed: _advancing
+                                ? null
+                                : () => unawaited(_onMicPressed()),
+                            onLongPressStart: _advancing
+                                ? null
+                                : () => unawaited(_startListening()),
+                            onLongPressEnd: _advancing
+                                ? null
+                                : () => unawaited(_stopListening()),
+                          ),
+                          const SizedBox(width: AuroraTokens.s4),
+                          Text(
+                            SparkStrings.sentenceSpeakPrompt,
+                            style: GoogleFonts.heebo(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AuroraTokens.inkSoft,
+                            ),
+                          ),
+                          if (_listening) ...[
+                            const SizedBox(width: AuroraTokens.s4),
+                            Text(
+                              key: SentencePracticeScreen.listeningBadgeKey,
+                              SparkStrings.micListening,
+                              style: GoogleFonts.heebo(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFFE53935),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),
@@ -352,6 +577,29 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
             const SizedBox(height: AuroraTokens.s8),
             Text(
               SparkStrings.tryAgain,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.heebo(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AuroraTokens.coral,
+              ),
+            ),
+          ],
+          if (_permissionDenied) ...[
+            const SizedBox(height: AuroraTokens.s8),
+            Text(
+              SparkStrings.micPermissionAsk,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.heebo(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AuroraTokens.coral,
+              ),
+            ),
+          ] else if (_pronunciationFailed && !_pronunciationSuccess) ...[
+            const SizedBox(height: AuroraTokens.s8),
+            Text(
+              SparkStrings.sentencePronunciationTryAgain,
               textAlign: TextAlign.center,
               style: GoogleFonts.heebo(
                 fontSize: 15,
@@ -423,6 +671,118 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
               onPressed: () => Navigator.of(context).pop(),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SentenceMicButton extends StatefulWidget {
+  const _SentenceMicButton({
+    super.key,
+    required this.listening,
+    required this.success,
+    required this.semanticLabel,
+    this.onPressed,
+    this.onLongPressStart,
+    this.onLongPressEnd,
+  });
+
+  final bool listening;
+  final bool success;
+  final String semanticLabel;
+  final VoidCallback? onPressed;
+  final VoidCallback? onLongPressStart;
+  final VoidCallback? onLongPressEnd;
+
+  @override
+  State<_SentenceMicButton> createState() => _SentenceMicButtonState();
+}
+
+class _SentenceMicButtonState extends State<_SentenceMicButton>
+    with SingleTickerProviderStateMixin {
+  static const Color _listeningRed = Color(0xFFE53935);
+
+  late final AnimationController _pulse;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 1.18).animate(
+      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+    );
+    if (widget.listening) {
+      _pulse.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(_SentenceMicButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.listening && !oldWidget.listening) {
+      _pulse.repeat(reverse: true);
+    } else if (!widget.listening && oldWidget.listening) {
+      _pulse
+        ..stop()
+        ..value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = widget.success
+        ? AuroraTokens.mint
+        : widget.listening
+            ? _listeningRed
+            : AuroraTokens.plum;
+    final IconData icon = widget.success
+        ? Icons.check_circle_rounded
+        : widget.listening
+            ? Icons.mic_rounded
+            : Icons.mic_none_rounded;
+
+    return Semantics(
+      button: true,
+      label: widget.semanticLabel,
+      child: Material(
+        color: color.withValues(alpha: 0.10),
+        shape: const CircleBorder(),
+        child: GestureDetector(
+          onTap: widget.onPressed,
+          onLongPressStart: widget.onLongPressStart == null
+              ? null
+              : (_) => widget.onLongPressStart!(),
+          onLongPressEnd: widget.onLongPressEnd == null
+              ? null
+              : (_) => widget.onLongPressEnd!(),
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Center(
+              child: ScaleTransition(
+                scale: _scale,
+                child: Icon(
+                  icon,
+                  key: widget.success
+                      ? SentencePracticeScreen.pronunciationSuccessKey
+                      : null,
+                  size: 26,
+                  color: color,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

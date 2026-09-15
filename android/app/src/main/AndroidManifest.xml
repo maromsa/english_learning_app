@@ -40,11 +40,14 @@
             android:value="2" />
     </application>
 
-    <!-- נדרש ע"י Flutter כדי לעבד טקסט -->
+    <!-- נדרש ע"י Flutter כדי לעבד טקסט, וע"י speech_to_text באנדרואיד 11+ -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
 
