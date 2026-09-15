@@ -111,7 +111,7 @@ Future<void> main() async {
   final stickerAlbumProvider = StickerAlbumProvider();
   final equippedAvatarProvider = EquippedAvatarProvider();
   final avatarInventoryProvider = AvatarInventoryProvider();
-  final dailyStreakProvider = DailyStreakProvider();
+  final dailyStreakProvider = DailyStreakProvider(coinProvider: coinProvider);
   final sparkOverlayController = SparkOverlayController();
   final achievementService = AchievementService(
     coinProvider: coinProvider,
