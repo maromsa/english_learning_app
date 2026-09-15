@@ -9,6 +9,7 @@ import 'package:english_learning_app/providers/avatar_inventory_provider.dart';
 import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/child_profile_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/daily_streak_provider.dart';
 import 'package:english_learning_app/providers/equipped_avatar_provider.dart';
 import 'package:english_learning_app/providers/shop_customization_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
@@ -39,6 +40,7 @@ import '../utils/hero_tags.dart';
 import '../utils/page_transitions.dart';
 import '../utils/parent_dashboard_navigation.dart';
 import '../utils/route_observer.dart';
+import '../widgets/streak_badge.dart';
 import '../widgets/ui/_barrel.dart';
 import '../widgets/ui/glass_card.dart';
 import '../widgets/user/current_user_avatar.dart';
@@ -427,6 +429,15 @@ class _MapScreenState extends State<MapScreen>
             Provider.of<AvatarInventoryProvider>(context, listen: false);
         avatarInventory.setUserId(_currentUserId);
         await avatarInventory.load();
+      }
+
+      // Point the practice streak at this profile (guest when null) and
+      // restore consecutive-day progress.
+      if (mounted) {
+        final dailyStreak =
+            Provider.of<DailyStreakProvider>(context, listen: false);
+        dailyStreak.setUserId(_currentUserId);
+        await dailyStreak.load();
       }
     } catch (e) {
       debugPrint('Error loading current user: $e');
@@ -1592,6 +1603,16 @@ class _MapScreenState extends State<MapScreen>
                                 _StatsPill(
                                   totalStars: _totalStars,
                                   coins: coinProvider.coins,
+                                ),
+                                Consumer<DailyStreakProvider>(
+                                  builder: (context, dailyStreak, _) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: StreakBadge(
+                                        streak: dailyStreak.currentStreak,
+                                      ),
+                                    );
+                                  },
                                 ),
                                 Consumer<StreakShieldService>(
                                   builder: (context, shield, _) {

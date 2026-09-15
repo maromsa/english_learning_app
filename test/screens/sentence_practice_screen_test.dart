@@ -11,6 +11,7 @@
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/sentence_question.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/daily_streak_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/screens/sentence_practice_screen.dart';
 import 'package:english_learning_app/services/audio_settings.dart';
@@ -38,7 +39,7 @@ final List<SentenceQuestion> _questions = [
   ),
 ];
 
-Future<CoinProvider> _pumpScreen(
+Future<(CoinProvider, DailyStreakProvider)> _pumpScreen(
   WidgetTester tester, {
   List<SentenceQuestion>? questions,
   List<String>? spoken,
@@ -53,11 +54,15 @@ Future<CoinProvider> _pumpScreen(
   final coinProvider = CoinProvider(
     userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
   );
+  final dailyStreakProvider = DailyStreakProvider(
+    now: () => DateTime(2026, 9, 15, 12),
+  );
 
   await tester.pumpWidget(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: coinProvider),
+        ChangeNotifierProvider.value(value: dailyStreakProvider),
         ChangeNotifierProvider(create: (_) => SparkOverlayController()),
         Provider<SoundService>.value(value: SoundService()),
       ],
@@ -73,7 +78,7 @@ Future<CoinProvider> _pumpScreen(
     ),
   );
   await tester.pump();
-  return coinProvider;
+  return (coinProvider, dailyStreakProvider);
 }
 
 /// Taps the option card labelled [label] and flushes the correct-answer
@@ -114,7 +119,7 @@ void main() {
     });
 
     testWidgets('a correct option awards coins and advances', (tester) async {
-      final coinProvider = await _pumpScreen(tester);
+      final (coinProvider, dailyStreakProvider) = await _pumpScreen(tester);
       final start = coinProvider.coins;
 
       await _tapOption(tester, 'cat');
@@ -123,6 +128,7 @@ void main() {
         coinProvider.coins,
         start + SentencePracticeScreen.defaultCoinReward,
       );
+      expect(dailyStreakProvider.currentStreak, 1);
       // Advanced to question 2.
       expect(find.text('אני שותה מים'), findsOneWidget);
       expect(find.text(SparkStrings.sentencePracticeProgress(2, 2)),
@@ -131,13 +137,14 @@ void main() {
 
     testWidgets('a wrong option keeps the child on the same question',
         (tester) async {
-      final coinProvider = await _pumpScreen(tester);
+      final (coinProvider, dailyStreakProvider) = await _pumpScreen(tester);
       final start = coinProvider.coins;
 
       await tester.tap(find.byKey(const ValueKey('option_dog')));
       await tester.pump();
 
       expect(coinProvider.coins, start);
+      expect(dailyStreakProvider.currentStreak, 0);
       expect(find.text('החתול ישן'), findsOneWidget);
       expect(find.text(SparkStrings.tryAgain), findsOneWidget);
     });
