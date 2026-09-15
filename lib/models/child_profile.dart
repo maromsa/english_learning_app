@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'equipped_avatar.dart';
 import 'local_user.dart';
 
 /// A child profile under a parent's account.
@@ -22,6 +23,7 @@ class ChildProfile {
     this.unlockedSounds = const [],
     this.equippedTheme,
     this.equippedSound,
+    this.equippedAvatar,
     this.createdAt,
     this.lastPlayedAt,
     this.updatedAt,
@@ -65,6 +67,16 @@ class ChildProfile {
     String? toNonEmptyString(dynamic value) =>
         (value is String && value.isNotEmpty) ? value : null;
 
+    // Tolerant of profiles written before Avatar Customization existed and
+    // of a malformed value: anything that isn't a map becomes null (all
+    // slots empty) rather than throwing (§2.3).
+    EquippedAvatar? toEquippedAvatar(dynamic value) {
+      if (value is Map) {
+        return EquippedAvatar.fromJson(Map<String, dynamic>.from(value));
+      }
+      return null;
+    }
+
     return ChildProfile(
       id: (map['id'] as String?) ?? '',
       displayName: (map['displayName'] as String?) ?? '',
@@ -82,6 +94,7 @@ class ChildProfile {
       unlockedSounds: toStringList(map['unlockedSounds']),
       equippedTheme: toNonEmptyString(map['equippedTheme']),
       equippedSound: toNonEmptyString(map['equippedSound']),
+      equippedAvatar: toEquippedAvatar(map['equippedAvatar']),
       createdAt: toDate(map['createdAt']),
       lastPlayedAt: toDate(map['lastPlayedAt']),
       updatedAt: toDate(map['updatedAt']),
@@ -171,6 +184,11 @@ class ChildProfile {
   final String? equippedTheme;
   final String? equippedSound;
 
+  /// Currently equipped Avatar Customization items (hat/shirt/accessory/
+  /// background), mirrored to the cloud so the leaderboard can render it.
+  /// Merge strategy: newer [updatedAt] wins, matching [equippedTheme].
+  final EquippedAvatar? equippedAvatar;
+
   final DateTime? createdAt;
   final DateTime? lastPlayedAt;
   final DateTime? updatedAt;
@@ -195,6 +213,8 @@ class ChildProfile {
       if (unlockedSounds.isNotEmpty) 'unlockedSounds': unlockedSounds,
       if (equippedTheme != null) 'equippedTheme': equippedTheme,
       if (equippedSound != null) 'equippedSound': equippedSound,
+      if (equippedAvatar != null && equippedAvatar!.toJson().isNotEmpty)
+        'equippedAvatar': equippedAvatar!.toJson(),
       if (createdAt != null)
         'createdAt': forCloud
             ? Timestamp.fromDate(createdAt!)
@@ -226,6 +246,7 @@ class ChildProfile {
     List<String>? unlockedSounds,
     String? equippedTheme,
     String? equippedSound,
+    EquippedAvatar? equippedAvatar,
     DateTime? createdAt,
     DateTime? lastPlayedAt,
     DateTime? updatedAt,
@@ -246,6 +267,7 @@ class ChildProfile {
       unlockedSounds: unlockedSounds ?? this.unlockedSounds,
       equippedTheme: equippedTheme ?? this.equippedTheme,
       equippedSound: equippedSound ?? this.equippedSound,
+      equippedAvatar: equippedAvatar ?? this.equippedAvatar,
       createdAt: createdAt ?? this.createdAt,
       lastPlayedAt: lastPlayedAt ?? this.lastPlayedAt,
       updatedAt: updatedAt ?? this.updatedAt,

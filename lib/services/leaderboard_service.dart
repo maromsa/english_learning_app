@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/child_profile.dart';
+import '../models/equipped_avatar.dart';
 import '../models/leaderboard_entry.dart';
 import 'child_profile_service.dart';
 
@@ -102,6 +103,7 @@ class LeaderboardService {
         avatarColor: draft.avatarColor,
         avatarUrl: draft.avatarUrl,
         avatarId: draft.avatarId,
+        equippedAvatar: draft.equippedAvatar,
         rank: i + 1,
         isCurrentUser: isCurrent,
       );
@@ -123,6 +125,7 @@ class LeaderboardService {
           avatarColor: draft.avatarColor,
           avatarUrl: draft.avatarUrl,
           avatarId: draft.avatarId,
+          equippedAvatar: draft.equippedAvatar,
           rank: index + 1,
           isCurrentUser: true,
         );
@@ -156,6 +159,7 @@ class LeaderboardService {
       avatarColor: profile.avatarColor,
       avatarUrl: profile.avatarUrl ?? existing.avatarUrl,
       avatarId: profile.avatarId ?? existing.avatarId,
+      equippedAvatar: profile.equippedAvatar ?? existing.equippedAvatar,
     );
   }
 }
@@ -169,6 +173,7 @@ class _LeaderboardDraft {
     required this.avatarColor,
     this.avatarUrl,
     this.avatarId,
+    this.equippedAvatar,
   });
 
   factory _LeaderboardDraft.fromProfile(ChildProfile profile) {
@@ -180,6 +185,7 @@ class _LeaderboardDraft {
       avatarColor: profile.avatarColor,
       avatarUrl: profile.avatarUrl,
       avatarId: profile.avatarId,
+      equippedAvatar: profile.equippedAvatar,
     );
   }
 
@@ -190,6 +196,7 @@ class _LeaderboardDraft {
   final int avatarColor;
   final String? avatarUrl;
   final String? avatarId;
+  final EquippedAvatar? equippedAvatar;
 
   _LeaderboardDraft copyWith({
     String? displayName,
@@ -198,6 +205,7 @@ class _LeaderboardDraft {
     int? avatarColor,
     String? avatarUrl,
     String? avatarId,
+    EquippedAvatar? equippedAvatar,
   }) {
     return _LeaderboardDraft(
       profileId: profileId,
@@ -207,6 +215,7 @@ class _LeaderboardDraft {
       avatarColor: avatarColor ?? this.avatarColor,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       avatarId: avatarId ?? this.avatarId,
+      equippedAvatar: equippedAvatar ?? this.equippedAvatar,
     );
   }
 }

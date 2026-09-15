@@ -5,17 +5,21 @@
 // The screen takes its questions directly (like MemoryMatchScreen.wordsForLevel),
 // so only the providers it reads from context are faked: CoinProvider (coin
 // award), plus SoundService / SparkOverlayController used by the shared
-// Celebration.fire helper on a correct answer. A fake `speak` callback stands in
-// for SparkVoiceService so no TTS / network is involved.
+// Celebration.fire helper on a correct answer. A [_FakeTtsService] stands in
+// for on-device TTS so no flutter_tts platform channel is involved.
 
 import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/models/daily_streak.dart';
 import 'package:english_learning_app/models/sentence_question.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/daily_streak_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/screens/sentence_practice_screen.dart';
 import 'package:english_learning_app/services/audio_settings.dart';
 import 'package:english_learning_app/services/sound_service.dart';
+import 'package:english_learning_app/services/tts_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
+import 'package:english_learning_app/widgets/streak_milestone_dialog.dart';
 import 'package:english_learning_app/widgets/word_speaker_button.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -38,10 +42,30 @@ final List<SentenceQuestion> _questions = [
   ),
 ];
 
-Future<CoinProvider> _pumpScreen(
+class _FakeTtsService extends TtsService {
+  _FakeTtsService();
+
+  final List<String> spoken = [];
+  int stopCount = 0;
+
+  @override
+  Future<void> speak(String text) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    spoken.add(trimmed);
+  }
+
+  @override
+  Future<void> stop() async {
+    stopCount++;
+  }
+}
+
+Future<(CoinProvider, DailyStreakProvider, _FakeTtsService)> _pumpScreen(
   WidgetTester tester, {
   List<SentenceQuestion>? questions,
-  List<String>? spoken,
+  DailyStreak? initialStreak,
+  _FakeTtsService? tts,
 }) async {
   SharedPreferences.setMockInitialValues({});
   await AudioSettings().setMuted(false);
@@ -53,27 +77,32 @@ Future<CoinProvider> _pumpScreen(
   final coinProvider = CoinProvider(
     userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
   );
+  final dailyStreakProvider = DailyStreakProvider(
+    initial: initialStreak,
+    now: () => DateTime(2026, 9, 15, 12),
+    coinProvider: coinProvider,
+  );
+  final fakeTts = tts ?? _FakeTtsService();
 
   await tester.pumpWidget(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: coinProvider),
+        ChangeNotifierProvider.value(value: dailyStreakProvider),
         ChangeNotifierProvider(create: (_) => SparkOverlayController()),
         Provider<SoundService>.value(value: SoundService()),
+        Provider<TtsService>.value(value: fakeTts),
       ],
       child: MaterialApp(
         home: SentencePracticeScreen(
           questions: questions ?? _questions,
-          speak: (sentence) async {
-            spoken?.add(sentence);
-            return true;
-          },
+          ttsService: fakeTts,
         ),
       ),
     ),
   );
   await tester.pump();
-  return coinProvider;
+  return (coinProvider, dailyStreakProvider, fakeTts);
 }
 
 /// Taps the option card labelled [label] and flushes the correct-answer
@@ -98,23 +127,42 @@ void main() {
       expect(find.text('החתול ישן'), findsOneWidget);
       expect(find.text('The ____ is sleeping'), findsOneWidget);
       expect(find.byType(WordSpeakerButton), findsOneWidget);
+      expect(find.byKey(SentencePracticeScreen.speakerKey), findsOneWidget);
+      expect(find.byIcon(Icons.volume_up_rounded), findsOneWidget);
       expect(find.text(SparkStrings.sentencePracticeProgress(1, 2)),
           findsOneWidget);
     });
 
-    testWidgets('speaker button reads the full sentence aloud', (tester) async {
-      final spoken = <String>[];
-      await _pumpScreen(tester, spoken: spoken);
+    testWidgets('auto-plays the English sentence when it is presented',
+        (tester) async {
+      final tts = _FakeTtsService();
+      await _pumpScreen(tester, tts: tts);
 
-      await tester.tap(find.byType(WordSpeakerButton));
+      expect(tts.spoken, ['The cat is sleeping']);
+    });
+
+    testWidgets('speaker button reads the full sentence aloud', (tester) async {
+      final tts = _FakeTtsService();
+      await _pumpScreen(tester, tts: tts);
+
+      await tester.tap(find.byKey(SentencePracticeScreen.speakerKey));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
-      expect(spoken, ['The cat is sleeping']);
+      expect(tts.spoken, ['The cat is sleeping', 'The cat is sleeping']);
+    });
+
+    testWidgets('advancing to the next sentence auto-plays it', (tester) async {
+      final tts = _FakeTtsService();
+      await _pumpScreen(tester, tts: tts);
+
+      await _tapOption(tester, 'cat');
+
+      expect(tts.spoken, ['The cat is sleeping', 'I drink water']);
     });
 
     testWidgets('a correct option awards coins and advances', (tester) async {
-      final coinProvider = await _pumpScreen(tester);
+      final (coinProvider, dailyStreakProvider, _) = await _pumpScreen(tester);
       final start = coinProvider.coins;
 
       await _tapOption(tester, 'cat');
@@ -123,28 +171,65 @@ void main() {
         coinProvider.coins,
         start + SentencePracticeScreen.defaultCoinReward,
       );
+      expect(dailyStreakProvider.currentStreak, 1);
       // Advanced to question 2.
       expect(find.text('אני שותה מים'), findsOneWidget);
       expect(find.text(SparkStrings.sentencePracticeProgress(2, 2)),
           findsOneWidget);
     });
 
+    testWidgets('reaching a streak milestone shows the celebration dialog',
+        (tester) async {
+      final (coinProvider, dailyStreakProvider, _) = await _pumpScreen(
+        tester,
+        initialStreak: DailyStreak(
+          currentStreak: 2,
+          lastPracticeDate: DateTime(2026, 9, 14),
+        ),
+      );
+      final start = coinProvider.coins;
+
+      await tester.tap(find.byKey(const ValueKey('option_cat')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(StreakMilestoneDialog.dialogKey), findsOneWidget);
+      expect(find.text(SparkStrings.streakMilestoneTitle(3)), findsOneWidget);
+      expect(
+        coinProvider.coins,
+        start +
+            SentencePracticeScreen.defaultCoinReward +
+            DailyStreakProvider.milestoneRewards[3]!,
+      );
+      expect(dailyStreakProvider.currentStreak, 3);
+
+      await tester.tap(find.text(SparkStrings.streakMilestoneCta));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byKey(StreakMilestoneDialog.dialogKey), findsNothing);
+      expect(find.text('אני שותה מים'), findsOneWidget);
+    });
+
     testWidgets('a wrong option keeps the child on the same question',
         (tester) async {
-      final coinProvider = await _pumpScreen(tester);
+      final (coinProvider, dailyStreakProvider, _) = await _pumpScreen(tester);
       final start = coinProvider.coins;
 
       await tester.tap(find.byKey(const ValueKey('option_dog')));
       await tester.pump();
 
       expect(coinProvider.coins, start);
+      expect(dailyStreakProvider.currentStreak, 0);
       expect(find.text('החתול ישן'), findsOneWidget);
       expect(find.text(SparkStrings.tryAgain), findsOneWidget);
     });
 
     testWidgets('completing every question shows the summary panel',
         (tester) async {
-      await _pumpScreen(tester);
+      final tts = _FakeTtsService();
+      await _pumpScreen(tester, tts: tts);
 
       await _tapOption(tester, 'cat');
       await _tapOption(tester, 'water');
@@ -154,10 +239,12 @@ void main() {
       expect(
           find.text(SparkStrings.sentencePracticeScore(2, 2)), findsOneWidget);
       expect(find.text(SparkStrings.levelPlayAgain), findsOneWidget);
+      expect(tts.stopCount, greaterThan(0));
     });
 
     testWidgets('play again restarts from the first question', (tester) async {
-      await _pumpScreen(tester);
+      final tts = _FakeTtsService();
+      await _pumpScreen(tester, tts: tts);
 
       await _tapOption(tester, 'cat');
       await _tapOption(tester, 'water');
@@ -167,21 +254,28 @@ void main() {
       expect(find.text('החתול ישן'), findsOneWidget);
       expect(find.text(SparkStrings.sentencePracticeProgress(1, 2)),
           findsOneWidget);
+      expect(tts.spoken.last, 'The cat is sleeping');
     });
 
     testWidgets('shows an empty state when there are no playable questions',
         (tester) async {
-      await _pumpScreen(tester, questions: [
-        const SentenceQuestion(
-          fullEnglishSentence: 'Only one choice here',
-          hebrewTranslation: 'x',
-          missingWord: 'choice',
-          options: [],
-        ),
-      ]);
+      final tts = _FakeTtsService();
+      await _pumpScreen(
+        tester,
+        tts: tts,
+        questions: [
+          const SentenceQuestion(
+            fullEnglishSentence: 'Only one choice here',
+            hebrewTranslation: 'x',
+            missingWord: 'choice',
+            options: [],
+          ),
+        ],
+      );
 
       expect(find.text(SparkStrings.sentencePracticeEmpty), findsOneWidget);
       expect(find.byType(WordSpeakerButton), findsNothing);
+      expect(tts.spoken, isEmpty);
     });
   });
 }

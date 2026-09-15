@@ -3,9 +3,12 @@ import 'dart:ui';
 
 import 'package:english_learning_app/firebase_options.dart';
 import 'package:english_learning_app/providers/auth_provider.dart';
+import 'package:english_learning_app/providers/avatar_inventory_provider.dart';
 import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
+import 'package:english_learning_app/providers/daily_streak_provider.dart';
+import 'package:english_learning_app/providers/equipped_avatar_provider.dart';
 import 'package:english_learning_app/providers/shop_customization_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/sticker_album_provider.dart';
@@ -29,6 +32,7 @@ import 'services/notification_service.dart';
 import 'services/sound_service.dart';
 import 'services/streak_shield_service.dart';
 import 'services/telemetry_service.dart';
+import 'services/tts_service.dart';
 import 'utils/app_theme.dart';
 import 'utils/route_observer.dart';
 import 'utils/spark_route_observer.dart';
@@ -106,6 +110,9 @@ Future<void> main() async {
   final themeProvider = ThemeProvider();
   final shopCustomizationProvider = ShopCustomizationProvider();
   final stickerAlbumProvider = StickerAlbumProvider();
+  final equippedAvatarProvider = EquippedAvatarProvider();
+  final avatarInventoryProvider = AvatarInventoryProvider();
+  final dailyStreakProvider = DailyStreakProvider(coinProvider: coinProvider);
   final sparkOverlayController = SparkOverlayController();
   final achievementService = AchievementService(
     coinProvider: coinProvider,
@@ -152,6 +159,30 @@ Future<void> main() async {
         },
       ).catchError((e) {
         debugPrint('Error loading sticker album: $e');
+      }),
+      equippedAvatarProvider.load().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('Equipped avatar loading timed out, using defaults');
+        },
+      ).catchError((e) {
+        debugPrint('Error loading equipped avatar: $e');
+      }),
+      avatarInventoryProvider.load().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('Avatar inventory loading timed out, using defaults');
+        },
+      ).catchError((e) {
+        debugPrint('Error loading avatar inventory: $e');
+      }),
+      dailyStreakProvider.load().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('Daily streak loading timed out, using defaults');
+        },
+      ).catchError((e) {
+        debugPrint('Error loading daily streak: $e');
       }),
       dailyMissionProvider.initialize().timeout(
         const Duration(seconds: 3),
@@ -222,6 +253,9 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider.value(value: shopCustomizationProvider),
         ChangeNotifierProvider.value(value: stickerAlbumProvider),
+        ChangeNotifierProvider.value(value: equippedAvatarProvider),
+        ChangeNotifierProvider.value(value: avatarInventoryProvider),
+        ChangeNotifierProvider.value(value: dailyStreakProvider),
         ChangeNotifierProvider.value(value: achievementService),
         ChangeNotifierProvider.value(value: characterProvider),
         ChangeNotifierProvider.value(value: dailyMissionProvider),
@@ -234,6 +268,10 @@ Future<void> main() async {
         Provider<SpeechFeedbackService>(
           create: (_) => SpeechFeedbackService(),
           dispose: (_, service) => service.dispose(),
+        ),
+        Provider<TtsService>(
+          create: (_) => TtsService(),
+          dispose: (_, service) => unawaited(service.stop()),
         ),
       ],
       child: MyApp(hasSeenOnboarding: hasSeenOnboarding),

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:english_learning_app/models/child_profile.dart';
+import 'package:english_learning_app/models/equipped_avatar.dart';
 import 'package:english_learning_app/services/child_profile_service.dart';
 import 'package:english_learning_app/services/child_profile_sync_service.dart';
 import 'package:english_learning_app/services/shop_customization_service.dart';
@@ -207,6 +208,86 @@ void main() {
           merged.unlockedThemes,
           containsAll(<String>['theme_space', 'theme_gold']),
         );
+      });
+    });
+
+    group('equipped avatar sync', () {
+      test('updateEquippedAvatar writes to the private profile document',
+          () async {
+        const parentUid = 'avatarParent1';
+        final profile = await profileService.createProfile(
+          displayName: 'Wearer',
+          avatarColor: ChildProfile.defaultAvatarColors.first,
+        );
+
+        final ok = await syncService.updateEquippedAvatar(
+          parentUid,
+          profile.id,
+          const EquippedAvatar(hatId: 'hat_wizard', shirtId: 'shirt_red'),
+        );
+        expect(ok, true);
+
+        final doc = await firestore
+            .collection('users')
+            .doc(parentUid)
+            .collection('childProfiles')
+            .doc(profile.id)
+            .get();
+        expect(doc.data()?['equippedAvatar'], {
+          'hatId': 'hat_wizard',
+          'shirtId': 'shirt_red',
+        });
+      });
+
+      test('updateEquippedAvatar also publishes to the leaderboard entry',
+          () async {
+        const parentUid = 'avatarParent2';
+        final profile = await profileService.createProfile(
+          displayName: 'Wearer',
+          avatarColor: ChildProfile.defaultAvatarColors.first,
+        );
+        // Leaderboard entry must already exist for the merge write to pass
+        // security rules in production; simulate that with a prior publish.
+        await syncService.syncProfileToCloud(parentUid, profile);
+
+        await syncService.updateEquippedAvatar(
+          parentUid,
+          profile.id,
+          const EquippedAvatar(hatId: 'hat_pirate'),
+        );
+
+        final entry = await firestore
+            .collection('leaderboard')
+            .doc('${parentUid}_${profile.id}')
+            .get();
+        expect(entry.data()?['equippedAvatar'], {'hatId': 'hat_pirate'});
+        // The rest of the previously-published entry survives the merge.
+        expect(entry.data()?['displayName'], 'Wearer');
+      });
+
+      test('updateEquippedAvatar does not clobber other profile fields',
+          () async {
+        const parentUid = 'avatarParent3';
+        final profile = await profileService.createProfile(
+          displayName: 'Wearer',
+          avatarColor: ChildProfile.defaultAvatarColors.first,
+        );
+        await syncService.syncProfileToCloud(parentUid, profile);
+
+        await syncService.updateEquippedAvatar(
+          parentUid,
+          profile.id,
+          const EquippedAvatar(hatId: 'hat_wizard'),
+        );
+
+        final doc = await firestore
+            .collection('users')
+            .doc(parentUid)
+            .collection('childProfiles')
+            .doc(profile.id)
+            .get();
+        expect(doc.data()?['displayName'], 'Wearer');
+        expect(doc.data()?['equippedAvatar'], {'hatId': 'hat_wizard'});
       });
     });
   });

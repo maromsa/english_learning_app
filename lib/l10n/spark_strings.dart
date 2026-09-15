@@ -232,6 +232,11 @@ class SparkStrings {
       '$correct מתוך $total נכון';
   static const String sentencePracticeEmpty = 'אין עדיין משפטים לתרגול';
 
+  // ─── Streak milestones ────────────────────────
+  static String streakMilestoneTitle(int day) => 'רצף של $day ימים!';
+  static String streakMilestoneCoins(int coins) => '+$coins מטבעות';
+  static const String streakMilestoneCta = 'יופי!';
+
   // ─── Generic button labels ────────────────────
   static const String tryAgain = 'ננסה שוב';
   static const String continueBtn = 'נמשיך!';

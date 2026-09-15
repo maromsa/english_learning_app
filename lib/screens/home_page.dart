@@ -1129,7 +1129,9 @@ class _MyHomePageState extends State<MyHomePage> {
                               children: [
                                 _CoinBadge(coins: coinProvider.coins),
                                 const SizedBox(width: 8),
-                                StreakBadge(streak: coinProvider.dailyStreak),
+                                StreakBadge(
+                                  streakCount: coinProvider.dailyStreak,
+                                ),
                               ],
                             ),
                             // Segmented Progress

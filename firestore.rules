@@ -47,7 +47,7 @@ service cloud.firestore {
         && entryId == request.auth.uid + '_' + request.resource.data.profileId
         && request.resource.data.keys().hasOnly([
           'profileId', 'displayName', 'coins', 'dailyStreak',
-          'avatarColor', 'avatarId', 'updatedAt'
+          'avatarColor', 'avatarId', 'equippedAvatar', 'updatedAt'
         ])
         && request.resource.data.profileId is string
         && request.resource.data.profileId.size() > 0
@@ -69,6 +69,13 @@ service cloud.firestore {
             && request.resource.data.avatarId.size() > 0
             && request.resource.data.avatarId.size() <= 12
           )
+        )
+        // equippedAvatar is optional: only written once a child has equipped
+        // at least one Avatar Customization item. When present it must be a
+        // map of slot -> item id (hatId/shirtId/accessoryId/backgroundId).
+        && (
+          !request.resource.data.keys().hasAny(['equippedAvatar'])
+          || request.resource.data.equippedAvatar is map
         );
       allow delete: if isSignedIn()
         && entryId.split('_')[0] == request.auth.uid;

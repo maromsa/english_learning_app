@@ -1,3 +1,5 @@
+import 'equipped_avatar.dart';
+
 /// A ranked row on the global leaderboard.
 class LeaderboardEntry {
   const LeaderboardEntry({
@@ -9,6 +11,7 @@ class LeaderboardEntry {
     required this.rank,
     this.avatarUrl,
     this.avatarId,
+    this.equippedAvatar,
     this.isCurrentUser = false,
   });
 
@@ -22,6 +25,10 @@ class LeaderboardEntry {
   /// Optional kid-picked animal emoji (see `ChildProfile.avatarChoices`).
   /// Takes precedence over [avatarUrl] and the coloured initial when set.
   final String? avatarId;
+
+  /// Currently equipped Avatar Customization items (hat/shirt/accessory/
+  /// background), rendered as small badges next to [avatarId]/[avatarUrl].
+  final EquippedAvatar? equippedAvatar;
   final int rank;
   final bool isCurrentUser;
 
@@ -33,6 +40,7 @@ class LeaderboardEntry {
     int? avatarColor,
     String? avatarUrl,
     String? avatarId,
+    EquippedAvatar? equippedAvatar,
     int? rank,
     bool? isCurrentUser,
   }) {
@@ -44,6 +52,7 @@ class LeaderboardEntry {
       avatarColor: avatarColor ?? this.avatarColor,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       avatarId: avatarId ?? this.avatarId,
+      equippedAvatar: equippedAvatar ?? this.equippedAvatar,
       rank: rank ?? this.rank,
       isCurrentUser: isCurrentUser ?? this.isCurrentUser,
     );
