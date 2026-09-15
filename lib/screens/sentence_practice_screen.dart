@@ -5,7 +5,9 @@ import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/sentence_question.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_streak_provider.dart';
+import 'package:english_learning_app/services/audio_settings.dart';
 import 'package:english_learning_app/services/sound_service.dart';
+import 'package:english_learning_app/services/tts_service.dart';
 import 'package:english_learning_app/utils/aurora_tokens.dart';
 import 'package:english_learning_app/widgets/streak_milestone_dialog.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
@@ -17,11 +19,12 @@ import 'package:provider/provider.dart';
 /// Sentence-level ("fill in the blank") practice — Phase 3.
 ///
 /// The child reads a Hebrew translation, taps 🔊 to hear the **full** English
-/// sentence (via `SparkVoiceService`, through [WordSpeakerButton]), and picks
-/// the missing word from a set of option cards. A correct pick plays the
-/// victory sound, awards coins through
-/// [CoinProvider], fires a micro [Celebration], and advances to the next
-/// sentence. A wrong pick nudges the child to try again.
+/// sentence (via [TtsService] / on-device TTS, through [WordSpeakerButton]),
+/// and picks the missing word from a set of option cards. A new sentence is
+/// also auto-read when it first appears. A correct pick plays the victory
+/// sound, awards coins through [CoinProvider], fires a micro [Celebration],
+/// and advances to the next sentence. A wrong pick nudges the child to try
+/// again.
 ///
 /// The screen is self-contained: it takes its [questions] directly (mirroring
 /// `MemoryMatchScreen.wordsForLevel`) so it stays trivial to widget-test.
@@ -31,6 +34,7 @@ class SentencePracticeScreen extends StatefulWidget {
     required this.questions,
     this.coinReward = defaultCoinReward,
     this.speak,
+    this.ttsService,
   });
 
   /// The sentence exercises for this session. Unplayable entries (missing
@@ -40,9 +44,17 @@ class SentencePracticeScreen extends StatefulWidget {
   /// Coins granted per correctly-completed sentence.
   final int coinReward;
 
-  /// Test seam forwarded to [WordSpeakerButton]. Production leaves this null,
-  /// so the button uses `SparkVoiceService`.
+  /// Test seam forwarded to [WordSpeakerButton]. Production leaves this null
+  /// so the button / auto-play use [ttsService] or `context.read<TtsService>()`.
   final Future<bool> Function(String sentence)? speak;
+
+  /// Optional [TtsService] override. Production leaves this null and reads
+  /// the instance registered on [MultiProvider] in `main.dart`.
+  final TtsService? ttsService;
+
+  /// Key on the 🔊 control, so tests can tap pronunciation without hunting
+  /// through the tree.
+  static const Key speakerKey = ValueKey<String>('sentence_tts_button');
 
   static const int defaultCoinReward = 15;
 
@@ -60,8 +72,56 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
   bool _advancing = false;
   int _correctCount = 0;
   bool _finished = false;
+  TtsService? _tts;
 
   SentenceQuestion get _current => _questions[_index];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _tts = widget.ttsService ?? _tryReadTts();
+      unawaited(_speakCurrent());
+    });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_tts?.stop());
+    super.dispose();
+  }
+
+  TtsService? _tryReadTts() {
+    try {
+      return context.read<TtsService>();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _speakCurrent() async {
+    if (!mounted || _questions.isEmpty || _finished) return;
+    await _speakSentence(_current.fullEnglishSentence);
+  }
+
+  Future<void> _speakSentence(String sentence) async {
+    if (AudioSettings().muted) return;
+    try {
+      if (widget.speak != null) {
+        await widget.speak!(sentence);
+        return;
+      }
+      await (_tts ?? widget.ttsService ?? _tryReadTts())?.speak(sentence);
+    } catch (_) {
+      // Best-effort: TTS must never surface to a child.
+    }
+  }
+
+  Future<bool> _onSpeakerTap(String sentence) async {
+    await _speakSentence(sentence);
+    return true;
+  }
 
   Future<void> _handleOption(String option) async {
     if (_answeredCorrectly || _advancing) return;
@@ -116,6 +176,11 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
         _answeredCorrectly = false;
       }
     });
+    if (_finished) {
+      unawaited(_tts?.stop());
+    } else {
+      unawaited(_speakCurrent());
+    }
   }
 
   void _restart() {
@@ -127,6 +192,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
       _correctCount = 0;
       _finished = false;
     });
+    unawaited(_speakCurrent());
   }
 
   @override
@@ -232,11 +298,12 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       WordSpeakerButton(
+                        key: SentencePracticeScreen.speakerKey,
                         word: question.fullEnglishSentence,
                         semanticLabel: SparkStrings.hearSentenceSemantics(
                           question.fullEnglishSentence,
                         ),
-                        speak: widget.speak,
+                        speak: _onSpeakerTap,
                         color: AuroraTokens.plum,
                       ),
                       const SizedBox(width: AuroraTokens.s4),

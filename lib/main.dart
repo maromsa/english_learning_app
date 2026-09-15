@@ -32,6 +32,7 @@ import 'services/notification_service.dart';
 import 'services/sound_service.dart';
 import 'services/streak_shield_service.dart';
 import 'services/telemetry_service.dart';
+import 'services/tts_service.dart';
 import 'utils/app_theme.dart';
 import 'utils/route_observer.dart';
 import 'utils/spark_route_observer.dart';
@@ -267,6 +268,10 @@ Future<void> main() async {
         Provider<SpeechFeedbackService>(
           create: (_) => SpeechFeedbackService(),
           dispose: (_, service) => service.dispose(),
+        ),
+        Provider<TtsService>(
+          create: (_) => TtsService(),
+          dispose: (_, service) => unawaited(service.stop()),
         ),
       ],
       child: MyApp(hasSeenOnboarding: hasSeenOnboarding),
