@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/sentence_question.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/daily_streak_provider.dart';
 import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/utils/aurora_tokens.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
@@ -79,6 +80,8 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
     SoundService().playSuccessSound();
 
     await context.read<CoinProvider>().addCoins(widget.coinReward);
+    if (!mounted) return;
+    await context.read<DailyStreakProvider>().recordPractice();
     if (!mounted) return;
 
     await Celebration.fire(

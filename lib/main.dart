@@ -7,6 +7,7 @@ import 'package:english_learning_app/providers/avatar_inventory_provider.dart';
 import 'package:english_learning_app/providers/character_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_mission_provider.dart';
+import 'package:english_learning_app/providers/daily_streak_provider.dart';
 import 'package:english_learning_app/providers/equipped_avatar_provider.dart';
 import 'package:english_learning_app/providers/shop_customization_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
@@ -110,6 +111,7 @@ Future<void> main() async {
   final stickerAlbumProvider = StickerAlbumProvider();
   final equippedAvatarProvider = EquippedAvatarProvider();
   final avatarInventoryProvider = AvatarInventoryProvider();
+  final dailyStreakProvider = DailyStreakProvider();
   final sparkOverlayController = SparkOverlayController();
   final achievementService = AchievementService(
     coinProvider: coinProvider,
@@ -172,6 +174,14 @@ Future<void> main() async {
         },
       ).catchError((e) {
         debugPrint('Error loading avatar inventory: $e');
+      }),
+      dailyStreakProvider.load().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('Daily streak loading timed out, using defaults');
+        },
+      ).catchError((e) {
+        debugPrint('Error loading daily streak: $e');
       }),
       dailyMissionProvider.initialize().timeout(
         const Duration(seconds: 3),
@@ -244,6 +254,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: stickerAlbumProvider),
         ChangeNotifierProvider.value(value: equippedAvatarProvider),
         ChangeNotifierProvider.value(value: avatarInventoryProvider),
+        ChangeNotifierProvider.value(value: dailyStreakProvider),
         ChangeNotifierProvider.value(value: achievementService),
         ChangeNotifierProvider.value(value: characterProvider),
         ChangeNotifierProvider.value(value: dailyMissionProvider),
