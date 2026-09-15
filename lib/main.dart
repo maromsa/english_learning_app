@@ -30,6 +30,7 @@ import 'services/audio_settings.dart';
 import 'services/background_music_service.dart';
 import 'services/notification_service.dart';
 import 'services/sound_service.dart';
+import 'services/speech_service.dart';
 import 'services/streak_shield_service.dart';
 import 'services/telemetry_service.dart';
 import 'services/tts_service.dart';
@@ -272,6 +273,10 @@ Future<void> main() async {
         Provider<TtsService>(
           create: (_) => TtsService(),
           dispose: (_, service) => unawaited(service.stop()),
+        ),
+        Provider<SpeechService>(
+          create: (_) => SpeechService(),
+          dispose: (_, service) => unawaited(service.stopListening()),
         ),
       ],
       child: MyApp(hasSeenOnboarding: hasSeenOnboarding),

@@ -225,6 +225,16 @@ class SparkStrings {
   static String hearSentenceSemantics(String sentence) =>
       'השמעת המשפט: $sentence';
 
+  /// Label next to the 🎤 button — "say the sentence out loud".
+  static const String sentenceSpeakPrompt = 'אמרו את המשפט';
+
+  /// Accessibility label for the sentence 🎤 button.
+  static String speakSentenceSemantics(String sentence) =>
+      'הקלטת המשפט: $sentence';
+
+  static const String sentencePronunciationSuccess = 'כל הכבוד! הגייה מעולה!';
+  static const String sentencePronunciationTryAgain = 'כמעט! בואו ננסה שוב';
+
   static String sentencePracticeProgress(int current, int total) =>
       'משפט $current מתוך $total';
   static const String sentencePracticeSummaryTitle = 'סיימנו את המשפטים!';
