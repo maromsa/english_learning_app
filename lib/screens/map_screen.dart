@@ -1604,16 +1604,15 @@ class _MapScreenState extends State<MapScreen>
                                   totalStars: _totalStars,
                                   coins: coinProvider.coins,
                                 ),
+                                const SizedBox(width: 8),
                                 Consumer<DailyStreakProvider>(
                                   builder: (context, dailyStreak, _) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(right: 8),
-                                      child: StreakBadge(
-                                        streak: dailyStreak.currentStreak,
-                                      ),
+                                    return StreakBadge(
+                                      streakCount: dailyStreak.currentStreak,
                                     );
                                   },
                                 ),
+                                const SizedBox(width: 8),
                                 Consumer<StreakShieldService>(
                                   builder: (context, shield, _) {
                                     if (!shield.hasShield) {
