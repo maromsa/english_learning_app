@@ -7,6 +7,7 @@ import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_streak_provider.dart';
 import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/utils/aurora_tokens.dart';
+import 'package:english_learning_app/widgets/streak_milestone_dialog.dart';
 import 'package:english_learning_app/widgets/ui/_barrel.dart';
 import 'package:english_learning_app/widgets/word_speaker_button.dart';
 import 'package:flutter/material.dart';
@@ -81,8 +82,18 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
 
     await context.read<CoinProvider>().addCoins(widget.coinReward);
     if (!mounted) return;
-    await context.read<DailyStreakProvider>().recordPractice();
+    final streak = context.read<DailyStreakProvider>();
+    await streak.recordPractice();
     if (!mounted) return;
+    final milestone = streak.consumePendingMilestone();
+    if (milestone != null) {
+      await StreakMilestoneDialog.show(
+        context,
+        day: milestone.day,
+        coins: milestone.coins,
+      );
+      if (!mounted) return;
+    }
 
     await Celebration.fire(
       context,

@@ -13,10 +13,25 @@ void main() {
       final streak = DailyStreak(
         currentStreak: 4,
         lastPracticeDate: DateTime(2026, 9, 15),
+        claimedMilestones: const [3],
       );
       final restored = DailyStreak.fromJson(streak.toJson());
       expect(restored.currentStreak, 4);
       expect(restored.lastPracticeDate, DateTime(2026, 9, 15));
+      expect(restored.claimedMilestones, [3]);
+    });
+
+    test('toJson omits empty claimedMilestones', () {
+      const streak = DailyStreak(currentStreak: 1);
+      expect(streak.toJson().containsKey('claimedMilestones'), isFalse);
+    });
+
+    test('fromJson defaults missing claimedMilestones to empty', () {
+      final restored = DailyStreak.fromJson(const {
+        'currentStreak': 3,
+        'lastPracticeDate': '2026-09-15',
+      });
+      expect(restored.claimedMilestones, isEmpty);
     });
 
     test('toJson omits a null lastPracticeDate', () {

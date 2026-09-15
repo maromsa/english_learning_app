@@ -4,8 +4,11 @@
 // day / skipped day), persistence, profile namespacing, and notifyListeners.
 
 import 'package:english_learning_app/models/daily_streak.dart';
+import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_streak_provider.dart';
 import 'package:english_learning_app/services/daily_streak_service.dart';
+import 'package:english_learning_app/services/user_data_service.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,19 +34,40 @@ class _Clock {
   DateTime value;
 }
 
+CoinProvider _coins() => CoinProvider(
+      userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
+    );
+
 Future<DailyStreakProvider> _provider({
   String? userId,
   required _Clock clock,
   DailyStreakService? service,
+  CoinProvider? coins,
 }) async {
   final provider = DailyStreakProvider(
     service: service ??
         DailyStreakService(prefs: await SharedPreferences.getInstance()),
     now: () => clock.value,
+    coinProvider: coins ?? _coins(),
   );
   provider.setUserId(userId);
   await provider.load();
   return provider;
+}
+
+/// Records practice on [days] consecutive calendar days starting at [clock].
+Future<void> _practiceConsecutive(
+  DailyStreakProvider provider,
+  _Clock clock,
+  int days,
+) async {
+  for (var i = 0; i < days; i++) {
+    if (i > 0) {
+      final current = clock.value;
+      clock.value = DateTime(current.year, current.month, current.day + 1);
+    }
+    await provider.recordPractice();
+  }
 }
 
 void main() {
@@ -192,6 +216,126 @@ void main() {
 
       final childB = await _provider(userId: 'child_b', clock: clock);
       expect(childB.currentStreak, 0);
+    });
+  });
+
+  group('DailyStreakProvider milestones', () {
+    test('day 3 grants 20 bonus coins and sets a pending reward', () async {
+      final clock = _Clock(DateTime(2026, 9, 1));
+      final coins = _coins();
+      final provider = await _provider(clock: clock, coins: coins);
+
+      await _practiceConsecutive(provider, clock, 3);
+
+      expect(provider.currentStreak, 3);
+      expect(coins.coins, DailyStreakProvider.milestoneRewards[3]);
+      expect(provider.claimedMilestones, [3]);
+      expect(provider.pendingMilestone?.day, 3);
+      expect(provider.pendingMilestone?.coins, 20);
+    });
+
+    test('a milestone is not double-claimed on the same streak', () async {
+      final clock = _Clock(DateTime(2026, 9, 1));
+      final coins = _coins();
+      final provider = await _provider(clock: clock, coins: coins);
+
+      await _practiceConsecutive(provider, clock, 3);
+      expect(coins.coins, 20);
+
+      final sameDay = await provider.recordPractice();
+      expect(sameDay, isFalse);
+      expect(coins.coins, 20);
+
+      clock.value = DateTime(2026, 9, 4);
+      await provider.recordPractice();
+      expect(provider.currentStreak, 4);
+      expect(coins.coins, 20);
+      expect(provider.claimedMilestones, [3]);
+      expect(provider.pendingMilestone, isNull);
+    });
+
+    test('day 7 and day 14 grant their bonuses on top of day 3', () async {
+      final clock = _Clock(DateTime(2026, 9, 1));
+      final coins = _coins();
+      final provider = await _provider(clock: clock, coins: coins);
+
+      await _practiceConsecutive(provider, clock, 7);
+      expect(coins.coins, 20 + 50);
+      expect(provider.claimedMilestones, [3, 7]);
+      expect(provider.pendingMilestone?.day, 7);
+
+      final current = clock.value;
+      clock.value = DateTime(current.year, current.month, current.day + 1);
+      await _practiceConsecutive(provider, clock, 7);
+      expect(provider.currentStreak, 14);
+      expect(coins.coins, 20 + 50 + 100);
+      expect(provider.claimedMilestones, [3, 7, 14]);
+      expect(provider.pendingMilestone?.day, 14);
+    });
+
+    test('a streak reset lets the child earn the day-3 bonus again', () async {
+      final clock = _Clock(DateTime(2026, 9, 1));
+      final coins = _coins();
+      final provider = await _provider(clock: clock, coins: coins);
+
+      await _practiceConsecutive(provider, clock, 3);
+      expect(coins.coins, 20);
+
+      clock.value = DateTime(2026, 9, 5);
+      await _practiceConsecutive(provider, clock, 3);
+
+      expect(provider.currentStreak, 3);
+      expect(coins.coins, 40);
+      expect(provider.claimedMilestones, [3]);
+    });
+
+    test('claimed milestones survive a reload and still block a re-award',
+        () async {
+      final clock = _Clock(DateTime(2026, 9, 1));
+      final coins = _coins();
+      final first = await _provider(
+        userId: 'child_1',
+        clock: clock,
+        coins: coins,
+      );
+      await _practiceConsecutive(first, clock, 3);
+      expect(coins.coins, 20);
+
+      final reloaded = await _provider(
+        userId: 'child_1',
+        clock: clock,
+        coins: coins,
+      );
+      expect(reloaded.claimedMilestones, [3]);
+
+      final recorded = await reloaded.recordPractice();
+      expect(recorded, isFalse);
+      expect(coins.coins, 20);
+    });
+
+    test('consumePendingMilestone returns the reward once', () async {
+      final clock = _Clock(DateTime(2026, 9, 1));
+      final provider = await _provider(clock: clock, coins: _coins());
+
+      await _practiceConsecutive(provider, clock, 3);
+      final first = provider.consumePendingMilestone();
+      expect(first?.day, 3);
+      expect(first?.coins, 20);
+      expect(provider.pendingMilestone, isNull);
+      expect(provider.consumePendingMilestone(), isNull);
+    });
+
+    test('non-milestone days do not add bonus coins', () async {
+      final clock = _Clock(DateTime(2026, 9, 1));
+      final coins = _coins();
+      final provider = await _provider(clock: clock, coins: coins);
+
+      await _practiceConsecutive(provider, clock, 2);
+
+      expect(provider.currentStreak, 2);
+      expect(coins.coins, 0);
+      expect(provider.pendingMilestone, isNull);
+      expect(provider.claimedMilestones, isEmpty);
     });
   });
 }

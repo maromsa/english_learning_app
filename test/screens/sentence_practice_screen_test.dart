@@ -9,6 +9,7 @@
 // for SparkVoiceService so no TTS / network is involved.
 
 import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/models/daily_streak.dart';
 import 'package:english_learning_app/models/sentence_question.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_streak_provider.dart';
@@ -17,6 +18,7 @@ import 'package:english_learning_app/screens/sentence_practice_screen.dart';
 import 'package:english_learning_app/services/audio_settings.dart';
 import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
+import 'package:english_learning_app/widgets/streak_milestone_dialog.dart';
 import 'package:english_learning_app/widgets/word_speaker_button.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -43,6 +45,7 @@ Future<(CoinProvider, DailyStreakProvider)> _pumpScreen(
   WidgetTester tester, {
   List<SentenceQuestion>? questions,
   List<String>? spoken,
+  DailyStreak? initialStreak,
 }) async {
   SharedPreferences.setMockInitialValues({});
   await AudioSettings().setMuted(false);
@@ -55,7 +58,9 @@ Future<(CoinProvider, DailyStreakProvider)> _pumpScreen(
     userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
   );
   final dailyStreakProvider = DailyStreakProvider(
+    initial: initialStreak,
     now: () => DateTime(2026, 9, 15, 12),
+    coinProvider: coinProvider,
   );
 
   await tester.pumpWidget(
@@ -133,6 +138,40 @@ void main() {
       expect(find.text('אני שותה מים'), findsOneWidget);
       expect(find.text(SparkStrings.sentencePracticeProgress(2, 2)),
           findsOneWidget);
+    });
+
+    testWidgets('reaching a streak milestone shows the celebration dialog',
+        (tester) async {
+      final (coinProvider, dailyStreakProvider) = await _pumpScreen(
+        tester,
+        initialStreak: DailyStreak(
+          currentStreak: 2,
+          lastPracticeDate: DateTime(2026, 9, 14),
+        ),
+      );
+      final start = coinProvider.coins;
+
+      await tester.tap(find.byKey(const ValueKey('option_cat')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(StreakMilestoneDialog.dialogKey), findsOneWidget);
+      expect(find.text(SparkStrings.streakMilestoneTitle(3)), findsOneWidget);
+      expect(
+        coinProvider.coins,
+        start +
+            SentencePracticeScreen.defaultCoinReward +
+            DailyStreakProvider.milestoneRewards[3]!,
+      );
+      expect(dailyStreakProvider.currentStreak, 3);
+
+      await tester.tap(find.text(SparkStrings.streakMilestoneCta));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byKey(StreakMilestoneDialog.dialogKey), findsNothing);
+      expect(find.text('אני שותה מים'), findsOneWidget);
     });
 
     testWidgets('a wrong option keeps the child on the same question',
