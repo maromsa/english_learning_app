@@ -28,6 +28,7 @@ import 'providers/user_session_provider.dart';
 import 'screens/auth_gate.dart';
 import 'services/audio_settings.dart';
 import 'services/background_music_service.dart';
+import 'services/gemini_sentence_service.dart';
 import 'services/notification_service.dart';
 import 'services/sound_service.dart';
 import 'services/speech_service.dart';
@@ -277,6 +278,9 @@ Future<void> main() async {
         Provider<SpeechService>(
           create: (_) => SpeechService(),
           dispose: (_, service) => unawaited(service.stopListening()),
+        ),
+        Provider<GeminiSentenceService>(
+          create: (_) => GeminiSentenceService(),
         ),
       ],
       child: MyApp(hasSeenOnboarding: hasSeenOnboarding),
