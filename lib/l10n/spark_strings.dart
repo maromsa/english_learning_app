@@ -247,6 +247,10 @@ class SparkStrings {
   static const String wordBankTitle = 'מילים שלי';
   static const String wordBankEmpty = 'עדיין אין מילים. בואו נתרגל!';
   static const String wordBankMapButton = 'מילים שלי';
+  static const String wordReviewPlay = 'נשחק!';
+  static const String wordReviewTitle = 'נחזור על המילים!';
+  static const String wordReviewPrompt = 'מה פירוש המילה?';
+  static const String wordReviewCorrect = 'כל הכבוד!';
 
   // ─── Streak milestones ────────────────────────
   static String streakMilestoneTitle(int day) => 'רצף של $day ימים!';
