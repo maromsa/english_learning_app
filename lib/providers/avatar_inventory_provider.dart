@@ -5,6 +5,7 @@ import '../models/avatar_inventory.dart';
 import '../models/avatar_item.dart';
 import '../providers/coin_provider.dart';
 import '../services/avatar_inventory_service.dart';
+import '../services/child_profile_sync_service.dart';
 
 /// Reactive owner of the Avatar Economy: which [AvatarItem]s a child has
 /// purchased/unlocked from [AvatarCatalog].
@@ -12,19 +13,32 @@ import '../services/avatar_inventory_service.dart';
 /// Coins are never mutated here — [purchaseItem] delegates the debit to
 /// [CoinProvider], the single source of truth for the balance (matching
 /// `ShopCustomizationProvider.buy`). Persistence is per-child and
-/// local-only (see [AvatarInventoryService]); cloud mirroring is a
-/// follow-up, matching the sibling customization providers' v1.
+/// local-first (see [AvatarInventoryService]). When the active profile
+/// belongs to a signed-in parent account (see [setParentUid]), a
+/// successful purchase also pushes the new unlock set to
+/// [ChildProfileSyncService]. Guests and local (non-cloud) profiles have
+/// no [parentUid], so they stay local-only.
 class AvatarInventoryProvider with ChangeNotifier {
   AvatarInventoryProvider({
     AvatarInventory? initial,
     AvatarInventoryService? service,
+    ChildProfileSyncService? syncService,
   })  : _inventory = initial ?? AvatarInventory.empty(),
-        _service = service ?? AvatarInventoryService();
+        _service = service ?? AvatarInventoryService(),
+        _injectedSyncService = syncService;
 
   final AvatarInventoryService _service;
+  final ChildProfileSyncService? _injectedSyncService;
+  ChildProfileSyncService? _lazySyncService;
   AvatarInventory _inventory;
   String? _userId;
+  String? _parentUid;
   bool _disposed = false;
+
+  /// Real default is created lazily so widget tests that never set a
+  /// [parentUid] don't need a Firebase app.
+  ChildProfileSyncService get _syncService =>
+      _injectedSyncService ?? (_lazySyncService ??= ChildProfileSyncService());
 
   AvatarInventory get inventory => _inventory;
 
@@ -41,6 +55,14 @@ class AvatarInventoryProvider with ChangeNotifier {
   /// Points persistence at [userId]'s namespace (guest when null).
   void setUserId(String? userId) {
     _userId = userId;
+  }
+
+  /// Points cloud sync at the signed-in parent's Firestore account, or
+  /// `null` for guests / local (non-cloud) profiles — which then stay
+  /// local-only. Should be set alongside [setUserId] whenever the active
+  /// profile changes.
+  void setParentUid(String? parentUid) {
+    _parentUid = parentUid;
   }
 
   /// Whether [item] is already owned (free starter items always count).
@@ -75,7 +97,26 @@ class AvatarInventoryProvider with ChangeNotifier {
     );
     await _service.save(_userId, _inventory);
     _notify();
+    await _pushToCloud();
     return true;
+  }
+
+  /// Publishes the current unlock set to Firestore via
+  /// [ChildProfileSyncService]. Failures are non-fatal: local persistence
+  /// already succeeded, and this is a best-effort mirror.
+  Future<void> _pushToCloud() async {
+    final parentUid = _parentUid;
+    final userId = _userId;
+    if (parentUid == null || userId == null || userId.isEmpty) return;
+    try {
+      await _syncService.updateUnlockedItems(
+        parentUid,
+        userId,
+        _inventory.unlockedItemIds,
+      );
+    } catch (e) {
+      debugPrint('Error syncing avatar inventory to the cloud: $e');
+    }
   }
 
   @override

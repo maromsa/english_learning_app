@@ -6,6 +6,7 @@
 import 'package:english_learning_app/models/daily_streak.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_streak_provider.dart';
+import 'package:english_learning_app/services/child_profile_sync_service.dart';
 import 'package:english_learning_app/services/daily_streak_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
@@ -34,23 +35,52 @@ class _Clock {
   DateTime value;
 }
 
+/// Records every `updatePracticeStreak()` call so tests can assert the
+/// cloud sync fired (or didn't) without depending on real network.
+class _RecordingChildProfileSyncService extends ChildProfileSyncService {
+  _RecordingChildProfileSyncService()
+      : super(firestore: FakeFirebaseFirestore());
+
+  int callCount = 0;
+  String? lastParentUid;
+  String? lastProfileId;
+  DailyStreak? lastStreak;
+
+  @override
+  Future<bool> updatePracticeStreak(
+    String parentUid,
+    String profileId,
+    DailyStreak streak,
+  ) async {
+    callCount++;
+    lastParentUid = parentUid;
+    lastProfileId = profileId;
+    lastStreak = streak;
+    return true;
+  }
+}
+
 CoinProvider _coins() => CoinProvider(
       userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
     );
 
 Future<DailyStreakProvider> _provider({
   String? userId,
+  String? parentUid,
   required _Clock clock,
   DailyStreakService? service,
+  ChildProfileSyncService? syncService,
   CoinProvider? coins,
 }) async {
   final provider = DailyStreakProvider(
     service: service ??
         DailyStreakService(prefs: await SharedPreferences.getInstance()),
+    syncService: syncService ?? _RecordingChildProfileSyncService(),
     now: () => clock.value,
     coinProvider: coins ?? _coins(),
   );
   provider.setUserId(userId);
+  provider.setParentUid(parentUid);
   await provider.load();
   return provider;
 }
@@ -336,6 +366,61 @@ void main() {
       expect(coins.coins, 0);
       expect(provider.pendingMilestone, isNull);
       expect(provider.claimedMilestones, isEmpty);
+    });
+  });
+
+  group('DailyStreakProvider cloud sync', () {
+    test(
+        'recordPractice does not push to the cloud without a parentUid '
+        '(guest / local profile)', () async {
+      final sync = _RecordingChildProfileSyncService();
+      final clock = _Clock(DateTime(2026, 9, 15));
+      final provider = await _provider(
+        userId: 'child_1',
+        clock: clock,
+        syncService: sync,
+      );
+
+      await provider.recordPractice();
+
+      expect(sync.callCount, 0);
+    });
+
+    test('recordPractice pushes the new streak once a parentUid is set',
+        () async {
+      final sync = _RecordingChildProfileSyncService();
+      final clock = _Clock(DateTime(2026, 9, 15));
+      final provider = await _provider(
+        userId: 'child_1',
+        parentUid: 'parent_1',
+        clock: clock,
+        syncService: sync,
+      );
+
+      await provider.recordPractice();
+
+      expect(sync.callCount, 1);
+      expect(sync.lastParentUid, 'parent_1');
+      expect(sync.lastProfileId, 'child_1');
+      expect(sync.lastStreak?.currentStreak, 1);
+      expect(sync.lastStreak?.lastPracticeDate, DateTime(2026, 9, 15));
+    });
+
+    test('same-day practice does not push to the cloud again', () async {
+      final sync = _RecordingChildProfileSyncService();
+      final clock = _Clock(DateTime(2026, 9, 15, 8));
+      final provider = await _provider(
+        userId: 'child_1',
+        parentUid: 'parent_1',
+        clock: clock,
+        syncService: sync,
+      );
+
+      await provider.recordPractice();
+      clock.value = DateTime(2026, 9, 15, 22);
+      await provider.recordPractice();
+
+      expect(sync.callCount, 1);
     });
   });
 }

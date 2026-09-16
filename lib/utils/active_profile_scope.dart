@@ -6,9 +6,11 @@ import '../providers/coin_provider.dart';
 import '../providers/daily_mission_provider.dart';
 import '../providers/user_session_provider.dart';
 import '../services/achievement_service.dart';
+import '../services/avatar_inventory_service.dart';
 import '../services/child_profile_service.dart';
 import '../services/child_profile_sync_service.dart';
 import '../services/daily_reward_service.dart';
+import '../services/daily_streak_service.dart';
 import '../services/parent_progress_service.dart';
 import '../services/shop_customization_service.dart';
 import '../services/streak_shield_service.dart';
@@ -26,6 +28,8 @@ class ActiveProfileScope {
     ParentProgressService? progressService,
     DailyRewardService? dailyRewardService,
     ShopCustomizationService? shopCustomizationService,
+    DailyStreakService? dailyStreakService,
+    AvatarInventoryService? avatarInventoryService,
   }) async {
     final coinProvider = context.read<CoinProvider>();
     final achievementService = context.read<AchievementService>();
@@ -73,10 +77,15 @@ class ActiveProfileScope {
 
     final achievements = _achievementMap(achievementService);
 
-    // Fold the child's current Magic Shop purchases into the synced snapshot so
-    // signing in on a new device restores unlocked themes / sounds.
+    // Fold the child's current Magic Shop purchases, practice streak, and
+    // avatar inventory into the synced snapshot so signing in on a new
+    // device restores them.
     final shopService = shopCustomizationService ?? ShopCustomizationService();
     final shop = await shopService.readSnapshot(profile.id);
+    final streakService = dailyStreakService ?? DailyStreakService();
+    final practiceStreak = await streakService.load(profile.id);
+    final inventoryService = avatarInventoryService ?? AvatarInventoryService();
+    final inventory = await inventoryService.load(profile.id);
 
     await service.updateProgressSnapshot(
       profileId: profile.id,
@@ -89,6 +98,8 @@ class ActiveProfileScope {
       unlockedSounds: shop.unlockedSoundIds.toList(),
       equippedTheme: shop.equippedThemeId,
       equippedSound: shop.equippedSoundId,
+      practiceStreak: practiceStreak,
+      unlockedItems: inventory.unlockedItemIds.toList(),
     );
 
     if (parentUid != null) {

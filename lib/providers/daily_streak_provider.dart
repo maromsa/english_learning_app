@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/daily_streak.dart';
+import '../services/child_profile_sync_service.dart';
 import '../services/daily_streak_service.dart';
 import 'coin_provider.dart';
 
@@ -14,7 +15,12 @@ class StreakMilestoneReward {
 
 /// Reactive owner of the practice daily streak (🔥).
 ///
-/// Persistence is per-child and local-only (see [DailyStreakService]).
+/// Persistence is per-child and local-first (see [DailyStreakService]).
+/// When the active profile belongs to a signed-in parent account (see
+/// [setParentUid]), a successful [recordPractice] also pushes the new
+/// streak to [ChildProfileSyncService]. Guests and local (non-cloud)
+/// profiles have no [parentUid], so they stay local-only.
+///
 /// [now] is injectable so tests can pin calendar days without wall-clock
 /// flakes. Date math compares **calendar days**, not 24h durations, so a
 /// DST transition cannot unfairly reset a child's streak.
@@ -22,10 +28,12 @@ class DailyStreakProvider with ChangeNotifier {
   DailyStreakProvider({
     DailyStreak? initial,
     DailyStreakService? service,
+    ChildProfileSyncService? syncService,
     DateTime Function()? now,
     CoinProvider? coinProvider,
   })  : _streak = initial ?? DailyStreak.empty(),
         _service = service ?? DailyStreakService(),
+        _injectedSyncService = syncService,
         _now = now ?? DateTime.now,
         _coinProvider = coinProvider;
 
@@ -37,12 +45,20 @@ class DailyStreakProvider with ChangeNotifier {
   };
 
   final DailyStreakService _service;
+  final ChildProfileSyncService? _injectedSyncService;
+  ChildProfileSyncService? _lazySyncService;
   final DateTime Function() _now;
   final CoinProvider? _coinProvider;
   DailyStreak _streak;
   String? _userId;
+  String? _parentUid;
   bool _disposed = false;
   StreakMilestoneReward? _pendingMilestone;
+
+  /// Real default is created lazily so widget tests that never set a
+  /// [parentUid] don't need a Firebase app.
+  ChildProfileSyncService get _syncService =>
+      _injectedSyncService ?? (_lazySyncService ??= ChildProfileSyncService());
 
   DailyStreak get streak => _streak;
   int get currentStreak => _streak.currentStreak;
@@ -60,6 +76,14 @@ class DailyStreakProvider with ChangeNotifier {
   /// Points persistence at [userId]'s namespace (guest when null).
   void setUserId(String? userId) {
     _userId = userId;
+  }
+
+  /// Points cloud sync at the signed-in parent's Firestore account, or
+  /// `null` for guests / local (non-cloud) profiles — which then stay
+  /// local-only. Should be set alongside [setUserId] whenever the active
+  /// profile changes.
+  void setParentUid(String? parentUid) {
+    _parentUid = parentUid;
   }
 
   /// Loads the persisted streak for the current profile. Best-effort: a
@@ -120,7 +144,22 @@ class DailyStreakProvider with ChangeNotifier {
     _pendingMilestone = unlocked;
     await _service.save(_userId, _streak);
     _notify();
+    await _pushToCloud();
     return true;
+  }
+
+  /// Publishes the current [_streak] to Firestore via
+  /// [ChildProfileSyncService]. Failures are non-fatal: local persistence
+  /// already succeeded, and this is a best-effort mirror.
+  Future<void> _pushToCloud() async {
+    final parentUid = _parentUid;
+    final userId = _userId;
+    if (parentUid == null || userId == null || userId.isEmpty) return;
+    try {
+      await _syncService.updatePracticeStreak(parentUid, userId, _streak);
+    } catch (e) {
+      debugPrint('Error syncing practice streak to the cloud: $e');
+    }
   }
 
   /// Returns the milestone unlocked by the latest [recordPractice] call

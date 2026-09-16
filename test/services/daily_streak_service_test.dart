@@ -71,5 +71,25 @@ void main() {
           ),
           isTrue);
     });
+
+    test(
+        'applyMergedSnapshot unions claimed milestones and keeps the higher '
+        'streak', () async {
+      final service = DailyStreakService(
+        prefs: await SharedPreferences.getInstance(),
+      );
+      await service.save(
+        'child_1',
+        const DailyStreak(currentStreak: 4, claimedMilestones: [3]),
+      );
+      await service.applyMergedSnapshot(
+        'child_1',
+        const DailyStreak(currentStreak: 2, claimedMilestones: [3, 7]),
+      );
+
+      final merged = await service.load('child_1');
+      expect(merged.currentStreak, 4);
+      expect(merged.claimedMilestones, [3, 7]);
+    });
   });
 }

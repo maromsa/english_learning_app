@@ -77,5 +77,35 @@ void main() {
       expect(updated.lastPracticeDate, DateTime(2026, 9, 15));
       expect(updated.copyWith().currentStreak, 2);
     });
+
+    test('merge takes the higher currentStreak and unions claimed milestones',
+        () {
+      final a = DailyStreak(
+        currentStreak: 5,
+        lastPracticeDate: DateTime(2026, 9, 10),
+        claimedMilestones: const [3],
+      );
+      final b = DailyStreak(
+        currentStreak: 2,
+        lastPracticeDate: DateTime(2026, 9, 15),
+        claimedMilestones: const [3, 7],
+      );
+      final merged = DailyStreak.merge(a, b);
+      expect(merged.currentStreak, 5);
+      expect(merged.lastPracticeDate, DateTime(2026, 9, 10));
+      expect(merged.claimedMilestones, [3, 7]);
+    });
+
+    test('merge on a tied count prefers the later lastPracticeDate', () {
+      final a = DailyStreak(
+        currentStreak: 2,
+        lastPracticeDate: DateTime(2026, 9, 10),
+      );
+      final b = DailyStreak(
+        currentStreak: 2,
+        lastPracticeDate: DateTime(2026, 9, 15),
+      );
+      expect(DailyStreak.merge(a, b).lastPracticeDate, DateTime(2026, 9, 15));
+    });
   });
 }

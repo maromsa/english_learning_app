@@ -1,4 +1,5 @@
 import 'package:english_learning_app/models/child_profile.dart';
+import 'package:english_learning_app/models/daily_streak.dart';
 import 'package:english_learning_app/models/equipped_avatar.dart';
 import 'package:english_learning_app/models/local_user.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -221,6 +222,101 @@ void main() {
         expect(updated.equippedAvatar?.hatId, 'hat_pirate');
         // Omitting the arg keeps the existing value.
         expect(updated.copyWith().equippedAvatar?.hatId, 'hat_pirate');
+      });
+    });
+
+    group('practiceStreak and unlockedItems', () {
+      test('default to empty', () {
+        final profile = ChildProfile.create(
+          displayName: 'Noa',
+          avatarColor: ChildProfile.defaultAvatarColors.first,
+        );
+        expect(profile.practiceStreak, const DailyStreak());
+        expect(profile.unlockedItems, isEmpty);
+      });
+
+      test('round-trip through toMap / fromMap', () {
+        final profile = ChildProfile.create(
+          displayName: 'Maya',
+          avatarColor: 0xFFFF0000,
+        ).copyWith(
+          practiceStreak: DailyStreak(
+            currentStreak: 4,
+            lastPracticeDate: DateTime(2026, 9, 15),
+            claimedMilestones: const [3],
+          ),
+          unlockedItems: const ['hat_wizard', 'shirt_red'],
+        );
+
+        final restored = ChildProfile.fromMap(profile.toMap());
+        expect(restored.practiceStreak.currentStreak, 4);
+        expect(restored.practiceStreak.lastPracticeDate, DateTime(2026, 9, 15));
+        expect(restored.practiceStreak.claimedMilestones, [3]);
+        expect(restored.unlockedItems, ['hat_wizard', 'shirt_red']);
+      });
+
+      test('toMap omits empty practice streak and inventory (legacy docs)', () {
+        final map = ChildProfile.create(
+          displayName: 'Old',
+          avatarColor: 0xFF00FF00,
+        ).toMap();
+        expect(map.containsKey('practiceStreak'), isFalse);
+        expect(map.containsKey('unlockedItems'), isFalse);
+        expect(map['dailyStreak'], 0);
+      });
+
+      test('fromMap reads a practice-streak map stored under dailyStreak', () {
+        final restored = ChildProfile.fromMap(const {
+          'dailyStreak': {
+            'currentStreak': 3,
+            'lastPracticeDate': '2026-09-15',
+            'claimedMilestones': [3],
+          },
+        });
+        expect(restored.practiceStreak.currentStreak, 3);
+        expect(restored.dailyStreak, 3);
+        expect(restored.practiceStreak.claimedMilestones, [3]);
+      });
+
+      test('fromMap keeps an int dailyStreak alongside a practiceStreak map',
+          () {
+        final restored = ChildProfile.fromMap(const {
+          'dailyStreak': 8,
+          'practiceStreak': {
+            'currentStreak': 2,
+            'lastPracticeDate': '2026-09-15',
+          },
+        });
+        expect(restored.dailyStreak, 8);
+        expect(restored.practiceStreak.currentStreak, 2);
+      });
+
+      test('fromMap tolerates a missing or malformed value', () {
+        expect(ChildProfile.fromMap(const {}).unlockedItems, isEmpty);
+        expect(
+          ChildProfile.fromMap(const {'unlockedItems': 'not-a-list'})
+              .unlockedItems,
+          isEmpty,
+        );
+        expect(
+          ChildProfile.fromMap(const {'practiceStreak': 'not-a-map'})
+              .practiceStreak,
+          const DailyStreak(),
+        );
+      });
+
+      test('copyWith updates the fields', () {
+        final profile = ChildProfile.create(
+          displayName: 'Lior',
+          avatarColor: ChildProfile.defaultAvatarColors.first,
+        );
+        final updated = profile.copyWith(
+          practiceStreak: const DailyStreak(currentStreak: 5),
+          unlockedItems: const ['hat_pirate'],
+        );
+        expect(updated.practiceStreak.currentStreak, 5);
+        expect(updated.unlockedItems, ['hat_pirate']);
+        expect(updated.copyWith().unlockedItems, ['hat_pirate']);
       });
     });
   });

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'daily_streak.dart';
 import 'equipped_avatar.dart';
 import 'local_user.dart';
 
@@ -16,11 +17,13 @@ class ChildProfile {
     this.avatarId,
     this.totalStars = 0,
     this.dailyStreak = 0,
+    this.practiceStreak = const DailyStreak(),
     this.completedWordsCount = 0,
     this.achievements = const {},
     this.coins = 0,
     this.unlockedThemes = const [],
     this.unlockedSounds = const [],
+    this.unlockedItems = const [],
     this.equippedTheme,
     this.equippedSound,
     this.equippedAvatar,
@@ -77,6 +80,39 @@ class ChildProfile {
       return null;
     }
 
+    // Practice streak is a map (`practiceStreak`, or a map stored under
+    // `dailyStreak` for older dual-format docs). The integer `dailyStreak`
+    // remains the login-claim / leaderboard summary and must not throw when
+    // a map is present instead (§2.3 nullable-forever).
+    DailyStreak toPracticeStreak(dynamic practiceRaw, dynamic dailyRaw) {
+      Map<String, dynamic>? asStreakMap(dynamic value) {
+        if (value is Map) {
+          final mapped = Map<String, dynamic>.from(value);
+          final date = mapped['lastPracticeDate'];
+          if (date is Timestamp) {
+            mapped['lastPracticeDate'] = date.toDate();
+          }
+          return mapped;
+        }
+        return null;
+      }
+
+      final fromPractice = asStreakMap(practiceRaw);
+      if (fromPractice != null) return DailyStreak.fromJson(fromPractice);
+      final fromDaily = asStreakMap(dailyRaw);
+      if (fromDaily != null) return DailyStreak.fromJson(fromDaily);
+      return const DailyStreak();
+    }
+
+    int toDailyStreakInt(dynamic value, DailyStreak practice) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return practice.currentStreak;
+    }
+
+    final practiceStreak =
+        toPracticeStreak(map['practiceStreak'], map['dailyStreak']);
+
     return ChildProfile(
       id: (map['id'] as String?) ?? '',
       displayName: (map['displayName'] as String?) ?? '',
@@ -86,12 +122,14 @@ class ChildProfile {
           ? map['avatarId'] as String
           : null,
       totalStars: map['totalStars'] as int? ?? 0,
-      dailyStreak: map['dailyStreak'] as int? ?? 0,
+      dailyStreak: toDailyStreakInt(map['dailyStreak'], practiceStreak),
+      practiceStreak: practiceStreak,
       completedWordsCount: map['completedWordsCount'] as int? ?? 0,
       achievements: achievements,
       coins: map['coins'] as int? ?? 0,
       unlockedThemes: toStringList(map['unlockedThemes']),
       unlockedSounds: toStringList(map['unlockedSounds']),
+      unlockedItems: toStringList(map['unlockedItems']),
       equippedTheme: toNonEmptyString(map['equippedTheme']),
       equippedSound: toNonEmptyString(map['equippedSound']),
       equippedAvatar: toEquippedAvatar(map['equippedAvatar']),
@@ -169,7 +207,16 @@ class ChildProfile {
   /// deserialize unchanged.
   final String? avatarId;
   final int totalStars;
+
+  /// Login-claim / leaderboard summary streak. Always an int on write;
+  /// [fromMap] also accepts a practice-streak map (see [practiceStreak]).
   final int dailyStreak;
+
+  /// Consecutive practice days (Sentence Practice), distinct from the
+  /// login-claim [dailyStreak]. Cloud-mirrored as a map. Merge: higher
+  /// `currentStreak` wins; `claimedMilestones` union.
+  final DailyStreak practiceStreak;
+
   final int completedWordsCount;
   final Map<String, bool> achievements;
   final int coins;
@@ -178,6 +225,11 @@ class ChildProfile {
   /// purchase survives a reinstall / new device. Merge strategy: union.
   final List<String> unlockedThemes;
   final List<String> unlockedSounds;
+
+  /// Avatar Economy item ids the child has purchased. Cloud-mirrored so a
+  /// purchase survives a reinstall / new device. Merge strategy: union.
+  /// Free starter items are implicit and are never stored here.
+  final List<String> unlockedItems;
 
   /// Currently equipped customization ids (null → the built-in default).
   /// Merge strategy: newer [updatedAt] wins.
@@ -206,11 +258,15 @@ class ChildProfile {
       if (avatarId != null && avatarId!.isNotEmpty) 'avatarId': avatarId,
       'totalStars': totalStars,
       'dailyStreak': dailyStreak,
+      if (practiceStreak.currentStreak > 0 ||
+          practiceStreak.lastPracticeDate != null)
+        'practiceStreak': _practiceStreakToMap(forCloud: forCloud),
       'completedWordsCount': completedWordsCount,
       'achievements': achievements,
       'coins': coins,
       if (unlockedThemes.isNotEmpty) 'unlockedThemes': unlockedThemes,
       if (unlockedSounds.isNotEmpty) 'unlockedSounds': unlockedSounds,
+      if (unlockedItems.isNotEmpty) 'unlockedItems': unlockedItems,
       if (equippedTheme != null) 'equippedTheme': equippedTheme,
       if (equippedSound != null) 'equippedSound': equippedSound,
       if (equippedAvatar != null && equippedAvatar!.toJson().isNotEmpty)
@@ -231,6 +287,15 @@ class ChildProfile {
     };
   }
 
+  Map<String, dynamic> _practiceStreakToMap({required bool forCloud}) {
+    final json = practiceStreak.toJson();
+    if (forCloud && practiceStreak.lastPracticeDate != null) {
+      json['lastPracticeDate'] =
+          Timestamp.fromDate(practiceStreak.lastPracticeDate!);
+    }
+    return json;
+  }
+
   ChildProfile copyWith({
     String? id,
     String? displayName,
@@ -239,11 +304,13 @@ class ChildProfile {
     String? avatarId,
     int? totalStars,
     int? dailyStreak,
+    DailyStreak? practiceStreak,
     int? completedWordsCount,
     Map<String, bool>? achievements,
     int? coins,
     List<String>? unlockedThemes,
     List<String>? unlockedSounds,
+    List<String>? unlockedItems,
     String? equippedTheme,
     String? equippedSound,
     EquippedAvatar? equippedAvatar,
@@ -260,11 +327,13 @@ class ChildProfile {
       avatarId: avatarId ?? this.avatarId,
       totalStars: totalStars ?? this.totalStars,
       dailyStreak: dailyStreak ?? this.dailyStreak,
+      practiceStreak: practiceStreak ?? this.practiceStreak,
       completedWordsCount: completedWordsCount ?? this.completedWordsCount,
       achievements: achievements ?? this.achievements,
       coins: coins ?? this.coins,
       unlockedThemes: unlockedThemes ?? this.unlockedThemes,
       unlockedSounds: unlockedSounds ?? this.unlockedSounds,
+      unlockedItems: unlockedItems ?? this.unlockedItems,
       equippedTheme: equippedTheme ?? this.equippedTheme,
       equippedSound: equippedSound ?? this.equippedSound,
       equippedAvatar: equippedAvatar ?? this.equippedAvatar,

@@ -13,8 +13,8 @@ import '../models/daily_streak.dart';
 /// `guest` prefix so their streak survives until they create a profile.
 ///
 /// Firebase-agnostic by design (CLAUDE.md §2.1) — an optional
-/// [SharedPreferences] can be injected in tests. Cloud mirroring is a
-/// follow-up; this is local-only v1.
+/// [SharedPreferences] can be injected in tests. Cloud mirroring lives in
+/// [ChildProfileSyncService]; this service stays the local source of truth.
 class DailyStreakService {
   DailyStreakService({SharedPreferences? prefs}) : _injectedPrefs = prefs;
 
@@ -56,5 +56,13 @@ class DailyStreakService {
     } catch (e) {
       debugPrint('Error saving daily streak: $e');
     }
+  }
+
+  /// Applies a streak pulled from the cloud onto the device store for
+  /// [userId], merging with whatever is already there so a locally-recorded
+  /// practice day can never be dropped by a stale cloud copy.
+  Future<void> applyMergedSnapshot(String? userId, DailyStreak cloud) async {
+    final local = await load(userId);
+    await save(userId, DailyStreak.merge(local, cloud));
   }
 }

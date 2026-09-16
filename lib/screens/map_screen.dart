@@ -420,24 +420,24 @@ class _MapScreenState extends State<MapScreen>
             Provider.of<ChildProfileProvider>(context, listen: false).parentUid;
         equippedAvatar.setParentUid(parentUid);
         await equippedAvatar.load();
-      }
 
-      // Point the avatar inventory at this profile (guest when null) and
-      // load which avatar items this child has purchased/unlocked.
-      if (mounted) {
-        final avatarInventory =
-            Provider.of<AvatarInventoryProvider>(context, listen: false);
-        avatarInventory.setUserId(_currentUserId);
-        await avatarInventory.load();
-      }
+        // Point streak + inventory cloud sync at the same parent account
+        // (null for guests / local profiles, which then stay local-only).
+        if (mounted) {
+          final avatarInventory =
+              Provider.of<AvatarInventoryProvider>(context, listen: false);
+          avatarInventory.setUserId(_currentUserId);
+          avatarInventory.setParentUid(parentUid);
+          await avatarInventory.load();
+        }
 
-      // Point the practice streak at this profile (guest when null) and
-      // restore consecutive-day progress.
-      if (mounted) {
-        final dailyStreak =
-            Provider.of<DailyStreakProvider>(context, listen: false);
-        dailyStreak.setUserId(_currentUserId);
-        await dailyStreak.load();
+        if (mounted) {
+          final dailyStreak =
+              Provider.of<DailyStreakProvider>(context, listen: false);
+          dailyStreak.setUserId(_currentUserId);
+          dailyStreak.setParentUid(parentUid);
+          await dailyStreak.load();
+        }
       }
     } catch (e) {
       debugPrint('Error loading current user: $e');
