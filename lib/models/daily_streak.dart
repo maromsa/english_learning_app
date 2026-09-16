@@ -38,6 +38,36 @@ class DailyStreak {
           'claimedMilestones': claimedMilestones,
       };
 
+  /// Loss-proof merge of two streaks (CLAUDE.md §2.3): the higher
+  /// [currentStreak] wins (date follows that side); on a tie the later
+  /// [lastPracticeDate] wins. [claimedMilestones] is a union so a reward
+  /// granted on either device is never lost.
+  static DailyStreak merge(DailyStreak a, DailyStreak b) {
+    final aWinsCount = a.currentStreak > b.currentStreak;
+    final bWinsCount = b.currentStreak > a.currentStreak;
+    late final DailyStreak winner;
+    if (aWinsCount) {
+      winner = a;
+    } else if (bWinsCount) {
+      winner = b;
+    } else {
+      final aDate = a.lastPracticeDate;
+      final bDate = b.lastPracticeDate;
+      if (aDate != null && bDate != null) {
+        winner = aDate.isAfter(bDate) ? a : b;
+      } else {
+        winner = aDate != null ? a : b;
+      }
+    }
+    final claimed =
+        <int>{...a.claimedMilestones, ...b.claimedMilestones}.toList()..sort();
+    return DailyStreak(
+      currentStreak: winner.currentStreak,
+      lastPracticeDate: winner.lastPracticeDate,
+      claimedMilestones: claimed,
+    );
+  }
+
   DailyStreak copyWith({
     int? currentStreak,
     DateTime? lastPracticeDate,

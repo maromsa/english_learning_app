@@ -29,7 +29,27 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /childProfiles/{profileId} {
-        allow read, write: if isOwner(userId);
+        // Owner-only. New cloud-mirrored fields are type-guarded so a
+        // malformed client write cannot store the wrong shape:
+        // `dailyStreak` is the login-claim int (legacy) *or* a practice
+        // streak map; `practiceStreak` is always a map; `unlockedItems`
+        // is a list of avatar-item ids. Inventory never goes on the
+        // public leaderboard.
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId)
+          && (
+            !request.resource.data.keys().hasAny(['dailyStreak'])
+            || request.resource.data.dailyStreak is int
+            || request.resource.data.dailyStreak is map
+          )
+          && (
+            !request.resource.data.keys().hasAny(['practiceStreak'])
+            || request.resource.data.practiceStreak is map
+          )
+          && (
+            !request.resource.data.keys().hasAny(['unlockedItems'])
+            || request.resource.data.unlockedItems is list
+          );
       }
 
       match /gameData/{docId} {

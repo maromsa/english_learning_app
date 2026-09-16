@@ -14,8 +14,8 @@ import '../models/avatar_inventory.dart';
 /// `guest` prefix so their purchases survive until they create a profile.
 ///
 /// Firebase-agnostic by design (CLAUDE.md §2.1) — an optional
-/// [SharedPreferences] can be injected in tests. Cloud mirroring is a
-/// follow-up, matching `EquippedAvatarService`'s local-only v1.
+/// [SharedPreferences] can be injected in tests. Cloud mirroring lives in
+/// [ChildProfileSyncService]; this service stays the local source of truth.
 class AvatarInventoryService {
   AvatarInventoryService({SharedPreferences? prefs}) : _injectedPrefs = prefs;
 
@@ -57,5 +57,21 @@ class AvatarInventoryService {
     } catch (e) {
       debugPrint('Error saving avatar inventory: $e');
     }
+  }
+
+  /// Applies unlocked ids pulled from the cloud onto the device store for
+  /// [userId], **unioning** with whatever is already there so a locally-
+  /// purchased item can never be dropped by a stale cloud copy.
+  Future<void> applyMergedSnapshot(
+    String? userId, {
+    required Set<String> unlockedItemIds,
+  }) async {
+    final local = await load(userId);
+    await save(
+      userId,
+      AvatarInventory(
+        unlockedItemIds: {...local.unlockedItemIds, ...unlockedItemIds},
+      ),
+    );
   }
 }

@@ -9,6 +9,7 @@ import 'package:english_learning_app/models/avatar_item.dart';
 import 'package:english_learning_app/providers/avatar_inventory_provider.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/services/avatar_inventory_service.dart';
+import 'package:english_learning_app/services/child_profile_sync_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,6 +48,31 @@ class _RecordingAvatarInventoryService extends AvatarInventoryService {
   }
 }
 
+/// Records every `updateUnlockedItems()` call so tests can assert the
+/// cloud sync fired (or didn't) without depending on real network.
+class _RecordingChildProfileSyncService extends ChildProfileSyncService {
+  _RecordingChildProfileSyncService()
+      : super(firestore: FakeFirebaseFirestore());
+
+  int callCount = 0;
+  String? lastParentUid;
+  String? lastProfileId;
+  Set<String>? lastItemIds;
+
+  @override
+  Future<bool> updateUnlockedItems(
+    String parentUid,
+    String profileId,
+    Set<String> itemIds,
+  ) async {
+    callCount++;
+    lastParentUid = parentUid;
+    lastProfileId = profileId;
+    lastItemIds = itemIds;
+    return true;
+  }
+}
+
 Future<CoinProvider> _coins(int amount) async {
   final provider = CoinProvider(
     userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
@@ -57,13 +83,17 @@ Future<CoinProvider> _coins(int amount) async {
 
 Future<AvatarInventoryProvider> _provider({
   String? userId,
+  String? parentUid,
   AvatarInventoryService? service,
+  ChildProfileSyncService? syncService,
 }) async {
   final provider = AvatarInventoryProvider(
     service: service ??
         AvatarInventoryService(prefs: await SharedPreferences.getInstance()),
+    syncService: syncService ?? _RecordingChildProfileSyncService(),
   );
   provider.setUserId(userId);
+  provider.setParentUid(parentUid);
   await provider.load();
   return provider;
 }
@@ -190,6 +220,68 @@ void main() {
         () async {
       final provider = await _provider(userId: 'brand_new_child');
       expect(provider.unlockedItemIds, isEmpty);
+    });
+  });
+
+  group('AvatarInventoryProvider cloud sync', () {
+    test(
+        'purchaseItem does not push to the cloud without a parentUid '
+        '(guest / local profile)', () async {
+      final sync = _RecordingChildProfileSyncService();
+      final coins = await _coins(100);
+      final provider = await _provider(userId: 'child_1', syncService: sync);
+
+      await provider.purchaseItem(_hat, coins);
+
+      expect(sync.callCount, 0);
+    });
+
+    test('purchaseItem pushes unlocked ids once a parentUid is set', () async {
+      final sync = _RecordingChildProfileSyncService();
+      final coins = await _coins(100);
+      final provider = await _provider(
+        userId: 'child_1',
+        parentUid: 'parent_1',
+        syncService: sync,
+      );
+
+      await provider.purchaseItem(_hat, coins);
+
+      expect(sync.callCount, 1);
+      expect(sync.lastParentUid, 'parent_1');
+      expect(sync.lastProfileId, 'child_1');
+      expect(sync.lastItemIds, contains(_hat.id));
+    });
+
+    test('purchasing an already-owned item does not push to the cloud',
+        () async {
+      final sync = _RecordingChildProfileSyncService();
+      final coins = await _coins(100);
+      final provider = await _provider(
+        userId: 'child_1',
+        parentUid: 'parent_1',
+        syncService: sync,
+      );
+      await provider.purchaseItem(_hat, coins);
+      expect(sync.callCount, 1);
+
+      await provider.purchaseItem(_hat, coins);
+
+      expect(sync.callCount, 1);
+    });
+
+    test('a failed purchase does not push to the cloud', () async {
+      final sync = _RecordingChildProfileSyncService();
+      final coins = await _coins(10);
+      final provider = await _provider(
+        userId: 'child_1',
+        parentUid: 'parent_1',
+        syncService: sync,
+      );
+
+      await provider.purchaseItem(_hat, coins);
+
+      expect(sync.callCount, 0);
     });
   });
 }

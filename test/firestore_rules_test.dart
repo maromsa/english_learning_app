@@ -91,6 +91,53 @@ void main() {
           'shop customization data must not be published to the leaderboard',
     );
   });
+
+  test('unlockedItems and practiceStreak never enter the leaderboard whitelist',
+      () {
+    final whitelist = _leaderboardHasOnlyFields(rulesText);
+    expect(
+      whitelist.contains('unlockedItems'),
+      isFalse,
+      reason: 'avatar inventory must stay on the private childProfiles doc',
+    );
+    expect(
+      whitelist.contains('practiceStreak'),
+      isFalse,
+      reason: 'practice streak maps must stay on the private childProfiles doc',
+    );
+  });
+
+  test('childProfiles type-guards dailyStreak as int or map', () {
+    final block = _childProfilesMatchBlock(rulesText);
+    expect(
+      block.contains('dailyStreak is int'),
+      isTrue,
+      reason: 'legacy integer dailyStreak must stay valid on childProfiles',
+    );
+    expect(
+      block.contains('dailyStreak is map'),
+      isTrue,
+      reason: 'practice-streak maps stored under dailyStreak must be allowed',
+    );
+  });
+
+  test('childProfiles type-guards unlockedItems as a list', () {
+    final block = _childProfilesMatchBlock(rulesText);
+    expect(
+      block.contains('unlockedItems is list'),
+      isTrue,
+      reason: 'unlockedItems must be validated as a list in firestore.rules',
+    );
+  });
+
+  test('childProfiles type-guards practiceStreak as a map', () {
+    final block = _childProfilesMatchBlock(rulesText);
+    expect(
+      block.contains('practiceStreak is map'),
+      isTrue,
+      reason: 'practiceStreak must be validated as a map in firestore.rules',
+    );
+  });
 }
 
 Directory _findProjectRoot() {
@@ -128,6 +175,29 @@ String _leaderboardMatchBlock(String rules) {
     }
   }
   fail('unbalanced braces in /leaderboard/ block');
+}
+
+/// Returns the source of the `match /childProfiles/{profileId} { ... }` block.
+String _childProfilesMatchBlock(String rules) {
+  final matchStmt =
+      RegExp(r'match\s+/childProfiles/\{[^}]+\}\s*\{').firstMatch(rules);
+  expect(
+    matchStmt,
+    isNotNull,
+    reason: 'no /childProfiles/ match block in firestore.rules',
+  );
+
+  final open = matchStmt!.end - 1;
+  var depth = 0;
+  for (var i = open; i < rules.length; i++) {
+    final c = rules[i];
+    if (c == '{') depth++;
+    if (c == '}') {
+      depth--;
+      if (depth == 0) return rules.substring(open, i + 1);
+    }
+  }
+  fail('unbalanced braces in /childProfiles/ block');
 }
 
 /// Extracts the string literals inside the leaderboard `hasOnly([...])` call.
