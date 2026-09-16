@@ -243,6 +243,11 @@ class SparkStrings {
   static const String sentencePracticeEmpty = 'אין עדיין משפטים לתרגול';
   static const String sentenceGenerating = 'ספרק ממציאה משפטים חדשים ✨';
 
+  // ─── Word Bank ("My Vocabulary") ──────────────
+  static const String wordBankTitle = 'מילים שלי';
+  static const String wordBankEmpty = 'עדיין אין מילים. בואו נתרגל!';
+  static const String wordBankMapButton = 'מילים שלי';
+
   // ─── Streak milestones ────────────────────────
   static String streakMilestoneTitle(int day) => 'רצף של $day ימים!';
   static String streakMilestoneCoins(int coins) => '+$coins מטבעות';
