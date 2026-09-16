@@ -6,6 +6,7 @@ import 'package:english_learning_app/models/sentence_question.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_streak_provider.dart';
 import 'package:english_learning_app/providers/sentence_practice_provider.dart';
+import 'package:english_learning_app/providers/word_bank_provider.dart';
 import 'package:english_learning_app/services/audio_settings.dart';
 import 'package:english_learning_app/services/gemini_sentence_service.dart';
 import 'package:english_learning_app/services/sound_service.dart';
@@ -354,6 +355,29 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
     return true;
   }
 
+  WordBankProvider? _tryReadWordBank() {
+    try {
+      return context.read<WordBankProvider>();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Records the missing (target) word in the child's Word Bank. Best-effort:
+  /// a missing provider or a duplicate is a silent no-op.
+  Future<void> _addCurrentWordToBank() async {
+    final bank = _tryReadWordBank();
+    if (bank == null) return;
+    try {
+      await bank.addWord(
+        _current.missingWord,
+        translation: _current.hebrewTranslation,
+      );
+    } catch (e) {
+      debugPrint('WordBankProvider.addWord failed: $e');
+    }
+  }
+
   Future<void> _handleOption(String option) async {
     if (_answeredCorrectly || _advancing) return;
 
@@ -372,6 +396,8 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
     SoundService().playSuccessSound();
 
     await context.read<CoinProvider>().addCoins(widget.coinReward);
+    if (!mounted) return;
+    await _addCurrentWordToBank();
     if (!mounted) return;
     final streak = context.read<DailyStreakProvider>();
     await streak.recordPractice();

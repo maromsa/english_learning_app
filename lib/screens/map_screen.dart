@@ -14,6 +14,7 @@ import 'package:english_learning_app/providers/equipped_avatar_provider.dart';
 import 'package:english_learning_app/providers/shop_customization_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/sticker_album_provider.dart';
+import 'package:english_learning_app/providers/word_bank_provider.dart';
 import 'package:english_learning_app/screens/ai_practice_pack_screen.dart';
 import 'package:english_learning_app/screens/chat_buddy_screen.dart';
 import 'package:english_learning_app/screens/home_page.dart';
@@ -54,6 +55,7 @@ import 'settings_screen.dart';
 import 'shop_screen.dart';
 import 'srs_review_screen.dart';
 import 'story_screen.dart';
+import 'word_bank_screen.dart';
 
 /// On Flutter Web, [HtmlElementView] iframes sit above the canvas and steal
 /// pointer events from Flutter widgets drawn on top. Wrap interactive chrome
@@ -77,6 +79,9 @@ PreferredSizeWidget _webPointerShieldAppBar(AppBar appBar) {
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
+
+  /// HUD control that opens [WordBankScreen].
+  static const Key wordBankButtonKey = ValueKey<String>('map_word_bank_button');
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -437,6 +442,13 @@ class _MapScreenState extends State<MapScreen>
           dailyStreak.setUserId(_currentUserId);
           dailyStreak.setParentUid(parentUid);
           await dailyStreak.load();
+        }
+
+        if (mounted) {
+          final wordBank =
+              Provider.of<WordBankProvider>(context, listen: false);
+          wordBank.setUserId(_currentUserId);
+          await wordBank.load();
         }
       }
     } catch (e) {
@@ -1613,6 +1625,24 @@ class _MapScreenState extends State<MapScreen>
                                   },
                                 ),
                                 const SizedBox(width: 8),
+                                Tooltip(
+                                  message: SparkStrings.wordBankMapButton,
+                                  child: Material(
+                                    color: Colors.white.withValues(alpha: 0.92),
+                                    shape: const CircleBorder(),
+                                    elevation: 2,
+                                    child: IconButton(
+                                      key: MapScreen.wordBankButtonKey,
+                                      tooltip: SparkStrings.wordBankMapButton,
+                                      icon: const Icon(
+                                        Icons.menu_book_rounded,
+                                        color: AuroraTokens.blueberry,
+                                      ),
+                                      onPressed: _navigateToWordBank,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
                                 Consumer<StreakShieldService>(
                                   builder: (context, shield, _) {
                                     if (!shield.hasShield) {
@@ -1874,6 +1904,13 @@ class _MapScreenState extends State<MapScreen>
     await Navigator.push(
       context,
       PageTransitions.slideFromRight(const LeaderboardScreen()),
+    );
+  }
+
+  Future<void> _navigateToWordBank() async {
+    await Navigator.push(
+      context,
+      PageTransitions.slideFromRight(const WordBankScreen()),
     );
   }
 

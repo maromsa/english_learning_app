@@ -17,6 +17,7 @@ import 'package:english_learning_app/models/sentence_question.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_streak_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
+import 'package:english_learning_app/providers/word_bank_provider.dart';
 import 'package:english_learning_app/screens/sentence_practice_screen.dart';
 import 'package:english_learning_app/services/audio_settings.dart';
 import 'package:english_learning_app/services/gemini_sentence_service.dart';
@@ -133,6 +134,7 @@ Future<(CoinProvider, DailyStreakProvider, _FakeTtsService, _FakeSpeechService)>
   _FakeTtsService? tts,
   _FakeSpeechService? speech,
   GeminiSentenceService? gemini,
+  WordBankProvider? wordBank,
 }) async {
   SharedPreferences.setMockInitialValues({});
   await AudioSettings().setMuted(false);
@@ -151,12 +153,14 @@ Future<(CoinProvider, DailyStreakProvider, _FakeTtsService, _FakeSpeechService)>
   );
   final fakeTts = tts ?? _FakeTtsService();
   final fakeSpeech = speech ?? _FakeSpeechService();
+  final bank = wordBank ?? WordBankProvider();
 
   await tester.pumpWidget(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: coinProvider),
         ChangeNotifierProvider.value(value: dailyStreakProvider),
+        ChangeNotifierProvider.value(value: bank),
         ChangeNotifierProvider(create: (_) => SparkOverlayController()),
         Provider<SoundService>.value(value: SoundService()),
         Provider<TtsService>.value(value: fakeTts),
@@ -257,6 +261,18 @@ void main() {
       expect(find.text('אני שותה מים'), findsOneWidget);
       expect(find.text(SparkStrings.sentencePracticeProgress(2, 2)),
           findsOneWidget);
+    });
+
+    testWidgets('a correct option adds the missing word to the word bank',
+        (tester) async {
+      final bank = WordBankProvider();
+      await _pumpScreen(tester, wordBank: bank);
+
+      await _tapOption(tester, 'cat');
+
+      expect(bank.words, hasLength(1));
+      expect(bank.words.first.word, 'cat');
+      expect(bank.words.first.translation, 'החתול ישן');
     });
 
     testWidgets('reaching a streak milestone shows the celebration dialog',
