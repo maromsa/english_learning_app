@@ -241,6 +241,7 @@ class SparkStrings {
   static String sentencePracticeScore(int correct, int total) =>
       '$correct מתוך $total נכון';
   static const String sentencePracticeEmpty = 'אין עדיין משפטים לתרגול';
+  static const String sentenceGenerating = 'ספרק ממציאה משפטים חדשים ✨';
 
   // ─── Streak milestones ────────────────────────
   static String streakMilestoneTitle(int day) => 'רצף של $day ימים!';

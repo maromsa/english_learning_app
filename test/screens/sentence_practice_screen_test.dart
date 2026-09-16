@@ -9,6 +9,8 @@
 // for on-device TTS so no flutter_tts platform channel is involved. A
 // [_FakeSpeechService] stands in for speech-to-text so no microphone is used.
 
+import 'dart:async';
+
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/daily_streak.dart';
 import 'package:english_learning_app/models/sentence_question.dart';
@@ -17,6 +19,7 @@ import 'package:english_learning_app/providers/daily_streak_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/screens/sentence_practice_screen.dart';
 import 'package:english_learning_app/services/audio_settings.dart';
+import 'package:english_learning_app/services/gemini_sentence_service.dart';
 import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/services/speech_service.dart';
 import 'package:english_learning_app/services/tts_service.dart';
@@ -101,6 +104,27 @@ class _FakeSpeechService extends SpeechService {
   }
 }
 
+class _FakeGeminiSentenceService extends GeminiSentenceService {
+  _FakeGeminiSentenceService({
+    this.sentences = const [],
+    this.onGenerate,
+  }) : super(generator: (prompt, {systemInstruction}) async => null);
+
+  final List<SentenceQuestion> sentences;
+  final Future<void> Function()? onGenerate;
+  int calls = 0;
+
+  @override
+  Future<List<SentenceQuestion>> generateSentences({
+    int count = GeminiSentenceService.defaultCount,
+    List<String> avoid = const [],
+  }) async {
+    calls++;
+    await onGenerate?.call();
+    return sentences;
+  }
+}
+
 Future<(CoinProvider, DailyStreakProvider, _FakeTtsService, _FakeSpeechService)>
     _pumpScreen(
   WidgetTester tester, {
@@ -108,6 +132,7 @@ Future<(CoinProvider, DailyStreakProvider, _FakeTtsService, _FakeSpeechService)>
   DailyStreak? initialStreak,
   _FakeTtsService? tts,
   _FakeSpeechService? speech,
+  GeminiSentenceService? gemini,
 }) async {
   SharedPreferences.setMockInitialValues({});
   await AudioSettings().setMuted(false);
@@ -142,6 +167,7 @@ Future<(CoinProvider, DailyStreakProvider, _FakeTtsService, _FakeSpeechService)>
           questions: questions ?? _questions,
           ttsService: fakeTts,
           speechService: fakeSpeech,
+          geminiSentenceService: gemini,
         ),
       ),
     ),
@@ -440,6 +466,91 @@ void main() {
       expect(
         find.byKey(SentencePracticeScreen.listeningBadgeKey),
         findsNothing,
+      );
+    });
+
+    testWidgets('Gemini sentences append when the catalog queue is empty',
+        (tester) async {
+      const extra = SentenceQuestion(
+        fullEnglishSentence: 'The sun is hot',
+        hebrewTranslation: 'השמש חמה',
+        missingWord: 'sun',
+        options: ['sun', 'moon', 'star'],
+      );
+      final gemini = _FakeGeminiSentenceService(sentences: const [extra]);
+      await _pumpScreen(
+        tester,
+        gemini: gemini,
+        questions: [_questions.first],
+      );
+
+      await _tapOption(tester, 'cat');
+
+      expect(gemini.calls, 1);
+      expect(find.text('השמש חמה'), findsOneWidget);
+      expect(
+          find.text(SparkStrings.sentencePracticeSummaryTitle), findsNothing);
+      expect(
+        find.text(SparkStrings.sentencePracticeProgress(2, 2)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('shows a generating overlay while Spark fetches sentences',
+        (tester) async {
+      final gate = Completer<void>();
+      const extra = SentenceQuestion(
+        fullEnglishSentence: 'The sun is hot',
+        hebrewTranslation: 'השמש חמה',
+        missingWord: 'sun',
+        options: ['sun', 'moon', 'star'],
+      );
+      final gemini = _FakeGeminiSentenceService(
+        sentences: const [extra],
+        onGenerate: () => gate.future,
+      );
+      await _pumpScreen(
+        tester,
+        gemini: gemini,
+        questions: [_questions.first],
+      );
+
+      await tester.tap(find.byKey(const ValueKey('option_cat')));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 800));
+
+      expect(find.byKey(SentencePracticeScreen.generatingKey), findsOneWidget);
+      expect(find.text(SparkStrings.sentenceGenerating), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      gate.complete();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(SentencePracticeScreen.generatingKey), findsNothing);
+      expect(find.text('השמש חמה'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 900));
+    });
+
+    testWidgets('malformed Gemini output still finishes on the catalog',
+        (tester) async {
+      final gemini = _FakeGeminiSentenceService(sentences: const []);
+      await _pumpScreen(
+        tester,
+        gemini: gemini,
+        questions: [_questions.first],
+      );
+
+      await _tapOption(tester, 'cat');
+
+      expect(
+        find.text(SparkStrings.sentencePracticeSummaryTitle),
+        findsOneWidget,
+      );
+      expect(
+        find.text(SparkStrings.sentencePracticeScore(1, 1)),
+        findsOneWidget,
       );
     });
   });

@@ -5,7 +5,9 @@ import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/sentence_question.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_streak_provider.dart';
+import 'package:english_learning_app/providers/sentence_practice_provider.dart';
 import 'package:english_learning_app/services/audio_settings.dart';
+import 'package:english_learning_app/services/gemini_sentence_service.dart';
 import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/services/speech_service.dart';
 import 'package:english_learning_app/services/tts_service.dart';
@@ -31,6 +33,9 @@ import 'package:provider/provider.dart';
 ///
 /// The screen is self-contained: it takes its [questions] directly (mirroring
 /// `MemoryMatchScreen.wordsForLevel`) so it stays trivial to widget-test.
+/// When the static queue runs out, [SentencePracticeProvider] asks
+/// [GeminiSentenceService] (authenticated proxy — no client API key) for more.
+/// If the proxy is unreachable the child still finishes on the catalog.
 class SentencePracticeScreen extends StatefulWidget {
   const SentencePracticeScreen({
     super.key,
@@ -39,6 +44,8 @@ class SentencePracticeScreen extends StatefulWidget {
     this.speak,
     this.ttsService,
     this.speechService,
+    this.geminiSentenceService,
+    this.practiceProvider,
   });
 
   /// The sentence exercises for this session. Unplayable entries (missing
@@ -60,6 +67,14 @@ class SentencePracticeScreen extends StatefulWidget {
   /// the instance registered on [MultiProvider] in `main.dart`.
   final SpeechService? speechService;
 
+  /// Optional [GeminiSentenceService] override. Production leaves this null
+  /// and reads the instance registered on [MultiProvider] in `main.dart`.
+  final GeminiSentenceService? geminiSentenceService;
+
+  /// Optional session queue. Production and most tests leave this null so
+  /// the screen owns a [SentencePracticeProvider] seeded from [questions].
+  final SentencePracticeProvider? practiceProvider;
+
   /// Key on the 🔊 control, so tests can tap pronunciation without hunting
   /// through the tree.
   static const Key speakerKey = ValueKey<String>('sentence_tts_button');
@@ -75,6 +90,10 @@ class SentencePracticeScreen extends StatefulWidget {
   static const Key pronunciationSuccessKey =
       ValueKey<String>('sentence_pronunciation_success');
 
+  /// Shown while Spark is fetching extra sentences from the Gemini proxy.
+  static const Key generatingKey =
+      ValueKey<String>('sentence_generating_indicator');
+
   static const int defaultCoinReward = 15;
 
   /// Extra coins for saying the English sentence clearly. Awarded at most
@@ -86,8 +105,9 @@ class SentencePracticeScreen extends StatefulWidget {
 }
 
 class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
-  late final List<SentenceQuestion> _questions =
-      widget.questions.where((q) => q.isPlayable).toList(growable: false);
+  late final SentencePracticeProvider _practice;
+  SentencePracticeProvider? _ownedPractice;
+  late bool _waitingForFirstQuestion;
 
   int _index = 0;
   String? _selected;
@@ -105,21 +125,53 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
   bool _permissionDenied = false;
   String _transcript = '';
 
+  List<SentenceQuestion> get _questions => _practice.questions;
+
   SentenceQuestion get _current => _questions[_index];
 
   @override
   void initState() {
     super.initState();
+    _practice = widget.practiceProvider ??
+        SentencePracticeProvider(
+          initial: widget.questions,
+          gemini: widget.geminiSentenceService,
+        );
+    if (widget.practiceProvider == null) {
+      _ownedPractice = _practice;
+    }
+    _waitingForFirstQuestion = _questions.isEmpty;
+    _practice.addListener(_onPracticeUpdate);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _tts = widget.ttsService ?? _tryReadTts();
       _speech = widget.speechService ?? _tryReadSpeech();
+      _practice.attachGemini(
+        widget.geminiSentenceService ?? _tryReadGemini(),
+      );
+      if (_questions.isEmpty) {
+        unawaited(_practice.refillIfNeeded());
+      }
       unawaited(_speakCurrent());
     });
   }
 
+  void _onPracticeUpdate() {
+    if (!mounted) return;
+    final becameReady = _waitingForFirstQuestion && _questions.isNotEmpty;
+    if (becameReady) {
+      _waitingForFirstQuestion = false;
+    }
+    setState(() {});
+    if (becameReady) {
+      unawaited(_speakCurrent());
+    }
+  }
+
   @override
   void dispose() {
+    _practice.removeListener(_onPracticeUpdate);
+    _ownedPractice?.dispose();
     unawaited(_tts?.stop());
     unawaited(_speech?.stopListening());
     super.dispose();
@@ -136,6 +188,14 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
   SpeechService? _tryReadSpeech() {
     try {
       return context.read<SpeechService>();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  GeminiSentenceService? _tryReadGemini() {
+    try {
+      return context.read<GeminiSentenceService>();
     } catch (_) {
       return null;
     }
@@ -334,8 +394,15 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
     if (!mounted) return;
 
     _advancing = true;
+    if (_index + 1 >= _questions.length) {
+      unawaited(_practice.refillIfNeeded());
+    }
     await Future<void>.delayed(const Duration(milliseconds: 700));
     if (!mounted) return;
+    if (_index + 1 >= _questions.length) {
+      await _practice.refillIfNeeded();
+      if (!mounted) return;
+    }
 
     setState(() {
       _advancing = false;
@@ -385,11 +452,16 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
         ),
       ),
       body: SafeArea(
-        child: _questions.isEmpty
-            ? _buildEmptyState()
-            : _finished
-                ? _buildSummary()
-                : _buildQuestion(),
+        child: Stack(
+          children: [
+            _questions.isEmpty
+                ? _buildEmptyState()
+                : _finished
+                    ? _buildSummary()
+                    : _buildQuestion(),
+            if (_practice.isLoadingAi) _buildGeneratingOverlay(),
+          ],
+        ),
       ),
     );
   }
@@ -417,6 +489,34 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGeneratingOverlay() {
+    return ColoredBox(
+      key: SentencePracticeScreen.generatingKey,
+      color: AuroraTokens.paper.withValues(alpha: 0.92),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AuroraTokens.s16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: AuroraTokens.plum),
+              const SizedBox(height: AuroraTokens.s8),
+              Text(
+                SparkStrings.sentenceGenerating,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.heebo(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AuroraTokens.inkSoft,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
