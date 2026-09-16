@@ -1,8 +1,11 @@
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/learned_word.dart';
 import 'package:english_learning_app/providers/word_bank_provider.dart';
+import 'package:english_learning_app/providers/word_review_provider.dart';
+import 'package:english_learning_app/screens/word_review_screen.dart';
 import 'package:english_learning_app/services/tts_service.dart';
 import 'package:english_learning_app/utils/aurora_tokens.dart';
+import 'package:english_learning_app/utils/page_transitions.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -19,14 +22,32 @@ class WordBankScreen extends StatelessWidget {
   final TtsService? ttsService;
 
   static const Key emptyKey = ValueKey<String>('word_bank_empty');
+  static const Key playKey = ValueKey<String>('word_bank_play');
 
   static Key cardKey(String word) => ValueKey<String>('word_bank_card_$word');
 
   static Key speakKey(String word) => ValueKey<String>('word_bank_speak_$word');
 
+  void _openReview(BuildContext context) {
+    final bank = context.read<WordBankProvider>();
+    Navigator.of(context).push(
+      PageTransitions.slideFromRight(
+        ChangeNotifierProvider(
+          create: (_) {
+            final review = WordReviewProvider(wordBank: bank);
+            review.generateQuiz();
+            return review;
+          },
+          child: WordReviewScreen(ttsService: ttsService),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final words = context.watch<WordBankProvider>().words;
+    final canPlay = words.length >= WordReviewProvider.minBankSizeForPlay;
     return Scaffold(
       backgroundColor: AuroraTokens.paper,
       appBar: AppBar(
@@ -41,14 +62,27 @@ class WordBankScreen extends StatelessWidget {
           ),
         ),
       ),
+      floatingActionButton: canPlay
+          ? FloatingActionButton.extended(
+              key: playKey,
+              onPressed: () => _openReview(context),
+              backgroundColor: AuroraTokens.blueberry,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.sports_esports_rounded),
+              label: Text(
+                SparkStrings.wordReviewPlay,
+                style: GoogleFonts.nunito(fontWeight: FontWeight.w800),
+              ),
+            )
+          : null,
       body: words.isEmpty
           ? const _EmptyBank()
           : GridView.builder(
-              padding: const EdgeInsets.fromLTRB(
+              padding: EdgeInsets.fromLTRB(
                 AuroraTokens.s8,
                 AuroraTokens.s4,
                 AuroraTokens.s8,
-                AuroraTokens.s16,
+                canPlay ? 96 : AuroraTokens.s16,
               ),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,

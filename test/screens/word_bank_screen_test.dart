@@ -73,4 +73,27 @@ void main() {
     await tester.pump();
     expect(tts.spoken, ['cat']);
   });
+
+  testWidgets('play FAB is hidden until the bank has 4 words', (tester) async {
+    final bank = WordBankProvider(
+      initial: [
+        for (final pair in const [
+          ('cat', 'חתול'),
+          ('dog', 'כלב'),
+          ('sun', 'שמש'),
+        ])
+          LearnedWord(
+            word: pair.$1,
+            translation: pair.$2,
+            dateLearned: DateTime(2026, 9, 16),
+          ),
+      ],
+    );
+    await _pumpScreen(tester, bank: bank);
+    expect(find.byKey(WordBankScreen.playKey), findsNothing);
+
+    await bank.addWord('water', translation: 'מים');
+    await tester.pump();
+    expect(find.byKey(WordBankScreen.playKey), findsOneWidget);
+  });
 }
