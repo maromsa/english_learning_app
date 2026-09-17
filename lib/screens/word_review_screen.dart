@@ -83,7 +83,7 @@ class _WordReviewScreenState extends State<WordReviewScreen> {
     final review = context.read<WordReviewProvider>();
     final correct = review.checkAnswer(option);
     if (!correct) {
-      unawaited(SoundService().playSound('error'));
+      SoundService().playErrorSound();
       setState(() => _wrongPick = option);
       return;
     }
@@ -97,6 +97,7 @@ class _WordReviewScreenState extends State<WordReviewScreen> {
 
     try {
       await context.read<CoinProvider>().addCoins(widget.coinReward);
+      SoundService().playCoinSound();
     } catch (e) {
       debugPrint('WordReviewScreen coin award failed: $e');
     }
