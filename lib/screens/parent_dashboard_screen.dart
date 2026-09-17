@@ -14,7 +14,10 @@ import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/parent_dashboard_stats.dart';
 import 'package:english_learning_app/models/weekly_recap.dart';
 import 'package:english_learning_app/providers/child_profile_provider.dart';
+import 'package:english_learning_app/providers/coin_provider.dart';
+import 'package:english_learning_app/providers/daily_streak_provider.dart';
 import 'package:english_learning_app/providers/user_session_provider.dart';
+import 'package:english_learning_app/providers/word_bank_provider.dart';
 import 'package:english_learning_app/screens/child_profile_selection_screen.dart';
 import 'package:english_learning_app/services/parent_progress_service.dart';
 import 'package:english_learning_app/services/weekly_recap_service.dart';
@@ -35,6 +38,11 @@ class ParentDashboardScreen extends StatefulWidget {
   /// Overridable for tests.
   final WeeklyRecapService? recapService;
 
+  static const Key vocabularyValueKey =
+      ValueKey<String>('parent_dashboard_vocabulary');
+  static const Key streakValueKey = ValueKey<String>('parent_dashboard_streak');
+  static const Key coinsValueKey = ValueKey<String>('parent_dashboard_coins');
+
   @override
   State<ParentDashboardScreen> createState() => _ParentDashboardScreenState();
 }
@@ -42,24 +50,35 @@ class ParentDashboardScreen extends StatefulWidget {
 typedef _DashboardData = ({ParentDashboardStats stats, WeeklyRecap recap});
 
 class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
-  late final ParentProgressService _progressService;
-  late final WeeklyRecapService _recapService;
+  ParentProgressService? _progressService;
+  WeeklyRecapService? _recapService;
   Future<_DashboardData>? _statsFuture;
   bool _startedLoad = false;
 
   @override
   void initState() {
     super.initState();
-    _progressService = widget.progressService ?? ParentProgressService();
-    _recapService = widget.recapService ?? WeeklyRecapService();
+    _progressService = widget.progressService;
+    _recapService = widget.recapService;
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_startedLoad) {
-      _startedLoad = true;
+    if (_startedLoad) return;
+    _startedLoad = true;
+    if (_hasDetailedDeps()) {
       _statsFuture = _loadStats();
+    }
+  }
+
+  bool _hasDetailedDeps() {
+    try {
+      context.read<UserSessionProvider>();
+      context.read<ChildProfileProvider>();
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -76,13 +95,16 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         SparkStrings.parentDashboardDefaultChild;
     final lastPlayedAt = profileProvider.activeProfile?.lastPlayedAt;
 
-    final statsFuture = _progressService.loadStats(
+    final progress = _progressService ??= ParentProgressService();
+    final recapService = _recapService ??= WeeklyRecapService();
+
+    final statsFuture = progress.loadStats(
       userId: userId,
       childName: childName,
       isLocalUser: true,
       lastPlayedAt: lastPlayedAt,
     );
-    final recapFuture = _recapService.loadRecap(userId: userId);
+    final recapFuture = recapService.loadRecap(userId: userId);
 
     return (stats: await statsFuture, recap: await recapFuture);
   }
@@ -100,137 +122,150 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(
-            tooltip: 'החלפת פרופיל',
-            icon: const Icon(Icons.switch_account),
-            onPressed: () {
-              unawaited(
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ChildProfileSelectionScreen(),
-                  ),
-                ).then((_) {
-                  setState(() => _statsFuture = _loadStats());
-                }),
-              );
-            },
-          ),
+          if (_statsFuture != null)
+            IconButton(
+              tooltip: 'החלפת פרופיל',
+              icon: const Icon(Icons.switch_account),
+              onPressed: () {
+                unawaited(
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ChildProfileSelectionScreen(),
+                    ),
+                  ).then((_) {
+                    setState(() => _statsFuture = _loadStats());
+                  }),
+                );
+              },
+            ),
         ],
       ),
-      body: FutureBuilder<_DashboardData>(
-        future: _statsFuture ??= _loadStats(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return _ErrorState(
-              message: snapshot.error.toString(),
-              onRetry: () => setState(() => _statsFuture = _loadStats()),
-            );
-          }
-          final stats = snapshot.data!.stats;
-          final recap = snapshot.data!.recap;
-          return RefreshIndicator(
-            onRefresh: () async {
-              setState(() => _statsFuture = _loadStats());
-              await _statsFuture;
-            },
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _HeaderCard(stats: stats),
-                const SizedBox(height: 20),
-
-                // ── Weekly Recap ───────────────────────────────────────────
-                WeeklyRecapCard(recap: recap),
-                const SizedBox(height: 20),
-
-                // ── Weekly Activity Chart ──────────────────────────────────
-                const _SectionTitle(title: 'פעילות שבועית'),
-                const SizedBox(height: 12),
-                _WeeklyActivityChart(activity: stats.weeklyActivity),
-                const SizedBox(height: 20),
-
-                // ── Quick Stats ────────────────────────────────────────────
-                const _SectionTitle(
-                  title: SparkStrings.parentDashboardOverview,
-                ),
-                const SizedBox(height: 12),
-                _StatGrid(stats: stats),
-                const SizedBox(height: 20),
-
-                // ── Progress bars ──────────────────────────────────────────
-                const _SectionTitle(
-                  title: SparkStrings.parentDashboardProgress,
-                ),
-                const SizedBox(height: 12),
-                _ProgressCard(
-                  title: SparkStrings.parentDashboardWordsLabel,
-                  subtitle: SparkStrings.parentDashboardWordsSubtitle(
-                    stats.wordsPracticed,
-                    stats.totalWordsInCatalog,
-                  ),
-                  value: stats.wordsProgressRatio,
-                  trailing: stats.wordsMastered > 0
-                      ? SparkStrings.parentDashboardMastered(
-                          stats.wordsMastered,
-                        )
-                      : null,
-                ),
-                const SizedBox(height: 12),
-                _ProgressCard(
-                  title: SparkStrings.parentDashboardLevelsLabel,
-                  subtitle: SparkStrings.parentDashboardLevelsSubtitle(
-                    stats.levelsCompleted,
-                    stats.totalLevels,
-                  ),
-                  value: stats.levelsProgressRatio,
-                ),
-                const SizedBox(height: 12),
-                _ProgressCard(
-                  title: SparkStrings.parentDashboardMissionsLabel,
-                  subtitle: SparkStrings.parentDashboardMissionsSubtitle(
-                    stats.dailyMissionsCompleted,
-                    stats.dailyMissionsTotal,
-                  ),
-                  value: stats.dailyMissionsTotal == 0
-                      ? 0
-                      : stats.dailyMissionsCompleted / stats.dailyMissionsTotal,
-                ),
-                const SizedBox(height: 20),
-
-                // ── Weak Words ─────────────────────────────────────────────
-                if (stats.weakWords.isNotEmpty) ...[
-                  const _SectionTitle(title: 'מילים לחיזוק'),
-                  const SizedBox(height: 12),
-                  _WeakWordsList(words: stats.weakWords),
-                  const SizedBox(height: 20),
-                ],
-
-                // ── Offline Downloads ──────────────────────────────────────
-                const _SectionTitle(title: SparkStrings.offlineDownloadsTitle),
-                const SizedBox(height: 12),
-                OfflineDownloadsCard(
-                  userId:
-                      context.read<ChildProfileProvider>().activeProfileId ??
-                          context.read<UserSessionProvider>().currentUserId ??
-                          '',
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  SparkStrings.parentDashboardNote,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey.shade700,
-                      ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          );
-        },
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _LiveProgressStrip(),
+          Expanded(child: _buildDetailedBody()),
+        ],
       ),
+    );
+  }
+
+  Widget _buildDetailedBody() {
+    if (_statsFuture == null) {
+      return const SizedBox.shrink();
+    }
+    return FutureBuilder<_DashboardData>(
+      future: _statsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return _ErrorState(
+            message: snapshot.error.toString(),
+            onRetry: () => setState(() => _statsFuture = _loadStats()),
+          );
+        }
+        final stats = snapshot.data!.stats;
+        final recap = snapshot.data!.recap;
+        return RefreshIndicator(
+          onRefresh: () async {
+            setState(() => _statsFuture = _loadStats());
+            await _statsFuture;
+          },
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            children: [
+              _HeaderCard(stats: stats),
+              const SizedBox(height: 20),
+
+              // ── Weekly Recap ───────────────────────────────────────────
+              WeeklyRecapCard(recap: recap),
+              const SizedBox(height: 20),
+
+              // ── Weekly Activity Chart ──────────────────────────────────
+              const _SectionTitle(title: 'פעילות שבועית'),
+              const SizedBox(height: 12),
+              _WeeklyActivityChart(activity: stats.weeklyActivity),
+              const SizedBox(height: 20),
+
+              // ── Quick Stats ────────────────────────────────────────────
+              const _SectionTitle(
+                title: SparkStrings.parentDashboardOverview,
+              ),
+              const SizedBox(height: 12),
+              _StatGrid(stats: stats),
+              const SizedBox(height: 20),
+
+              // ── Progress bars ──────────────────────────────────────────
+              const _SectionTitle(
+                title: SparkStrings.parentDashboardProgress,
+              ),
+              const SizedBox(height: 12),
+              _ProgressCard(
+                title: SparkStrings.parentDashboardWordsLabel,
+                subtitle: SparkStrings.parentDashboardWordsSubtitle(
+                  stats.wordsPracticed,
+                  stats.totalWordsInCatalog,
+                ),
+                value: stats.wordsProgressRatio,
+                trailing: stats.wordsMastered > 0
+                    ? SparkStrings.parentDashboardMastered(
+                        stats.wordsMastered,
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              _ProgressCard(
+                title: SparkStrings.parentDashboardLevelsLabel,
+                subtitle: SparkStrings.parentDashboardLevelsSubtitle(
+                  stats.levelsCompleted,
+                  stats.totalLevels,
+                ),
+                value: stats.levelsProgressRatio,
+              ),
+              const SizedBox(height: 12),
+              _ProgressCard(
+                title: SparkStrings.parentDashboardMissionsLabel,
+                subtitle: SparkStrings.parentDashboardMissionsSubtitle(
+                  stats.dailyMissionsCompleted,
+                  stats.dailyMissionsTotal,
+                ),
+                value: stats.dailyMissionsTotal == 0
+                    ? 0
+                    : stats.dailyMissionsCompleted / stats.dailyMissionsTotal,
+              ),
+              const SizedBox(height: 20),
+
+              // ── Weak Words ─────────────────────────────────────────────
+              if (stats.weakWords.isNotEmpty) ...[
+                const _SectionTitle(title: 'מילים לחיזוק'),
+                const SizedBox(height: 12),
+                _WeakWordsList(words: stats.weakWords),
+                const SizedBox(height: 20),
+              ],
+
+              // ── Offline Downloads ──────────────────────────────────────
+              const _SectionTitle(title: SparkStrings.offlineDownloadsTitle),
+              const SizedBox(height: 12),
+              OfflineDownloadsCard(
+                userId: context.read<ChildProfileProvider>().activeProfileId ??
+                    context.read<UserSessionProvider>().currentUserId ??
+                    '',
+              ),
+              const SizedBox(height: 24),
+              Text(
+                SparkStrings.parentDashboardNote,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey.shade700,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -238,6 +273,108 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
 // =============================================================================
 // Private widgets
 // =============================================================================
+
+class _LiveProgressStrip extends StatelessWidget {
+  const _LiveProgressStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    final wordCount = context.watch<WordBankProvider>().count;
+    final streakDays = context.watch<DailyStreakProvider>().currentStreak;
+    final coins = context.watch<CoinProvider>().coins;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: _LiveStatCard(
+              icon: Icons.menu_book_outlined,
+              color: Colors.teal.shade700,
+              label: SparkStrings.parentDashboardLiveVocabulary,
+              value: '$wordCount',
+              valueKey: ParentDashboardScreen.vocabularyValueKey,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _LiveStatCard(
+              icon: Icons.local_fire_department_outlined,
+              color: Colors.orange.shade800,
+              label: SparkStrings.parentDashboardLiveStreak,
+              value: SparkStrings.parentDashboardStreakDays(streakDays),
+              valueKey: ParentDashboardScreen.streakValueKey,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _LiveStatCard(
+              icon: Icons.account_balance_wallet_outlined,
+              color: Colors.green.shade700,
+              label: SparkStrings.parentDashboardLiveCoins,
+              value: '$coins',
+              valueKey: ParentDashboardScreen.coinsValueKey,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveStatCard extends StatelessWidget {
+  const _LiveStatCard({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.value,
+    required this.valueKey,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String value;
+  final Key valueKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              key: valueKey,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey.shade900,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.title});

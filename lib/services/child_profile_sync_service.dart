@@ -2,8 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/child_profile.dart';
+import '../models/daily_streak.dart';
 import '../models/equipped_avatar.dart';
+import 'avatar_inventory_service.dart';
 import 'child_profile_service.dart';
+import 'daily_streak_service.dart';
 import 'shop_customization_service.dart';
 
 /// Syncs child profiles between local storage and Firestore.
@@ -14,14 +17,21 @@ class ChildProfileSyncService {
     FirebaseFirestore? firestore,
     ChildProfileService? profileService,
     ShopCustomizationService? shopCustomizationService,
+    DailyStreakService? dailyStreakService,
+    AvatarInventoryService? avatarInventoryService,
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
         _profileService = profileService ?? ChildProfileService(),
         _shopCustomizationService =
-            shopCustomizationService ?? ShopCustomizationService();
+            shopCustomizationService ?? ShopCustomizationService(),
+        _dailyStreakService = dailyStreakService ?? DailyStreakService(),
+        _avatarInventoryService =
+            avatarInventoryService ?? AvatarInventoryService();
 
   final FirebaseFirestore _firestore;
   final ChildProfileService _profileService;
   final ShopCustomizationService _shopCustomizationService;
+  final DailyStreakService _dailyStreakService;
+  final AvatarInventoryService _avatarInventoryService;
 
   CollectionReference<Map<String, dynamic>> _profilesCollection(
     String parentUid,
@@ -105,6 +115,64 @@ class ChildProfileSyncService {
     }
   }
 
+  /// Pushes the practice [DailyStreak] for [profileId] onto the private
+  /// profile document. A merge write, so it never clobbers coins, shop
+  /// unlocks, or the integer login-claim `dailyStreak`. Not published to
+  /// the leaderboard — that entry keeps a privacy-safe int streak.
+  ///
+  /// Used by [DailyStreakProvider] after a successful [recordPractice].
+  /// Guests / local profiles have no parentUid and skip this path.
+  Future<bool> updatePracticeStreak(
+    String parentUid,
+    String profileId,
+    DailyStreak streak,
+  ) async {
+    try {
+      await _profileDoc(parentUid, profileId).set(
+        {
+          // Practice streak is a map. The integer login-claim
+          // `dailyStreak` is left untouched by this merge write so the
+          // leaderboard / profile-switcher summary cannot be clobbered
+          // by a practice day.
+          'practiceStreak': streak.toJson(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      return true;
+    } catch (e) {
+      debugPrint('ChildProfileSyncService.updatePracticeStreak failed: $e');
+      return false;
+    }
+  }
+
+  /// Pushes the Avatar Economy unlock set for [profileId] onto the private
+  /// profile document. A merge write using [FieldValue.arrayUnion] so a
+  /// concurrent purchase on another device is never dropped. Not published
+  /// to the leaderboard (privacy contract — inventory stays private).
+  ///
+  /// Used by [AvatarInventoryProvider] after a successful purchase.
+  Future<bool> updateUnlockedItems(
+    String parentUid,
+    String profileId,
+    Set<String> itemIds,
+  ) async {
+    try {
+      final ids = itemIds.where((id) => id.isNotEmpty).toList();
+      await _profileDoc(parentUid, profileId).set(
+        {
+          if (ids.isNotEmpty) 'unlockedItems': FieldValue.arrayUnion(ids),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      return true;
+    } catch (e) {
+      debugPrint('ChildProfileSyncService.updateUnlockedItems failed: $e');
+      return false;
+    }
+  }
+
   /// Pull cloud profiles and merge into local storage (newer updatedAt wins).
   Future<void> syncFromCloud(String parentUid) async {
     try {
@@ -137,13 +205,14 @@ class ChildProfileSyncService {
             localUpdated != null &&
             (cloudUpdated == null || !localUpdated.isBefore(cloudUpdated));
 
-        // Whichever side wins the profile-level pick, shop purchases are
-        // merged field-by-field so an unlock on the losing side is never lost
-        // (CLAUDE.md §2.3: lists union, equipped scalars follow newer updatedAt).
+        // Whichever side wins the profile-level pick, shop purchases,
+        // practice streaks, and avatar inventory are merged field-by-field
+        // so an unlock / practice day on the losing side is never lost
+        // (CLAUDE.md §2.3: lists union, stats take the higher value).
         final base = keepLocal
             ? localProfile
             : cloudProfile.copyWith(pendingSync: false);
-        merged[cloudProfile.id] = _mergeShopFields(
+        merged[cloudProfile.id] = _mergeCloudFields(
           base: base,
           local: localProfile,
           cloud: cloudProfile,
@@ -151,10 +220,12 @@ class ChildProfileSyncService {
       }
 
       await _profileService.saveProfiles(merged.values.toList());
-      // Reflect merged unlocks back onto each profile's device store so a
-      // cloud-only purchase is usable on this device immediately.
+      // Reflect merged unlocks / streak back onto each profile's device
+      // store so a cloud-only purchase or practice day is usable here.
       for (final profile in merged.values) {
         await _writeShopStateToDevice(profile);
+        await _writePracticeStreakToDevice(profile);
+        await _writeInventoryToDevice(profile);
       }
       await syncPendingToCloud(parentUid);
     } catch (e, stackTrace) {
@@ -163,16 +234,21 @@ class ChildProfileSyncService {
     }
   }
 
-  /// Returns [base] with shop fields replaced by a loss-proof merge of [local]
-  /// and [cloud]: unlocked lists are unioned; equipped ids come from whichever
-  /// profile has the newer `updatedAt` (falling back to any non-null value).
-  ChildProfile _mergeShopFields({
+  /// Returns [base] with shop, practice-streak, and inventory fields replaced
+  /// by a loss-proof merge of [local] and [cloud]: unlocked lists are
+  /// unioned; equipped ids come from whichever profile has the newer
+  /// `updatedAt`; practice streaks take the higher count (claimed
+  /// milestones union).
+  ChildProfile _mergeCloudFields({
     required ChildProfile base,
     required ChildProfile local,
     required ChildProfile cloud,
   }) {
     final themes = <String>{...local.unlockedThemes, ...cloud.unlockedThemes};
     final sounds = <String>{...local.unlockedSounds, ...cloud.unlockedSounds};
+    final items = <String>{...local.unlockedItems, ...cloud.unlockedItems};
+    final practice =
+        DailyStreak.merge(local.practiceStreak, cloud.practiceStreak);
 
     final localUpdated = local.updatedAt ?? local.createdAt;
     final cloudUpdated = cloud.updatedAt ?? cloud.createdAt;
@@ -182,14 +258,20 @@ class ChildProfileSyncService {
     final other = cloudIsNewer ? local : cloud;
 
     // If the union grew past what `base` carried, the winning side is missing
-    // an unlock the other side had — mark it dirty so the merged set is
-    // re-uploaded and the cloud converges on the next push.
+    // an unlock / milestone the other side had — mark it dirty so the merged
+    // set is re-uploaded and the cloud converges on the next push.
     final grewBeyondBase = themes.length > base.unlockedThemes.length ||
-        sounds.length > base.unlockedSounds.length;
+        sounds.length > base.unlockedSounds.length ||
+        items.length > base.unlockedItems.length ||
+        practice.claimedMilestones.length >
+            base.practiceStreak.claimedMilestones.length ||
+        practice.currentStreak > base.practiceStreak.currentStreak;
 
     return base.copyWith(
       unlockedThemes: themes.toList(),
       unlockedSounds: sounds.toList(),
+      unlockedItems: items.toList(),
+      practiceStreak: practice,
       equippedTheme: preferred.equippedTheme ?? other.equippedTheme,
       equippedSound: preferred.equippedSound ?? other.equippedSound,
       pendingSync: grewBeyondBase ? true : base.pendingSync,
@@ -215,6 +297,34 @@ class ChildProfileSyncService {
       );
     } catch (e) {
       debugPrint('ChildProfileSyncService: shop state write-back failed: $e');
+    }
+  }
+
+  Future<void> _writePracticeStreakToDevice(ChildProfile profile) async {
+    if (profile.practiceStreak == const DailyStreak()) return;
+    try {
+      await _dailyStreakService.applyMergedSnapshot(
+        profile.id,
+        profile.practiceStreak,
+      );
+    } catch (e) {
+      debugPrint(
+        'ChildProfileSyncService: practice streak write-back failed: $e',
+      );
+    }
+  }
+
+  Future<void> _writeInventoryToDevice(ChildProfile profile) async {
+    if (profile.unlockedItems.isEmpty) return;
+    try {
+      await _avatarInventoryService.applyMergedSnapshot(
+        profile.id,
+        unlockedItemIds: profile.unlockedItems.toSet(),
+      );
+    } catch (e) {
+      debugPrint(
+        'ChildProfileSyncService: avatar inventory write-back failed: $e',
+      );
     }
   }
 

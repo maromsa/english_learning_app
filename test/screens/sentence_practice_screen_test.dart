@@ -6,7 +6,10 @@
 // so only the providers it reads from context are faked: CoinProvider (coin
 // award), plus SoundService / SparkOverlayController used by the shared
 // Celebration.fire helper on a correct answer. A [_FakeTtsService] stands in
-// for on-device TTS so no flutter_tts platform channel is involved.
+// for on-device TTS so no flutter_tts platform channel is involved. A
+// [_FakeSpeechService] stands in for speech-to-text so no microphone is used.
+
+import 'dart:async';
 
 import 'package:english_learning_app/l10n/spark_strings.dart';
 import 'package:english_learning_app/models/daily_streak.dart';
@@ -14,9 +17,12 @@ import 'package:english_learning_app/models/sentence_question.dart';
 import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_streak_provider.dart';
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
+import 'package:english_learning_app/providers/word_bank_provider.dart';
 import 'package:english_learning_app/screens/sentence_practice_screen.dart';
 import 'package:english_learning_app/services/audio_settings.dart';
+import 'package:english_learning_app/services/gemini_sentence_service.dart';
 import 'package:english_learning_app/services/sound_service.dart';
+import 'package:english_learning_app/services/speech_service.dart';
 import 'package:english_learning_app/services/tts_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
 import 'package:english_learning_app/widgets/streak_milestone_dialog.dart';
@@ -61,11 +67,74 @@ class _FakeTtsService extends TtsService {
   }
 }
 
-Future<(CoinProvider, DailyStreakProvider, _FakeTtsService)> _pumpScreen(
+class _FakeSpeechService extends SpeechService {
+  _FakeSpeechService({this.initializeSucceeds = true});
+
+  final bool initializeSucceeds;
+  final List<String> started = [];
+  int stopCount = 0;
+  bool _listening = false;
+  void Function(String recognized)? _onResult;
+
+  @override
+  bool get isListening => _listening;
+
+  @override
+  Future<bool> initialize() async => initializeSucceeds;
+
+  @override
+  Future<void> startListening(
+    void Function(String recognized) onResult, {
+    void Function(double level)? onSoundLevel,
+    void Function()? onDone,
+  }) async {
+    if (!initializeSucceeds) return;
+    _listening = true;
+    _onResult = onResult;
+    started.add('listen');
+  }
+
+  @override
+  Future<void> stopListening() async {
+    _listening = false;
+    stopCount++;
+  }
+
+  void emit(String text) {
+    _onResult?.call(text);
+  }
+}
+
+class _FakeGeminiSentenceService extends GeminiSentenceService {
+  _FakeGeminiSentenceService({
+    this.sentences = const [],
+    this.onGenerate,
+  }) : super(generator: (prompt, {systemInstruction}) async => null);
+
+  final List<SentenceQuestion> sentences;
+  final Future<void> Function()? onGenerate;
+  int calls = 0;
+
+  @override
+  Future<List<SentenceQuestion>> generateSentences({
+    int count = GeminiSentenceService.defaultCount,
+    List<String> avoid = const [],
+  }) async {
+    calls++;
+    await onGenerate?.call();
+    return sentences;
+  }
+}
+
+Future<(CoinProvider, DailyStreakProvider, _FakeTtsService, _FakeSpeechService)>
+    _pumpScreen(
   WidgetTester tester, {
   List<SentenceQuestion>? questions,
   DailyStreak? initialStreak,
   _FakeTtsService? tts,
+  _FakeSpeechService? speech,
+  GeminiSentenceService? gemini,
+  WordBankProvider? wordBank,
 }) async {
   SharedPreferences.setMockInitialValues({});
   await AudioSettings().setMuted(false);
@@ -83,26 +152,38 @@ Future<(CoinProvider, DailyStreakProvider, _FakeTtsService)> _pumpScreen(
     coinProvider: coinProvider,
   );
   final fakeTts = tts ?? _FakeTtsService();
+  final fakeSpeech = speech ?? _FakeSpeechService();
+  final bank = wordBank ?? WordBankProvider();
 
   await tester.pumpWidget(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: coinProvider),
         ChangeNotifierProvider.value(value: dailyStreakProvider),
+        ChangeNotifierProvider.value(value: bank),
         ChangeNotifierProvider(create: (_) => SparkOverlayController()),
         Provider<SoundService>.value(value: SoundService()),
         Provider<TtsService>.value(value: fakeTts),
+        Provider<SpeechService>.value(value: fakeSpeech),
       ],
       child: MaterialApp(
         home: SentencePracticeScreen(
           questions: questions ?? _questions,
           ttsService: fakeTts,
+          speechService: fakeSpeech,
+          geminiSentenceService: gemini,
         ),
       ),
     ),
   );
   await tester.pump();
-  return (coinProvider, dailyStreakProvider, fakeTts);
+  return (coinProvider, dailyStreakProvider, fakeTts, fakeSpeech);
+}
+
+Future<void> _tapMic(WidgetTester tester) async {
+  await tester.tap(find.byKey(SentencePracticeScreen.micKey));
+  await tester.pump();
+  await tester.pump();
 }
 
 /// Taps the option card labelled [label] and flushes the correct-answer
@@ -129,6 +210,9 @@ void main() {
       expect(find.byType(WordSpeakerButton), findsOneWidget);
       expect(find.byKey(SentencePracticeScreen.speakerKey), findsOneWidget);
       expect(find.byIcon(Icons.volume_up_rounded), findsOneWidget);
+      expect(find.byKey(SentencePracticeScreen.micKey), findsOneWidget);
+      expect(find.byIcon(Icons.mic_none_rounded), findsOneWidget);
+      expect(find.text(SparkStrings.sentenceSpeakPrompt), findsOneWidget);
       expect(find.text(SparkStrings.sentencePracticeProgress(1, 2)),
           findsOneWidget);
     });
@@ -162,7 +246,8 @@ void main() {
     });
 
     testWidgets('a correct option awards coins and advances', (tester) async {
-      final (coinProvider, dailyStreakProvider, _) = await _pumpScreen(tester);
+      final (coinProvider, dailyStreakProvider, _, _) =
+          await _pumpScreen(tester);
       final start = coinProvider.coins;
 
       await _tapOption(tester, 'cat');
@@ -178,9 +263,21 @@ void main() {
           findsOneWidget);
     });
 
+    testWidgets('a correct option adds the missing word to the word bank',
+        (tester) async {
+      final bank = WordBankProvider();
+      await _pumpScreen(tester, wordBank: bank);
+
+      await _tapOption(tester, 'cat');
+
+      expect(bank.words, hasLength(1));
+      expect(bank.words.first.word, 'cat');
+      expect(bank.words.first.translation, 'החתול ישן');
+    });
+
     testWidgets('reaching a streak milestone shows the celebration dialog',
         (tester) async {
-      final (coinProvider, dailyStreakProvider, _) = await _pumpScreen(
+      final (coinProvider, dailyStreakProvider, _, _) = await _pumpScreen(
         tester,
         initialStreak: DailyStreak(
           currentStreak: 2,
@@ -214,7 +311,8 @@ void main() {
 
     testWidgets('a wrong option keeps the child on the same question',
         (tester) async {
-      final (coinProvider, dailyStreakProvider, _) = await _pumpScreen(tester);
+      final (coinProvider, dailyStreakProvider, _, _) =
+          await _pumpScreen(tester);
       final start = coinProvider.coins;
 
       await tester.tap(find.byKey(const ValueKey('option_dog')));
@@ -275,7 +373,201 @@ void main() {
 
       expect(find.text(SparkStrings.sentencePracticeEmpty), findsOneWidget);
       expect(find.byType(WordSpeakerButton), findsNothing);
+      expect(find.byKey(SentencePracticeScreen.micKey), findsNothing);
       expect(tts.spoken, isEmpty);
+    });
+
+    testWidgets('mic tap shows a listening state', (tester) async {
+      final speech = _FakeSpeechService();
+      await _pumpScreen(tester, speech: speech);
+
+      await _tapMic(tester);
+
+      expect(speech.started, isNotEmpty);
+      expect(
+        find.byKey(SentencePracticeScreen.listeningBadgeKey),
+        findsOneWidget,
+      );
+      expect(find.text(SparkStrings.micListening), findsOneWidget);
+      expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
+    });
+
+    testWidgets('a matching pronunciation awards a bonus and a green check',
+        (tester) async {
+      final speech = _FakeSpeechService();
+      final (coinProvider, _, _, _) = await _pumpScreen(
+        tester,
+        speech: speech,
+      );
+      final start = coinProvider.coins;
+
+      await _tapMic(tester);
+      speech.emit('THE CAT IS SLEEPING!');
+      await tester.pump();
+      await tester.pump();
+
+      expect(coinProvider.coins,
+          start + SentencePracticeScreen.pronunciationBonusCoins);
+      expect(
+        find.byKey(SentencePracticeScreen.pronunciationSuccessKey),
+        findsOneWidget,
+      );
+      expect(
+        find.text(SparkStrings.sentencePronunciationSuccess),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(SentencePracticeScreen.listeningBadgeKey),
+        findsNothing,
+      );
+      // Fill-in-the-blank question stays put.
+      expect(find.text('החתול ישן'), findsOneWidget);
+    });
+
+    testWidgets('a mismatched pronunciation nudges the child to try again',
+        (tester) async {
+      final speech = _FakeSpeechService();
+      final (coinProvider, _, _, _) = await _pumpScreen(
+        tester,
+        speech: speech,
+      );
+      final start = coinProvider.coins;
+
+      await _tapMic(tester);
+      speech.emit('I drink juice');
+      await tester.pump();
+      await tester.pump();
+
+      expect(coinProvider.coins, start);
+      expect(
+        find.text(SparkStrings.sentencePronunciationTryAgain),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(SentencePracticeScreen.pronunciationSuccessKey),
+        findsNothing,
+      );
+    });
+
+    testWidgets('a successful pronunciation bonus is awarded only once',
+        (tester) async {
+      final speech = _FakeSpeechService();
+      final (coinProvider, _, _, _) = await _pumpScreen(
+        tester,
+        speech: speech,
+      );
+      final start = coinProvider.coins;
+
+      await _tapMic(tester);
+      speech.emit('The cat is sleeping');
+      await tester.pump();
+      await tester.pump();
+
+      await _tapMic(tester);
+      speech.emit('The cat is sleeping');
+      await tester.pump();
+      await tester.pump();
+
+      expect(coinProvider.coins,
+          start + SentencePracticeScreen.pronunciationBonusCoins);
+    });
+
+    testWidgets('a denied microphone shows a permission hint', (tester) async {
+      final speech = _FakeSpeechService(initializeSucceeds: false);
+      await _pumpScreen(tester, speech: speech);
+
+      await _tapMic(tester);
+
+      expect(find.text(SparkStrings.micPermissionAsk), findsOneWidget);
+      expect(
+        find.byKey(SentencePracticeScreen.listeningBadgeKey),
+        findsNothing,
+      );
+    });
+
+    testWidgets('Gemini sentences append when the catalog queue is empty',
+        (tester) async {
+      const extra = SentenceQuestion(
+        fullEnglishSentence: 'The sun is hot',
+        hebrewTranslation: 'השמש חמה',
+        missingWord: 'sun',
+        options: ['sun', 'moon', 'star'],
+      );
+      final gemini = _FakeGeminiSentenceService(sentences: const [extra]);
+      await _pumpScreen(
+        tester,
+        gemini: gemini,
+        questions: [_questions.first],
+      );
+
+      await _tapOption(tester, 'cat');
+
+      expect(gemini.calls, 1);
+      expect(find.text('השמש חמה'), findsOneWidget);
+      expect(
+          find.text(SparkStrings.sentencePracticeSummaryTitle), findsNothing);
+      expect(
+        find.text(SparkStrings.sentencePracticeProgress(2, 2)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('shows a generating overlay while Spark fetches sentences',
+        (tester) async {
+      final gate = Completer<void>();
+      const extra = SentenceQuestion(
+        fullEnglishSentence: 'The sun is hot',
+        hebrewTranslation: 'השמש חמה',
+        missingWord: 'sun',
+        options: ['sun', 'moon', 'star'],
+      );
+      final gemini = _FakeGeminiSentenceService(
+        sentences: const [extra],
+        onGenerate: () => gate.future,
+      );
+      await _pumpScreen(
+        tester,
+        gemini: gemini,
+        questions: [_questions.first],
+      );
+
+      await tester.tap(find.byKey(const ValueKey('option_cat')));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 800));
+
+      expect(find.byKey(SentencePracticeScreen.generatingKey), findsOneWidget);
+      expect(find.text(SparkStrings.sentenceGenerating), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      gate.complete();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(SentencePracticeScreen.generatingKey), findsNothing);
+      expect(find.text('השמש חמה'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 900));
+    });
+
+    testWidgets('malformed Gemini output still finishes on the catalog',
+        (tester) async {
+      final gemini = _FakeGeminiSentenceService(sentences: const []);
+      await _pumpScreen(
+        tester,
+        gemini: gemini,
+        questions: [_questions.first],
+      );
+
+      await _tapOption(tester, 'cat');
+
+      expect(
+        find.text(SparkStrings.sentencePracticeSummaryTitle),
+        findsOneWidget,
+      );
+      expect(
+        find.text(SparkStrings.sentencePracticeScore(1, 1)),
+        findsOneWidget,
+      );
     });
   });
 }

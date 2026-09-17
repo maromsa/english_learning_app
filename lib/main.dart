@@ -13,6 +13,7 @@ import 'package:english_learning_app/providers/shop_customization_provider.dart'
 import 'package:english_learning_app/providers/spark_overlay_controller.dart';
 import 'package:english_learning_app/providers/sticker_album_provider.dart';
 import 'package:english_learning_app/providers/theme_provider.dart';
+import 'package:english_learning_app/providers/word_bank_provider.dart';
 import 'package:english_learning_app/services/achievement_service.dart';
 import 'package:english_learning_app/services/speech_feedback_service.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -28,8 +29,10 @@ import 'providers/user_session_provider.dart';
 import 'screens/auth_gate.dart';
 import 'services/audio_settings.dart';
 import 'services/background_music_service.dart';
+import 'services/gemini_sentence_service.dart';
 import 'services/notification_service.dart';
 import 'services/sound_service.dart';
+import 'services/speech_service.dart';
 import 'services/streak_shield_service.dart';
 import 'services/telemetry_service.dart';
 import 'services/tts_service.dart';
@@ -113,6 +116,7 @@ Future<void> main() async {
   final equippedAvatarProvider = EquippedAvatarProvider();
   final avatarInventoryProvider = AvatarInventoryProvider();
   final dailyStreakProvider = DailyStreakProvider(coinProvider: coinProvider);
+  final wordBankProvider = WordBankProvider();
   final sparkOverlayController = SparkOverlayController();
   final achievementService = AchievementService(
     coinProvider: coinProvider,
@@ -183,6 +187,14 @@ Future<void> main() async {
         },
       ).catchError((e) {
         debugPrint('Error loading daily streak: $e');
+      }),
+      wordBankProvider.load().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('Word bank loading timed out, using defaults');
+        },
+      ).catchError((e) {
+        debugPrint('Error loading word bank: $e');
       }),
       dailyMissionProvider.initialize().timeout(
         const Duration(seconds: 3),
@@ -256,6 +268,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: equippedAvatarProvider),
         ChangeNotifierProvider.value(value: avatarInventoryProvider),
         ChangeNotifierProvider.value(value: dailyStreakProvider),
+        ChangeNotifierProvider.value(value: wordBankProvider),
         ChangeNotifierProvider.value(value: achievementService),
         ChangeNotifierProvider.value(value: characterProvider),
         ChangeNotifierProvider.value(value: dailyMissionProvider),
@@ -272,6 +285,13 @@ Future<void> main() async {
         Provider<TtsService>(
           create: (_) => TtsService(),
           dispose: (_, service) => unawaited(service.stop()),
+        ),
+        Provider<SpeechService>(
+          create: (_) => SpeechService(),
+          dispose: (_, service) => unawaited(service.stopListening()),
+        ),
+        Provider<GeminiSentenceService>(
+          create: (_) => GeminiSentenceService(),
         ),
       ],
       child: MyApp(hasSeenOnboarding: hasSeenOnboarding),

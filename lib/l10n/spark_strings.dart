@@ -225,12 +225,32 @@ class SparkStrings {
   static String hearSentenceSemantics(String sentence) =>
       'השמעת המשפט: $sentence';
 
+  /// Label next to the 🎤 button — "say the sentence out loud".
+  static const String sentenceSpeakPrompt = 'אמרו את המשפט';
+
+  /// Accessibility label for the sentence 🎤 button.
+  static String speakSentenceSemantics(String sentence) =>
+      'הקלטת המשפט: $sentence';
+
+  static const String sentencePronunciationSuccess = 'כל הכבוד! הגייה מעולה!';
+  static const String sentencePronunciationTryAgain = 'כמעט! בואו ננסה שוב';
+
   static String sentencePracticeProgress(int current, int total) =>
       'משפט $current מתוך $total';
   static const String sentencePracticeSummaryTitle = 'סיימנו את המשפטים!';
   static String sentencePracticeScore(int correct, int total) =>
       '$correct מתוך $total נכון';
   static const String sentencePracticeEmpty = 'אין עדיין משפטים לתרגול';
+  static const String sentenceGenerating = 'ספרק ממציאה משפטים חדשים ✨';
+
+  // ─── Word Bank ("My Vocabulary") ──────────────
+  static const String wordBankTitle = 'מילים שלי';
+  static const String wordBankEmpty = 'עדיין אין מילים. בואו נתרגל!';
+  static const String wordBankMapButton = 'מילים שלי';
+  static const String wordReviewPlay = 'נשחק!';
+  static const String wordReviewTitle = 'נחזור על המילים!';
+  static const String wordReviewPrompt = 'מה פירוש המילה?';
+  static const String wordReviewCorrect = 'כל הכבוד!';
 
   // ─── Streak milestones ────────────────────────
   static String streakMilestoneTitle(int day) => 'רצף של $day ימים!';
@@ -257,6 +277,10 @@ class SparkStrings {
   static const String parentGateContinue = 'המשך';
 
   static const String parentDashboardTitle = 'לוח בקרה להורים';
+  static const String parentDashboardLiveVocabulary = 'מילים שנלמדו';
+  static const String parentDashboardLiveStreak = 'רצף תרגול';
+  static const String parentDashboardLiveCoins = 'יתרת מטבעות';
+  static String parentDashboardStreakDays(int days) => '$days ימים';
   static const String parentDashboardNoUser = 'אין משתמש פעיל';
   static const String parentDashboardDefaultChild = 'הלומד/ת';
   static const String parentDashboardOverview = 'סיכום מהיר';

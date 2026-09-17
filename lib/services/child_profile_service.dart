@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/child_profile.dart';
+import '../models/daily_streak.dart';
 import '../models/local_user.dart';
 import 'local_user_service.dart';
 
@@ -123,11 +124,13 @@ class ChildProfileService {
     required String profileId,
     int? totalStars,
     int? dailyStreak,
+    DailyStreak? practiceStreak,
     int? completedWordsCount,
     Map<String, bool>? achievements,
     int? coins,
     List<String>? unlockedThemes,
     List<String>? unlockedSounds,
+    List<String>? unlockedItems,
     String? equippedTheme,
     String? equippedSound,
   }) async {
@@ -140,11 +143,13 @@ class ChildProfileService {
       profile.copyWith(
         totalStars: totalStars ?? profile.totalStars,
         dailyStreak: dailyStreak ?? profile.dailyStreak,
+        practiceStreak: practiceStreak ?? profile.practiceStreak,
         completedWordsCount: completedWordsCount ?? profile.completedWordsCount,
         achievements: achievements ?? profile.achievements,
         coins: coins ?? profile.coins,
         unlockedThemes: unlockedThemes ?? profile.unlockedThemes,
         unlockedSounds: unlockedSounds ?? profile.unlockedSounds,
+        unlockedItems: unlockedItems ?? profile.unlockedItems,
         equippedTheme: equippedTheme ?? profile.equippedTheme,
         equippedSound: equippedSound ?? profile.equippedSound,
         updatedAt: DateTime.now(),

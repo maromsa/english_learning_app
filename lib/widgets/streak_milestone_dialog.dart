@@ -1,4 +1,5 @@
 import 'package:english_learning_app/l10n/spark_strings.dart';
+import 'package:english_learning_app/services/sound_service.dart';
 import 'package:english_learning_app/utils/aurora_tokens.dart';
 import 'package:english_learning_app/widgets/streak_badge.dart';
 import 'package:english_learning_app/widgets/ui/kid_button.dart';
@@ -28,6 +29,8 @@ class StreakMilestoneDialog extends StatelessWidget {
     required int day,
     required int coins,
   }) {
+    SoundService().playSuccessSound();
+    SoundService().playCoinSound();
     return showDialog<void>(
       context: context,
       barrierDismissible: true,

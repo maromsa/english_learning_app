@@ -1,8 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:english_learning_app/models/avatar_inventory.dart';
 import 'package:english_learning_app/models/child_profile.dart';
+import 'package:english_learning_app/models/daily_streak.dart';
 import 'package:english_learning_app/models/equipped_avatar.dart';
+import 'package:english_learning_app/services/avatar_inventory_service.dart';
 import 'package:english_learning_app/services/child_profile_service.dart';
 import 'package:english_learning_app/services/child_profile_sync_service.dart';
+import 'package:english_learning_app/services/daily_streak_service.dart';
 import 'package:english_learning_app/services/shop_customization_service.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,6 +32,8 @@ void main() {
         firestore: firestore,
         profileService: profileService,
         shopCustomizationService: shopService,
+        dailyStreakService: DailyStreakService(prefs: prefs),
+        avatarInventoryService: AvatarInventoryService(prefs: prefs),
       );
     });
 
@@ -288,6 +294,172 @@ void main() {
             .get();
         expect(doc.data()?['displayName'], 'Wearer');
         expect(doc.data()?['equippedAvatar'], {'hatId': 'hat_wizard'});
+      });
+    });
+
+    group('practice streak + avatar inventory sync', () {
+      test('updatePracticeStreak writes a map onto the private profile doc',
+          () async {
+        const parentUid = 'streakParent1';
+        final profile = await profileService.createProfile(
+          displayName: 'Practicer',
+          avatarColor: ChildProfile.defaultAvatarColors.first,
+        );
+        await syncService.syncProfileToCloud(parentUid, profile);
+
+        final ok = await syncService.updatePracticeStreak(
+          parentUid,
+          profile.id,
+          DailyStreak(
+            currentStreak: 3,
+            lastPracticeDate: DateTime(2026, 9, 15),
+            claimedMilestones: const [3],
+          ),
+        );
+        expect(ok, true);
+
+        final doc = await firestore
+            .collection('users')
+            .doc(parentUid)
+            .collection('childProfiles')
+            .doc(profile.id)
+            .get();
+        expect(doc.data()?['practiceStreak']?['currentStreak'], 3);
+        expect(doc.data()?['practiceStreak']?['claimedMilestones'], [3]);
+        // Merge write must not clobber unrelated fields.
+        expect(doc.data()?['displayName'], 'Practicer');
+      });
+
+      test('updateUnlockedItems unions item ids onto the private profile doc',
+          () async {
+        const parentUid = 'invParent1';
+        final profile = await profileService.createProfile(
+          displayName: 'Buyer',
+          avatarColor: ChildProfile.defaultAvatarColors.first,
+        );
+        await syncService.syncProfileToCloud(parentUid, profile);
+
+        final ok = await syncService.updateUnlockedItems(
+          parentUid,
+          profile.id,
+          {'hat_wizard'},
+        );
+        expect(ok, true);
+
+        final doc = await firestore
+            .collection('users')
+            .doc(parentUid)
+            .collection('childProfiles')
+            .doc(profile.id)
+            .get();
+        expect(doc.data()?['unlockedItems'], ['hat_wizard']);
+        expect(doc.data()?['displayName'], 'Buyer');
+      });
+
+      test('syncProfileToCloud uploads practiceStreak and unlockedItems',
+          () async {
+        const parentUid = 'fullParent1';
+        final profile = await profileService.createProfile(
+          displayName: 'Full',
+          avatarColor: ChildProfile.defaultAvatarColors.first,
+        );
+        await profileService.updateProgressSnapshot(
+          profileId: profile.id,
+          practiceStreak: DailyStreak(
+            currentStreak: 2,
+            lastPracticeDate: DateTime(2026, 9, 14),
+          ),
+          unlockedItems: const ['shirt_red'],
+        );
+
+        final updated = await profileService.getProfileById(profile.id);
+        await syncService.syncProfileToCloud(parentUid, updated!);
+
+        final doc = await firestore
+            .collection('users')
+            .doc(parentUid)
+            .collection('childProfiles')
+            .doc(profile.id)
+            .get();
+        expect(doc.data()?['practiceStreak']?['currentStreak'], 2);
+        expect(doc.data()?['unlockedItems'], ['shirt_red']);
+        // Leaderboard still publishes the integer login-claim streak only.
+        final entry = await firestore
+            .collection('leaderboard')
+            .doc('${parentUid}_${profile.id}')
+            .get();
+        expect(entry.data()?.containsKey('unlockedItems'), isFalse);
+        expect(entry.data()?.containsKey('practiceStreak'), isFalse);
+        expect(entry.data()?['dailyStreak'], isA<int>());
+      });
+
+      test(
+          'syncFromCloud unions unlockedItems and merges practice streaks onto '
+          'the device stores', () async {
+        const parentUid = 'mergeParent1';
+        const profileId = 'kidStreak';
+
+        await profileService.saveProfile(
+          ChildProfile(
+            id: profileId,
+            displayName: 'Kid',
+            avatarColor: ChildProfile.defaultAvatarColors.first,
+            practiceStreak: const DailyStreak(
+              currentStreak: 4,
+              claimedMilestones: [3],
+            ),
+            unlockedItems: const ['hat_wizard'],
+            updatedAt: DateTime(2024, 5, 1),
+            pendingSync: false,
+          ),
+        );
+        await DailyStreakService(prefs: prefs).save(
+          profileId,
+          const DailyStreak(currentStreak: 4, claimedMilestones: [3]),
+        );
+        await AvatarInventoryService(prefs: prefs).save(
+          profileId,
+          const AvatarInventory(unlockedItemIds: {'hat_wizard'}),
+        );
+
+        await firestore
+            .collection('users')
+            .doc(parentUid)
+            .collection('childProfiles')
+            .doc(profileId)
+            .set({
+          'id': profileId,
+          'displayName': 'Kid',
+          'avatarColor': ChildProfile.defaultAvatarColors.first,
+          'practiceStreak': {
+            'currentStreak': 2,
+            'claimedMilestones': [3, 7],
+          },
+          'unlockedItems': ['shirt_red'],
+          'updatedAt': Timestamp.fromDate(DateTime(2024, 6, 1)),
+        });
+
+        await syncService.syncFromCloud(parentUid);
+
+        final merged = await profileService.getProfileById(profileId);
+        expect(merged!.practiceStreak.currentStreak, 4);
+        expect(merged.practiceStreak.claimedMilestones, [3, 7]);
+        expect(
+          merged.unlockedItems,
+          containsAll(<String>['hat_wizard', 'shirt_red']),
+        );
+
+        final streakOnDevice =
+            await DailyStreakService(prefs: prefs).load(profileId);
+        expect(streakOnDevice.currentStreak, 4);
+        expect(streakOnDevice.claimedMilestones, [3, 7]);
+
+        final itemsOnDevice =
+            await AvatarInventoryService(prefs: prefs).load(profileId);
+        expect(
+          itemsOnDevice.unlockedItemIds,
+          containsAll(<String>['hat_wizard', 'shirt_red']),
+        );
       });
     });
   });
