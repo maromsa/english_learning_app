@@ -277,6 +277,10 @@ class SparkStrings {
   static const String parentGateContinue = 'המשך';
 
   static const String parentDashboardTitle = 'לוח בקרה להורים';
+  static const String parentDashboardLiveVocabulary = 'מילים שנלמדו';
+  static const String parentDashboardLiveStreak = 'רצף תרגול';
+  static const String parentDashboardLiveCoins = 'יתרת מטבעות';
+  static String parentDashboardStreakDays(int days) => '$days ימים';
   static const String parentDashboardNoUser = 'אין משתמש פעיל';
   static const String parentDashboardDefaultChild = 'הלומד/ת';
   static const String parentDashboardOverview = 'סיכום מהיר';

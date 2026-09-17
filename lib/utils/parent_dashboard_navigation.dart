@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../screens/parent_dashboard_screen.dart';
-import '../widgets/parental_gate_dialog.dart';
+import '../widgets/parent_gate.dart';
 
 /// Shows the parental gate, then navigates to [ParentDashboardScreen] on success.
 ///
@@ -11,7 +11,7 @@ Future<void> openParentDashboard(
   BuildContext context, {
   WidgetBuilder? dashboardBuilder,
 }) async {
-  final passed = await ParentalGateDialog.show(context);
+  final passed = await ParentGateDialog.show(context);
   if (!passed || !context.mounted) {
     return;
   }
