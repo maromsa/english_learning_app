@@ -33,6 +33,30 @@ class SoundService {
   @visibleForTesting
   VoidCallback? debugOnPlayEpic;
 
+  @visibleForTesting
+  VoidCallback? debugOnPlaySuccess;
+
+  @visibleForTesting
+  VoidCallback? debugOnPlayCoin;
+
+  @visibleForTesting
+  VoidCallback? debugOnPlayError;
+
+  /// When true, [playSound] records the type and returns without touching
+  /// the audio engine — used by widget/unit tests that have no assets.
+  @visibleForTesting
+  bool debugSkipPlayback = false;
+
+  /// Types passed to [playSound] while unmuted. Tests inspect this instead
+  /// of asserting on real audio output.
+  @visibleForTesting
+  final List<String> playedTypes = [];
+
+  /// Mute follows [AudioSettings] so SFX, TTS, and BGM stay in lockstep.
+  bool get isMuted => AudioSettings().muted;
+
+  Future<void> setMuted(bool value) => AudioSettings().setMuted(value);
+
   /// Initialize the sound service
   Future<void> initialize() async {
     if (_initialized) return;
@@ -54,6 +78,7 @@ class SoundService {
       case epic:
         return victorySoundAsset ?? 'assets/audio/the_twinkling_map.mp3';
       case 'success':
+      case 'coin':
         return uiClickAsset;
       case 'error':
       case 'try_again':
@@ -78,6 +103,7 @@ class SoundService {
       case softChime:
       case pop:
       case 'success':
+      case 'coin':
       case 'error':
       case 'try_again':
       case 'whoosh':
@@ -117,6 +143,7 @@ class SoundService {
       case 'error':
         return 0.6; // Gentle error sound
       case 'success':
+      case 'coin':
       case 'confetti':
       case 'unlock':
       case fanfare:
@@ -130,9 +157,11 @@ class SoundService {
   /// Play a sound effect with appropriate volume.
   ///
   /// Types include [softChime], [pop], [fanfare], [epic], plus legacy keys:
-  /// `success`, `error`, `try_again`, `confetti`, `unlock`, `whoosh`, `ding`.
+  /// `success`, `coin`, `error`, `try_again`, `confetti`, `unlock`, `whoosh`, `ding`.
   Future<void> playSound(String type) async {
-    if (AudioSettings().muted) return;
+    if (isMuted) return;
+    playedTypes.add(type);
+    if (debugSkipPlayback) return;
 
     if (!_initialized) {
       await initialize();
@@ -215,9 +244,37 @@ class SoundService {
   /// Play a "success" chime — suitable for correct answers and successful
   /// purchases.  Fire-and-forget: never blocks the UI thread.
   void playSuccessSound() {
+    debugOnPlaySuccess?.call();
     playSound('success').catchError((Object e) {
       debugPrint('SoundService.playSuccessSound error: $e');
     });
+  }
+
+  /// Coin-grant sting — used when stars, coins, or streak bonuses land.
+  void playCoinSound() {
+    debugOnPlayCoin?.call();
+    playSound('coin').catchError((Object e) {
+      debugPrint('SoundService.playCoinSound error: $e');
+    });
+  }
+
+  /// Gentle miss sting — wrong answer, keep trying. Never punishing.
+  void playErrorSound() {
+    debugOnPlayError?.call();
+    playSound('error').catchError((Object e) {
+      debugPrint('SoundService.playErrorSound error: $e');
+    });
+  }
+
+  /// Clears test-only playback spies. Safe to call from production (no-op
+  /// on the audio engine).
+  @visibleForTesting
+  void resetDebugState() {
+    playedTypes.clear();
+    debugSkipPlayback = false;
+    debugOnPlaySuccess = null;
+    debugOnPlayCoin = null;
+    debugOnPlayError = null;
   }
 
   /// Dispose resources (called on app shutdown)

@@ -322,6 +322,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
     await context.read<CoinProvider>().addCoins(
           SentencePracticeScreen.pronunciationBonusCoins,
         );
+    SoundService().playCoinSound();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -385,7 +386,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
     setState(() => _selected = option);
 
     if (!correct) {
-      unawaited(SoundService().playSound('error'));
+      SoundService().playErrorSound();
       return;
     }
 
@@ -396,6 +397,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
     SoundService().playSuccessSound();
 
     await context.read<CoinProvider>().addCoins(widget.coinReward);
+    SoundService().playCoinSound();
     if (!mounted) return;
     await _addCurrentWordToBank();
     if (!mounted) return;
