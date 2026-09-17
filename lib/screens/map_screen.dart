@@ -1489,6 +1489,7 @@ class _MapScreenState extends State<MapScreen>
               Tooltip(
                 message: SparkStrings.parentsAreaButton,
                 child: IconButton(
+                  key: const ValueKey<String>('map_parents_button'),
                   icon: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
