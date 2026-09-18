@@ -58,6 +58,7 @@ dependencies:
   flutter_local_notifications: ^18.0.1
   timezone: ^0.9.4
   webview_flutter_android: ^4.12.0
+  lottie: ^3.6.1
 
 dev_dependencies:
   flutter_test:
@@ -83,6 +84,7 @@ flutter:
     - assets/images/words/
     - assets/audio/
     - assets/rive/
+    - assets/animations/
     - assets/data/levels.json
     - assets/map_3d/
     # Flutter does not recurse into subdirs; declare each folder explicitly.
