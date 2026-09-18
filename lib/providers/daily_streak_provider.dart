@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/daily_streak.dart';
 import '../services/child_profile_sync_service.dart';
 import '../services/daily_streak_service.dart';
+import '../services/notification_service.dart';
 import 'coin_provider.dart';
 
 /// Bonus coins granted the first time a practice streak reaches [day].
@@ -31,11 +32,13 @@ class DailyStreakProvider with ChangeNotifier {
     ChildProfileSyncService? syncService,
     DateTime Function()? now,
     CoinProvider? coinProvider,
+    NotificationService? notificationService,
   })  : _streak = initial ?? DailyStreak.empty(),
         _service = service ?? DailyStreakService(),
         _injectedSyncService = syncService,
         _now = now ?? DateTime.now,
-        _coinProvider = coinProvider;
+        _coinProvider = coinProvider,
+        _notifications = notificationService;
 
   /// Day-count → bonus coins. Day 3 / 7 / 14 of a consecutive streak.
   static const Map<int, int> milestoneRewards = {
@@ -49,6 +52,7 @@ class DailyStreakProvider with ChangeNotifier {
   ChildProfileSyncService? _lazySyncService;
   final DateTime Function() _now;
   final CoinProvider? _coinProvider;
+  final NotificationService? _notifications;
   DailyStreak _streak;
   String? _userId;
   String? _parentUid;
@@ -145,7 +149,29 @@ class DailyStreakProvider with ChangeNotifier {
     await _service.save(_userId, _streak);
     _notify();
     await _pushToCloud();
+    await _rescheduleReminderForNextDay();
     return true;
+  }
+
+  /// Drop today's pending nag and schedule the 16:00 reminder for tomorrow.
+  /// Failures are non-fatal: local streak already persisted.
+  Future<void> _rescheduleReminderForNextDay() async {
+    final notifications = _notifications;
+    if (notifications == null) return;
+    try {
+      final settings = await notifications.getSettings();
+      await notifications.cancelAllReminders();
+      await notifications.scheduleDailyReminder(
+        hour: settings.hour,
+        minute: settings.minute,
+        skipToday: true,
+      );
+      if (settings.srsEnabled) {
+        await notifications.scheduleSrsReminder();
+      }
+    } catch (e) {
+      debugPrint('Error rescheduling practice reminder: $e');
+    }
   }
 
   /// Publishes the current [_streak] to Firestore via

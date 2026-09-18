@@ -19,21 +19,36 @@ import 'package:timezone/timezone.dart' as tz;
 
 /// Wraps [FlutterLocalNotificationsPlugin] with app-level scheduling helpers.
 class NotificationService {
-  NotificationService._();
-  static final NotificationService instance = NotificationService._();
+  NotificationService({
+    FlutterLocalNotificationsPlugin? plugin,
+    Future<SharedPreferences> Function()? loadPrefs,
+  })  : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
+        _loadPrefs = loadPrefs ?? SharedPreferences.getInstance;
 
-  final FlutterLocalNotificationsPlugin _plugin =
-      FlutterLocalNotificationsPlugin();
+  static final NotificationService instance = NotificationService();
+
+  final FlutterLocalNotificationsPlugin _plugin;
+  final Future<SharedPreferences> Function() _loadPrefs;
 
   static const String _prefDailyHour = 'notif_daily_hour';
   static const String _prefDailyMinute = 'notif_daily_minute';
   static const String _prefDailyEnabled = 'notif_daily_enabled';
   static const String _prefSrsEnabled = 'notif_srs_enabled';
 
-  static const int _dailyReminderId = 1001;
+  static const int dailyReminderId = 1001;
   static const int _srsReminderId = 1002;
 
+  /// Default local-time reminder used on first launch and after practice.
+  static const int defaultReminderHour = 16;
+  static const int defaultReminderMinute = 0;
+
+  static const String dailyReminderTitle = 'Time to practice! 🔥';
+  static const String dailyReminderBody = 'Keep your English streak alive!';
+
   bool _initialized = false;
+
+  @visibleForTesting
+  bool get isInitialized => _initialized;
 
   // --------------------------------------------------------------------------
   // Init
@@ -61,6 +76,11 @@ class NotificationService {
     );
 
     await _plugin.initialize(initSettings);
+    try {
+      await requestPermission();
+    } catch (e) {
+      debugPrint('NotificationService: permission request failed: $e');
+    }
     _initialized = true;
   }
 
@@ -68,7 +88,7 @@ class NotificationService {
   // Permissions
   // --------------------------------------------------------------------------
 
-  /// Request notification permission (iOS / Android 13+).
+  /// Request notification permission (iOS 10+ / Android 13+).
   /// Returns true if granted.
   Future<bool> requestPermission() async {
     if (kIsWeb) return false;
@@ -98,15 +118,18 @@ class NotificationService {
   /// Schedule (or reschedule) the daily practice reminder.
   ///
   /// [hour] and [minute] are local-time values (0–23, 0–59).
+  /// When [skipToday] is true the first fire is tomorrow at that clock time
+  /// so a child who already practiced is not nagged later the same day.
   Future<void> scheduleDailyReminder({
     required int hour,
     required int minute,
+    bool skipToday = false,
   }) async {
     if (kIsWeb || !_initialized) return;
 
-    await _plugin.cancel(_dailyReminderId);
+    await _plugin.cancel(dailyReminderId);
 
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _loadPrefs();
     await prefs.setInt(_prefDailyHour, hour);
     await prefs.setInt(_prefDailyMinute, minute);
     await prefs.setBool(_prefDailyEnabled, true);
@@ -120,28 +143,37 @@ class NotificationService {
       hour,
       minute,
     );
-    if (scheduled.isBefore(now)) {
+    if (skipToday || !scheduled.isAfter(now)) {
       scheduled = scheduled.add(const Duration(days: 1));
     }
 
     await _plugin.zonedSchedule(
-      _dailyReminderId,
-      'זמן ללמוד אנגלית! 🌟',
-      'ספארק מחכה לך — בוא נלמד מילה חדשה היום!',
+      dailyReminderId,
+      dailyReminderTitle,
+      dailyReminderBody,
       scheduled,
-      _androidDetails('daily_reminder', 'תזכורת יומית'),
+      _androidDetails('daily_reminder', 'Daily reminder'),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
+      // Recurring daily only when we are happy to fire at the next clock
+      // match. After practice we schedule a one-shot tomorrow so today's
+      // remaining 16:00 slot cannot still match DateTimeComponents.time.
+      matchDateTimeComponents: skipToday ? null : DateTimeComponents.time,
     );
   }
 
   Future<void> cancelDailyReminder() async {
     if (kIsWeb) return;
-    await _plugin.cancel(_dailyReminderId);
-    final prefs = await SharedPreferences.getInstance();
+    await _plugin.cancel(dailyReminderId);
+    final prefs = await _loadPrefs();
     await prefs.setBool(_prefDailyEnabled, false);
+  }
+
+  /// Cancels every pending and delivered local notification.
+  Future<void> cancelAllReminders() async {
+    if (kIsWeb) return;
+    await _plugin.cancelAll();
   }
 
   // --------------------------------------------------------------------------
@@ -157,7 +189,7 @@ class NotificationService {
 
     await _plugin.cancel(_srsReminderId);
 
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _loadPrefs();
     await prefs.setBool(_prefSrsEnabled, true);
 
     final now = tz.TZDateTime.now(tz.local);
@@ -182,7 +214,7 @@ class NotificationService {
   Future<void> cancelSrsReminder() async {
     if (kIsWeb) return;
     await _plugin.cancel(_srsReminderId);
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _loadPrefs();
     await prefs.setBool(_prefSrsEnabled, false);
   }
 
@@ -193,12 +225,15 @@ class NotificationService {
   Future<void> restoreScheduledNotifications() async {
     if (kIsWeb || !_initialized) return;
 
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _loadPrefs();
 
-    final dailyEnabled = prefs.getBool(_prefDailyEnabled) ?? false;
+    // First launch (no pref) schedules the 16:00 default so retention
+    // reminders exist before a parent visits Settings. An explicit off
+    // stays off.
+    final dailyEnabled = prefs.getBool(_prefDailyEnabled) ?? true;
     if (dailyEnabled) {
-      final hour = prefs.getInt(_prefDailyHour) ?? 18;
-      final minute = prefs.getInt(_prefDailyMinute) ?? 0;
+      final hour = prefs.getInt(_prefDailyHour) ?? defaultReminderHour;
+      final minute = prefs.getInt(_prefDailyMinute) ?? defaultReminderMinute;
       await scheduleDailyReminder(hour: hour, minute: minute);
     }
   }
@@ -209,11 +244,11 @@ class NotificationService {
 
   Future<({bool dailyEnabled, int hour, int minute, bool srsEnabled})>
       getSettings() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _loadPrefs();
     return (
-      dailyEnabled: prefs.getBool(_prefDailyEnabled) ?? false,
-      hour: prefs.getInt(_prefDailyHour) ?? 18,
-      minute: prefs.getInt(_prefDailyMinute) ?? 0,
+      dailyEnabled: prefs.getBool(_prefDailyEnabled) ?? true,
+      hour: prefs.getInt(_prefDailyHour) ?? defaultReminderHour,
+      minute: prefs.getInt(_prefDailyMinute) ?? defaultReminderMinute,
       srsEnabled: prefs.getBool(_prefSrsEnabled) ?? false,
     );
   }
@@ -227,7 +262,7 @@ class NotificationService {
       android: AndroidNotificationDetails(
         channelId,
         channelName,
-        channelDescription: 'התראות מהאפליקציה ללמידת אנגלית',
+        channelDescription: 'Reminders from the English learning app',
         importance: Importance.high,
         priority: Priority.high,
         icon: '@mipmap/ic_launcher',

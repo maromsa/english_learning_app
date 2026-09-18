@@ -8,8 +8,10 @@ import 'package:english_learning_app/providers/coin_provider.dart';
 import 'package:english_learning_app/providers/daily_streak_provider.dart';
 import 'package:english_learning_app/services/child_profile_sync_service.dart';
 import 'package:english_learning_app/services/daily_streak_service.dart';
+import 'package:english_learning_app/services/notification_service.dart';
 import 'package:english_learning_app/services/user_data_service.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -60,6 +62,53 @@ class _RecordingChildProfileSyncService extends ChildProfileSyncService {
   }
 }
 
+class _RecordingNotificationService extends NotificationService {
+  _RecordingNotificationService() : super(plugin: _UnusedNotificationsPlugin());
+
+  int cancelAllCount = 0;
+  int scheduleCount = 0;
+  int srsScheduleCount = 0;
+  int? lastHour;
+  int? lastMinute;
+  bool? lastSkipToday;
+
+  @override
+  Future<({bool dailyEnabled, int hour, int minute, bool srsEnabled})>
+      getSettings() async {
+    return (
+      dailyEnabled: true,
+      hour: NotificationService.defaultReminderHour,
+      minute: NotificationService.defaultReminderMinute,
+      srsEnabled: false,
+    );
+  }
+
+  @override
+  Future<void> cancelAllReminders() async {
+    cancelAllCount++;
+  }
+
+  @override
+  Future<void> scheduleDailyReminder({
+    required int hour,
+    required int minute,
+    bool skipToday = false,
+  }) async {
+    scheduleCount++;
+    lastHour = hour;
+    lastMinute = minute;
+    lastSkipToday = skipToday;
+  }
+
+  @override
+  Future<void> scheduleSrsReminder({DateTime? when}) async {
+    srsScheduleCount++;
+  }
+}
+
+class _UnusedNotificationsPlugin extends Fake
+    implements FlutterLocalNotificationsPlugin {}
+
 CoinProvider _coins() => CoinProvider(
       userDataService: UserDataService(firestore: FakeFirebaseFirestore()),
     );
@@ -71,6 +120,7 @@ Future<DailyStreakProvider> _provider({
   DailyStreakService? service,
   ChildProfileSyncService? syncService,
   CoinProvider? coins,
+  NotificationService? notifications,
 }) async {
   final provider = DailyStreakProvider(
     service: service ??
@@ -78,6 +128,7 @@ Future<DailyStreakProvider> _provider({
     syncService: syncService ?? _RecordingChildProfileSyncService(),
     now: () => clock.value,
     coinProvider: coins ?? _coins(),
+    notificationService: notifications,
   );
   provider.setUserId(userId);
   provider.setParentUid(parentUid);
@@ -421,6 +472,47 @@ void main() {
       await provider.recordPractice();
 
       expect(sync.callCount, 1);
+    });
+  });
+
+  group('DailyStreakProvider practice reminders', () {
+    test('a newly recorded practice cancels nags and schedules tomorrow',
+        () async {
+      final notifications = _RecordingNotificationService();
+      final clock = _Clock(DateTime(2026, 9, 15, 10));
+      final provider = await _provider(
+        clock: clock,
+        notifications: notifications,
+      );
+
+      final recorded = await provider.recordPractice();
+
+      expect(recorded, isTrue);
+      expect(notifications.cancelAllCount, 1);
+      expect(notifications.scheduleCount, 1);
+      expect(notifications.lastHour, NotificationService.defaultReminderHour);
+      expect(
+        notifications.lastMinute,
+        NotificationService.defaultReminderMinute,
+      );
+      expect(notifications.lastSkipToday, isTrue);
+      expect(notifications.srsScheduleCount, 0);
+    });
+
+    test('same-day practice does not reschedule reminders', () async {
+      final notifications = _RecordingNotificationService();
+      final clock = _Clock(DateTime(2026, 9, 15, 8));
+      final provider = await _provider(
+        clock: clock,
+        notifications: notifications,
+      );
+
+      await provider.recordPractice();
+      clock.value = DateTime(2026, 9, 15, 22);
+      await provider.recordPractice();
+
+      expect(notifications.cancelAllCount, 1);
+      expect(notifications.scheduleCount, 1);
     });
   });
 }
