@@ -590,8 +590,8 @@ class _NotificationsCard extends StatefulWidget {
 class _NotificationsCardState extends State<_NotificationsCard> {
   bool _dailyEnabled = false;
   bool _srsEnabled = false;
-  int _hour = 18;
-  int _minute = 0;
+  int _hour = NotificationService.defaultReminderHour;
+  int _minute = NotificationService.defaultReminderMinute;
   bool _loading = true;
 
   @override
